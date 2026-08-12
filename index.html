@@ -117,6 +117,21 @@
   }
   #screen-title > *{flex-shrink:0;}
   .torch-row{display:flex; gap:60px; margin-bottom:-10px;}
+
+  #records-section{width:100%; max-width:380px; margin-top:4px;}
+  .records-title{
+    font-family:'Cinzel'; color:var(--gold); font-size:12.5px; letter-spacing:.05em;
+    text-align:center; margin-bottom:6px; opacity:0.85;
+  }
+  #records-list{display:flex; flex-direction:column; gap:4px; max-height:150px; overflow-y:auto; padding:2px;}
+  .record-row{
+    display:flex; justify-content:space-between; gap:8px; align-items:center;
+    background:#1e160dcc; border:1px solid #3a2c1c; border-radius:5px;
+    padding:6px 10px; font-size:12px; color:var(--parchment-dim);
+  }
+  .record-row .rec-name{color:var(--parchment); font-family:'Cinzel'; font-weight:700; flex-shrink:0;}
+  .record-row .rec-job{color:var(--gold-bright); flex-shrink:0;}
+  .record-row .rec-stat{flex-shrink:0; white-space:nowrap;}
   .torch{width:14px; height:34px; position:relative;}
   .flame{
     width:14px; height:22px; border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;
@@ -501,6 +516,10 @@
     <div class="job-select" id="job-select"></div>
     <button class="btn" id="btn-start">새로 시작하다</button>
     <button class="link-btn" id="btn-delete-save" style="display:none;">저장 데이터 삭제</button>
+    <div id="records-section" style="display:none;">
+      <div class="records-title">이전 모험 기록</div>
+      <div id="records-list"></div>
+    </div>
   </div>
 
   <!-- EXPLORE -->
@@ -561,11 +580,10 @@
 
   <!-- ENDING -->
   <div id="screen-ending" class="screen">
-    <h1 class="title-font">회랑의 정복자</h1>
+    <h1 class="title-font">회랑의 새로운 파수꾼</h1>
     <p id="ending-summary"></p>
     <div class="ending-btns">
-      <button class="btn" id="btn-ending-continue">회랑을 계속 탐험하다</button>
-      <button class="btn btn-primary" id="btn-ending-newgame">새로운 모험을 시작하다</button>
+      <button class="btn btn-primary" id="btn-ending-title">메인화면으로</button>
     </div>
   </div>
 
@@ -576,6 +594,24 @@
   "use strict";
 
   /* ============ 몬스터 SVG 생성 ============ */
+  // 최종보스: 6개 직업 중 하나의 모습을 한 "타락한 용사" 공용 실루엣.
+  // 색상(pal)과 무기/장신구 실루엣(weaponSvg)만 직업별로 바뀐다.
+  function heroBossSvg(pal, weaponSvg){
+    const glow = `<filter id="eg2"><feGaussianBlur stdDeviation="1.4"/></filter>`;
+    return `<svg viewBox="0 0 140 140">${glow}
+      <ellipse cx="70" cy="120" rx="42" ry="10" fill="#000" opacity="0.35"/>
+      ${weaponSvg}
+      <path d="M70 18 C48 18 36 40 40 62 C36 66 36 82 48 90 L92 90 C104 82 104 66 100 62 C104 40 92 18 70 18 Z" fill="${pal.c1}"/>
+      <path d="M70 18 C58 18 50 28 48 40 L92 40 C90 28 82 18 70 18 Z" fill="${pal.accent}" opacity="0.55"/>
+      <ellipse cx="58" cy="54" rx="6" ry="7" fill="${pal.eye}" filter="url(#eg2)"/>
+      <ellipse cx="82" cy="54" rx="6" ry="7" fill="${pal.eye}" filter="url(#eg2)"/>
+      <circle cx="58" cy="55" r="2.4" fill="#fff"/><circle cx="82" cy="55" r="2.4" fill="#fff"/>
+      <path d="M40 92 Q70 82 100 92 L106 128 Q70 140 34 128 Z" fill="${pal.c2}"/>
+      <path d="M40 92 Q70 82 100 92 L96 104 Q70 96 44 104 Z" fill="${pal.accent}"/>
+      <path d="M52 90 L52 128 M70 92 L70 132 M88 90 L88 128" stroke="#000" stroke-opacity="0.25" stroke-width="2"/>
+    </svg>`;
+  }
+
   function svgMonster(type){
     const glow = `<filter id="eg"><feGaussianBlur stdDeviation="1.4"/></filter>`;
     switch(type){
@@ -679,6 +715,24 @@
         <rect x="14" y="60" width="6" height="60" rx="2" fill="#8fa0b8" transform="rotate(-4 14 60)"/>
         <circle cx="16" cy="56" r="8" fill="#7a5a9c" filter="url(#eg)" opacity="0.85"/>
       </svg>`;
+      case 'herowarrior': return heroBossSvg({c1:'#4a2020', c2:'#2a1414', accent:'#8a3a2c', eye:'#ff6a5a'},
+        `<rect x="98" y="26" width="9" height="72" rx="2" fill="#c9c9d4" transform="rotate(28 98 26)"/>
+         <rect x="94" y="20" width="17" height="9" rx="2" fill="#8fa0b8" transform="rotate(28 94 20)"/>`);
+      case 'heromage': return heroBossSvg({c1:'#241a3a', c2:'#150f26', accent:'#4a2c7a', eye:'#9c6fe0'},
+        `<rect x="98" y="30" width="5" height="74" rx="2" fill="#6b5230" transform="rotate(8 98 30)"/>
+         <circle cx="100" cy="28" r="9" fill="#9c6fe0" filter="url(#eg)"/>`);
+      case 'herorogue': return heroBossSvg({c1:'#1a2418', c2:'#0f150e', accent:'#2c4a26', eye:'#8fd66a'},
+        `<rect x="30" y="70" width="6" height="30" rx="2" fill="#c9c9d4" transform="rotate(-40 30 70)"/>
+         <rect x="104" y="70" width="6" height="30" rx="2" fill="#c9c9d4" transform="rotate(40 104 70)"/>`);
+      case 'heropaladin': return heroBossSvg({c1:'#3a3018', c2:'#241c0e', accent:'#8a7020', eye:'#ffe08a'},
+        `<ellipse cx="36" cy="86" rx="14" ry="20" fill="#8a7020" opacity="0.9"/>
+         <path d="M30 74 L42 74 L42 98 L36 104 L30 98 Z" fill="#ffe08a" opacity="0.9"/>`);
+      case 'heromechanic': return heroBossSvg({c1:'#3a2810', c2:'#241808', accent:'#8a5a20', eye:'#ffb15a'},
+        `<circle cx="100" cy="80" r="13" fill="none" stroke="#ffb15a" stroke-width="5"/>
+         <circle cx="100" cy="80" r="4" fill="#ffb15a" filter="url(#eg)"/>`);
+      case 'herojester': return heroBossSvg({c1:'#3a1830', c2:'#24101e', accent:'#8a2c7a', eye:'#e06fd6'},
+        `<ellipse cx="40" cy="82" rx="12" ry="15" fill="#e06fd6" opacity="0.85" transform="rotate(-16 40 82)"/>
+         <ellipse cx="100" cy="82" rx="12" ry="15" fill="#241a30" stroke="#e06fd6" stroke-width="2" transform="rotate(16 100 82)"/>`);
       case 'bat': return `<svg viewBox="0 0 120 120">${glow}
         <path d="M60 50 L20 30 L35 55 L10 60 L35 68 L20 90 L60 72 Z" fill="#241d17" opacity="0.92"/>
         <path d="M60 50 L100 30 L85 55 L110 60 L85 68 L100 90 L60 72 Z" fill="#241d17" opacity="0.92"/>
@@ -900,6 +954,33 @@
       if(hasArtifactStorage()) await window.storage.delete(SAVE_KEY, false);
       else if(hasLocalStorage()) window.localStorage.removeItem(SAVE_KEY);
     }catch(e){ /* ignore */ }
+  }
+
+  // ---------- 이전 모험 기록(엔딩을 본 캐릭터들의 발자취) ----------
+  const RECORDS_KEY = 'gamerecords';
+  async function loadRecords(){
+    if(!storageAvailable()) return [];
+    try{
+      if(hasArtifactStorage()){
+        const res = await window.storage.get(RECORDS_KEY, false);
+        if(res && res.value) return JSON.parse(res.value);
+      } else if(hasLocalStorage()){
+        const raw = window.localStorage.getItem(RECORDS_KEY);
+        if(raw) return JSON.parse(raw);
+      }
+    }catch(e){ /* 기록 없음, 정상 */ }
+    return [];
+  }
+  async function addRecord(record){
+    const records = await loadRecords();
+    records.push(record);
+    while(records.length > 30) records.shift();
+    const payload = JSON.stringify(records);
+    try{
+      if(hasArtifactStorage()) await window.storage.set(RECORDS_KEY, payload, false);
+      else if(hasLocalStorage()) window.localStorage.setItem(RECORDS_KEY, payload);
+    }catch(e){ /* ignore */ }
+    return records;
   }
   // 저장 기능에서 발생하는 예기치 못한 오류가 게임 전체를 멈추지 않도록 방지
   window.addEventListener('unhandledrejection', function(ev){
@@ -1301,7 +1382,7 @@
       equipment:{weapon:null, armor:null, accessory:null},
       equipOwned:[],
       augments:[], augmentMilestones:[], augmentPendingDepth:null,
-      endingSeen:false,
+      endingSeen:false, deathCount:0,
     };
     p.hp = p.maxhp; p.mp = p.maxmp;
     return p;
@@ -1497,6 +1578,29 @@
       type:'finalcard', baseChance:0.45, maxChance:0.99, baseMult:2.6, maxMult:7.5, defPierce:0.25, failSelfRatio:0.05},
   };
 
+  function renderRecords(records){
+    const section = document.getElementById('records-section');
+    const box = document.getElementById('records-list');
+    if(!records || !records.length){ section.style.display='none'; return; }
+    section.style.display='block';
+    box.innerHTML = '';
+    records.slice().reverse().forEach(r=>{
+      const row = document.createElement('div');
+      row.className = 'record-row';
+      const left = document.createElement('span');
+      left.className = 'rec-name';
+      left.textContent = r.name;
+      const job = document.createElement('span');
+      job.className = 'rec-job';
+      job.textContent = r.jobLabel;
+      const stat = document.createElement('span');
+      stat.className = 'rec-stat';
+      stat.textContent = `Lv.${r.level} · 사망 ${r.deathCount}회`;
+      row.appendChild(left); row.appendChild(job); row.appendChild(stat);
+      box.appendChild(row);
+    });
+  }
+
   function init(){
     town = true; depth = 0; battleOver=false; subMode=null;
     renderJobSelect();
@@ -1515,13 +1619,15 @@
       renderExplore(['다시 회랑 어귀에 섰다. 소지품과 체력이 정비되었다.']);
       saveGame();
     });
-    document.getElementById('btn-ending-continue').addEventListener('click', ()=>{
-      showScreen('explore');
-      renderStatus();
-      renderExplore(['전설이 된 이름을 뒤로 하고, 다시 어둠 속으로 발걸음을 옮긴다.']);
-      saveGame();
-    });
-    document.getElementById('btn-ending-newgame').addEventListener('click', async ()=>{
+    document.getElementById('btn-ending-title').addEventListener('click', async ()=>{
+      const job = getJob(player);
+      const hybrid = getHybrid(player);
+      const jobLabel = hybrid ? `${hybrid.icon} ${hybrid.name}` : `${job.icon} ${job.name}`;
+      const record = {
+        name: player.name, jobLabel, level: player.level,
+        deathCount: player.deathCount||0, ts: Date.now(),
+      };
+      await addRecord(record);
       await deleteSave();
       window.__savedGame = null;
       document.getElementById('continue-info').style.display='none';
@@ -1529,6 +1635,7 @@
       document.getElementById('btn-delete-save').style.display='none';
       document.getElementById('statusbar').style.display='none';
       showScreen('title');
+      loadRecords().then(records=> renderRecords(records));
     });
     document.getElementById('btn-advance').addEventListener('click', onAdvance);
     document.getElementById('btn-rest').addEventListener('click', onRest);
@@ -1555,6 +1662,8 @@
         document.getElementById('btn-delete-save').style.display='inline-block';
       }
     }).catch(e=>{ console.warn('불러오기 실패(무시):', e); });
+
+    loadRecords().then(records=> renderRecords(records)).catch(e=>{ console.warn('기록 불러오기 실패(무시):', e); });
   }
 
   function startGame(isContinue){
@@ -1573,6 +1682,7 @@
       if(player.fateBoostChance===undefined) player.fateBoostChance = 0;
       if(player.fateBoostMult===undefined) player.fateBoostMult = 0;
       if(player.endingSeen===undefined) player.endingSeen = false;
+      if(player.deathCount===undefined) player.deathCount = 0;
       if(player.level>=10 && !player.jobChosenAt10) player.jobAdvancePending = true;
       document.getElementById('statusbar').style.display='flex';
       showScreen('explore');
@@ -1919,14 +2029,28 @@
   }
 
   /* ============ 전투 ============ */
-  const FINAL_BOSS = {type:'lich', name:'태초의 리치왕', hp:240, atk:22, def:13, spd:9, exp:600, gold:[350,450], skills:['curse','heal','smash']};
+  // 회랑의 최종보스는 고정된 몬스터가 아니라, 플레이어가 고를 수 있는 6개 직업 중
+  // 하나의 모습을 한 "타락한 용사"로 매번 랜덤하게 등장한다.
+  const FINAL_BOSS_BY_JOB = {
+    warrior:  {name:'잠식된 전사 용사',   type:'herowarrior',  hp:250, atk:23, def:14, spd:7,  exp:600, gold:[350,450], skills:['heroWarriorSmite']},
+    mage:     {name:'잠식된 마법사 용사', type:'heromage',     hp:210, atk:26, def:9,  spd:8,  exp:600, gold:[350,450], skills:['heroMageBurst']},
+    rogue:    {name:'잠식된 도적 용사',   type:'herorogue',    hp:220, atk:24, def:10, spd:13, exp:600, gold:[350,450], skills:['heroRogueSlash']},
+    paladin:  {name:'잠식된 성기사 용사', type:'heropaladin',  hp:260, atk:20, def:16, spd:6,  exp:600, gold:[350,450], skills:['heroPaladinSmite','heal']},
+    mechanic: {name:'잠식된 메카닉 용사', type:'heromechanic', hp:230, atk:22, def:12, spd:9,  exp:600, gold:[350,450], skills:['heroMechanicBlast']},
+    jester:   {name:'잠식된 광대 용사',   type:'herojester',   hp:215, atk:24, def:10, spd:11, exp:600, gold:[350,450], skills:['heroJesterGamble']},
+  };
+  function pickFinalBossJob(){
+    const ids = JOBS.map(j=>j.id);
+    return ids[Math.floor(Math.random()*ids.length)];
+  }
 
   function pickEnemy(isBoss, isFinal){
     if(isFinal){
-      const base = FINAL_BOSS;
+      const jobId = pickFinalBossJob();
+      const base = FINAL_BOSS_BY_JOB[jobId];
       const scale = 1 + depth*0.05;
       return {
-        type: base.type, name: base.name, isBoss:true, isFinal:true,
+        type: base.type, name: base.name, isBoss:true, isFinal:true, finalJobId: jobId,
         maxhp: Math.round(base.hp*scale), hp: Math.round(base.hp*scale),
         atk: Math.round(base.atk*scale*0.8),
         def: Math.round(base.def + depth*0.12),
@@ -2153,6 +2277,7 @@
       battleOver = true;
       setCommandsEnabled(false);
       setBattleMsg(`${player.name}은(는) 쓰러지고 말았다…`, '');
+      player.deathCount = (player.deathCount||0) + 1;
       setTimeout(()=>{
         showScreen('gameover');
         document.getElementById('go-summary').textContent =
@@ -2172,8 +2297,15 @@
     const job = getJob(player);
     const hybrid = getHybrid(player);
     const jobLabel = hybrid ? `${hybrid.icon} ${hybrid.name}` : `${job.icon} ${job.name}`;
+    const bossJob = (enemy && enemy.finalJobId && JOBS.find(j=>j.id===enemy.finalJobId)) || null;
+    const bossJobName = bossJob ? bossJob.name : '용사';
     document.getElementById('ending-summary').textContent =
-      `${player.name}(${jobLabel})은(는) 회랑의 밑바닥, 태초의 리치왕을 쓰러뜨리고 마침내 어둠의 회랑을 정복했다. 레벨 ${player.level}, 소지금 ${player.gold}G. 그의 이름은 전설로 남을 것이다.`;
+      `${player.name}은(는) 회랑의 가장 깊은 곳에서, ${bossJobName}의 모습을 한 무언가를 마침내 쓰러뜨렸다. `
+      + `그러나 승리의 환희도 잠시, 발밑에서 차오르는 서늘한 기운이 온몸을 휘감는다. `
+      + `회랑은 정복자를 놓아주지 않는다 — 애초에 이곳이 원한 것은 승자가 아니라, 새로운 파수꾼이었을 뿐이다. `
+      + `의식이 흐려지는 사이, ${player.name}(${jobLabel})의 형상이 서서히 어둠 속으로 녹아든다. `
+      + `이제 이 회랑의 가장 깊은 곳을 지키는 것은, 한때 용사였던 무언가다. `
+      + `레벨 ${player.level}, 소지금 ${player.gold}G. 탑의 문은 다시, 조용히 닫혔다.`;
     saveGame();
   }
 
@@ -2341,7 +2473,23 @@
       if(skillKey==='smash'){ dmg = Math.round(enemy.atk*1.6); label = `${enemy.name}이(가) 강타를 날린다!`; }
       else if(skillKey==='bite'){ dmg = Math.round(enemy.atk*1.4); label = `${enemy.name}이(가) 물어뜯는다!`; }
       else if(skillKey==='curse'){ dmg = Math.round(enemy.atk*1.3); label = `${enemy.name}이(가) 저주를 건다!`; }
+      else if(skillKey==='heroWarriorSmite'){ dmg = Math.round(enemy.atk*2.0); label = `${enemy.name}이(가) 필멸의 참격을 내리찍는다!`; }
+      else if(skillKey==='heroMageBurst'){ dmg = Math.round(enemy.atk*2.2); label = `${enemy.name}이(가) 멸망의 화염구를 쏘아보낸다!`; }
+      else if(skillKey==='heroRogueSlash'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 그림자처럼 스며들어 베어낸다!`; }
+      else if(skillKey==='heroPaladinSmite'){ dmg = Math.round(enemy.atk*1.7); label = `${enemy.name}이(가) 심판의 빛을 내려찍는다!`; }
+      else if(skillKey==='heroMechanicBlast'){ dmg = Math.round(enemy.atk*1.8); label = `${enemy.name}이(가) 장치를 기폭시킨다!`; }
+      else if(skillKey==='heroJesterGamble'){
+        if(Math.random()<0.5){ dmg = Math.round(enemy.atk*3.0); label = `${enemy.name}의 동전이 앞면으로 떨어진다! 회심의 일격!`; }
+        else { dmg = 0; label = `${enemy.name}의 동전이 뒷면으로 떨어진다…`; }
+      }
       else { dmg = enemy.atk + Math.floor(Math.random()*3)-1; }
+
+      if(dmg<=0){
+        setBattleMsg(label, `공격이 완전히 빗나갔다!`);
+        if(checkBattleEnd()) return;
+        resetCommandUI();
+        return;
+      }
 
       const dodgeChance = getSpecialSum('dodgeChance');
       if(dodgeChance>0 && Math.random()<dodgeChance){
