@@ -90,9 +90,10 @@
     font-size:13px;
     flex-shrink:0;
   }
-  #statusbar .name{font-family:'Cinzel'; font-weight:700; color:var(--gold-bright); font-size:13px; white-space:nowrap;}
-  #statusbar .lvl{color:var(--parchment-dim); font-size:12px; white-space:nowrap;}
-  .barwrap{flex:1; display:flex; flex-direction:column; gap:3px; min-width:0;}
+  #statusbar .name{font-family:'Cinzel'; font-weight:700; color:var(--gold-bright); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+  #statusbar .lvl{color:var(--parchment-dim); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
+  #statusbar .namewrap{flex-shrink:0; min-width:0; max-width:min(148px, 36vw); overflow:hidden;}
+  .barwrap{flex:1; display:flex; flex-direction:column; gap:3px; min-width:64px;}
   .barrow{display:flex; align-items:center; gap:5px;}
   .barlabel{width:16px; font-size:11px; color:var(--parchment-dim); font-family:'Cinzel';}
   .bar-outer{flex:1; height:8px; background:#0f0b07; border:1px solid #4a3a24; border-radius:3px; overflow:hidden;}
@@ -379,14 +380,15 @@
 
   .sublist{display:flex; flex-direction:column; gap:6px; max-height:190px; overflow-y:auto;}
   .sub-item{
-    display:flex; justify-content:space-between; align-items:center;
+    display:flex; justify-content:space-between; align-items:flex-start; gap:8px;
     background:#1a130c; border:1px solid #3a2c1c; border-radius:4px;
     padding:9px 12px; cursor:pointer; font-size:14px; min-height:44px;
   }
   .sub-item:hover{border-color:var(--gold);}
-  .sub-item .si-name{font-family:'Cinzel'; font-size:13.5px; color:var(--parchment);}
-  .sub-item .si-desc{color:var(--parchment-dim); font-size:12px; font-style:italic;}
-  .sub-item .si-cost{color:#8fb4e8; font-size:12px; flex-shrink:0; margin-left:8px;}
+  .sub-item .si-info{flex:1; min-width:0;}
+  .sub-item .si-name{font-family:'Cinzel'; font-size:13.5px; color:var(--parchment); display:block;}
+  .sub-item .si-desc{color:var(--parchment-dim); font-size:12px; font-style:italic; display:block; margin-top:2px; white-space:normal; overflow-wrap:break-word; line-height:1.4;}
+  .sub-item .si-cost{color:#8fb4e8; font-size:12px; flex-shrink:0; margin-left:8px; padding-top:1px;}
   .sub-item.disabled{opacity:.35; cursor:not-allowed;}
   .back-row{display:flex; justify-content:flex-end;}
   .link-btn{background:none; border:none; color:var(--parchment-dim); font-family:'Cinzel'; font-size:12.5px; cursor:pointer; text-decoration:underline; padding:4px;}
@@ -497,7 +499,7 @@
 
   <!-- STATUS BAR (hidden on title) -->
   <div id="statusbar" style="display:none;">
-    <div>
+    <div class="namewrap">
       <div class="name" id="sb-name">용사</div>
       <div class="lvl" id="sb-lvl">Lv.1</div>
     </div>
@@ -2568,7 +2570,7 @@
         const canUse = player.mp>=mpCost;
         const div = document.createElement('div');
         div.className = 'sub-item'+(canUse?'':' disabled');
-        div.innerHTML = `<div><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div></div><div class="si-cost">MP ${mpCost}</div>`;
+        div.innerHTML = `<div class="si-info"><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div></div><div class="si-cost">MP ${mpCost}</div>`;
         if(canUse) div.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
         sub.appendChild(div);
       });
@@ -2582,7 +2584,7 @@
         const count = player.inv[it.key]||0;
         const div = document.createElement('div');
         div.className = 'sub-item'+(count>0?'':' disabled');
-        div.innerHTML = `<div><div class="si-name">${it.name} ×${count}</div><div class="si-desc">${it.desc}</div></div>`;
+        div.innerHTML = `<div class="si-info"><div class="si-name">${it.name} ×${count}</div><div class="si-desc">${it.desc}</div></div>`;
         if(count>0) div.addEventListener('click', ()=>{ closeSub(); playerItem(it.key); });
         sub.appendChild(div);
       });
@@ -2615,10 +2617,15 @@
         if(Math.random() < rareChance) rareDropId = findRareDropForDepth();
         if(rareDropId) player.equipOwned.push(rareDropId);
       }
-      // 에픽 드랍은 rareDropBoost의 영향을 받지 않는 별도 확률 판정이며,
+      // 에픽 드랍은 rareDropBoost의 영향을 받지 않는 별도 확률 판정이지만,
+      // 네잎클로버처럼 rareDropBoost 특성을 가진 장비를 착용 중이면 별도로 크게 상승한다.
       // 최종 진보스는 엔딩 처리(isFinalKill) 이전에 먼저 보상을 지급한다
       let epicDropId = null;
-      let epicChance = enemy.isFinal ? 0.05 : (enemy.isBoss ? 0.03 : 0.005);
+      const hasCloverLuck = hasSpecial('rareDropBoost');
+      let epicChance;
+      if(enemy.isFinal) epicChance = 0.05;
+      else if(enemy.isBoss) epicChance = hasCloverLuck ? 0.10 : 0.03;
+      else epicChance = hasCloverLuck ? 0.03 : 0.005;
       if(Math.random() < epicChance) epicDropId = findEpicDropForDepth();
       if(epicDropId) player.equipOwned.push(epicDropId);
       renderStatus();
