@@ -31,6 +31,8 @@
     --forest:#4a7350;
     --forest-bright:#6fae76;
     --violet:#7a5a9c;
+    --epic:#ff7a3c;
+    --epic-bright:#ffb17a;
     --shadow-deep:#050403;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -414,6 +416,11 @@
     background:#7a5a9c14; border:1px solid #7a5a9c40;
     font-size:11.5px; color:#c9b3ea; line-height:1.55;
   }
+  .item-desc-epic{
+    margin-top:6px; padding:6px 8px; border-radius:4px;
+    background:#ff7a3c18; border:1px solid #ff7a3c55;
+    font-size:11.5px; color:#ffcba8; line-height:1.55;
+  }
   .buy-btn{font-family:'Cinzel'; font-size:12.5px; background:#3a2c1a; border:1px solid var(--gold); color:var(--gold-bright); padding:6px 12px; border-radius:3px; cursor:pointer; flex-shrink:0;}
   .buy-btn:disabled{opacity:.3; cursor:not-allowed;}
 
@@ -472,6 +479,13 @@
   @keyframes toastin{from{opacity:0; transform:translate(-50%,-50%) scale(0.85);} to{opacity:1; transform:translate(-50%,-50%) scale(1);}}
   .toast h3{color:var(--gold-bright); margin-bottom:8px; font-size:19px;}
   .toast p{color:var(--parchment); margin:3px 0; font-size:14px;}
+  .toast-epic{
+    border:1px solid var(--epic); box-shadow:0 10px 40px #000000cc, 0 0 26px #ff7a3c55;
+  }
+  .set-progress-box{
+    background:#3a1f0f22; border:1px solid var(--epic); border-radius:4px;
+    padding:6px 8px; margin-bottom:6px; font-size:11.5px; color:var(--parchment-dim); line-height:1.6;
+  }
 
   ::-webkit-scrollbar{width:7px;}
   ::-webkit-scrollbar-thumb{background:#4a3a24; border-radius:4px;}
@@ -1141,8 +1155,98 @@
       stats:{spd:2},                      minDepth:1,  rare:true, special:{rareDropBoost:0.5, goldBoost:0.2}},
   };
 
+  /* ---------- 에픽 세트 아이템 (어둠의 회랑) ---------- */
+  const EPIC_EQUIPMENT = {
+    // 전사 — 멸망한 거인의 유산
+    w_giantslayer: {name:'거인의 절멸검', slot:'weapon', setId:'warrior', epic:true, minDepth:12,
+      desc:'무너진 거인의 뼈로 벼려낸 대검. 어둠의 회랑 깊은 곳에서만 발견된다. ✦✦ 「멸망한 거인의 유산」 세트 部位.',
+      stats:{atk:14, def:-2}},
+    a_giantheart:  {name:'거인의 심장갑', slot:'armor', setId:'warrior', epic:true, minDepth:12,
+      desc:'거인의 심장을 본떠 벼려낸 흉갑. ✦✦ 「멸망한 거인의 유산」 세트 부위.',
+      stats:{def:11, maxhp:18}},
+    c_giantring:   {name:'거인의 전쟁고리', slot:'accessory', setId:'warrior', epic:true, minDepth:12,
+      desc:'전장에서 죽어간 거인의 손가락에 끼워져 있던 고리. ✦✦ 「멸망한 거인의 유산」 세트 부위.',
+      stats:{atk:5, maxhp:12}},
+
+    // 마법사 — 별을 삼킨 대현자
+    w_stardevourer: {name:'멸성의 지팡이', slot:'weapon', setId:'mage', epic:true, minDepth:13,
+      desc:'별 하나를 통째로 삼켰다는 전설이 전해지는 지팡이. ✦✦ 「별을 삼킨 대현자」 세트 부위.',
+      stats:{mag:11, maxmp:6}},
+    a_starrobe:     {name:'별빛 마도포', slot:'armor', setId:'mage', epic:true, minDepth:13,
+      desc:'밤하늘의 별빛을 짜 넣은 마도사의 로브. ✦✦ 「별을 삼킨 대현자」 세트 부위.',
+      stats:{def:4, maxmp:16}},
+    c_voidcore:     {name:'공허의 마도핵', slot:'accessory', setId:'mage', epic:true, minDepth:13,
+      desc:'공허 그 자체가 응축된 마도핵. ✦✦ 「별을 삼킨 대현자」 세트 부위.',
+      stats:{mag:6, maxmp:10}},
+
+    // 도적 — 밤을 걷는 학살자
+    w_nightblades:  {name:'밤의 쌍날', slot:'weapon', setId:'rogue', epic:true, minDepth:14,
+      desc:'어둠 속에서만 번뜩이는 한 쌍의 단검. ✦✦ 「밤을 걷는 학살자」 세트 부위.',
+      stats:{atk:10, spd:7}},
+    a_shadowcloak:  {name:'그림자 망토', slot:'armor', setId:'rogue', epic:true, minDepth:14,
+      desc:'걸치면 그림자와 하나가 되는 듯한 망토. ✦✦ 「밤을 걷는 학살자」 세트 부위.',
+      stats:{def:5, spd:6}},
+    c_assassineye:  {name:'암살자의 눈', slot:'accessory', setId:'rogue', epic:true, minDepth:14,
+      desc:'적의 빈틈을 놓치지 않는 암살자의 의안. ✦✦ 「밤을 걷는 학살자」 세트 부위.',
+      stats:{atk:4, spd:5}},
+
+    // 성기사 — 최후의 성전
+    w_judgmentblade:{name:'신벌의 성검', slot:'weapon', setId:'paladin', epic:true, minDepth:15,
+      desc:'신의 뜻을 대신해 벌을 내리는 성검. ✦✦ 「최후의 성전」 세트 부위.',
+      stats:{atk:11, mag:4}},
+    a_godplate:     {name:'신의 철갑', slot:'armor', setId:'paladin', epic:true, minDepth:15,
+      desc:'신성한 힘이 깃들어 무너지지 않는 철갑. ✦✦ 「최후의 성전」 세트 부위.',
+      stats:{def:13, maxhp:22}},
+    c_saintheart:   {name:'성자의 심장', slot:'accessory', setId:'paladin', epic:true, minDepth:15,
+      desc:'순교한 성자의 심장이 깃든 성물. ✦✦ 「최후의 성전」 세트 부위.',
+      stats:{def:5, maxhp:18, maxmp:6}},
+
+    // 메카닉 — 종말기계 Mk.Ω
+    w_omegacannon:  {name:'종말식 자동포', slot:'weapon', setId:'mechanic', epic:true, minDepth:16,
+      desc:'세상의 끝을 상정하고 설계된 자동 화기. ✦✦ 「종말기계 Mk.Ω」 세트 부위.',
+      stats:{mag:9, atk:5}},
+    a_overloadarmor:{name:'과부하 기갑', slot:'armor', setId:'mechanic', epic:true, minDepth:16,
+      desc:'한계까지 출력을 끌어올린 실험용 기갑. ✦✦ 「종말기계 Mk.Ω」 세트 부위.',
+      stats:{def:7, maxmp:12}},
+    c_omegareactor: {name:'Ω 반응로', slot:'accessory', setId:'mechanic', epic:true, minDepth:16,
+      desc:'끊임없이 마력을 증폭시키는 소형 반응로. ✦✦ 「종말기계 Mk.Ω」 세트 부위.',
+      stats:{mag:6, maxmp:8}},
+
+    // 도박사 — 운명의 마지막 패
+    w_fatedeck:     {name:'운명의 사기패', slot:'weapon', setId:'jester', epic:true, minDepth:17,
+      desc:'뽑는 패마다 운명이 뒤바뀐다는 소문의 카드 뭉치. ✦✦ 「운명의 마지막 패」 세트 부위.',
+      stats:{atk:7, mag:6, spd:3}},
+    a_jokertailcoat:{name:'광대왕의 연미복', slot:'armor', setId:'jester', epic:true, minDepth:17,
+      desc:'회랑을 떠돈 어느 광대왕이 입었다는 연미복. ✦✦ 「운명의 마지막 패」 세트 부위.',
+      stats:{def:5, maxhp:8, spd:4}},
+    c_lastjoker:    {name:'최후의 조커', slot:'accessory', setId:'jester', epic:true, minDepth:17,
+      desc:'단 한 번, 모든 것을 뒤집을 수 있는 마지막 패. ✦✦ 「운명의 마지막 패」 세트 부위.',
+      stats:{mag:5, maxmp:10, spd:3}},
+  };
+
+  const EPIC_SETS = {
+    warrior:  {name:'멸망한 거인의 유산',
+      set2Name:'거인의 혈맥', set2Desc:'최대 HP 50% 이하일 때 물리 피해 +25%',
+      set3Name:'거인강림',   set3Desc:'체력 50% 이하에서 공격/물리 스킬 사용 시 피해 +60%, 방어력 30% 관통, 20% 확률로 추가 공격 발동'},
+    mage:     {name:'별을 삼킨 대현자',
+      set2Name:'마력 과잉', set2Desc:'MP 50% 이상일 때 마법 피해 +25%',
+      set3Name:'별의 종말', set3Desc:'MP 10 이상 소모하는 공격 마법 사용 시 피해 +70% (MP 30% 이하면 +40% 추가), 화상 부여/강화'},
+    rogue:    {name:'밤을 걷는 학살자',
+      set2Name:'그림자 가속', set2Desc:'속도가 적보다 높을 때 모든 물리 피해 +25%',
+      set3Name:'죽음의 연쇄', set3Desc:'물리 공격 적중마다 처형 카운트 누적, 3회 누적 시 다음 공격 피해 +100% (적 HP 30% 이하면 +100% 추가), 방어력 50% 관통'},
+    paladin:  {name:'최후의 성전',
+      set2Name:'신성한 맹세', set2Desc:'HP 50% 이상이면 받는 피해 -15%, HP 50% 이하면 가하는 피해 +25%',
+      set3Name:'최후의 심판', set3Desc:'전투 중 HP 50% 이하가 된 순간부터 피해 +50%, 흡혈 2배, 방어력 40% 관통 (HP 25% 이하 시 1회 추가로 피해 +100%)'},
+    mechanic: {name:'종말기계 Mk.Ω',
+      set2Name:'과부하', set2Desc:'적에게 활성화된 상태이상 1종마다 모든 피해 +15% (최대 3종, +45%)',
+      set3Name:'세계종말 프로토콜', set3Desc:'적에게 화상·중독·출혈이 모두 걸려 있을 때, 다음 공격이 상태이상을 폭발시켜(잔여 피해의 250%) 큰 피해를 추가로 주고 피해 +80%, 방어력 50% 관통'},
+    jester:   {name:'운명의 마지막 패',
+      set2Name:'판돈 상승', set2Desc:'운 스킬 성공 시 다음 운 스킬 피해 +30% (최대 2중첩, 실패 시 중첩 초기화)',
+      set3Name:'세계의 마지막 카드', set3Desc:'운 스킬 성공 3회마다 다음 운 스킬 성공 확률 최소 90%, 피해 +150%, 방어력 60% 관통, 실패해도 자해 피해 없음'},
+  };
+
   function getItemDef(id){
-    return EQUIPMENT[id] || RARE_EQUIPMENT[id];
+    return EQUIPMENT[id] || RARE_EQUIPMENT[id] || EPIC_EQUIPMENT[id];
   }
 
   function statsText(stats){
@@ -1173,19 +1277,45 @@
     const slot = item.slot;
     const current = player.equipment[slot];
     if(current === itemId) return;
+    const prevCounts = getEpicSetCounts();
     if(current) unapplyEquipStats(getItemDef(current).stats);
     applyEquipStats(item.stats);
     player.equipment[slot] = itemId;
     renderStatus();
+    checkEpicSetToast(prevCounts);
     saveGame();
   }
   function unequipItem(slot){
     const current = player.equipment[slot];
     if(!current) return;
+    const prevCounts = getEpicSetCounts();
     unapplyEquipStats(getItemDef(current).stats);
     player.equipment[slot] = null;
     renderStatus();
+    checkEpicSetToast(prevCounts);
     saveGame();
+  }
+  function checkEpicSetToast(prevCounts){
+    const newCounts = getEpicSetCounts();
+    Object.keys(EPIC_SETS).forEach(setId=>{
+      const prev = prevCounts[setId]||0;
+      const now = newCounts[setId]||0;
+      if(now===prev) return;
+      if(now===2 && prev<2) showEpicSetToast(setId, 2);
+      else if(now===3 && prev<3) showEpicSetToast(setId, 3);
+    });
+  }
+  function showEpicSetToast(setId, tier){
+    const set = EPIC_SETS[setId];
+    const t = document.createElement('div');
+    t.className = 'toast toast-epic';
+    if(tier===2){
+      t.innerHTML = `<h3 style="color:var(--epic-bright);">✦ ${set.name} — 2/3</h3><p><b>${set.set2Name}</b></p><p>${set.set2Desc}</p>`;
+    } else {
+      t.innerHTML = `<h3 style="color:var(--epic-bright);">✦✦✦ SET COMPLETE</h3><p style="color:var(--epic-bright);"><b>${set.name}</b></p><p><b>${set.set3Name}</b></p><p>${set.set3Desc}</p>`;
+    }
+    document.getElementById('app').appendChild(t);
+    setTimeout(()=>t.remove(), 3200);
   }
 
   function equippedSpecials(){
@@ -1215,11 +1345,178 @@
     return best || 0.3;
   }
   function applyPassiveLifesteal(dmg){
-    const pct = getSpecialSum('lifestealPct');
+    const pct = getSpecialSum('lifestealPct') * epicLifestealMult();
     if(pct<=0) return 0;
     const healed = Math.min(player.maxhp-player.hp, Math.round(dmg*pct));
     if(healed>0) player.hp += healed;
     return healed;
+  }
+
+  /* ---------- 에픽 세트 효과 ---------- */
+  function getEpicSetCounts(){
+    const counts = {};
+    Object.values(player.equipment).forEach(id=>{
+      if(!id) return;
+      const def = EPIC_EQUIPMENT[id];
+      if(!def) return;
+      counts[def.setId] = (counts[def.setId]||0)+1;
+    });
+    return counts;
+  }
+  function epicSetTier(setId){
+    const c = getEpicSetCounts()[setId] || 0;
+    return c>=3 ? 3 : (c>=2 ? 2 : 0);
+  }
+  function mechExplosionReady(){
+    if(!enemy || !enemy.dots) return false;
+    const types = ['burn','poison','bleed'];
+    return types.every(t=> enemy.dots.some(d=>d.type===t && d.turns>0));
+  }
+  function epicLifestealMult(){
+    const pt = epicSetTier('paladin');
+    return (pt>=3 && battleFlags && battleFlags.paladinAwoken) ? 2 : 1;
+  }
+  function checkPaladinAwoken(){
+    const pt = epicSetTier('paladin');
+    if(pt<3 || !battleFlags) return;
+    if(player.maxhp>0 && (player.hp/player.maxhp)<=0.5) battleFlags.paladinAwoken = true;
+  }
+  // 물리 공격/스킬이 적중할 때마다 도적 3세트 처형 카운트를 쌓는다
+  function rogueRegisterHit(isPhys){
+    const rt = epicSetTier('rogue');
+    if(rt<3 || !isPhys || !battleFlags) return;
+    battleFlags.execCount = (battleFlags.execCount||0)+1;
+    if(battleFlags.execCount>=3){
+      battleFlags.execCount = 0;
+      battleFlags.execReady = true;
+    }
+  }
+  // 체력 50% 이하에서 20% 확률로 한 번 더 공격하는 전사 3세트 효과
+  function maybeWarriorExtraHit(){
+    const wt = epicSetTier('warrior');
+    if(wt<3) return false;
+    const hpRatio = player.maxhp>0 ? player.hp/player.maxhp : 1;
+    if(hpRatio>0.5) return false;
+    return Math.random() < 0.2;
+  }
+  // 운 스킬(coinflip/gamble/finalcard)의 도박사 세트 상태를 확인한다
+  function epicLuckPre(s){
+    const jt = epicSetTier('jester');
+    const info = {jt, wasArmed:false};
+    if(!s.luck || !battleFlags) return info;
+    if(jt>=3 && battleFlags.jackpotArmed) info.wasArmed = true;
+    return info;
+  }
+  function epicLuckApplyChance(chance, info){
+    if(info && info.wasArmed) return Math.max(chance, 0.9);
+    return chance;
+  }
+  function epicLuckPost(success, info){
+    if(!info || !battleFlags) return;
+    const jt = info.jt;
+    if(success){
+      if(jt>=2) battleFlags.gambleStacks = Math.min(2, (battleFlags.gambleStacks||0)+1);
+      if(jt>=3){
+        if(info.wasArmed){
+          battleFlags.jackpotArmed = false;
+          battleFlags.jackpotGauge = 0;
+        } else {
+          battleFlags.jackpotGauge = (battleFlags.jackpotGauge||0)+1;
+          if(battleFlags.jackpotGauge>=3) battleFlags.jackpotArmed = true;
+        }
+      }
+    } else {
+      battleFlags.gambleStacks = 0;
+      if(info.wasArmed){
+        battleFlags.jackpotArmed = false;
+        battleFlags.jackpotGauge = 0;
+      }
+    }
+  }
+  // 모든 피해 계산의 마지막 단계에서 곱해지는 에픽 세트 배율
+  function getEpicSetMult(ctx){
+    ctx = ctx || {};
+    let mult = 1;
+    const hpRatio = player.maxhp>0 ? player.hp/player.maxhp : 1;
+    const mpRatio = player.maxmp>0 ? player.mp/player.maxmp : 1;
+    const isPhys = ctx.type==='basic' || ctx.type==='physkill';
+    const isMagic = ctx.type==='magicskill';
+
+    // 전사 — 멸망한 거인의 유산
+    const wt = epicSetTier('warrior');
+    if(wt>=2 && isPhys && hpRatio<=0.5) mult *= 1.25;
+    if(wt>=3 && isPhys && hpRatio<=0.5) mult *= 1.6;
+
+    // 마법사 — 별을 삼킨 대현자
+    const mt = epicSetTier('mage');
+    if(mt>=2 && isMagic && mpRatio>=0.5) mult *= 1.25;
+    if(mt>=3 && isMagic && (ctx.mpCost||0)>=10){
+      mult *= 1.7;
+      if(mpRatio<=0.3) mult *= 1.4;
+      if(enemy) applyDot({type:'burn', basis:'mag', ratio:0.22, turns:3, label:'별의 화상'});
+    }
+
+    // 도적 — 밤을 걷는 학살자
+    const rt = epicSetTier('rogue');
+    if(rt>=2 && isPhys && enemy && player.spd>enemy.spd) mult *= 1.25;
+    if(rt>=3 && isPhys && battleFlags && battleFlags.execReady){
+      mult *= 2.0;
+      if(enemy && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.3) mult *= 2.0;
+      battleFlags.execReady = false;
+    }
+
+    // 성기사 — 최후의 성전
+    const pt = epicSetTier('paladin');
+    if(pt>=2 && hpRatio<=0.5) mult *= 1.25;
+    if(pt>=3 && battleFlags && battleFlags.paladinAwoken){
+      mult *= 1.5;
+      if(hpRatio<=0.25 && !battleFlags.paladinUltUsed){
+        mult *= 2.0;
+        battleFlags.paladinUltUsed = true;
+      }
+    }
+
+    // 메카닉 — 종말기계 Mk.Ω
+    const mct = epicSetTier('mechanic');
+    if(mct>=2 && enemy){
+      const activeTypes = new Set((enemy.dots||[]).filter(d=>d.turns>0).map(d=>d.type)).size;
+      const capped = Math.min(3, activeTypes);
+      if(capped>0) mult *= (1+capped*0.15);
+    }
+    if(mct>=3 && enemy && mechExplosionReady() && battleFlags){
+      mult *= 1.8;
+      battleFlags.mechExplodeTriggered = true;
+    }
+
+    // 도박사 — 운명의 마지막 패
+    const jt = epicSetTier('jester');
+    if(ctx.luck && battleFlags){
+      if(jt>=2){
+        const stacks = battleFlags.gambleStacks||0;
+        if(stacks>0) mult *= (1+0.3*stacks);
+      }
+      if(jt>=3 && battleFlags.jackpotArmed) mult *= 2.5;
+    }
+
+    return mult;
+  }
+  // 메카닉 3세트 폭발 등, 배율이 아닌 고정 추가 피해를 처리한다
+  function getEpicFlatBonus(){
+    let bonus = 0;
+    if(battleFlags && battleFlags.mechExplodeTriggered){
+      battleFlags.mechExplodeTriggered = false;
+      const types = ['burn','poison','bleed'];
+      let total = 0;
+      (enemy.dots||[]).forEach(d=>{
+        if(types.includes(d.type) && d.turns>0){
+          total += d.dmgPerTurn * d.turns;
+          d.turns = 0;
+        }
+      });
+      bonus += Math.round(total*2.5);
+      updateStatusBadges();
+    }
+    return bonus;
   }
 
   // ---------- 회랑의 증강 (10층 단위 보스 처치 시 선택) ----------
@@ -1252,11 +1549,17 @@
     return (player.augments||[]).reduce((sum,a)=> sum + (typeof a[key]==='number' ? a[key] : 0), 0);
   }
   function getEffectiveEnemyDef(base){
-    const pierce = getAugmentSum('defPierce');
+    let pierce = getAugmentSum('defPierce');
+    const hpRatio = player.maxhp>0 ? player.hp/player.maxhp : 1;
+    if(epicSetTier('warrior')>=3 && hpRatio<=0.5) pierce += 0.3;
+    if(epicSetTier('paladin')>=3 && battleFlags && battleFlags.paladinAwoken) pierce += 0.4;
+    if(epicSetTier('rogue')>=3 && battleFlags && battleFlags.execReady) pierce += 0.5;
+    if(epicSetTier('mechanic')>=3 && mechExplosionReady()) pierce += 0.5;
+    if(epicSetTier('jester')>=3 && battleFlags && battleFlags.jackpotArmed) pierce += 0.6;
     if(pierce<=0) return base;
-    return Math.max(0, Math.round(base*(1-Math.min(0.8, pierce))));
+    return Math.max(0, Math.round(base*(1-Math.min(0.9, pierce))));
   }
-  function applyOutgoingDamageAugments(dmg){
+  function applyOutgoingDamageAugments(dmg, ctx){
     let mult = 1;
     if(player.maxhp>0 && (player.hp/player.maxhp)<=0.5) mult += getAugmentSum('lowHpDmgBoost');
     if(enemy && enemy.isBoss) mult += getAugmentSum('bossDmgBoost');
@@ -1264,7 +1567,10 @@
       mult += getAugmentSum('firstStrikeBonus');
       battleFlags.firstStrikeUsed = true;
     }
-    return Math.max(1, Math.round(dmg*mult));
+    mult *= getEpicSetMult(ctx);
+    let result = Math.max(1, Math.round(dmg*mult));
+    result += getEpicFlatBonus();
+    return Math.max(1, result);
   }
   function applyAugmentEffect(aug){
     const e = aug.effect;
@@ -1364,6 +1670,11 @@
 
   function findRareDropForDepth(){
     const pool = Object.keys(RARE_EQUIPMENT).filter(id=>RARE_EQUIPMENT[id].minDepth<=depth && !player.equipOwned.includes(id));
+    if(!pool.length) return null;
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+  function findEpicDropForDepth(){
+    const pool = Object.keys(EPIC_EQUIPMENT).filter(id=>EPIC_EQUIPMENT[id].minDepth<=depth && !player.equipOwned.includes(id));
     if(!pool.length) return null;
     return pool[Math.floor(Math.random()*pool.length)];
   }
@@ -1698,7 +2009,7 @@
     const nameInput = document.getElementById('name-input').value.trim();
     player = newPlayer(nameInput, selectedJobId);
     depth = 0; town = true; enemy = null; battleOver = false; subMode = null;
-    battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false};
+    battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, mechExplodeTriggered:false};
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
@@ -1990,6 +2301,31 @@
   }
 
   /* ============ 장비 관리 ============ */
+  function renderSetProgressHTML(){
+    const counts = getEpicSetCounts();
+    const ownedSetIds = Object.keys(EPIC_SETS).filter(id=>
+      player.equipOwned.some(oid=>EPIC_EQUIPMENT[oid] && EPIC_EQUIPMENT[oid].setId===id)
+    );
+    if(!ownedSetIds.length) return '';
+    return `<div style="font-family:Cinzel; color:var(--epic-bright); font-size:12.5px; letter-spacing:.05em; margin:10px 0 6px;">✦ 에픽 세트 진행도</div>` +
+      ownedSetIds.map(id=>{
+        const set = EPIC_SETS[id];
+        const equippedCount = counts[id]||0;
+        const items = Object.keys(EPIC_EQUIPMENT).filter(k=>EPIC_EQUIPMENT[k].setId===id);
+        const rows = items.map(k=>{
+          const owned = player.equipOwned.includes(k);
+          const equipped = Object.values(player.equipment).includes(k);
+          const mark = equipped ? '■' : (owned?'▣':'□');
+          return `${EPIC_EQUIPMENT[k].name} ${mark}`;
+        }).join('&nbsp;&nbsp;');
+        const tierNote = equippedCount>=3 ? `<span style="color:var(--epic-bright);"> — SET COMPLETE (${set.set3Name})</span>`
+          : equippedCount>=2 ? `<span style="color:var(--epic-bright);"> — ${set.set2Name} 발동중</span>` : '';
+        return `<div class="set-progress-box">
+          <b style="color:var(--epic-bright);">${set.name}</b> (${equippedCount}/3 장착)${tierNote}<br>${rows}
+        </div>`;
+      }).join('');
+  }
+
   function openEquipment(){
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
@@ -1997,16 +2333,16 @@
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
     const slots = ['weapon','armor','accessory'];
-    panel.innerHTML = `<h3>장비 정비</h3>` + slots.map(slot=>{
+    panel.innerHTML = `<h3>장비 정비</h3>` + renderSetProgressHTML() + slots.map(slot=>{
       const equippedId = player.equipment[slot];
       const owned = player.equipOwned.filter(id=>getItemDef(id).slot===slot && id!==equippedId);
       const equippedDef = equippedId ? getItemDef(equippedId) : null;
       const equippedRow = equippedId
         ? `<div class="shop-item">
             <div class="si-info">
-              <span class="si-name" style="font-family:Cinzel;color:var(--gold-bright);">★ ${equippedDef.rare?'✨ ':''}${equippedDef.name}</span>
+              <span class="si-name" style="font-family:Cinzel;color:${equippedDef.epic?'var(--epic-bright)':'var(--gold-bright)'};">★ ${equippedDef.epic?'✦✦ ':(equippedDef.rare?'✨ ':'')}${equippedDef.name}</span>
               <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">${statsText(equippedDef.stats)}</span>
-              <div class="${equippedDef.rare?'item-desc-rare':'item-desc'}">${equippedDef.desc}</div>
+              <div class="${equippedDef.epic?'item-desc-epic':(equippedDef.rare?'item-desc-rare':'item-desc')}">${equippedDef.desc}</div>
             </div>
             <button class="buy-btn" data-action="unequip" data-slot="${slot}">해제</button>
           </div>`
@@ -2016,9 +2352,9 @@
         return `
           <div class="shop-item">
             <div class="si-info">
-              <span class="si-name" style="font-family:Cinzel;color:${def.rare?'var(--violet)':'var(--parchment)'};">${def.rare?'✨ ':''}${def.name}</span>
+              <span class="si-name" style="font-family:Cinzel;color:${def.epic?'var(--epic-bright)':(def.rare?'var(--violet)':'var(--parchment)')};">${def.epic?'✦✦ ':(def.rare?'✨ ':'')}${def.name}</span>
               <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">${statsText(def.stats)}</span>
-              <div class="${def.rare?'item-desc-rare':'item-desc'}">${def.desc}</div>
+              <div class="${def.epic?'item-desc-epic':(def.rare?'item-desc-rare':'item-desc')}">${def.desc}</div>
             </div>
             <button class="buy-btn" data-action="equip" data-item="${id}">장착</button>
           </div>`;
@@ -2106,7 +2442,8 @@
   function startBattle(isBoss, isFinal, isTrueFinal){
     enemy = pickEnemy(isBoss, isFinal, isTrueFinal);
     battleOver = false; subMode = null;
-    battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false};
+    battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, mechExplodeTriggered:false};
+    checkPaladinAwoken();
     showScreen('battle');
     document.getElementById('bt-ename').textContent = (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))+enemy.name;
     document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
@@ -2278,13 +2615,24 @@
         if(Math.random() < rareChance) rareDropId = findRareDropForDepth();
         if(rareDropId) player.equipOwned.push(rareDropId);
       }
+      // 에픽 드랍은 rareDropBoost의 영향을 받지 않는 별도 확률 판정이며,
+      // 최종 진보스는 엔딩 처리(isFinalKill) 이전에 먼저 보상을 지급한다
+      let epicDropId = null;
+      let epicChance = enemy.isFinal ? 0.05 : (enemy.isBoss ? 0.03 : 0.005);
+      if(Math.random() < epicChance) epicDropId = findEpicDropForDepth();
+      if(epicDropId) player.equipOwned.push(epicDropId);
       renderStatus();
       setTimeout(()=>{
         setBattleMsg(`${enemy.name}을(를) 쓰러뜨렸다!`, `EXP +${enemy.exp}  골드 +${g}`);
         setTimeout(()=>{
           if(isFinalKill){
             player.endingSeen = true;
-            showEnding(!!enemy.isTrueFinal);
+            if(epicDropId){
+              showEpicDropToast(EPIC_EQUIPMENT[epicDropId]);
+              setTimeout(()=> showEnding(!!enemy.isTrueFinal), 1300);
+            } else {
+              showEnding(!!enemy.isTrueFinal);
+            }
             return;
           }
           showScreen('explore');
@@ -2293,9 +2641,14 @@
             const item = RARE_EQUIPMENT[rareDropId];
             lines.push({text:`✨ 희귀 아이템 [${item.name}]을(를) 손에 넣었다! (${statsText(item.stats)})`, cls:'gold'});
           }
+          if(epicDropId){
+            const eitem = EPIC_EQUIPMENT[epicDropId];
+            lines.push({text:`✦✦ 에픽 아이템 [${eitem.name}]을(를) 손에 넣었다! (${statsText(eitem.stats)})`, cls:'gold'});
+          }
           renderExplore(lines);
           if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
           if(rareDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[rareDropId]), 150*leveled.length + 200);
+          if(epicDropId) setTimeout(()=>showEpicDropToast(EPIC_EQUIPMENT[epicDropId]), 150*leveled.length + (rareDropId?500:200));
           saveGame();
         }, 1300);
       }, 500);
@@ -2394,6 +2747,23 @@
     t.innerHTML = `<h3 style="color:#c9a8ff;">✨ 희귀 아이템 발견!</h3><p><b>${item.name}</b></p><p>${statsText(item.stats)}</p><p style="opacity:.75;">${item.desc}</p>`;
     document.getElementById('app').appendChild(t);
     setTimeout(()=>t.remove(), 2800);
+  }
+
+  function showEpicDropToast(item){
+    const t = document.createElement('div');
+    t.className='toast toast-epic';
+    const setInfo = EPIC_SETS[item.setId];
+    const owned = player.equipOwned.filter(id=>EPIC_EQUIPMENT[id] && EPIC_EQUIPMENT[id].setId===item.setId);
+    const setItems = Object.keys(EPIC_EQUIPMENT).filter(k=>EPIC_EQUIPMENT[k].setId===item.setId);
+    const bars = setItems.map(k=> owned.includes(k) ? '■' : '□').join(' ');
+    t.innerHTML = `<h3 style="color:var(--epic-bright);">✦✦ EPIC DROP ✦✦</h3>
+      <p style="color:var(--epic-bright);"><b>「${setInfo.name}」</b></p>
+      <p><b>[${SLOT_LABELS[item.slot]}] ${item.name}</b></p>
+      <p>${statsText(item.stats)}</p>
+      <p style="opacity:.75;">${item.desc}</p>
+      <p style="margin-top:8px; font-size:13px; letter-spacing:.15em;">세트 진행도 ${bars} (${owned.length}/3)</p>`;
+    document.getElementById('app').appendChild(t);
+    setTimeout(()=>t.remove(), 3400);
   }
 
   /* ---------- 전직 선택 UI (레벨 10) ---------- */
@@ -2559,6 +2929,9 @@
       }
 
       let reduceMult = 1 - Math.min(0.7, getAugmentSum('dmgReduction'));
+      if(epicSetTier('paladin')>=2 && player.maxhp>0 && (player.hp/player.maxhp)>0.5){
+        reduceMult -= 0.15;
+      }
       if(player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
         reduceMult -= Math.min(0.6, getAugmentSum('lowHpDmgReduction'));
       }
@@ -2574,6 +2947,7 @@
       }
 
       player.hp = Math.max(0, player.hp - mitigated);
+      checkPaladinAwoken();
 
       if(player.hp<=0 && battleFlags && !battleFlags.phoenix && hasSpecial('reviveOnce')){
         const ratio = getReviveRatio();
@@ -2673,13 +3047,23 @@
     setCommandsEnabled(false);
     const edef = getEffectiveEnemyDef(enemy.def);
     let dmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef);
-    dmg = applyOutgoingDamageAugments(dmg);
+    dmg = applyOutgoingDamageAugments(dmg, {type:'basic'});
     consumeAtkBuff();
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
     const healed = applyPassiveLifesteal(dmg);
+    rogueRegisterHit(true);
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
     if(healed>0) msg2 += ` HP ${healed} 흡수.`;
+
+    if(enemy.hp>0 && maybeWarriorExtraHit()){
+      const edef3 = getEffectiveEnemyDef(enemy.def);
+      let extraDmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef3);
+      extraDmg = applyOutgoingDamageAugments(extraDmg, {type:'basic'});
+      enemy.hp = Math.max(0, enemy.hp-extraDmg);
+      updateEnemyHpBar(); popDamage('-'+extraDmg);
+      msg2 += ` 거인강림의 힘으로 한 번 더 몰아쳐 ${extraDmg}의 추가 피해!`;
+    }
 
     const doubleChance = getSpecialSum('doubleStrikeChance');
     if(enemy.hp>0 && doubleChance>0 && Math.random()<doubleChance){
@@ -2688,10 +3072,11 @@
       setTimeout(()=>{
         const edef2 = getEffectiveEnemyDef(enemy.def);
         let dmg2 = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef2);
-        dmg2 = applyOutgoingDamageAugments(dmg2);
+        dmg2 = applyOutgoingDamageAugments(dmg2, {type:'basic'});
         enemy.hp = Math.max(0, enemy.hp-dmg2);
         updateEnemyHpBar(); shakeEnemy(); spawnSlashMark(1); popDamage('-'+dmg2);
         const healed2 = applyPassiveLifesteal(dmg2);
+        rogueRegisterHit(true);
         renderStatus();
         let msg3 = `번개처럼 한 번 더 베어 ${dmg2}의 피해를 입혔다!`;
         if(healed2>0) msg3 += ` HP ${healed2} 흡수.`;
@@ -2788,12 +3173,13 @@
         rawParts.push(Math.max(1, Math.round(atkBase*s.mult) - defFactor + Math.floor(Math.random()*3)-1));
       }
       const baseRawTotal = rawParts.reduce((a,b)=>a+b,0);
-      const boostedTotal = applyOutgoingDamageAugments(baseRawTotal);
+      const boostedTotal = applyOutgoingDamageAugments(baseRawTotal, {type: magicBased?'magicskill':'physkill', mpCost});
       const mod = applySkillModifiers(boostedTotal, s);
       const scale = mod.value / baseRawTotal;
       const parts = rawParts.map(d=>Math.max(1, Math.round(d*scale)));
       const total = parts.reduce((a,b)=>a+b,0);
       if(!magicBased) consumeAtkBuff();
+      rogueRegisterHit(!magicBased);
       // 한 타씩 순차적으로 베어내는 연출
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, '연속 공격 중...');
       parts.forEach((hitDmg, i)=>{
@@ -2822,11 +3208,12 @@
       const basisVal = atkBased ? effectiveAtk() : player.mag;
       const edef = getEffectiveEnemyDef(enemy.def);
       let dmg = Math.max(1, Math.round(basisVal*s.mult) - Math.round(edef*0.5));
-      dmg = applyOutgoingDamageAugments(dmg);
+      dmg = applyOutgoingDamageAugments(dmg, {type: atkBased?'physkill':'magicskill', mpCost});
       const mod = applySkillModifiers(dmg, s);
       dmg = mod.value;
-      const healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.drainRatio));
+      const healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.drainRatio*epicLifestealMult()));
       if(atkBased) consumeAtkBuff();
+      rogueRegisterHit(atkBased);
       enemy.hp = Math.max(0, enemy.hp-dmg);
       player.hp = Math.min(player.maxhp, player.hp+healed);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
@@ -2845,7 +3232,8 @@
     if(s.type==='coinflip'){
       const fateChance = player.fateBoostChance||0, fateMult = player.fateBoostMult||0;
       if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
-      const chance = Math.min(0.95, (s.chance||0.5) + fateChance);
+      const epicLuck = epicLuckPre(s);
+      const chance = epicLuckApplyChance(Math.min(0.95, (s.chance||0.5) + fateChance), epicLuck);
       const success = Math.random() < chance;
       const magicBased = !!s.magic;
       const base = magicBased ? player.mag : effectiveAtk();
@@ -2855,17 +3243,19 @@
       if(success){
         const critMult = (s.critMult||2.0) + fateMult;
         let dmg = Math.max(1, Math.round(base*(s.mult||1.0)*critMult) - defMitigation);
-        dmg = applyOutgoingDamageAugments(dmg);
+        dmg = applyOutgoingDamageAugments(dmg, {type: magicBased?'magicskill':'physkill', mpCost, luck:true});
         const mod = applySkillModifiers(dmg, s);
         dmg = mod.value;
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+        rogueRegisterHit(!magicBased);
         playBanner('대성공!');
         let healed = 0;
         if(s.lifesteal){
-          healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal));
+          healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal*epicLifestealMult()));
           player.hp = Math.min(player.maxhp, player.hp+healed);
         }
+        epicLuckPost(true, epicLuck);
         renderStatus();
         let msg2 = `운이 따랐다! ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
         const dotLabels = applySkillDots(s);
@@ -2873,6 +3263,7 @@
         if(healed>0) msg2 += ` HP ${healed} 흡수.`;
         setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       } else {
+        epicLuckPost(false, epicLuck);
         popDamage('빗나감!', 'miss');
         playBanner('실패...', 'luckbad');
         renderStatus();
@@ -2918,8 +3309,9 @@
       } else if(roll===1){
         const edef = getEffectiveEnemyDef(enemy.def);
         let dmg = Math.max(1, Math.round(effectiveAtk()*(s.dmgMult||2.4)) - edef);
-        dmg = applyOutgoingDamageAugments(dmg);
+        dmg = applyOutgoingDamageAugments(dmg, {type:'physkill', mpCost});
         consumeAtkBuff();
+        rogueRegisterHit(true);
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         playBanner('조커 - 파괴의 패!');
@@ -2946,16 +3338,19 @@
       player.mp = 0;
       const fateChance = player.fateBoostChance||0, fateMult = player.fateBoostMult||0;
       if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
-      const chance = Math.min(0.9, (s.chance||0.5) + fateChance);
+      const epicLuck = epicLuckPre(s);
+      const chance = epicLuckApplyChance(Math.min(0.9, (s.chance||0.5) + fateChance), epicLuck);
       const success = Math.random() < chance;
       consumeAtkBuff();
       if(success){
         const mult = (s.mult||3.6) + fateMult;
         const edef = getEffectiveEnemyDef(enemy.def);
         let dmg = Math.max(1, Math.round(effectiveAtk()*mult) - edef) + Math.round(staked*1.5);
-        dmg = applyOutgoingDamageAugments(dmg);
+        dmg = applyOutgoingDamageAugments(dmg, {type:'physkill', luck:true});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+        rogueRegisterHit(true);
+        epicLuckPost(true, epicLuck);
         playBanner('대박!');
         renderStatus();
         let msg2 = `도박에 성공했다! MP ${staked}을(를) 태워 ${enemy.name}에게 ${dmg}의 폭발적인 피해를 입혔다!`;
@@ -2966,12 +3361,13 @@
         enemyTurn();
         return;
       } else {
-        const selfDmg = Math.min(player.hp-1, Math.max(6, Math.round(staked*(s.selfMult||2.2))));
+        epicLuckPost(false, epicLuck);
+        const selfDmg = epicLuck.wasArmed ? 0 : Math.min(player.hp-1, Math.max(6, Math.round(staked*(s.selfMult||2.2))));
         if(selfDmg>0) player.hp -= selfDmg;
         renderStatus();
-        popDamageOnPlayerArea('-'+selfDmg, 'bleed');
+        if(selfDmg>0) popDamageOnPlayerArea('-'+selfDmg, 'bleed');
         playBanner('낭패...', 'luckbad');
-        setBattleMsg(`${player.name}의 ${s.name}!`, `도박에 실패했다... MP ${staked}을(를) 잃고 반동으로 ${selfDmg}의 피해를 입었다.`);
+        setBattleMsg(`${player.name}의 ${s.name}!`, selfDmg>0 ? `도박에 실패했다... MP ${staked}을(를) 잃고 반동으로 ${selfDmg}의 피해를 입었다.` : `도박에 실패했다... MP ${staked}을(를) 잃었지만 세계의 마지막 카드가 반동을 막아주었다.`);
         if(checkBattleEnd()) return;
         enemyTurn();
         return;
@@ -2982,7 +3378,8 @@
       const missingRatio = 1 - (player.hp/player.maxhp);
       const fateChance = player.fateBoostChance||0, fateMult = player.fateBoostMult||0;
       if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
-      const chance = Math.min(0.98, (s.baseChance||0.35) + missingRatio*((s.maxChance||0.95)-(s.baseChance||0.35)) + fateChance);
+      const epicLuck = epicLuckPre(s);
+      const chance = epicLuckApplyChance(Math.min(0.98, (s.baseChance||0.35) + missingRatio*((s.maxChance||0.95)-(s.baseChance||0.35)) + fateChance), epicLuck);
       const mult = (s.baseMult||2.0) + missingRatio*((s.maxMult||6.0)-(s.baseMult||2.0)) + fateMult;
       const success = Math.random() < chance;
       const magicBased = !!s.magic;
@@ -2992,17 +3389,19 @@
       const defMitigation = magicBased ? Math.round(edef*0.5) : Math.round(edef*(1-(s.defPierce||0.2)));
       if(success){
         let dmg = Math.max(1, Math.round(base*mult) - defMitigation);
-        dmg = applyOutgoingDamageAugments(dmg);
+        dmg = applyOutgoingDamageAugments(dmg, {type: magicBased?'magicskill':'physkill', mpCost, luck:true});
         const mod = applySkillModifiers(dmg, s);
         dmg = mod.value;
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+        rogueRegisterHit(!magicBased);
         playBanner('마지막 패!');
         let healed = 0;
         if(s.lifesteal){
-          healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal));
+          healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal*epicLifestealMult()));
           player.hp = Math.min(player.maxhp, player.hp+healed);
         }
+        epicLuckPost(true, epicLuck);
         renderStatus();
         let msg2 = `운명이 응답했다! ${enemy.name}에게 ${dmg}의 필멸의 피해를 입혔다.`;
         const dotLabels = applySkillDots(s);
@@ -3013,7 +3412,8 @@
         enemyTurn();
         return;
       } else {
-        const selfDmg = Math.max(0, Math.min(player.hp-1, Math.round(player.maxhp*(s.failSelfRatio||0.08))));
+        epicLuckPost(false, epicLuck);
+        const selfDmg = epicLuck.wasArmed ? 0 : Math.max(0, Math.min(player.hp-1, Math.round(player.maxhp*(s.failSelfRatio||0.08))));
         if(selfDmg>0) player.hp -= selfDmg;
         renderStatus();
         if(selfDmg>0) popDamageOnPlayerArea('-'+selfDmg, 'bleed');
@@ -3033,15 +3433,16 @@
       ? Math.round(edef*0.5)
       : Math.round(edef*(1-(s.defPierce||0)));
     let dmg = Math.max(1, Math.round(base*s.mult) - defMitigation);
-    dmg = applyOutgoingDamageAugments(dmg);
+    dmg = applyOutgoingDamageAugments(dmg, {type: s.type==='magic'?'magicskill':'physkill', mpCost});
     const mod = applySkillModifiers(dmg, s);
     dmg = mod.value;
     if(s.type==='phys') consumeAtkBuff();
+    rogueRegisterHit(s.type==='phys');
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
     let healed2 = 0;
     if(s.lifesteal){
-      healed2 = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal));
+      healed2 = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal*epicLifestealMult()));
       player.hp = Math.min(player.maxhp, player.hp+healed2);
     }
     healed2 += applyPassiveLifesteal(dmg);
