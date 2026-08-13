@@ -2455,7 +2455,7 @@
     document.getElementById('btn-advance').textContent = inBossDen ? '⚔ 다음 상대와 맞서다' : (town ? '➡ 던전으로 출발' : '➡ 나아가다');
     document.getElementById('btn-town').style.display = town ? 'none' : 'block';
     const bossDenBtn = document.getElementById('btn-bossden');
-    if(bossDenBtn) bossDenBtn.style.display = (town && player && (player.level||1) >= 15) ? 'block' : 'none';
+    if(bossDenBtn) bossDenBtn.style.display = (!inBossDen && player && (player.level||1) >= 15) ? 'block' : 'none';
     const logEl = document.getElementById('ex-log');
     if(newLines){
       newLines.forEach(l=>{
@@ -2506,13 +2506,47 @@
   }
 
   function enterBossDen(){
-    if(!town) return;
+    if(inBossDen) return;
     if((player.level||1) < 15){
       addLog('아직 보스소굴에 들어갈 준비가 되지 않았다. (레벨 15 필요)', 'warn');
       return;
     }
+    showBossDenConfirm();
+  }
+
+  function showBossDenConfirm(){
+    const fromDungeon = !town;
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'bossden-confirm-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `
+      <h3 style="color:var(--rust-bright);">보스소굴</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:13px;line-height:1.7;margin-bottom:14px;">
+        오직 강자만이 살아남는 곳. 발을 들이면 매 스테이지마다 강력한 보스와 연이어 맞서야 한다.<br>
+        ${fromDungeon ? '<b style="color:var(--gold-bright);">지금 탐험 중인 깊이의 진행은 사라진다.</b><br>' : ''}
+        <b style="color:var(--gold-bright);">보스소굴로 진입하시겠습니까?</b>
+      </p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button class="btn" id="bossden-confirm-cancel">돌아간다</button>
+        <button class="btn btn-danger" id="bossden-confirm-go">진입한다</button>
+      </div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    panel.querySelector('#bossden-confirm-cancel').addEventListener('click', ()=>overlay.remove());
+    panel.querySelector('#bossden-confirm-go').addEventListener('click', ()=>{
+      overlay.remove();
+      proceedEnterBossDen();
+    });
+  }
+
+  function proceedEnterBossDen(){
+    const fromDungeon = !town;
     town = false; inBossDen = true; depth = 40; bossDenFloor = 0;
-    renderExplore(['보스소굴 깊은 곳에서 흘러나오는 위압감이 온몸을 짓누른다. 이 안에서는 오직 강자만이 살아남는다.']);
+    renderExplore([fromDungeon
+      ? '탐험을 중단하고 보스소굴로 향한다. 위압감이 온몸을 짓누른다. 이 안에서는 오직 강자만이 살아남는다.'
+      : '보스소굴 깊은 곳에서 흘러나오는 위압감이 온몸을 짓누른다. 이 안에서는 오직 강자만이 살아남는다.']);
     saveGame();
   }
 
