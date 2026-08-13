@@ -2779,8 +2779,8 @@
   // 단 한 번도 쓰러지지 않고(deathCount===0) 50층에 도달했을 때만 등장하는 진짜 최종보스.
   // 일반 최종보스(잠식된 OO 용사)보다, 그리고 여느 보스들보다도 훨씬 강하다.
   const TRUE_FINAL_BOSS = {
-    name:'회랑의 시조', type:'progenitor', hp:420, atk:48, def:22, spd:10,
-    exp:1200, gold:[600,800], skills:['trueBossJudgment','trueBossJudgment','heal'],
+    name:'회랑의 시조', type:'progenitor', hp:460, atk:32, def:22, spd:10,
+    exp:1200, gold:[600,800], skills:['trueBossJudgment','heal'],
   };
   function pickFinalBossJob(){
     const ids = JOBS.map(j=>j.id);
@@ -3298,7 +3298,7 @@
         if(Math.random()<0.5){ dmg = Math.round(enemy.atk*3.0); label = `${enemy.name}의 동전이 앞면으로 떨어진다! 회심의 일격!`; }
         else { dmg = 0; label = `${enemy.name}의 동전이 뒷면으로 떨어진다…`; }
       }
-      else if(skillKey==='trueBossJudgment'){ dmg = Math.round(enemy.atk*2.4); label = `${enemy.name}이(가) 태초의 심판을 내리찍는다!`; }
+      else if(skillKey==='trueBossJudgment'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 태초의 심판을 내리찍는다!`; }
       else if(skillKey==='krakenGrip'){ dmg = Math.round(enemy.atk*1.75); label = `${enemy.name}이(가) 촉수로 온몸을 옥죈다!`; }
       else if(skillKey==='ironCrush'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
       else if(skillKey==='wraithWail'){ dmg = Math.round(enemy.atk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
