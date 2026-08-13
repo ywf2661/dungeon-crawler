@@ -394,6 +394,16 @@
   .link-btn{background:none; border:none; color:var(--parchment-dim); font-family:'Cinzel'; font-size:12.5px; cursor:pointer; text-decoration:underline; padding:4px;}
   .link-btn:hover{color:var(--gold-bright);}
 
+  #sound-toggle{
+    position:absolute; top:8px; right:8px; z-index:40;
+    width:30px; height:30px; border-radius:50%;
+    background:#1a130ccc; border:1px solid #4a3a24; color:var(--parchment-dim);
+    font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+    backdrop-filter:blur(2px); transition:border-color .15s, color .15s;
+  }
+  #sound-toggle:hover{border-color:var(--gold); color:var(--gold-bright);}
+  #sound-toggle.muted{color:#6b5b45;}
+
   /* ---------- shop ---------- */
   .shop-overlay{
     position:absolute; inset:0; background:#0a0705ee; z-index:20;
@@ -496,6 +506,7 @@
 </head>
 <body>
 <div id="app">
+  <button id="sound-toggle" title="음소거 켜기/끄기">🔊</button>
 
   <!-- STATUS BAR (hidden on title) -->
   <div id="statusbar" style="display:none;">
@@ -609,6 +620,289 @@
 <script>
 (function(){
   "use strict";
+
+  /* ============ 사운드 엔진 (Web Audio API로 실시간 합성 — 외부 음원 파일 없음) ============ */
+  const Sound = (function(){
+    let ctx = null, master = null, bgmGain = null, sfxGain = null;
+    let muted = false;
+    let bgmTimer = null, bgmStep = 0, bgmMode = 'explore'; // 'explore' | 'battle' | 'off'
+
+    try{
+      const saved = window.localStorage ? window.localStorage.getItem('lc_muted') : null;
+      if(saved === '1') muted = true;
+    }catch(e){ /* ignore */ }
+
+    function ensureCtx(){
+      if(!ctx){
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if(!AC) return null;
+        ctx = new AC();
+        master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
+        bgmGain = ctx.createGain(); bgmGain.gain.value = 0.16; bgmGain.connect(master);
+        sfxGain = ctx.createGain(); sfxGain.gain.value = 0.55; sfxGain.connect(master);
+      }
+      if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
+      return ctx;
+    }
+
+    function noiseBuffer(c, dur){
+      const n = Math.max(1, Math.floor(c.sampleRate*dur));
+      const buf = c.createBuffer(1, n, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for(let i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n); // 살짝 감쇠하는 노이즈
+      return buf;
+    }
+
+    // ---- 개별 효과음 ----
+    function slash(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      const src = c.createBufferSource(); src.buffer = noiseBuffer(c, 0.16);
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1;
+      bp.frequency.setValueAtTime(4200, t); bp.frequency.exponentialRampToValueAtTime(600, t+0.14);
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.7, t+0.008); g.gain.exponentialRampToValueAtTime(0.0001, t+0.16);
+      src.connect(bp); bp.connect(g); g.connect(sfxGain);
+      src.start(t); src.stop(t+0.17);
+    }
+    function multiSlash(n){
+      for(let i=0;i<Math.max(1,n||2);i++) setTimeout(slash, i*130);
+    }
+    function bomb(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      const osc = c.createOscillator(); osc.type = 'sine';
+      osc.frequency.setValueAtTime(140, t); osc.frequency.exponentialRampToValueAtTime(32, t+0.38);
+      const og = c.createGain(); og.gain.setValueAtTime(0.85, t); og.gain.exponentialRampToValueAtTime(0.001, t+0.42);
+      osc.connect(og); og.connect(sfxGain); osc.start(t); osc.stop(t+0.42);
+
+      const src = c.createBufferSource(); src.buffer = noiseBuffer(c, 0.55);
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(2200, t); lp.frequency.exponentialRampToValueAtTime(120, t+0.55);
+      const ng = c.createGain(); ng.gain.setValueAtTime(0.55, t); ng.gain.exponentialRampToValueAtTime(0.001, t+0.55);
+      src.connect(lp); lp.connect(ng); ng.connect(sfxGain);
+      src.start(t); src.stop(t+0.55);
+    }
+    function magic(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      [0, 0.04].forEach((delay, i)=>{
+        const osc = c.createOscillator(); osc.type = i===0?'triangle':'sine';
+        const start = 520 + i*180;
+        osc.frequency.setValueAtTime(start, t+delay);
+        osc.frequency.exponentialRampToValueAtTime(start*2.1, t+delay+0.22);
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, t+delay);
+        g.gain.exponentialRampToValueAtTime(0.32, t+delay+0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+delay+0.3);
+        osc.connect(g); g.connect(sfxGain);
+        osc.start(t+delay); osc.stop(t+delay+0.32);
+      });
+    }
+    function heal(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      [0,0.09,0.18].forEach((delay,i)=>{
+        const osc = c.createOscillator(); osc.type = 'sine';
+        osc.frequency.setValueAtTime([523,659,784][i], t+delay);
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, t+delay);
+        g.gain.exponentialRampToValueAtTime(0.28, t+delay+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+delay+0.35);
+        osc.connect(g); g.connect(sfxGain);
+        osc.start(t+delay); osc.stop(t+delay+0.36);
+      });
+    }
+    function guard(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      const osc = c.createOscillator(); osc.type = 'square';
+      osc.frequency.setValueAtTime(180, t);
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.22, t+0.01); g.gain.exponentialRampToValueAtTime(0.0001, t+0.2);
+      const lp = c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 900;
+      osc.connect(lp); lp.connect(g); g.connect(sfxGain);
+      osc.start(t); osc.stop(t+0.2);
+    }
+    function buff(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      const osc = c.createOscillator(); osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, t); osc.frequency.exponentialRampToValueAtTime(660, t+0.3);
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.18, t+0.05); g.gain.exponentialRampToValueAtTime(0.0001, t+0.32);
+      const lp = c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = 1800;
+      osc.connect(lp); lp.connect(g); g.connect(sfxGain);
+      osc.start(t); osc.stop(t+0.33);
+    }
+    function hit(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      const osc = c.createOscillator(); osc.type='triangle';
+      osc.frequency.setValueAtTime(160, t); osc.frequency.exponentialRampToValueAtTime(60, t+0.18);
+      const g = c.createGain(); g.gain.setValueAtTime(0.5, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.2);
+      osc.connect(g); g.connect(sfxGain); osc.start(t); osc.stop(t+0.2);
+    }
+    function poisonHit(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      const src = c.createBufferSource(); src.buffer = noiseBuffer(c, 0.22);
+      const bp = c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=900; bp.Q.value=4;
+      const g = c.createGain(); g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.3, t+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t+0.22);
+      src.connect(bp); bp.connect(g); g.connect(sfxGain); src.start(t); src.stop(t+0.22);
+    }
+    function coin(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      [0,0.06].forEach((delay,i)=>{
+        const osc = c.createOscillator(); osc.type='square';
+        osc.frequency.setValueAtTime(i===0?988:1318, t+delay);
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, t+delay);
+        g.gain.exponentialRampToValueAtTime(0.16, t+delay+0.01); g.gain.exponentialRampToValueAtTime(0.0001, t+delay+0.18);
+        osc.connect(g); g.connect(sfxGain); osc.start(t+delay); osc.stop(t+delay+0.19);
+      });
+    }
+    function fail(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      const osc = c.createOscillator(); osc.type='sawtooth';
+      osc.frequency.setValueAtTime(300, t); osc.frequency.exponentialRampToValueAtTime(90, t+0.3);
+      const g = c.createGain(); g.gain.setValueAtTime(0.22, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.32);
+      osc.connect(g); g.connect(sfxGain); osc.start(t); osc.stop(t+0.32);
+    }
+    function potion(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      [0,0.05,0.1].forEach((delay,i)=>{
+        const osc = c.createOscillator(); osc.type='sine';
+        osc.frequency.setValueAtTime(700-i*90, t+delay);
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, t+delay);
+        g.gain.exponentialRampToValueAtTime(0.2, t+delay+0.015); g.gain.exponentialRampToValueAtTime(0.0001, t+delay+0.12);
+        osc.connect(g); g.connect(sfxGain); osc.start(t+delay); osc.stop(t+delay+0.13);
+      });
+    }
+    function click(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      const osc = c.createOscillator(); osc.type='square'; osc.frequency.setValueAtTime(700, t);
+      const g = c.createGain(); g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.05);
+      osc.connect(g); g.connect(sfxGain); osc.start(t); osc.stop(t+0.05);
+    }
+    function levelUp(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      [0,0.1,0.2,0.32].forEach((delay,i)=>{
+        const osc = c.createOscillator(); osc.type='triangle';
+        osc.frequency.setValueAtTime([523,659,784,1047][i], t+delay);
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, t+delay);
+        g.gain.exponentialRampToValueAtTime(0.3, t+delay+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t+delay+0.4);
+        osc.connect(g); g.connect(sfxGain); osc.start(t+delay); osc.stop(t+delay+0.4);
+      });
+    }
+    function victory(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      [[0,523],[0.14,659],[0.28,784],[0.42,1047],[0.56,1319]].forEach(([delay,freq])=>{
+        const osc = c.createOscillator(); osc.type='triangle'; osc.frequency.setValueAtTime(freq, t+delay);
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, t+delay);
+        g.gain.exponentialRampToValueAtTime(0.32, t+delay+0.02); g.gain.exponentialRampToValueAtTime(0.0001, t+delay+0.5);
+        osc.connect(g); g.connect(sfxGain); osc.start(t+delay); osc.stop(t+delay+0.5);
+      });
+    }
+    function gameOver(){
+      const c = ensureCtx(); if(!c || muted) return;
+      const t = c.currentTime;
+      [[0,392],[0.22,349],[0.44,261]].forEach(([delay,freq])=>{
+        const osc = c.createOscillator(); osc.type='sine'; osc.frequency.setValueAtTime(freq, t+delay);
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, t+delay);
+        g.gain.exponentialRampToValueAtTime(0.3, t+delay+0.04); g.gain.exponentialRampToValueAtTime(0.0001, t+delay+0.7);
+        osc.connect(g); g.connect(sfxGain); osc.start(t+delay); osc.stop(t+delay+0.7);
+      });
+    }
+
+    // 상태이상 부여음: burn=폭발음, poison=산성 지글거림, bleed=베인 소리
+    function statusApply(type){
+      if(type==='burn') bomb();
+      else if(type==='poison') poisonHit();
+      else if(type==='bleed') slash();
+    }
+
+    // ---- 배경음(BGM): 저음 드론 + 간헐적 아르페지오를 실시간 스케줄링하는 루프 ----
+    const SCALE_EXPLORE = [220, 261.6, 293.7, 329.6, 392, 440]; // A minor 계열, 잔잔하게
+    const SCALE_BATTLE   = [220, 246.9, 277.2, 329.6, 369.9, 440]; // 살짝 긴장감 있는 스케일
+    let droneOsc = [];
+
+    function stopDrone(){
+      droneOsc.forEach(o=>{ try{ o.stop(); }catch(e){} });
+      droneOsc = [];
+    }
+    function startDrone(){
+      const c = ensureCtx(); if(!c) return;
+      stopDrone();
+      const t = c.currentTime;
+      const freqs = bgmMode==='battle' ? [110, 164.8] : [110, 146.8];
+      freqs.forEach((f,i)=>{
+        const osc = c.createOscillator(); osc.type = i===0?'sine':'triangle';
+        osc.frequency.setValueAtTime(f, t);
+        const g = c.createGain(); g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(i===0?0.5:0.28, t+2.2);
+        const lp = c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = bgmMode==='battle'?1400:900;
+        osc.connect(lp); lp.connect(g); g.connect(bgmGain);
+        osc.start(t);
+        droneOsc.push(osc); droneOsc.push(g);
+      });
+    }
+    function scheduleBgmStep(){
+      const c = ensureCtx(); if(!c || bgmMode==='off') return;
+      const scale = bgmMode==='battle' ? SCALE_BATTLE : SCALE_EXPLORE;
+      const interval = bgmMode==='battle' ? 900 : 1500;
+      // 확률적으로 짧은 아르페지오 음을 하나 얹어 심심하지 않게 한다(음소거 시엔 건너뜀)
+      if(!muted && Math.random() < (bgmMode==='battle'?0.55:0.35)){
+        const t = c.currentTime;
+        const freq = scale[Math.floor(Math.random()*scale.length)] * (Math.random()<0.5?2:1);
+        const osc = c.createOscillator(); osc.type='sine'; osc.frequency.setValueAtTime(freq, t);
+        const g = c.createGain(); g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.1, t+0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+0.9);
+        osc.connect(g); g.connect(bgmGain);
+        osc.start(t); osc.stop(t+0.95);
+      }
+      bgmTimer = setTimeout(scheduleBgmStep, interval);
+    }
+    function setBgmMode(mode){
+      if(bgmMode === mode) return;
+      bgmMode = mode;
+      const c = ensureCtx(); if(!c) return;
+      if(mode==='off'){
+        stopDrone();
+        if(bgmTimer) clearTimeout(bgmTimer);
+        return;
+      }
+      startDrone();
+      if(bgmTimer) clearTimeout(bgmTimer);
+      scheduleBgmStep();
+    }
+    function ensureBgmRunning(){
+      // 최초 사용자 입력 시 AudioContext를 깨우고 현재 모드에 맞는 BGM을 시작한다
+      const c = ensureCtx(); if(!c) return;
+      if(droneOsc.length===0 && bgmMode!=='off') startDrone();
+      if(!bgmTimer && bgmMode!=='off') scheduleBgmStep();
+    }
+
+    function setMuted(v){
+      muted = v;
+      if(master) master.gain.value = muted ? 0 : 1;
+      try{ if(window.localStorage) window.localStorage.setItem('lc_muted', muted?'1':'0'); }catch(e){}
+    }
+    function toggleMuted(){ setMuted(!muted); return muted; }
+    function isMuted(){ return muted; }
+
+    return {
+      ensureCtx, ensureBgmRunning, setBgmMode,
+      slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
+      levelUp, victory, gameOver, statusApply,
+      setMuted, toggleMuted, isMuted,
+    };
+  })();
 
   /* ============ 몬스터 SVG 생성 ============ */
   // 최종보스: 6개 직업 중 하나의 모습을 한 "타락한 용사" 공용 실루엣.
@@ -849,35 +1143,6 @@
         <path d="M56 88 Q70 96 84 88" stroke="#1a130c" stroke-width="3" fill="none"/>
         <path d="M60 90 L56 98" stroke="#fff2c0" stroke-width="3"/><path d="M80 90 L84 98" stroke="#fff2c0" stroke-width="3"/>
       </svg>`;
-      case 'kraken': return `<svg viewBox="0 0 140 140">${glow}
-        <ellipse cx="70" cy="124" rx="46" ry="8" fill="#000" opacity="0.35"/>
-        <path d="M22 90 Q10 70 26 54 Q20 74 34 88 Z" fill="#1f4a4a"/>
-        <path d="M118 90 Q130 70 114 54 Q120 74 106 88 Z" fill="#1f4a4a"/>
-        <path d="M30 108 Q14 100 12 118 Q28 124 36 112 Z" fill="#1f4a4a"/>
-        <path d="M110 108 Q126 100 128 118 Q112 124 104 112 Z" fill="#1f4a4a"/>
-        <ellipse cx="70" cy="70" rx="38" ry="34" fill="#183838"/>
-        <ellipse cx="58" cy="66" rx="9" ry="10" fill="#5adede" filter="url(#eg)"/><ellipse cx="82" cy="66" rx="9" ry="10" fill="#5adede" filter="url(#eg)"/>
-        <circle cx="58" cy="67" r="3.4" fill="#0a1a1a"/><circle cx="82" cy="67" r="3.4" fill="#0a1a1a"/>
-        <path d="M52 90 Q70 98 88 90" stroke="#0a1a1a" stroke-width="3" fill="none"/>
-      </svg>`;
-      case 'ironjudge': return `<svg viewBox="0 0 140 140">${glow}
-        <ellipse cx="70" cy="124" rx="44" ry="9" fill="#000" opacity="0.35"/>
-        <rect x="34" y="32" width="72" height="78" rx="6" fill="#3a3228"/>
-        <rect x="34" y="32" width="72" height="78" rx="6" fill="none" stroke="#221d16" stroke-width="4"/>
-        <path d="M70 32 L58 14 L82 14 Z" fill="#5a4c34"/>
-        <circle cx="70" cy="66" r="11" fill="#ff8a3a" filter="url(#eg)"/>
-        <circle cx="70" cy="66" r="4" fill="#ffe6b0"/>
-        <rect x="14" y="46" width="14" height="56" rx="3" fill="#4a4030"/><rect x="112" y="46" width="14" height="56" rx="3" fill="#4a4030"/>
-        <path d="M14 46 L6 30 L24 40 Z" fill="#ffb15a"/><path d="M126 46 L134 30 L116 40 Z" fill="#ffb15a"/>
-        <rect x="48" y="92" width="44" height="8" fill="#221d16"/>
-      </svg>`;
-      case 'wraithqueen': return `<svg viewBox="0 0 140 140">${glow}
-        <path d="M70 24 C44 24 30 48 34 72 C20 82 24 112 42 118 L98 118 C116 112 120 82 106 72 C110 48 96 24 70 24 Z" fill="#2c1c3a" opacity="0.9"/>
-        <path d="M52 20 L70 4 L88 20 L78 22 L70 14 L62 22 Z" fill="#c264d1"/>
-        <ellipse cx="56" cy="62" rx="7" ry="9" fill="#e089f0" filter="url(#eg)"/><ellipse cx="84" cy="62" rx="7" ry="9" fill="#e089f0" filter="url(#eg)"/>
-        <circle cx="56" cy="63" r="2.8" fill="#1a0f22"/><circle cx="84" cy="63" r="2.8" fill="#1a0f22"/>
-        <path d="M50 92 Q70 102 90 92" stroke="#1a0f22" stroke-width="3" fill="none"/>
-      </svg>`;
       default: return `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
     }
   }
@@ -907,12 +1172,9 @@
   ];
   const BOSSES = [
     {type:'dragon',  name:'붉은 유해룡',     minDepth:5,  hp:90,  atk:16, def:6,  spd:7, exp:80,  gold:[60,90],   skills:['bite','smash']},
-    {type:'wraithqueen', name:'심연의 망령여왕', minDepth:12, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['wraithWail','curse','heal']},
-    {type:'lich',    name:'회랑의 리치',     minDepth:10, hp:130, atk:20, def:10, spd:9, exp:140, gold:[100,150], skills:['curse','heal','smash']},
     {type:'ogre',    name:'오우거 대족장',   minDepth:15, hp:150, atk:24, def:10, spd:5, exp:160, gold:[110,150], skills:['smash']},
-    {type:'kraken',  name:'심해의 크라켄',   minDepth:20, hp:180, atk:23, def:12, spd:6, exp:200, gold:[130,170], skills:['krakenGrip','bite']},
+    {type:'lich',    name:'회랑의 리치',     minDepth:10, hp:130, atk:20, def:10, spd:9, exp:140, gold:[100,150], skills:['curse','heal','smash']},
     {type:'golem',   name:'태고의 파수꾼',   minDepth:25, hp:210, atk:26, def:18, spd:3, exp:260, gold:[160,220], skills:['smash']},
-    {type:'ironjudge', name:'폭주 강철 처형자', minDepth:30, hp:235, atk:27, def:20, spd:4, exp:300, gold:[170,230], skills:['ironCrush','smash']},
     {type:'demon',   name:'심연의 악마 군주', minDepth:35, hp:260, atk:32, def:16, spd:9, exp:380, gold:[220,300], skills:['smash','curse','heal']},
   ];
 
@@ -1957,6 +2219,25 @@
     town = true; depth = 0; battleOver=false; subMode=null;
     inBossDen = false; bossDenFloor = 0;
     renderJobSelect();
+
+    // 사운드 토글 버튼 — 최초 클릭 시 AudioContext를 깨워 브라우저 자동재생 제한을 해제한다
+    const soundBtn = document.getElementById('sound-toggle');
+    function refreshSoundBtn(){
+      const m = Sound.isMuted();
+      soundBtn.textContent = m ? '🔇' : '🔊';
+      soundBtn.classList.toggle('muted', m);
+    }
+    refreshSoundBtn();
+    soundBtn.addEventListener('click', ()=>{
+      Sound.ensureCtx();
+      Sound.toggleMuted();
+      refreshSoundBtn();
+      if(!Sound.isMuted()){ Sound.click(); Sound.ensureBgmRunning(); }
+    });
+    // 화면 어디를 처음 눌러도 오디오가 자연스럽게 깨어나도록 한 번만 걸어둔다
+    const wakeAudioOnce = ()=>{ Sound.ensureCtx(); Sound.ensureBgmRunning(); document.removeEventListener('pointerdown', wakeAudioOnce); };
+    document.addEventListener('pointerdown', wakeAudioOnce, {once:true});
+
     document.getElementById('btn-start').addEventListener('click', ()=>startGame(false));
     document.getElementById('btn-continue').addEventListener('click', startGame.bind(null, true));
     document.getElementById('btn-delete-save').addEventListener('click', async ()=>{
@@ -1996,11 +2277,11 @@
     document.getElementById('btn-equip').addEventListener('click', openEquipment);
     document.getElementById('btn-town').addEventListener('click', onReturnTown);
     document.getElementById('btn-bossden').addEventListener('click', enterBossDen);
-    document.getElementById('cmd-attack').addEventListener('click', playerAttack);
-    document.getElementById('cmd-skill').addEventListener('click', ()=>openSub('skill'));
-    document.getElementById('cmd-item').addEventListener('click', ()=>openSub('item'));
-    document.getElementById('cmd-run').addEventListener('click', playerRun);
-    document.getElementById('cmd-back').addEventListener('click', closeSub);
+    document.getElementById('cmd-attack').addEventListener('click', ()=>{ Sound.click(); playerAttack(); });
+    document.getElementById('cmd-skill').addEventListener('click', ()=>{ Sound.click(); openSub('skill'); });
+    document.getElementById('cmd-item').addEventListener('click', ()=>{ Sound.click(); openSub('item'); });
+    document.getElementById('cmd-run').addEventListener('click', ()=>{ Sound.click(); playerRun(); });
+    document.getElementById('cmd-back').addEventListener('click', ()=>{ Sound.click(); closeSub(); });
     document.getElementById('name-input').addEventListener('keydown', e=>{ if(e.key==='Enter') startGame(false); });
 
     loadGame().then(saved=>{
@@ -2063,6 +2344,11 @@
     if(id==='explore'){
       scheduleJobAdvancementCheck();
       scheduleAugmentCheck();
+      Sound.setBgmMode('explore');
+    } else if(id==='battle'){
+      Sound.setBgmMode('battle');
+    } else if(id==='title' || id==='gameover'){
+      Sound.setBgmMode('explore');
     }
   }
 
@@ -2696,10 +2982,11 @@
       const hasCloverLuck = hasSpecial('rareDropBoost');
       let epicChance;
       if(enemy.isFinal) epicChance = 0.05;
-      else if(enemy.isBoss) epicChance = hasCloverLuck ? 0.50 : 0.03;
-      else epicChance = hasCloverLuck ? 0.05 : 0.005;
+      else if(enemy.isBoss) epicChance = hasCloverLuck ? 0.10 : 0.03;
+      else epicChance = hasCloverLuck ? 0.03 : 0.005;
       if(Math.random() < epicChance) epicDropId = findEpicDropForDepth();
       if(epicDropId) player.equipOwned.push(epicDropId);
+      Sound.victory();
       renderStatus();
       setTimeout(()=>{
         setBattleMsg(`${enemy.name}을(를) 쓰러뜨렸다!`, `EXP +${enemy.exp}  골드 +${g}`);
@@ -2737,6 +3024,7 @@
       battleOver = true;
       setCommandsEnabled(false);
       setBattleMsg(`${player.name}은(는) 쓰러지고 말았다…`, '');
+      Sound.gameOver();
       player.deathCount = (player.deathCount||0) + 1;
       setTimeout(()=>{
         showScreen('gameover');
@@ -2814,6 +3102,7 @@
     if(unlockKey) names.push(SKILLDB[unlockKey].name);
     const hybridKey = hybrid && hybrid.skills[lv];
     if(hybridKey) names.push(SKILLDB[hybridKey].name);
+    Sound.levelUp();
     t.innerHTML = `<h3>레벨 업! Lv.${lv}</h3><p>최대 HP/MP와 능력치가 상승했다.</p>${names.length?`<p>새로운 스킬 습득: <b>${names.join(', ')}</b></p>`:''}`;
     document.getElementById('app').appendChild(t);
     setTimeout(()=>t.remove(), 2200);
@@ -2823,6 +3112,7 @@
     const t = document.createElement('div');
     t.className='toast';
     t.style.borderColor = 'var(--violet)';
+    Sound.coin();
     t.innerHTML = `<h3 style="color:#c9a8ff;">✨ 희귀 아이템 발견!</h3><p><b>${item.name}</b></p><p>${statsText(item.stats)}</p><p style="opacity:.75;">${item.desc}</p>`;
     document.getElementById('app').appendChild(t);
     setTimeout(()=>t.remove(), 2800);
@@ -2835,6 +3125,7 @@
     const owned = player.equipOwned.filter(id=>EPIC_EQUIPMENT[id] && EPIC_EQUIPMENT[id].setId===item.setId);
     const setItems = Object.keys(EPIC_EQUIPMENT).filter(k=>EPIC_EQUIPMENT[k].setId===item.setId);
     const bars = setItems.map(k=> owned.includes(k) ? '■' : '□').join(' ');
+    Sound.levelUp();
     t.innerHTML = `<h3 style="color:var(--epic-bright);">✦✦ EPIC DROP ✦✦</h3>
       <p style="color:var(--epic-bright);"><b>「${setInfo.name}」</b></p>
       <p><b>[${SLOT_LABELS[item.slot]}] ${item.name}</b></p>
@@ -2937,6 +3228,7 @@
       enemy.hp = Math.max(0, enemy.hp - d.dmgPerTurn);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+d.dmgPerTurn, d.type);
       playStatusFx(d.type);
+      Sound.poisonHit();
       setBattleMsg(`${enemy.name}이(가) ${d.label}(으)로 ${d.dmgPerTurn}의 피해를 입었다!`, '');
       d.turns -= 1;
       updateStatusBadges();
@@ -2974,9 +3266,6 @@
         else { dmg = 0; label = `${enemy.name}의 동전이 뒷면으로 떨어진다…`; }
       }
       else if(skillKey==='trueBossJudgment'){ dmg = Math.round(enemy.atk*2.4); label = `${enemy.name}이(가) 태초의 심판을 내리찍는다!`; }
-      else if(skillKey==='krakenGrip'){ dmg = Math.round(enemy.atk*1.75); label = `${enemy.name}이(가) 촉수로 온몸을 옥죈다!`; }
-      else if(skillKey==='ironCrush'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
-      else if(skillKey==='wraithWail'){ dmg = Math.round(enemy.atk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
       else { dmg = enemy.atk + Math.floor(Math.random()*3)-1; }
 
       if(dmg<=0){
@@ -3030,6 +3319,7 @@
 
       player.hp = Math.max(0, player.hp - mitigated);
       checkPaladinAwoken();
+      if(mitigated>0) Sound.hit();
 
       if(player.hp<=0 && battleFlags && !battleFlags.phoenix && hasSpecial('reviveOnce')){
         const ratio = getReviveRatio();
@@ -3048,6 +3338,7 @@
           const counterDmg = Math.max(1, Math.round(effectiveAtk()*0.5) - getEffectiveEnemyDef(enemy.def));
           enemy.hp = Math.max(0, enemy.hp-counterDmg);
           updateEnemyHpBar(); shakeEnemy(); popDamage('-'+counterDmg,'counter');
+          Sound.slash();
           setBattleMsg(`${player.name}의 반격!`, `${counterDmg}의 피해로 되갚아주었다!`);
           if(checkBattleEnd()) return;
           resetCommandUI();
@@ -3079,6 +3370,7 @@
       enemy.dots.push({type:spec.type, turns:spec.turns, dmgPerTurn, label:spec.label});
     }
     playStatusFx(spec.type);
+    Sound.statusApply(spec.type);
     updateStatusBadges();
   }
   // 스킬에 정의된 단일 dot(s.dot) 또는 다중 dot(s.dots) 배열을 모두 함께 적용하고,
@@ -3133,6 +3425,7 @@
     consumeAtkBuff();
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+    Sound.slash();
     const healed = applyPassiveLifesteal(dmg);
     rogueRegisterHit(true);
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
@@ -3157,6 +3450,7 @@
         dmg2 = applyOutgoingDamageAugments(dmg2, {type:'basic'});
         enemy.hp = Math.max(0, enemy.hp-dmg2);
         updateEnemyHpBar(); shakeEnemy(); spawnSlashMark(1); popDamage('-'+dmg2);
+        Sound.slash();
         const healed2 = applyPassiveLifesteal(dmg2);
         rogueRegisterHit(true);
         renderStatus();
@@ -3187,6 +3481,7 @@
       player.guardingNextHit = true;
       renderStatus();
       playCastBurst('def');
+      Sound.guard();
       setBattleMsg(`${player.name}은(는) 방어 태세를 취했다.`, '다음 공격의 피해가 크게 줄어든다.');
       enemyTurn();
       return;
@@ -3197,6 +3492,7 @@
       player.buffAtkMult = 1.45;
       renderStatus();
       playCastBurst();
+      Sound.buff();
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 외쳤다!`, '3회의 공격 동안 공격력이 크게 오른다.');
       enemyTurn();
       return;
@@ -3207,6 +3503,7 @@
       player.buffDefMult = s.mult || 0.6;
       renderStatus();
       playCastBurst('def');
+      Sound.guard();
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, `${player.buffDefTurns}턴 동안 받는 피해가 크게 줄어든다.`);
       enemyTurn();
       return;
@@ -3219,6 +3516,7 @@
       player.buffDefMult = s.defMult || 0.8;
       renderStatus();
       playCastBurst('def');
+      Sound.buff();
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, `${s.turns||3}턴간 공격력이 오르고 받는 피해가 줄어든다.`);
       enemyTurn();
       return;
@@ -3229,6 +3527,7 @@
       player.buffCounterChance = s.chance || 0.4;
       renderStatus();
       playCastBurst('def');
+      Sound.guard();
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 맹세했다!`, `${s.turns||3}턴간 적의 공격에 ${Math.round((s.chance||0.4)*100)}% 확률로 즉시 반격한다.`);
       enemyTurn();
       return;
@@ -3239,6 +3538,7 @@
       player.hp = Math.min(player.maxhp, player.hp+heal);
       renderStatus();
       popDamageOnPlayerArea();
+      Sound.heal();
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다.`, `HP ${heal} 회복.`);
       if(checkBattleEnd()) return;
       enemyTurn();
@@ -3268,6 +3568,7 @@
         setTimeout(()=>{
           enemy.hp = Math.max(0, enemy.hp-hitDmg);
           updateEnemyHpBar(); shakeEnemy(); spawnSlashMark(i);
+          if(magicBased) Sound.magic(); else Sound.slash();
           popDamage('-'+hitDmg, (mod.triggered && i===parts.length-1) ? 'crit' : undefined);
         }, i*220);
       });
@@ -3299,6 +3600,8 @@
       enemy.hp = Math.max(0, enemy.hp-dmg);
       player.hp = Math.min(player.maxhp, player.hp+healed);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
+      if(atkBased) Sound.slash(); else Sound.magic();
+      Sound.heal();
       playCastBurst('heal');
       renderStatus();
       let msg2 = `${dmg}의 피해를 주고 ${healed} 만큼 흡수했다.`;
@@ -3331,6 +3634,7 @@
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         rogueRegisterHit(!magicBased);
+        Sound.coin();
         playBanner('대성공!');
         let healed = 0;
         if(s.lifesteal){
@@ -3347,6 +3651,7 @@
       } else {
         epicLuckPost(false, epicLuck);
         popDamage('빗나감!', 'miss');
+        Sound.fail();
         playBanner('실패...', 'luckbad');
         renderStatus();
         setBattleMsg(`${player.name}의 ${s.name}!`, '운이 따르지 않았다... 완전히 빗나갔다.');
@@ -3372,6 +3677,7 @@
       }
       renderStatus();
       playCastBurst();
+      Sound.buff();
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, msg2);
       enemyTurn();
       return;
@@ -3384,6 +3690,7 @@
         player.buffAtkMult = 1.5;
         renderStatus();
         playCastBurst();
+        Sound.buff();
         playBanner('조커 - 힘의 패!');
         setBattleMsg(`${player.name}의 ${s.name}!`, '조커가 힘의 패를 뽑았다! 3회의 공격 동안 공격력이 크게 오른다.');
         enemyTurn();
@@ -3396,6 +3703,7 @@
         rogueRegisterHit(true);
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+        Sound.slash();
         playBanner('조커 - 파괴의 패!');
         renderStatus();
         setBattleMsg(`${player.name}의 ${s.name}!`, `조커가 파괴의 패를 뽑았다! ${enemy.name}에게 ${dmg}의 피해를 입혔다.`);
@@ -3407,6 +3715,7 @@
         player.hp = Math.min(player.maxhp, player.hp+heal);
         renderStatus();
         popDamageOnPlayerArea();
+        Sound.heal();
         playBanner('조커 - 회복의 패!');
         setBattleMsg(`${player.name}의 ${s.name}!`, `조커가 회복의 패를 뽑았다! HP ${heal} 회복.`);
         if(checkBattleEnd()) return;
@@ -3433,6 +3742,7 @@
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         rogueRegisterHit(true);
         epicLuckPost(true, epicLuck);
+        Sound.coin();
         playBanner('대박!');
         renderStatus();
         let msg2 = `도박에 성공했다! MP ${staked}을(를) 태워 ${enemy.name}에게 ${dmg}의 폭발적인 피해를 입혔다!`;
@@ -3448,6 +3758,7 @@
         if(selfDmg>0) player.hp -= selfDmg;
         renderStatus();
         if(selfDmg>0) popDamageOnPlayerArea('-'+selfDmg, 'bleed');
+        Sound.fail();
         playBanner('낭패...', 'luckbad');
         setBattleMsg(`${player.name}의 ${s.name}!`, selfDmg>0 ? `도박에 실패했다... MP ${staked}을(를) 잃고 반동으로 ${selfDmg}의 피해를 입었다.` : `도박에 실패했다... MP ${staked}을(를) 잃었지만 세계의 마지막 카드가 반동을 막아주었다.`);
         if(checkBattleEnd()) return;
@@ -3477,6 +3788,7 @@
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         rogueRegisterHit(!magicBased);
+        Sound.coin();
         playBanner('마지막 패!');
         let healed = 0;
         if(s.lifesteal){
@@ -3500,6 +3812,7 @@
         renderStatus();
         if(selfDmg>0) popDamageOnPlayerArea('-'+selfDmg, 'bleed');
         else popDamage('빗나감!', 'miss');
+        Sound.fail();
         playBanner('패가 뒤집혔다...', 'luckbad');
         setBattleMsg(`${player.name}의 ${s.name}!`, selfDmg>0 ? `카드가 어긋났다... 반동으로 ${selfDmg}의 피해를 입었다.` : '카드가 어긋나 아무 일도 일어나지 않았다.');
         if(checkBattleEnd()) return;
@@ -3522,6 +3835,7 @@
     rogueRegisterHit(s.type==='phys');
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
+    if(s.type==='magic') Sound.magic(); else Sound.slash();
     let healed2 = 0;
     if(s.lifesteal){
       healed2 = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal*epicLifestealMult()));
@@ -3557,6 +3871,7 @@
     else if(key==='ether'){ const m=Math.round(30*potBoost); player.mp=Math.min(player.maxmp,player.mp+m); msg=`에테르를 마셨다. MP ${m} 회복.`; }
     renderStatus();
     popDamage('+','heal');
+    Sound.potion();
     setBattleMsg(`${player.name}은(는) 아이템을 사용했다.`, msg);
     if(checkBattleEnd()) return;
     enemyTurn();
