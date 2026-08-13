@@ -83,8 +83,8 @@
 
   /* ---------- status bar ---------- */
   #statusbar{
-    display:flex; align-items:center; gap:10px;
-    padding:9px 46px 9px 12px;
+    display:flex; align-items:center; gap:7px;
+    padding:9px 44px 9px 10px;
     background:linear-gradient(180deg,#241b12,#1a130c);
     border-bottom:1px solid #4a3a24;
     font-size:13px;
@@ -92,17 +92,17 @@
   }
   #statusbar .name{font-family:'Cinzel'; font-weight:700; color:var(--gold-bright); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
   #statusbar .lvl{color:var(--parchment-dim); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
-  #statusbar .namewrap{flex-shrink:0; min-width:0; max-width:min(148px, 36vw); overflow:hidden;}
-  .barwrap{flex:1; display:flex; flex-direction:column; gap:3px; min-width:64px;}
-  .barrow{display:flex; align-items:center; gap:5px;}
-  .barlabel{width:16px; font-size:11px; color:var(--parchment-dim); font-family:'Cinzel';}
-  .bar-outer{flex:1; height:8px; background:#0f0b07; border:1px solid #4a3a24; border-radius:3px; overflow:hidden;}
+  #statusbar .namewrap{flex-shrink:0; min-width:0; max-width:min(112px, 28vw); overflow:hidden;}
+  .barwrap{flex:1; display:flex; flex-direction:column; gap:3px; min-width:80px;}
+  .barrow{display:flex; align-items:center; gap:4px;}
+  .barlabel{width:14px; flex-shrink:0; font-size:10.5px; color:var(--parchment-dim); font-family:'Cinzel';}
+  .bar-outer{flex:1; min-width:22px; height:8px; background:#0f0b07; border:1px solid #4a3a24; border-radius:3px; overflow:hidden;}
   .bar-inner{height:100%; transition:width .4s ease;}
   .bar-hp{background:linear-gradient(90deg,var(--rust),var(--rust-bright));}
   .bar-mp{background:linear-gradient(90deg,#3d5c8c,#6f9adf);}
   .bar-exp{background:linear-gradient(90deg,var(--gold),var(--gold-bright));}
-  .barval{font-size:10.5px; color:var(--parchment-dim); width:58px; text-align:right; flex-shrink:0;}
-  #gold-display{color:var(--gold-bright); font-size:12.5px; white-space:nowrap; font-family:'Cinzel';}
+  .barval{font-size:10px; color:var(--parchment-dim); width:42px; flex-shrink:0; text-align:right;}
+  #gold-display{color:var(--gold-bright); font-size:12px; white-space:nowrap; font-family:'Cinzel'; flex-shrink:0;}
 
   /* ---------- screens ---------- */
   .screen{display:none; flex-direction:column; flex:1; min-height:0;}
@@ -356,17 +356,19 @@
   }
   .enemy-hp-inner{height:100%; background:linear-gradient(90deg,var(--rust),var(--rust-bright)); transition:width .4s;}
 
-  .battle-lower{padding:12px 14px 16px; display:flex; flex-direction:column; gap:10px; flex:1; min-height:0;}
+  .battle-lower{padding:12px 14px 16px; display:flex; flex-direction:column; gap:10px; flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
   .msgbox{
     background:linear-gradient(180deg,#e9dcc0,#dccba0);
     color:var(--ink); border:2px solid #6b5230; border-radius:4px;
     padding:10px 14px; font-size:15px; min-height:48px; line-height:1.5;
     box-shadow:inset 0 0 0 1px #ffffff40, 0 4px 10px #00000066;
+    flex-shrink:0;
   }
   .msgbox .m-line{margin:0;}
   .msgbox .m-line + .m-line{margin-top:2px; opacity:.65; font-size:13.5px;}
 
-  .cmd-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  #bt-command-area{display:flex; flex-direction:column; flex:1; min-height:0;}
+  .cmd-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; flex-shrink:0;}
   .cmd-btn{
     font-family:'Cinzel'; font-size:14.5px; font-weight:600;
     background:linear-gradient(180deg,#3a2c1a,#241a0f); border:1px solid #6b5230;
@@ -378,11 +380,11 @@
   .cmd-btn:disabled{opacity:.3; cursor:not-allowed;}
   .cmd-btn .icon{font-size:16px;}
 
-  .sublist{display:flex; flex-direction:column; gap:6px; max-height:190px; overflow-y:auto;}
+  .sublist{display:flex; flex-direction:column; gap:6px; flex:1; min-height:96px; max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch;}
   .sub-item{
     display:flex; justify-content:space-between; align-items:flex-start; gap:8px;
     background:#1a130c; border:1px solid #3a2c1c; border-radius:4px;
-    padding:9px 12px; cursor:pointer; font-size:14px; min-height:44px;
+    padding:9px 12px; cursor:pointer; font-size:14px; min-height:44px; flex-shrink:0;
   }
   .sub-item:hover{border-color:var(--gold);}
   .sub-item .si-info{flex:1; min-width:0;}
@@ -390,7 +392,7 @@
   .sub-item .si-desc{color:var(--parchment-dim); font-size:12px; font-style:italic; display:block; margin-top:2px; white-space:normal; overflow-wrap:break-word; line-height:1.4;}
   .sub-item .si-cost{color:#8fb4e8; font-size:12px; flex-shrink:0; margin-left:8px; padding-top:1px;}
   .sub-item.disabled{opacity:.35; cursor:not-allowed;}
-  .back-row{display:flex; justify-content:flex-end;}
+  .back-row{display:flex; justify-content:flex-end; flex-shrink:0; padding-top:2px;}
   .link-btn{background:none; border:none; color:var(--parchment-dim); font-family:'Cinzel'; font-size:12.5px; cursor:pointer; text-decoration:underline; padding:4px;}
   .link-btn:hover{color:var(--gold-bright);}
 
