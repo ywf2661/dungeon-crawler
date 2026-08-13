@@ -552,6 +552,7 @@
       <button class="btn" id="btn-shop">🛒 상점</button>
       <button class="btn" id="btn-equip">🎽 장비</button>
       <button class="btn btn-danger" id="btn-town">🏠 마을로 귀환</button>
+      <button class="btn btn-danger" id="btn-bossden" style="display:none;">☠ 보스소굴</button>
     </div>
   </div>
 
@@ -848,6 +849,35 @@
         <path d="M56 88 Q70 96 84 88" stroke="#1a130c" stroke-width="3" fill="none"/>
         <path d="M60 90 L56 98" stroke="#fff2c0" stroke-width="3"/><path d="M80 90 L84 98" stroke="#fff2c0" stroke-width="3"/>
       </svg>`;
+      case 'kraken': return `<svg viewBox="0 0 140 140">${glow}
+        <ellipse cx="70" cy="124" rx="46" ry="8" fill="#000" opacity="0.35"/>
+        <path d="M22 90 Q10 70 26 54 Q20 74 34 88 Z" fill="#1f4a4a"/>
+        <path d="M118 90 Q130 70 114 54 Q120 74 106 88 Z" fill="#1f4a4a"/>
+        <path d="M30 108 Q14 100 12 118 Q28 124 36 112 Z" fill="#1f4a4a"/>
+        <path d="M110 108 Q126 100 128 118 Q112 124 104 112 Z" fill="#1f4a4a"/>
+        <ellipse cx="70" cy="70" rx="38" ry="34" fill="#183838"/>
+        <ellipse cx="58" cy="66" rx="9" ry="10" fill="#5adede" filter="url(#eg)"/><ellipse cx="82" cy="66" rx="9" ry="10" fill="#5adede" filter="url(#eg)"/>
+        <circle cx="58" cy="67" r="3.4" fill="#0a1a1a"/><circle cx="82" cy="67" r="3.4" fill="#0a1a1a"/>
+        <path d="M52 90 Q70 98 88 90" stroke="#0a1a1a" stroke-width="3" fill="none"/>
+      </svg>`;
+      case 'ironjudge': return `<svg viewBox="0 0 140 140">${glow}
+        <ellipse cx="70" cy="124" rx="44" ry="9" fill="#000" opacity="0.35"/>
+        <rect x="34" y="32" width="72" height="78" rx="6" fill="#3a3228"/>
+        <rect x="34" y="32" width="72" height="78" rx="6" fill="none" stroke="#221d16" stroke-width="4"/>
+        <path d="M70 32 L58 14 L82 14 Z" fill="#5a4c34"/>
+        <circle cx="70" cy="66" r="11" fill="#ff8a3a" filter="url(#eg)"/>
+        <circle cx="70" cy="66" r="4" fill="#ffe6b0"/>
+        <rect x="14" y="46" width="14" height="56" rx="3" fill="#4a4030"/><rect x="112" y="46" width="14" height="56" rx="3" fill="#4a4030"/>
+        <path d="M14 46 L6 30 L24 40 Z" fill="#ffb15a"/><path d="M126 46 L134 30 L116 40 Z" fill="#ffb15a"/>
+        <rect x="48" y="92" width="44" height="8" fill="#221d16"/>
+      </svg>`;
+      case 'wraithqueen': return `<svg viewBox="0 0 140 140">${glow}
+        <path d="M70 24 C44 24 30 48 34 72 C20 82 24 112 42 118 L98 118 C116 112 120 82 106 72 C110 48 96 24 70 24 Z" fill="#2c1c3a" opacity="0.9"/>
+        <path d="M52 20 L70 4 L88 20 L78 22 L70 14 L62 22 Z" fill="#c264d1"/>
+        <ellipse cx="56" cy="62" rx="7" ry="9" fill="#e089f0" filter="url(#eg)"/><ellipse cx="84" cy="62" rx="7" ry="9" fill="#e089f0" filter="url(#eg)"/>
+        <circle cx="56" cy="63" r="2.8" fill="#1a0f22"/><circle cx="84" cy="63" r="2.8" fill="#1a0f22"/>
+        <path d="M50 92 Q70 102 90 92" stroke="#1a0f22" stroke-width="3" fill="none"/>
+      </svg>`;
       default: return `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
     }
   }
@@ -877,9 +907,12 @@
   ];
   const BOSSES = [
     {type:'dragon',  name:'붉은 유해룡',     minDepth:5,  hp:90,  atk:16, def:6,  spd:7, exp:80,  gold:[60,90],   skills:['bite','smash']},
-    {type:'ogre',    name:'오우거 대족장',   minDepth:15, hp:150, atk:24, def:10, spd:5, exp:160, gold:[110,150], skills:['smash']},
+    {type:'wraithqueen', name:'심연의 망령여왕', minDepth:12, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['wraithWail','curse','heal']},
     {type:'lich',    name:'회랑의 리치',     minDepth:10, hp:130, atk:20, def:10, spd:9, exp:140, gold:[100,150], skills:['curse','heal','smash']},
+    {type:'ogre',    name:'오우거 대족장',   minDepth:15, hp:150, atk:24, def:10, spd:5, exp:160, gold:[110,150], skills:['smash']},
+    {type:'kraken',  name:'심해의 크라켄',   minDepth:20, hp:180, atk:23, def:12, spd:6, exp:200, gold:[130,170], skills:['krakenGrip','bite']},
     {type:'golem',   name:'태고의 파수꾼',   minDepth:25, hp:210, atk:26, def:18, spd:3, exp:260, gold:[160,220], skills:['smash']},
+    {type:'ironjudge', name:'폭주 강철 처형자', minDepth:30, hp:235, atk:27, def:20, spd:4, exp:300, gold:[170,230], skills:['ironCrush','smash']},
     {type:'demon',   name:'심연의 악마 군주', minDepth:35, hp:260, atk:32, def:16, spd:9, exp:380, gold:[220,300], skills:['smash','curse','heal']},
   ];
 
@@ -931,7 +964,7 @@
     attempt = attempt || 1;
     if(saveInFlight){ saveQueuedAgain = true; return; }
     saveInFlight = true;
-    const payload = JSON.stringify({player, depth, town});
+    const payload = JSON.stringify({player, depth, town, inBossDen, bossDenFloor});
     try{
       if(hasArtifactStorage()){
         await window.storage.set(SAVE_KEY, payload, false);
@@ -1011,6 +1044,7 @@
 
   /* ============ 게임 상태 ============ */
   let player, enemy, depth, town, log, battleOver, subMode, battleFlags;
+  let inBossDen, bossDenFloor;
   let selectedJobId = 'warrior';
 
   function renderJobSelect(){
@@ -1921,6 +1955,7 @@
 
   function init(){
     town = true; depth = 0; battleOver=false; subMode=null;
+    inBossDen = false; bossDenFloor = 0;
     renderJobSelect();
     document.getElementById('btn-start').addEventListener('click', ()=>startGame(false));
     document.getElementById('btn-continue').addEventListener('click', startGame.bind(null, true));
@@ -1960,6 +1995,7 @@
     document.getElementById('btn-shop').addEventListener('click', openShop);
     document.getElementById('btn-equip').addEventListener('click', openEquipment);
     document.getElementById('btn-town').addEventListener('click', onReturnTown);
+    document.getElementById('btn-bossden').addEventListener('click', enterBossDen);
     document.getElementById('cmd-attack').addEventListener('click', playerAttack);
     document.getElementById('cmd-skill').addEventListener('click', ()=>openSub('skill'));
     document.getElementById('cmd-item').addEventListener('click', ()=>openSub('item'));
@@ -1988,6 +2024,7 @@
     if(isContinue && window.__savedGame){
       const saved = window.__savedGame;
       player = saved.player; depth = saved.depth; town = saved.town;
+      inBossDen = saved.inBossDen||false; bossDenFloor = saved.bossDenFloor||0;
       if(player.job2===undefined) player.job2 = null;
       if(player.jobChosenAt10===undefined) player.jobChosenAt10 = false;
       if(!player.equipment) player.equipment = {weapon:null, armor:null, accessory:null};
@@ -2011,6 +2048,7 @@
     const nameInput = document.getElementById('name-input').value.trim();
     player = newPlayer(nameInput, selectedJobId);
     depth = 0; town = true; enemy = null; battleOver = false; subMode = null;
+    inBossDen = false; bossDenFloor = 0;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, mechExplodeTriggered:false};
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
@@ -2085,12 +2123,20 @@
 
   function renderExplore(newLines){
     const loc = currentLocation();
-    document.getElementById('ex-depth-tag').textContent = town ? '마을' : ('깊이 '+depth);
-    document.getElementById('ex-loc-name').textContent = town ? '안식의 마을' : loc.name;
-    document.getElementById('ex-loc-desc').textContent = town ? '따뜻한 화롯불과 상인들의 목소리가 들린다. 이곳에서는 안전하다.' : loc.desc;
+    if(inBossDen){
+      document.getElementById('ex-depth-tag').textContent = '보스소굴 '+bossDenFloor+'층';
+      document.getElementById('ex-loc-name').textContent = '심연의 투기장';
+      document.getElementById('ex-loc-desc').textContent = '오직 강자만이 다음 상대와 마주할 수 있는 곳. 돌아가지 않는 한, 쉼 없이 다음 보스가 나타난다.';
+    } else {
+      document.getElementById('ex-depth-tag').textContent = town ? '마을' : ('깊이 '+depth);
+      document.getElementById('ex-loc-name').textContent = town ? '안식의 마을' : loc.name;
+      document.getElementById('ex-loc-desc').textContent = town ? '따뜻한 화롯불과 상인들의 목소리가 들린다. 이곳에서는 안전하다.' : loc.desc;
+    }
     document.getElementById('btn-advance').style.display = 'block';
-    document.getElementById('btn-advance').textContent = town ? '➡ 던전으로 출발' : '➡ 나아가다';
+    document.getElementById('btn-advance').textContent = inBossDen ? '⚔ 다음 상대와 맞서다' : (town ? '➡ 던전으로 출발' : '➡ 나아가다');
     document.getElementById('btn-town').style.display = town ? 'none' : 'block';
+    const bossDenBtn = document.getElementById('btn-bossden');
+    if(bossDenBtn) bossDenBtn.style.display = (town && player && (player.level||1) >= 15) ? 'block' : 'none';
     const logEl = document.getElementById('ex-log');
     if(newLines){
       newLines.forEach(l=>{
@@ -2133,13 +2179,39 @@
 
   function onReturnTown(){
     town = true; depth = 0;
+    inBossDen = false; bossDenFloor = 0;
     player.hp = player.maxhp; player.mp = player.maxmp;
     renderStatus();
     renderExplore(['마을로 돌아왔다. 상처가 아물고 기운이 되살아난다.']);
     saveGame();
   }
 
+  function enterBossDen(){
+    if(!town) return;
+    if((player.level||1) < 15){
+      addLog('아직 보스소굴에 들어갈 준비가 되지 않았다. (레벨 15 필요)', 'warn');
+      return;
+    }
+    town = false; inBossDen = true; depth = 40; bossDenFloor = 0;
+    renderExplore(['보스소굴 깊은 곳에서 흘러나오는 위압감이 온몸을 짓누른다. 이 안에서는 오직 강자만이 살아남는다.']);
+    saveGame();
+  }
+
+  function proceedBossDenAdvance(){
+    bossDenFloor += 1;
+    document.getElementById('ex-depth-tag').textContent = '보스소굴 '+bossDenFloor+'층';
+    document.getElementById('ex-loc-name').textContent = '심연의 투기장';
+    document.getElementById('ex-loc-desc').textContent = '오직 강자만이 다음 상대와 마주할 수 있는 곳. 돌아가지 않는 한, 쉼 없이 다음 보스가 나타난다.';
+    saveGame();
+    addLog('공기가 무겁게 가라앉는다… 다음 상대가 기다리고 있다.', 'warn');
+    setTimeout(()=>startBattle(true), 400);
+  }
+
   function onAdvance(){
+    if(inBossDen){
+      proceedBossDenAdvance();
+      return;
+    }
     if(town){
       town = false;
       renderExplore(['다시 어둠 속 회랑으로 발을 들였다.']);
@@ -2672,7 +2744,7 @@
           `깊이 ${depth}까지 도달했다. 레벨 ${player.level}, 소지금 ${player.gold}G. 마을 사람들이 그대를 구해내어 마을로 옮겼다.`;
         player.gold = Math.floor(player.gold*0.5);
         player.hp = player.maxhp; player.mp = player.maxmp;
-        depth = 0; town = true;
+        depth = 0; town = true; inBossDen = false; bossDenFloor = 0;
         saveGame();
       }, 900);
       return true;
@@ -2902,6 +2974,9 @@
         else { dmg = 0; label = `${enemy.name}의 동전이 뒷면으로 떨어진다…`; }
       }
       else if(skillKey==='trueBossJudgment'){ dmg = Math.round(enemy.atk*2.4); label = `${enemy.name}이(가) 태초의 심판을 내리찍는다!`; }
+      else if(skillKey==='krakenGrip'){ dmg = Math.round(enemy.atk*1.75); label = `${enemy.name}이(가) 촉수로 온몸을 옥죈다!`; }
+      else if(skillKey==='ironCrush'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
+      else if(skillKey==='wraithWail'){ dmg = Math.round(enemy.atk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
       else { dmg = enemy.atk + Math.floor(Math.random()*3)-1; }
 
       if(dmg<=0){
