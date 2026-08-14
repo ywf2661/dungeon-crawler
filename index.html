@@ -438,38 +438,51 @@
   .buy-btn{font-family:'Cinzel'; font-size:12.5px; background:#3a2c1a; border:1px solid var(--gold); color:var(--gold-bright); padding:6px 12px; border-radius:3px; cursor:pointer; flex-shrink:0;}
   .buy-btn:disabled{opacity:.3; cursor:not-allowed;}
 
-  .augment-grid{display:flex; flex-direction:column; gap:10px;}
-  .augment-card{
+  .relic-grid{display:flex; flex-direction:column; gap:10px;}
+  .relic-card{
     display:flex; flex-direction:column; gap:4px; text-align:left;
     background:#1e160dcc; border:1px solid #4a3a24; border-radius:8px;
     padding:12px 14px; cursor:pointer; font-family:inherit; color:var(--parchment);
     transition:transform .12s ease, border-color .12s ease;
   }
-  .augment-card:hover{transform:translateY(-2px); border-color:var(--gold-bright);}
-  .augment-card:disabled{cursor:not-allowed; opacity:.55; transform:none;}
-  .augment-card:disabled:hover{transform:none; border-color:#4a3a24;}
-  .augment-lock-msg{
+  .relic-card:hover{transform:translateY(-2px); border-color:var(--gold-bright);}
+  .relic-card:disabled{cursor:not-allowed; opacity:.55; transform:none;}
+  .relic-card:disabled:hover{transform:none; border-color:#4a3a24;}
+  .relic-lock-msg{
     text-align:center; color:var(--gold-bright); font-size:12px; font-family:'Cinzel';
     letter-spacing:.03em; margin:0 0 10px; animation:lockpulse 1.1s ease-in-out infinite;
   }
   @keyframes lockpulse{ 0%,100%{opacity:.55;} 50%{opacity:1;} }
-  .augment-panel{ animation:augmentIn .35s ease; }
-  @keyframes augmentIn{
+  .relic-panel{ animation:relicIn .35s ease; }
+  @keyframes relicIn{
     from{ opacity:0; transform:translateY(14px); }
     to{ opacity:1; transform:translateY(0); }
   }
-  .augment-card .augment-tier{
+  .relic-card .relic-type{
     font-family:'Cinzel'; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
     width:fit-content; padding:1px 8px; border-radius:8px; opacity:.9;
   }
-  .augment-card.tier-common .augment-tier{color:#cfd6dd; background:#3a3f45;}
-  .augment-card.tier-rare .augment-tier{color:#8fb4e8; background:#1c2e4a;}
-  .augment-card.tier-legendary .augment-tier{color:#ffcf6e; background:#4a3210;}
-  .augment-card.tier-common{border-color:#5a6068;}
-  .augment-card.tier-rare{border-color:#4a6ea8;}
-  .augment-card.tier-legendary{border-color:#c99a3f; box-shadow:0 0 14px #c99a3f33;}
-  .augment-card .augment-name{font-family:'Cinzel'; font-weight:700; font-size:15px; color:var(--gold-bright);}
-  .augment-card .augment-desc{font-size:13px; color:var(--parchment-dim);}
+  .relic-card.type-blessing .relic-type{color:#ffe9a8; background:#4a3a12;}
+  .relic-card.type-contract .relic-type{color:#ffb98f; background:#4a2a12;}
+  .relic-card.type-curse .relic-type{color:#d99fff; background:#2e1240;}
+  .relic-card.type-wild .relic-type{color:#8fe8dd; background:#0f3a36;}
+  .relic-card.type-blessing{border-color:#c99a3f; box-shadow:0 0 14px #c99a3f33;}
+  .relic-card.type-contract{border-color:#b86a3f;}
+  .relic-card.type-curse{border-color:#7a3fa8; box-shadow:0 0 14px #7a3fa833;}
+  .relic-card.type-wild{border-color:#3fa89a;}
+  .relic-card .relic-name{font-family:'Cinzel'; font-weight:700; font-size:15px; color:var(--gold-bright);}
+  .relic-card .relic-desc{font-size:13px; color:var(--parchment-dim);}
+  .relic-card .relic-desc .relic-pos{color:#8fd66a;}
+  .relic-card .relic-desc .relic-neg{color:#ff6a5a;}
+
+  #relicdex-section{width:100%; max-width:380px; margin-top:4px;}
+  #relicdex-list{display:flex; flex-direction:column; gap:4px; max-height:150px; overflow-y:auto; padding:2px;}
+  .relicdex-row{
+    display:flex; justify-content:space-between; gap:8px; align-items:center;
+    background:#1e160dcc; border:1px solid #3a2c1c; border-radius:5px;
+    padding:6px 10px; font-size:12px; color:var(--parchment-dim);
+  }
+  .relicdex-row.locked{opacity:.5; font-style:italic;}
 
   /* ---------- gameover / victory ---------- */
   #screen-gameover, #screen-levelup, #screen-ending{
@@ -545,6 +558,7 @@
     <div class="job-select" id="job-select"></div>
     <button class="btn" id="btn-start">새로 시작하다</button>
     <button class="link-btn" id="btn-delete-save" style="display:none;">저장 데이터 삭제</button>
+    <button class="link-btn" id="btn-relicdex">📖 유물 도감</button>
     <div id="records-section" style="display:none;">
       <div class="records-title">이전 모험 기록</div>
       <div id="records-list"></div>
@@ -1333,6 +1347,33 @@
     }catch(e){ /* ignore */ }
     return records;
   }
+
+  // ---------- 유물 도감(발견한 유물은 런이 끝나도 영구히 기록된다) ----------
+  const RELICDEX_KEY = 'relicdex';
+  async function loadRelicDex(){
+    if(!storageAvailable()) return [];
+    try{
+      if(hasArtifactStorage()){
+        const res = await window.storage.get(RELICDEX_KEY, false);
+        if(res && res.value) return JSON.parse(res.value);
+      } else if(hasLocalStorage()){
+        const raw = window.localStorage.getItem(RELICDEX_KEY);
+        if(raw) return JSON.parse(raw);
+      }
+    }catch(e){ /* 기록 없음, 정상 */ }
+    return [];
+  }
+  async function addToRelicDex(id){
+    const dex = await loadRelicDex();
+    if(dex.includes(id)) return dex;
+    dex.push(id);
+    const payload = JSON.stringify(dex);
+    try{
+      if(hasArtifactStorage()) await window.storage.set(RELICDEX_KEY, payload, false);
+      else if(hasLocalStorage()) window.localStorage.setItem(RELICDEX_KEY, payload);
+    }catch(e){ /* ignore */ }
+    return dex;
+  }
   // 저장 기능에서 발생하는 예기치 못한 오류가 게임 전체를 멈추지 않도록 방지
   window.addEventListener('unhandledrejection', function(ev){
     if(ev && ev.reason){ console.warn('처리되지 않은 오류(무시됨):', ev.reason); }
@@ -1852,37 +1893,8 @@
     return bonus;
   }
 
-  // ---------- 회랑의 증강 (10층 단위 보스 처치 시 선택) ----------
-  const AUGMENTS = {
-    aug_atk: {tier:'common', name:'강철 근육',     desc:'공격력 +12%',              effect:{atkPct:0.12}},
-    aug_def: {tier:'common', name:'굳은살',        desc:'방어력 +15%',              effect:{defPct:0.15}},
-    aug_mag: {tier:'common', name:'정신 집중',     desc:'마법력 +15%',              effect:{magPct:0.15}},
-    aug_hp:  {tier:'common', name:'생명력 강화',   desc:'최대 체력 +20%',           effect:{maxhpPct:0.20}},
-    aug_mp:  {tier:'common', name:'마나 순환',     desc:'최대 마나 +25%',           effect:{maxmpPct:0.25}},
-    aug_spd: {tier:'common', name:'재빠른 발놀림', desc:'속도 +6',                  effect:{spdFlat:6}},
-
-    aug_lowhp_guard:  {tier:'rare', name:'불굴의 의지', desc:'체력 30% 이하일 때 받는 피해 -20%',   effect:{lowHpDmgReduction:0.2}},
-    aug_pierce:       {tier:'rare', name:'예리한 칼날', desc:'모든 공격의 방어 관통 +20%',          effect:{defPierce:0.2}},
-    aug_firststrike:  {tier:'rare', name:'속전속결',   desc:'전투 중 첫 공격의 피해 +35%',          effect:{firstStrikeBonus:0.35}},
-    aug_flee:         {tier:'rare', name:'도주의 달인', desc:'도주 성공 확률 +25%p',                effect:{fleeBonus:0.25}},
-    aug_shop:         {tier:'rare', name:'상인의 눈',   desc:'상점 구매가 -10%',                    effect:{shopDiscount:0.10}},
-    aug_potion:       {tier:'rare', name:'물약 연구가', desc:'물약·에테르 회복 효과 +30%',          effect:{potionBoost:0.30}},
-
-    aug_berserk:  {tier:'legendary', name:'광폭화',        desc:'체력 50% 이하일 때 모든 피해 +30%',       effect:{lowHpDmgBoost:0.3}},
-    aug_bossbane: {tier:'legendary', name:'심판의 낙인',   desc:'보스 상대 피해 +20%',                     effect:{bossDmgBoost:0.2}},
-    aug_regen:    {tier:'legendary', name:'만찬의 축복',   desc:'매 턴 종료 시 최대체력 3% 회복',          effect:{turnRegenPct:0.03}},
-    aug_mana:     {tier:'legendary', name:'정신 각성',     desc:'스킬 마나 소모량 -20%',                   effect:{mpCostReduction:0.2}},
-    aug_wall:     {tier:'legendary', name:'완벽한 방어술', desc:'받는 모든 피해 -12%',                     effect:{dmgReduction:0.12}},
-    aug_exp:      {tier:'legendary', name:'숙련자의 지혜', desc:'획득 경험치 +25%',                        effect:{expBoost:0.25}},
-  };
-  const AUGMENT_SPECIAL_KEYS = ['lowHpDmgReduction','defPierce','firstStrikeBonus','fleeBonus','shopDiscount',
-    'potionBoost','lowHpDmgBoost','bossDmgBoost','turnRegenPct','mpCostReduction','dmgReduction','expBoost'];
-
-  function getAugmentSum(key){
-    return (player.augments||[]).reduce((sum,a)=> sum + (typeof a[key]==='number' ? a[key] : 0), 0);
-  }
   function getEffectiveEnemyDef(base){
-    let pierce = getAugmentSum('defPierce');
+    let pierce = 0;
     const hpRatio = player.maxhp>0 ? player.hp/player.maxhp : 1;
     if(epicSetTier('warrior')>=3 && hpRatio<=0.5) pierce += 0.3;
     if(epicSetTier('paladin')>=3 && battleFlags && battleFlags.paladinAwoken) pierce += 0.4;
@@ -1892,105 +1904,138 @@
     if(pierce<=0) return base;
     return Math.max(0, Math.round(base*(1-Math.min(0.9, pierce))));
   }
-  function applyOutgoingDamageAugments(dmg, ctx){
+  function getRelicSum(key){
+    return (player.relics||[]).reduce((sum,id)=>{
+      const r = RELICS[id];
+      return sum + (r && typeof r.effect[key]==='number' ? r.effect[key] : 0);
+    }, 0);
+  }
+  function applyOutgoingDamageMods(dmg, ctx){
+    ctx = ctx || {};
     let mult = 1;
-    if(player.maxhp>0 && (player.hp/player.maxhp)<=0.5) mult += getAugmentSum('lowHpDmgBoost');
-    if(enemy && enemy.isBoss) mult += getAugmentSum('bossDmgBoost');
-    if(battleFlags && !battleFlags.firstStrikeUsed){
-      mult += getAugmentSum('firstStrikeBonus');
-      battleFlags.firstStrikeUsed = true;
-    }
     mult *= getEpicSetMult(ctx);
+    mult *= (1 + getRelicSum('dmgPctMult'));
+    if(ctx.type==='basic') mult *= (1 + getRelicSum('basicAtkPctMult'));
+    if(enemy && enemy.isBoss) mult *= (1 + getRelicSum('bossDmgPctMult'));
     let result = Math.max(1, Math.round(dmg*mult));
     result += getEpicFlatBonus();
     return Math.max(1, result);
   }
-  function applyAugmentEffect(aug){
-    const e = aug.effect;
-    if(e.atkPct) player.atk += Math.round(player.atk*e.atkPct);
-    if(e.defPct) player.def += Math.round(player.def*e.defPct);
-    if(e.magPct) player.mag += Math.round(player.mag*e.magPct);
-    if(e.maxhpPct){ const d = Math.round(player.maxhp*e.maxhpPct); player.maxhp += d; player.hp += d; }
-    if(e.maxmpPct){ const d = Math.round(player.maxmp*e.maxmpPct); player.maxmp += d; player.mp += d; }
+
+  // ---------- 유물 (특정 층의 유물 제단에서 3개 중 1개 선택, 획득 즉시 적용 · 런 종료까지 유지) ----------
+  // 유물은 장비 슬롯을 쓰지 않으며 증강과 달리 "빌드 자체를 바꾸는" 규칙형 아이템이다.
+  // atkPct/defPct/magPct/maxhpPct/maxmpPct/spdFlat/mpZero 는 획득 즉시 스탯에 반영되고,
+  // dmgPctMult/basicAtkPctMult/bossDmgPctMult/dmgTakenPctMult/hpLockPct/killHealPct/potionEffMult/
+  // potionLocked/skillLocked 는 전투 파이프라인에 연결되어 실제로 작동한다.
+  // extraActionBySpd(마녀의 시계)와 lowHpScalingDmg(거꾸로 된 왕관), noPostBattleHeal(굶주린 회랑)만
+  // 아직 연결되지 않은 상태다(추후 업데이트 예정).
+  const RELICS = {
+    relic_goldenheart:  {type:'blessing', name:'황금 심장',     desc:'최대 HP +25%', effect:{maxhpPct:0.25}},
+    relic_ironwill:     {type:'blessing', name:'강철의 의지',   desc:'방어력 +20%', effect:{defPct:0.20}},
+    relic_manastream:   {type:'blessing', name:'마나의 샘',     desc:'최대 마나 +30%', effect:{maxmpPct:0.30}},
+    relic_blackcrown:   {type:'blessing', name:'검은 왕관',     desc:'보스/진보스 상대 최종 피해 +20%', effect:{bossDmgPctMult:0.20}},
+
+    relic_bloodoath:    {type:'contract', name:'피의 서약',     desc:'<span class="relic-neg">전투를 시작할 때 항상 체력이 최대 HP의 50%로 맞춰진다.</span> <span class="relic-pos">대신 공격/피해량 +35%.</span>', effect:{hpLockPct:0.5, dmgPctMult:0.35}},
+    relic_emptybowl:    {type:'contract', name:'빈 그릇',       desc:'<span class="relic-neg">최대 MP가 0이 되어 스킬을 쓸 수 없다.</span> <span class="relic-pos">대신 일반 공격 피해 +80%.</span>', effect:{mpZero:true, basicAtkPctMult:0.80}},
+    relic_glassheart:   {type:'contract', name:'유리 심장',     desc:'<span class="relic-neg">받는 피해 +40%.</span> <span class="relic-pos">모든 공격 피해 +60%.</span>', effect:{dmgTakenPctMult:0.40, dmgPctMult:0.60}},
+    relic_hungryring:   {type:'contract', name:'굶주린 반지',   desc:'<span class="relic-pos">적 처치 시 HP를 회복한다.</span> <span class="relic-neg">대신 포션 회복 효율이 크게 줄어든다.</span>', effect:{killHealPct:0.10, potionEffMult:-0.5}},
+
+    relic_heartlessdoll:{type:'curse', name:'심장 없는 인형', desc:'최대 HP가 절반으로 줄어든다.', effect:{maxhpPct:-0.5}},
+    relic_leadfeet:     {type:'curse', name:'납으로 된 발',   desc:'속도가 크게 감소한다.', effect:{spdFlat:-8}},
+    relic_hungrycorridor:{type:'curse', name:'굶주린 회랑',   desc:'포션을 쓸 수 없게 된다. <span class="relic-neg">(전투 후 자동회복 차단은 추후 업데이트 예정)</span>', effect:{noPostBattleHeal:true, potionLocked:true}},
+    relic_silentoath:   {type:'curse', name:'침묵의 서약',   desc:'스킬을 사용할 수 없게 된다.', effect:{skillLocked:true}},
+
+    relic_witchclock:   {type:'wild', name:'마녀의 시계',   desc:'속도가 높을수록 추가 행동 확률이 생긴다. <span class="relic-neg">(연결은 추후 업데이트 예정)</span>', effect:{extraActionBySpd:true}},
+    relic_reversecrown: {type:'wild', name:'거꾸로 된 왕관', desc:'체력이 낮을수록 공격력이 크게 오른다. <span class="relic-neg">(연결은 추후 업데이트 예정)</span>', effect:{lowHpScalingDmg:true}},
+  };
+  // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용 — 추후 구현).
+  const RELIC_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type!=='curse');
+  const RELIC_ALTAR_FLOORS = [6,12,18,24,36,42,48];
+
+  function getRelicDef(id){ return RELICS[id]; }
+
+  // atkPct/defPct/magPct/maxhpPct/maxmpPct/spdFlat/mpZero 는 획득 즉시 스탯에 반영한다.
+  // (그 외 키는 아직 전투 파이프라인에 연결되지 않았고, player.relics에 id로 저장되어 다음 단계에서 참조될 예정이다.)
+  function applyRelicEffect(id){
+    const relic = RELICS[id];
+    if(!relic) return;
+    const e = relic.effect;
+    if(e.atkPct) player.atk = Math.max(1, player.atk + Math.round(player.atk*e.atkPct));
+    if(e.defPct) player.def = Math.max(0, player.def + Math.round(player.def*e.defPct));
+    if(e.magPct) player.mag = Math.max(0, player.mag + Math.round(player.mag*e.magPct));
+    if(e.maxhpPct){
+      const d = Math.round(player.maxhp*e.maxhpPct);
+      player.maxhp = Math.max(1, player.maxhp+d);
+      player.hp = Math.max(1, Math.min(player.maxhp, player.hp+d));
+    }
+    if(e.maxmpPct){
+      const d = Math.round(player.maxmp*e.maxmpPct);
+      player.maxmp = Math.max(0, player.maxmp+d);
+      player.mp = Math.max(0, Math.min(player.maxmp, player.mp+d));
+    }
     if(e.spdFlat) player.spd += e.spdFlat;
-    const specialEffect = {};
-    AUGMENT_SPECIAL_KEYS.forEach(k=>{ if(e[k]!==undefined) specialEffect[k] = e[k]; });
-    if(Object.keys(specialEffect).length) player.augments.push(specialEffect);
+    if(e.mpZero){ player.maxmp = 0; player.mp = 0; }
   }
-  function rollAugmentChoices(){
-    const tierRoll = ()=>{
-      const r = Math.random();
-      if(r<0.10) return 'legendary';
-      if(r<0.40) return 'rare';
-      return 'common';
-    };
-    const ids = Object.keys(AUGMENTS);
-    const chosen = [];
-    const used = new Set();
-    let guard = 0;
-    while(chosen.length<3 && guard<300){
-      guard++;
-      const tier = tierRoll();
-      const pool = ids.filter(id=>AUGMENTS[id].tier===tier && !used.has(id));
-      if(!pool.length) continue;
-      const pick = pool[Math.floor(Math.random()*pool.length)];
-      used.add(pick);
-      chosen.push(pick);
+
+  function rollRelicChoices(){
+    const pool = RELIC_ALTAR_POOL.filter(id=>!player.relics.includes(id));
+    const shuffled = pool.slice();
+    for(let i=shuffled.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    if(chosen.length<3){
-      const remaining = ids.filter(id=>!used.has(id));
-      while(chosen.length<3 && remaining.length){
-        const idx = Math.floor(Math.random()*remaining.length);
-        chosen.push(remaining.splice(idx,1)[0]);
-      }
-    }
-    return chosen;
+    return shuffled.slice(0, 3);
   }
-  function showAugmentPicker(atDepth){
-    const choices = rollAugmentChoices();
-    const tierLabel = {common:'일반', rare:'희귀', legendary:'전설'};
+
+  function showRelicAltar(atDepth){
+    const choices = rollRelicChoices();
+    if(!choices.length) return; // 고를 수 있는 신규 유물이 더 없다
+    const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
-    overlay.id = 'augment-overlay';
+    overlay.id = 'relic-overlay';
     const panel = document.createElement('div');
-    panel.className = 'shop-panel augment-panel augment-panel-locked';
-    panel.innerHTML = `<h3>✦ 깊이 ${atDepth}의 증강 ✦</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 6px;">회랑의 힘이 그대에게 깃든다. 하나를 선택하라.</p>
-      <p class="augment-lock-msg" id="augment-lock-msg">내용을 살펴보는 중…</p>
-      <div class="augment-grid">
+    panel.className = 'shop-panel relic-panel relic-panel-locked';
+    const slotNote = player.relics.length>=player.relicSlots
+      ? `<p style="text-align:center;color:#ff9a7a;font-size:12px;margin:0 0 8px;">유물 슬롯(${player.relicSlots})이 가득 찼지만, 지금은 상한 없이 계속 보유할 수 있다.</p>`
+      : `<p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:0 0 8px;">유물 슬롯 ${player.relics.length}/${player.relicSlots}</p>`;
+    panel.innerHTML = `<h3>✦ 유물 제단 ✦</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 6px;">세 개의 유물이 그대를 기다리고 있다. 하나를 선택하라.</p>
+      ${slotNote}
+      <p class="relic-lock-msg" id="relic-lock-msg">내용을 살펴보는 중…</p>
+      <div class="relic-grid">
       ${choices.map(id=>{
-        const a = AUGMENTS[id];
-        return `<button class="augment-card tier-${a.tier}" data-id="${id}" disabled>
-          <div class="augment-tier">${tierLabel[a.tier]}</div>
-          <div class="augment-name">${a.name}</div>
-          <div class="augment-desc">${a.desc}</div>
+        const r = RELICS[id];
+        return `<button class="relic-card type-${r.type}" data-id="${id}" disabled>
+          <div class="relic-type">${typeLabel[r.type]}</div>
+          <div class="relic-name">${r.name}</div>
+          <div class="relic-desc">${r.desc}</div>
         </button>`;
       }).join('')}
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
 
-    // 화면이 뜨자마자 실수로 아무거나 눌리지 않도록, 잠시 동안은 카드가 비활성 상태다.
     const LOCK_MS = 1500;
     setTimeout(()=>{
-      panel.classList.remove('augment-panel-locked');
-      panel.querySelectorAll('.augment-card').forEach(btn=>{ btn.disabled = false; });
-      const msg = panel.querySelector('#augment-lock-msg');
+      panel.classList.remove('relic-panel-locked');
+      panel.querySelectorAll('.relic-card').forEach(btn=>{ btn.disabled = false; });
+      const msg = panel.querySelector('#relic-lock-msg');
       if(msg) msg.remove();
     }, LOCK_MS);
 
-    panel.querySelectorAll('.augment-card').forEach(btn=>{
+    panel.querySelectorAll('.relic-card').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         if(btn.disabled) return;
         const id = btn.dataset.id;
-        const a = AUGMENTS[id];
-        applyAugmentEffect(a);
-        player.augmentMilestones.push(atDepth);
-        player.augmentPendingDepth = null;
+        const r = RELICS[id];
+        applyRelicEffect(id);
+        player.relics.push(id);
+        addToRelicDex(id);
         renderStatus();
         saveGame();
         overlay.remove();
-        addLog(`✦ 증강 [${a.name}]을(를) 획득했다! (${a.desc})`, 'gold');
+        addLog(`✦ 유물 [${r.name}]을(를) 손에 넣었다!`, 'gold');
       });
     });
   }
@@ -2030,7 +2075,7 @@
       fateBoostChance:0, fateBoostMult:0,
       equipment:{weapon:null, armor:null, accessory:null},
       equipOwned:[],
-      augments:[], augmentMilestones:[], augmentPendingDepth:null,
+      relics:[], relicSlots:2, relicAltarsSeen:[],
       endingSeen:false, deathCount:0,
     };
     p.hp = p.maxhp; p.mp = p.maxmp;
@@ -2250,6 +2295,37 @@
     });
   }
 
+  async function showRelicDex(){
+    const discovered = await loadRelicDex();
+    const ids = Object.keys(RELICS);
+    const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'relicdex-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `<h3>📖 유물 도감</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;margin:-4px 0 10px;">발견: ${discovered.length} / ${ids.length}</p>
+      <div id="relicdex-list"></div>
+      <div style="text-align:center; margin-top:10px;"><button class="btn" id="relicdex-close">닫기</button></div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    const box = panel.querySelector('#relicdex-list');
+    ids.forEach(id=>{
+      const found = discovered.includes(id);
+      const r = RELICS[id];
+      const row = document.createElement('div');
+      row.className = 'relicdex-row' + (found?'':' locked');
+      if(found){
+        row.innerHTML = `<span style="color:var(--gold-bright); font-family:'Cinzel';">${r.name}</span><span>${typeLabel[r.type]}</span>`;
+      } else {
+        row.innerHTML = `<span>？？？</span><span>🔒</span>`;
+      }
+      box.appendChild(row);
+    });
+    panel.querySelector('#relicdex-close').addEventListener('click', ()=> overlay.remove());
+  }
+
   function init(){
     town = true; depth = 0; battleOver=false; subMode=null;
     inBossDen = false; bossDenFloor = 0;
@@ -2281,6 +2357,7 @@
       document.getElementById('btn-continue').style.display='none';
       document.getElementById('btn-delete-save').style.display='none';
     });
+    document.getElementById('btn-relicdex').addEventListener('click', ()=>{ showRelicDex(); });
     document.getElementById('btn-restart').addEventListener('click', ()=>{
       // player는 이미 쓰러진 시점에 마을로 옮겨져 체력이 회복되고 골드가 절반이 되었다.
       showScreen('explore');
@@ -2345,9 +2422,9 @@
       if(player.jobChosenAt10===undefined) player.jobChosenAt10 = false;
       if(!player.equipment) player.equipment = {weapon:null, armor:null, accessory:null};
       if(!player.equipOwned) player.equipOwned = [];
-      if(!player.augments) player.augments = [];
-      if(!player.augmentMilestones) player.augmentMilestones = [];
-      if(player.augmentPendingDepth===undefined) player.augmentPendingDepth = null;
+      if(!player.relics) player.relics = [];
+      if(!player.relicSlots) player.relicSlots = 2;
+      if(!player.relicAltarsSeen) player.relicAltarsSeen = [];
       if(player.buffCounterTurns===undefined) player.buffCounterTurns = 0;
       if(player.buffCounterChance===undefined) player.buffCounterChance = 0;
       if(player.fateBoostChance===undefined) player.fateBoostChance = 0;
@@ -2378,7 +2455,6 @@
     document.getElementById('screen-'+id).classList.add('active');
     if(id==='explore'){
       scheduleJobAdvancementCheck();
-      scheduleAugmentCheck();
       Sound.setBgmMode('explore');
     } else if(id==='battle'){
       Sound.setBgmMode('battle');
@@ -2402,26 +2478,6 @@
       if(document.getElementById('jobadv-overlay')) return;
       showJobAdvancement();
     }, 1600);
-  }
-
-  // 10층 단위 증강 선택창도 같은 방식으로 안전하게 예약한다.
-  function scheduleAugmentCheck(){
-    if(!player || !player.augmentPendingDepth) return;
-    const atDepth = player.augmentPendingDepth;
-    if(player.augmentMilestones && player.augmentMilestones.includes(atDepth)){
-      player.augmentPendingDepth = null;
-      return;
-    }
-    setTimeout(()=>{
-      if(!player || !player.augmentPendingDepth) return;
-      if(player.augmentMilestones && player.augmentMilestones.includes(player.augmentPendingDepth)){
-        player.augmentPendingDepth = null;
-        return;
-      }
-      if(isBattleActive()) return; // 다음 탐험 화면 진입 시 다시 시도된다.
-      if(document.getElementById('augment-overlay')) return;
-      showAugmentPicker(player.augmentPendingDepth);
-    }, 1000);
   }
 
   function renderStatus(){
@@ -2617,6 +2673,7 @@
 
     const isFinalFloor = depth === 50 && !player.endingSeen;
     const isBossFloor = depth>0 && depth % 5 === 0;
+    const isRelicFloor = RELIC_ALTAR_FLOORS.includes(depth) && !(player.relicAltarsSeen||[]).includes(depth);
     const roll = Math.random();
 
     if(isFinalFloor){
@@ -2630,6 +2687,13 @@
     if(isBossFloor){
       addLog('공기가 무겁게 가라앉는다… 강력한 기척이 느껴진다!', 'warn');
       setTimeout(()=>startBattle(true), 400);
+      return;
+    }
+    if(isRelicFloor){
+      addLog('낯선 제단이 어둠 속에서 은은한 빛을 낸다…', 'gold');
+      player.relicAltarsSeen.push(depth);
+      saveGame();
+      setTimeout(()=>showRelicAltar(depth), 500);
       return;
     }
     if(roll < 0.68){
@@ -2677,7 +2741,7 @@
     overlay.id = 'shop-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
-    const discountMult = 1 - Math.min(0.5, getAugmentSum('shopDiscount'));
+    const discountMult = 1;
     const dprice = p => Math.max(1, Math.round(p*discountMult));
     const equipPool = Object.keys(EQUIPMENT).filter(id=>EQUIPMENT[id].minDepth<=depth+1);
     panel.innerHTML = `<h3>떠돌이 상인</h3>`
@@ -2873,6 +2937,10 @@
     battleOver = false; subMode = null;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, mechExplodeTriggered:false};
     checkPaladinAwoken();
+    const hpLockPct = getRelicSum('hpLockPct');
+    if(hpLockPct>0 && player.maxhp>0){
+      player.hp = Math.max(1, Math.round(player.maxhp*hpLockPct));
+    }
     showScreen('battle');
     document.getElementById('bt-ename').textContent = (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))+enemy.name;
     document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
@@ -2899,6 +2967,7 @@
     document.getElementById('cmd-sub').style.display='none';
     document.getElementById('cmd-back-row').style.display='none';
     setCommandsEnabled(true);
+    if(getRelicSum('skillLocked')>0) document.getElementById('cmd-skill').disabled = true;
   }
   function setCommandsEnabled(en){
     ['cmd-attack','cmd-skill','cmd-item','cmd-run'].forEach(id=>document.getElementById(id).disabled=!en);
@@ -2993,7 +3062,7 @@
       if(avail.length===0){ sub.innerHTML = '<div class="sub-item disabled">배운 스킬이 없다</div>'; }
       avail.forEach(k=>{
         const s = SKILLDB[k];
-        const mpCost = Math.max(0, Math.round(s.mp * (1 - Math.min(0.6, getAugmentSum('mpCostReduction')))));
+        const mpCost = s.mp;
         const canUse = player.mp>=mpCost;
         const div = document.createElement('div');
         div.className = 'sub-item'+(canUse?'':' disabled');
@@ -3028,14 +3097,14 @@
       const goldBoost = getSpecialSum('goldBoost');
       if(goldBoost>0) g = Math.round(g*(1+goldBoost));
       player.gold += g;
+      const killHealPct = getRelicSum('killHealPct');
+      if(killHealPct>0 && player.hp>0 && player.hp<player.maxhp){
+        player.hp = Math.min(player.maxhp, player.hp + Math.max(1, Math.round(player.maxhp*killHealPct)));
+      }
       const leveled = grantExp(enemy.exp);
       const isFinalKill = !!enemy.isFinal;
-      const offerAugment = !!enemy.isBoss && !isFinalKill && depth%10===0 && !player.augmentMilestones.includes(depth);
       if(leveled.includes(10) && !player.jobChosenAt10){
         player.jobAdvancePending = true;
-      }
-      if(offerAugment){
-        player.augmentPendingDepth = depth;
       }
       let rareDropId = null;
       if(!isFinalKill){
@@ -3143,7 +3212,7 @@
   function grantExp(amount){
     const job = getJob(player);
     const hybrid = getHybrid(player);
-    player.exp += Math.round(amount * (1 + getAugmentSum('expBoost')));
+    player.exp += amount;
     const levelsGained = [];
     while(player.exp >= player.expNext){
       player.exp -= player.expNext;
@@ -3271,12 +3340,6 @@
 
   function enemyTurn(){
     if(battleOver) return;
-    const regenPct = getAugmentSum('turnRegenPct');
-    if(regenPct>0 && player.hp>0 && player.hp<player.maxhp){
-      const heal = Math.max(1, Math.round(player.maxhp*regenPct));
-      player.hp = Math.min(player.maxhp, player.hp+heal);
-      renderStatus();
-    }
     const activeDots = (enemy.dots||[]).filter(d=>d.turns>0);
     if(activeDots.length){
       processDotsSequentially(activeDots, 0);
@@ -3371,15 +3434,13 @@
         if(player.buffCounterTurns <= 0){ player.buffCounterTurns = 0; player.buffCounterChance = 0; }
       }
 
-      let reduceMult = 1 - Math.min(0.7, getAugmentSum('dmgReduction'));
+      let reduceMult = 1;
       if(epicSetTier('paladin')>=2 && player.maxhp>0 && (player.hp/player.maxhp)>0.5){
         reduceMult -= 0.15;
       }
-      if(player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
-        reduceMult -= Math.min(0.6, getAugmentSum('lowHpDmgReduction'));
-      }
+      reduceMult += getRelicSum('dmgTakenPctMult');
       reduceMult = Math.max(0.15, reduceMult);
-      if(reduceMult<1) mitigated = Math.max(1, Math.round(mitigated*reduceMult));
+      if(reduceMult!==1) mitigated = Math.max(1, Math.round(mitigated*reduceMult));
 
       let extraMsg = '';
       if(mitigated >= player.hp && battleFlags && !battleFlags.guardian && hasSpecial('guardianShield')){
@@ -3493,7 +3554,7 @@
     setCommandsEnabled(false);
     const edef = getEffectiveEnemyDef(enemy.def);
     let dmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef);
-    dmg = applyOutgoingDamageAugments(dmg, {type:'basic'});
+    dmg = applyOutgoingDamageMods(dmg, {type:'basic'});
     consumeAtkBuff();
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -3506,7 +3567,7 @@
     if(enemy.hp>0 && maybeWarriorExtraHit()){
       const edef3 = getEffectiveEnemyDef(enemy.def);
       let extraDmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef3);
-      extraDmg = applyOutgoingDamageAugments(extraDmg, {type:'basic'});
+      extraDmg = applyOutgoingDamageMods(extraDmg, {type:'basic'});
       enemy.hp = Math.max(0, enemy.hp-extraDmg);
       updateEnemyHpBar(); popDamage('-'+extraDmg);
       msg2 += ` 거인강림의 힘으로 한 번 더 몰아쳐 ${extraDmg}의 추가 피해!`;
@@ -3519,7 +3580,7 @@
       setTimeout(()=>{
         const edef2 = getEffectiveEnemyDef(enemy.def);
         let dmg2 = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef2);
-        dmg2 = applyOutgoingDamageAugments(dmg2, {type:'basic'});
+        dmg2 = applyOutgoingDamageMods(dmg2, {type:'basic'});
         enemy.hp = Math.max(0, enemy.hp-dmg2);
         updateEnemyHpBar(); shakeEnemy(); spawnSlashMark(1); popDamage('-'+dmg2);
         Sound.slash();
@@ -3543,8 +3604,12 @@
 
   function playerSkill(key){
     if(battleOver) return;
+    if(getRelicSum('skillLocked')>0){
+      setBattleMsg('침묵이 목소리를 삼킨다…', '스킬을 사용할 수 없다!');
+      return;
+    }
     const s = SKILLDB[key];
-    const mpCost = Math.max(0, Math.round(s.mp * (1 - Math.min(0.6, getAugmentSum('mpCostReduction')))));
+    const mpCost = s.mp;
     if(player.mp < mpCost) return;
     setCommandsEnabled(false);
     player.mp -= mpCost;
@@ -3627,7 +3692,7 @@
         rawParts.push(Math.max(1, Math.round(atkBase*s.mult) - defFactor + Math.floor(Math.random()*3)-1));
       }
       const baseRawTotal = rawParts.reduce((a,b)=>a+b,0);
-      const boostedTotal = applyOutgoingDamageAugments(baseRawTotal, {type: magicBased?'magicskill':'physkill', mpCost});
+      const boostedTotal = applyOutgoingDamageMods(baseRawTotal, {type: magicBased?'magicskill':'physkill', mpCost});
       const mod = applySkillModifiers(boostedTotal, s);
       const scale = mod.value / baseRawTotal;
       const parts = rawParts.map(d=>Math.max(1, Math.round(d*scale)));
@@ -3663,7 +3728,7 @@
       const basisVal = atkBased ? effectiveAtk() : player.mag;
       const edef = getEffectiveEnemyDef(enemy.def);
       let dmg = Math.max(1, Math.round(basisVal*s.mult) - Math.round(edef*0.5));
-      dmg = applyOutgoingDamageAugments(dmg, {type: atkBased?'physkill':'magicskill', mpCost});
+      dmg = applyOutgoingDamageMods(dmg, {type: atkBased?'physkill':'magicskill', mpCost});
       const mod = applySkillModifiers(dmg, s);
       dmg = mod.value;
       const healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.drainRatio*epicLifestealMult()));
@@ -3700,7 +3765,7 @@
       if(success){
         const critMult = (s.critMult||2.0) + fateMult;
         let dmg = Math.max(1, Math.round(base*(s.mult||1.0)*critMult) - defMitigation);
-        dmg = applyOutgoingDamageAugments(dmg, {type: magicBased?'magicskill':'physkill', mpCost, luck:true});
+        dmg = applyOutgoingDamageMods(dmg, {type: magicBased?'magicskill':'physkill', mpCost, luck:true});
         const mod = applySkillModifiers(dmg, s);
         dmg = mod.value;
         enemy.hp = Math.max(0, enemy.hp-dmg);
@@ -3770,7 +3835,7 @@
       } else if(roll===1){
         const edef = getEffectiveEnemyDef(enemy.def);
         let dmg = Math.max(1, Math.round(effectiveAtk()*(s.dmgMult||2.4)) - edef);
-        dmg = applyOutgoingDamageAugments(dmg, {type:'physkill', mpCost});
+        dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost});
         consumeAtkBuff();
         rogueRegisterHit(true);
         enemy.hp = Math.max(0, enemy.hp-dmg);
@@ -3809,7 +3874,7 @@
         const mult = (s.mult||3.6) + fateMult;
         const edef = getEffectiveEnemyDef(enemy.def);
         let dmg = Math.max(1, Math.round(effectiveAtk()*mult) - edef) + Math.round(staked*1.5);
-        dmg = applyOutgoingDamageAugments(dmg, {type:'physkill', luck:true});
+        dmg = applyOutgoingDamageMods(dmg, {type:'physkill', luck:true});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         rogueRegisterHit(true);
@@ -3854,7 +3919,7 @@
       const defMitigation = magicBased ? Math.round(edef*0.5) : Math.round(edef*(1-(s.defPierce||0.2)));
       if(success){
         let dmg = Math.max(1, Math.round(base*mult) - defMitigation);
-        dmg = applyOutgoingDamageAugments(dmg, {type: magicBased?'magicskill':'physkill', mpCost, luck:true});
+        dmg = applyOutgoingDamageMods(dmg, {type: magicBased?'magicskill':'physkill', mpCost, luck:true});
         const mod = applySkillModifiers(dmg, s);
         dmg = mod.value;
         enemy.hp = Math.max(0, enemy.hp-dmg);
@@ -3900,7 +3965,7 @@
       ? Math.round(edef*0.5)
       : Math.round(edef*(1-(s.defPierce||0)));
     let dmg = Math.max(1, Math.round(base*s.mult) - defMitigation);
-    dmg = applyOutgoingDamageAugments(dmg, {type: s.type==='magic'?'magicskill':'physkill', mpCost});
+    dmg = applyOutgoingDamageMods(dmg, {type: s.type==='magic'?'magicskill':'physkill', mpCost});
     const mod = applySkillModifiers(dmg, s);
     dmg = mod.value;
     if(s.type==='phys') consumeAtkBuff();
@@ -3934,9 +3999,13 @@
   function playerItem(key){
     if(battleOver) return;
     if((player.inv[key]||0)<=0) return;
+    if(getRelicSum('potionLocked')>0){
+      setBattleMsg('저주가 목을 조여온다…', '물약을 마실 수 없다!');
+      return;
+    }
     setCommandsEnabled(false);
     player.inv[key]-=1;
-    const potBoost = 1 + getAugmentSum('potionBoost');
+    const potBoost = Math.max(0.2, 1 + getRelicSum('potionEffMult'));
     let msg='';
     if(key==='potion'){ const h=Math.round(40*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`물약을 마셨다. HP ${h} 회복.`; }
     else if(key==='hipotion'){ const h=Math.round(110*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`상급 물약을 마셨다. HP ${h} 회복.`; }
@@ -3952,7 +4021,7 @@
   function playerRun(){
     if(battleOver) return;
     setCommandsEnabled(false);
-    const chance = Math.min(0.95, Math.max(0.2, 0.5 + (player.spd-enemy.spd)*0.03) + getAugmentSum('fleeBonus'));
+    const chance = Math.min(0.95, Math.max(0.2, 0.5 + (player.spd-enemy.spd)*0.03));
     if(Math.random() < chance){
       battleOver = true;
       const fledFrom = depth;
