@@ -2496,8 +2496,8 @@
       type:'coinflip', mult:1.0, chance:0.5, critMult:2.0, luck:true},
     fateshift: {name:'운명 조작', mp:6,  desc:'운명의 흐름을 뒤틀어, 다음에 사용할 운 스킬(동전 던지기·도박·마지막 카드 등)의 성공 확률과 배율을 크게 끌어올린다',
       type:'fateshift', chanceBonus:0.3, multBonus:0.6},
-    wildcard: {name:'만능 조커', mp:9,  desc:'조커 카드를 뽑는다. 힘의 버프·회심의 일격·회복 중 하나가 무작위로 발동한다',
-      type:'wildcard', dmgMult:2.4, healMult:0.5},
+    wildcard: {name:'만능 조커', mp:9,  desc:'운명의 주사위를 던진다. 나온 눈(1~6)이 클수록 강력한 피해를 입힌다',
+      type:'dicecast', diceMults:[0.6,1.1,1.7,2.4,3.2,4.5], luck:true},
     gamble: {name:'도박', mp:5,  desc:'가진 MP를 모두 걸고 도박을 벌인다. 성공하면 건 MP에 비례해 폭발적인 피해를 주지만, 실패하면 반동으로 자신도 크게 다친다',
       type:'gamble', chance:0.5, mult:3.6, selfMult:2.2, luck:true},
     finalcard: {name:'마지막 카드', mp:12, desc:'체력이 낮을수록 성공률과 배율이 극단적으로 치솟는 필살의 패. 실패해도 반동은 크지 않다',
@@ -4261,45 +4261,32 @@
       return;
     }
 
-    if(s.type==='wildcard'){
-      const roll = Math.floor(Math.random()*3); // 0:버프 1:피해 2:회복
-      if(roll===0){
-        player.buffAtkTurns = 3;
-        player.buffAtkMult = 1.5;
-        renderStatus();
-        playCastBurst();
-        Sound.buff();
-        playBanner('조커 - 힘의 패!');
-        setBattleMsg(`${player.name}의 ${s.name}!`, '조커가 힘의 패를 뽑았다! 3회의 공격 동안 공격력이 크게 오른다.');
-        enemyTurn();
-        return;
-      } else if(roll===1){
-        const edef = getEffectiveEnemyDef(enemy.def);
-        let dmg = Math.max(1, Math.round(effectiveAtk()*(s.dmgMult||2.4)) - edef);
-        dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost});
-        consumeAtkBuff();
-        rogueRegisterHit(true);
-        enemy.hp = Math.max(0, enemy.hp-dmg);
-        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
-        Sound.slash();
-        playBanner('조커 - 파괴의 패!');
-        renderStatus();
-        setBattleMsg(`${player.name}의 ${s.name}!`, `조커가 파괴의 패를 뽑았다! ${enemy.name}에게 ${dmg}의 피해를 입혔다.`);
-        if(checkBattleEnd()) return;
-        enemyTurn();
-        return;
-      } else {
-        const heal = Math.round(player.maxhp*(s.healMult||0.5)*0.6 + player.mag*0.5);
-        player.hp = Math.min(player.maxhp, player.hp+heal);
-        renderStatus();
-        popDamageOnPlayerArea();
-        Sound.heal();
-        playBanner('조커 - 회복의 패!');
-        setBattleMsg(`${player.name}의 ${s.name}!`, `조커가 회복의 패를 뽑았다! HP ${heal} 회복.`);
-        if(checkBattleEnd()) return;
-        enemyTurn();
-        return;
-      }
+    if(s.type==='dicecast'){
+      const roll = 1 + Math.floor(Math.random()*6);
+      const diceMults = s.diceMults || [0.6,1.1,1.7,2.4,3.2,4.5];
+      const mult = diceMults[roll-1];
+      const epicLuck = epicLuckPre(s);
+      const edef = getEffectiveEnemyDef(enemy.def);
+      let dmg = Math.max(1, Math.round(effectiveAtk()*mult) - edef);
+      dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, luck:true});
+      consumeAtkBuff();
+      rogueRegisterHit(true);
+      const success = roll>=4;
+      epicLuckPost(success, epicLuck);
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy();
+      popDamage('-'+dmg, roll===6?'crit':undefined);
+      Sound.slash();
+      const diceFace = ['⚀','⚁','⚂','⚃','⚄','⚅'][roll-1];
+      playBanner(roll===6 ? `${diceFace} 잭팟!` : `${diceFace} 눈 ${roll}`);
+      renderStatus();
+      let msg2 = `주사위 눈이 ${roll}이(가) 나왔다! ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+      if(roll===6) msg2 = `주사위가 6을 가리켰다! 운명이 그대의 손을 들어준다! ${enemy.name}에게 ${dmg}의 짜릿한 피해를 입혔다!`;
+      else if(roll===1) msg2 = `주사위가 1... 초라한 눈이지만, 그래도 공격은 공격이다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
     }
 
     if(s.type==='gamble'){
