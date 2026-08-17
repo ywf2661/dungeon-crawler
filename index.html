@@ -325,6 +325,14 @@
   @keyframes poisonpulse{ 0%,100%{filter:drop-shadow(0 0 0 #9dd66a00);} 50%{filter:drop-shadow(0 0 16px #9dd66a99);} }
   @keyframes burnpulse{ 0%,100%{filter:drop-shadow(0 0 0 #e0793a00);} 50%{filter:drop-shadow(0 0 16px #e0793a99);} }
   @keyframes bleedpulse{ 0%,100%{filter:drop-shadow(0 0 0 #ff6a5a00);} 50%{filter:drop-shadow(0 0 14px #ff6a5a88);} }
+  .enemy-stage.elite{animation:elitepulse 1.6s ease-in-out infinite;}
+  @keyframes elitepulse{ 0%,100%{filter:drop-shadow(0 0 4px #e6c34a55);} 50%{filter:drop-shadow(0 0 22px #e6c34aee);} }
+  .elite-tag{
+    display:inline-block; font-family:'Cinzel'; font-size:10.5px; letter-spacing:.06em;
+    color:#1a130c; background:linear-gradient(180deg,#ffe9a0,#e6c34a);
+    border-radius:8px; padding:1px 7px; margin-right:6px; vertical-align:middle;
+    box-shadow:0 0 8px #e6c34a99;
+  }
 
   .cast-burst{
     position:absolute; top:50%; left:50%; width:20px; height:20px; margin:-10px 0 0 -10px;
@@ -2057,6 +2065,12 @@
   const CURSE_ALTAR_FLOORS = [9,21,33,44];
 
   // 저주를 감수할수록 보상이 커진다: 저주 1개 → 골드/드랍 +10%, 2개 이상 → +25%, 3개 이상 → 에픽 확률 추가 보너스.
+  // 저주형은 유물 슬롯을 차지하지 않는다 — 저주는 페널티 그 자체가 대가이므로,
+  // 슬롯까지 깎아먹으면 이중 페널티가 되어 저주 제단을 기피하게 만들기 때문.
+  function getRelicSlotUsage(){
+    return (player.relics||[]).filter(id=>{ const r=RELICS[id]; return r && r.type!=='curse'; }).length;
+  }
+
   function getCurseCount(){
     return (player.relics||[]).filter(id=>{ const r=RELICS[id]; return r && r.type==='curse'; }).length;
   }
@@ -2196,9 +2210,10 @@
     overlay.id = 'relic-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel relic-panel relic-panel-locked';
-    const slotNote = player.relics.length>=player.relicSlots
+    const slotUsage = getRelicSlotUsage();
+    const slotNote = slotUsage>=player.relicSlots
       ? `<p style="text-align:center;color:#ff9a7a;font-size:12px;margin:0 0 8px;">유물 슬롯(${player.relicSlots})이 가득 찼다. 새 유물을 고르면 하나를 내려놓아야 한다.</p>`
-      : `<p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:0 0 8px;">유물 슬롯 ${player.relics.length}/${player.relicSlots}</p>`;
+      : `<p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:0 0 8px;">유물 슬롯 ${slotUsage}/${player.relicSlots}</p>`;
     const skipsLeft = Math.max(0, (player.relicSkipsMax||0) - (player.relicSkipsUsed||0));
     panel.innerHTML = `<h3>✦ 유물 제단 ✦</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 6px;">세 개의 유물이 그대를 기다리고 있다. 하나를 선택하라.</p>
@@ -2242,7 +2257,7 @@
         if(btn.disabled) return;
         const id = btn.dataset.id;
         const isMystery = (i===mysteryIdx);
-        if(player.relics.length >= player.relicSlots){
+        if(getRelicSlotUsage() >= player.relicSlots){
           showRelicSwapPrompt(id, overlay, isMystery);
           return;
         }
@@ -2307,10 +2322,6 @@
     });
     panel.querySelector('#curse-accept').addEventListener('click', ()=>{
       if(panel.querySelector('#curse-accept').disabled) return;
-      if(player.relics.length >= player.relicSlots){
-        showRelicSwapPrompt(id, overlay);
-        return;
-      }
       finalizeRelicPick(id);
       overlay.remove();
     });
@@ -2496,7 +2507,7 @@
       type:'coinflip', mult:1.0, chance:0.5, critMult:2.0, luck:true},
     fateshift: {name:'운명 조작', mp:6,  desc:'운명의 흐름을 뒤틀어, 다음에 사용할 운 스킬(동전 던지기·도박·마지막 카드 등)의 성공 확률과 배율을 크게 끌어올린다',
       type:'fateshift', chanceBonus:0.3, multBonus:0.6},
-    wildcard: {name:'만능 조커', mp:9,  desc:'운명의 주사위를 던진다. 나온 눈(1~6)이 클수록 강력한 피해를 입힌다',
+    wildcard: {name:'운명의 주사위', mp:9,  desc:'운명의 주사위를 던진다. 나온 눈(1~6)이 클수록 강력한 피해를 입힌다',
       type:'dicecast', diceMults:[0.6,1.1,1.7,2.4,3.2,4.5], luck:true},
     gamble: {name:'도박', mp:5,  desc:'가진 MP를 모두 걸고 도박을 벌인다. 성공하면 건 MP에 비례해 폭발적인 피해를 주지만, 실패하면 반동으로 자신도 크게 다친다',
       type:'gamble', chance:0.5, mult:3.6, selfMult:2.2, luck:true},
@@ -2626,7 +2637,7 @@
         }).join('') + `</div>`
       : `<p style="text-align:center;color:var(--parchment-dim);font-size:13px;font-style:italic;padding:10px 0;">아직 손에 넣은 유물이 없다.</p>`;
     panel.innerHTML = `<h3>✦ 보유 중인 유물 ✦</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:-4px 0 10px;">유물 슬롯 ${held.length}/${player.relicSlots}</p>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:-4px 0 10px;">유물 슬롯 ${getRelicSlotUsage()}/${player.relicSlots} <span style="opacity:.7;">(저주는 슬롯을 차지하지 않는다)</span></p>
       ${body}
       <div style="text-align:center; margin-top:10px;"><button class="btn" id="myrelics-close">닫기</button></div>`;
     overlay.appendChild(panel);
@@ -3274,15 +3285,19 @@
     const pool = (isBoss?BOSSES:MONSTERS).filter(m=>depth>=m.minDepth);
     const base = pool[Math.floor(Math.random()*pool.length)] || (isBoss?BOSSES[0]:MONSTERS[0]);
     const scale = 1 + depth*0.06;
+    // 엘리트: 보스가 아닌 일반 몬스터 중 낮은 확률로 강화판이 등장한다. 처치 시 유물이 확정으로 주어진다.
+    const isElite = !isBoss && depth>=3 && Math.random()<0.10;
+    const eliteMult = isElite ? {hp:1.8, atk:1.35, def:1.3, reward:2.2} : {hp:1, atk:1, def:1, reward:1};
+    const skills = isElite ? base.skills.concat(['eliteFerocity']) : base.skills;
     return scaleEnemyForDifficulty({
-      type: base.type, name: base.name, isBoss,
-      maxhp: Math.round(base.hp*scale), hp: Math.round(base.hp*scale),
-      atk: Math.round(base.atk*scale*0.8 + depth*0.4),
-      def: Math.round(base.def + depth*0.15),
+      type: base.type, name: (isElite?'정예 ':'')+base.name, isBoss, isElite,
+      maxhp: Math.round(base.hp*scale*eliteMult.hp), hp: Math.round(base.hp*scale*eliteMult.hp),
+      atk: Math.round((base.atk*scale*0.8 + depth*0.4)*eliteMult.atk),
+      def: Math.round((base.def + depth*0.15)*eliteMult.def),
       spd: base.spd,
-      exp: Math.round(base.exp*(1+depth*0.08)),
-      gold: [Math.round(base.gold[0]*(1+depth*0.08)), Math.round(base.gold[1]*(1+depth*0.08))],
-      skills: base.skills, guarding:false,
+      exp: Math.round(base.exp*(1+depth*0.08)*eliteMult.reward),
+      gold: [Math.round(base.gold[0]*(1+depth*0.08)*eliteMult.reward), Math.round(base.gold[1]*(1+depth*0.08)*eliteMult.reward)],
+      skills, guarding:false,
     });
   }
 
@@ -3296,12 +3311,15 @@
       player.hp = Math.max(1, Math.round(player.maxhp*hpLockPct));
     }
     showScreen('battle');
-    document.getElementById('bt-ename').textContent = (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))+enemy.name;
+    document.getElementById('bt-ename').innerHTML =
+      (enemy.isElite ? '<span class="elite-tag">⚔ 정예</span>' : '')
+      + (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))
+      + enemy.name;
     document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
-    document.getElementById('bt-stage').className='enemy-stage';
+    document.getElementById('bt-stage').className='enemy-stage'+(enemy.isElite?' elite':'');
     updateEnemyHpBar();
     updateStatusBadges();
-    setBattleMsg(isTrueFinal ? `${enemy.name}이(가) 마침내 진정한 모습을 드러낸다!` : (isFinal ? `${enemy.name}이(가) 마침내 모습을 드러냈다!` : (isBoss ? `${enemy.name}이(가) 앞을 가로막는다!` : `${enemy.name}이(가) 나타났다!`)), '');
+    setBattleMsg(isTrueFinal ? `${enemy.name}이(가) 마침내 진정한 모습을 드러낸다!` : (isFinal ? `${enemy.name}이(가) 마침내 모습을 드러냈다!` : (isBoss ? `${enemy.name}이(가) 앞을 가로막는다!` : (enemy.isElite ? `심상치 않은 기운이 감돈다… ${enemy.name}이(가) 나타났다!` : `${enemy.name}이(가) 나타났다!`))), '');
     resetCommandUI();
     renderStatus();
   }
@@ -3514,10 +3532,14 @@
             const eitem = EPIC_EQUIPMENT[epicDropId];
             lines.push({text:`✦✦ 에픽 아이템 [${eitem.name}]을(를) 손에 넣었다! (${statsText(eitem.stats)})`, cls:'gold'});
           }
+          if(enemy.isElite){
+            lines.push({text:`⚔ 정예를 쓰러뜨린 대가로, 유물의 힘이 그대를 부른다…`, cls:'gold'});
+          }
           renderExplore(lines);
           if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
           if(rareDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[rareDropId]), 150*leveled.length + 200);
           if(epicDropId) setTimeout(()=>showEpicDropToast(EPIC_EQUIPMENT[epicDropId]), 150*leveled.length + (rareDropId?500:200));
+          if(enemy.isElite) setTimeout(()=>showRelicAltar(), 150*leveled.length + (rareDropId?500:200) + (epicDropId?500:200) + 500);
           saveGame();
         }, 1300);
       }, 500);
@@ -3842,6 +3864,7 @@
       else if(skillKey==='krakenGrip'){ dmg = Math.round(enemy.atk*1.75); label = `${enemy.name}이(가) 촉수로 온몸을 옥죈다!`; }
       else if(skillKey==='ironCrush'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
       else if(skillKey==='wraithWail'){ dmg = Math.round(enemy.atk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
+      else if(skillKey==='eliteFerocity'){ dmg = Math.round(enemy.atk*2.1); label = `${enemy.name}이(가) 정예의 위압적인 기세로 짓쳐든다!`; }
       else { dmg = enemy.atk + Math.floor(Math.random()*3)-1; }
 
       if(dmg<=0){
