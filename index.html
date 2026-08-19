@@ -2108,7 +2108,7 @@
     relic_hungryring:   {type:'contract', name:'굶주린 반지',   desc:'<span class="relic-pos">적 처치 시 HP를 회복한다.</span> <span class="relic-neg">대신 포션 회복 효율이 크게 줄어든다.</span>', effect:{killHealPct:0.10, potionEffMult:-0.5}},
     relic_hourglass:    {type:'contract', name:'죽음의 모래시계', desc:'<span class="relic-pos">전투 시작 후 3턴 안에 적을 처치하면 가한 피해가 크게 오른다.</span> <span class="relic-neg">3턴이 지나면 매 턴 최대체력의 5%만큼 피해를 입는다.</span>', effect:{turnLimitTurns:3, turnLimitDmgBonus:0.4, turnLimitPenaltyPct:0.05}},
     relic_deadledger:   {type:'contract', name:'망자의 장부',   desc:'<span class="relic-pos">적을 처치할 때마다 공격력이 영구히 오른다.</span> <span class="relic-neg">전투에서 도망치면 그동안 쌓은 보너스가 모두 사라진다.</span>', effect:{killAtkStack:true, stackAtkPerKill:1}},
-    relic_brokencompass:{type:'contract', name:'깨진 나침반',   desc:'<span class="relic-neg">현재 깊이를 알 수 없게 된다.</span> <span class="relic-pos">대신 골드와 희귀 아이템 획득 확률이 오른다.</span>', effect:{hideDepth:true, goldPctMult:0.25, rareDropPctBonus:0.03}},
+    relic_brokencompass:{type:'contract', name:'깨진 나침반',   desc:'<span class="relic-neg">현재 깊이를 알 수 없게 된다.</span> <span class="relic-pos">대신 골드와 희귀 아이템 획득 확률이 오른다.</span>', effect:{hideDepth:true, goldPctMult:0.25, rareDropPctBonus:0.03, epicDropBonus:0.25}},
 
     relic_heartlessdoll:{type:'curse', name:'심장 없는 인형', desc:'최대 HP가 절반으로 줄어든다.', effect:{maxhpPct:-0.5}},
     relic_leadfeet:     {type:'curse', name:'납으로 된 발',   desc:'속도가 크게 감소한다.', effect:{spdFlat:-8}},
@@ -3611,7 +3611,7 @@
       const hasCloverLuck = hasSpecial('rareDropBoost');
       let epicChance;
       if(enemy.isFinal) epicChance = 0.05;
-      else if(enemy.isBoss) epicChance = hasCloverLuck ? 0.50 : 0.03;
+      else if(enemy.isBoss) epicChance = hasCloverLuck ? 0.25 : 0.03;
       else epicChance = hasCloverLuck ? 0.03 : 0.005;
       epicChance += getCurseEpicBonus();
       if(Math.random() < epicChance) epicDropId = findEpicDropForDepth();
