@@ -354,6 +354,7 @@
   .fx-banner.phoenix{color:#ffb15a; border-color:#ffb15a;}
   .fx-banner.dodge{color:var(--parchment-dim); border-color:var(--parchment-dim);}
   .fx-banner.luckbad{color:#ff6a5a; border-color:#ff6a5a;}
+  .fx-banner.enrage{color:#ff4a3a; border-color:#ff4a3a; font-size:18px; text-shadow:0 0 12px #ff4a3aaa, 0 1px 3px #000;}
   @keyframes bannerpop{
     0%{opacity:0; transform:translate(-50%,8px) scale(0.8);}
     20%{opacity:1; transform:translate(-50%,0) scale(1.05);}
@@ -3383,6 +3384,47 @@
     return ids[Math.floor(Math.random()*ids.length)];
   }
 
+  // ---------- 최종보스 / 진 최종보스 페이즈(광폭화) 시스템 ----------
+  // 체력이 0이 되어도 곧바로 쓰러지지 않고, 남은 페이즈가 있으면 체력을 가득 채우며
+  // 더욱 강력해진 모습으로 다시 일어선다. 쉬움 난이도에서는 적용되지 않는다.
+  const ENRAGE_STEPS_FINAL = [
+    {atkMult:1.35, defMult:1.15, hpMult:1.15, skillChance:0.55, label:'광폭화! 잠식된 힘이 폭주한다'},
+  ];
+  const ENRAGE_STEPS_TRUE = [
+    {atkMult:1.3, defMult:1.12, hpMult:1.15, skillChance:0.55, label:'1차 각성 — 태초의 분노가 깨어난다'},
+    {atkMult:1.5, defMult:1.2,  hpMult:1.25, skillChance:0.75, label:'2차 각성 — 회랑 그 자체가 몸부림친다'},
+  ];
+  function canEnrage(e){
+    if(!e || !(e.isFinal || e.isTrueFinal)) return false;
+    if(!player || player.difficulty==='easy') return false;
+    const steps = e.isTrueFinal ? ENRAGE_STEPS_TRUE : ENRAGE_STEPS_FINAL;
+    return (e.phase||0) < steps.length;
+  }
+  function triggerEnragePhase(){
+    setCommandsEnabled(false);
+    const steps = enemy.isTrueFinal ? ENRAGE_STEPS_TRUE : ENRAGE_STEPS_FINAL;
+    const phase = enemy.phase||0;
+    const step = steps[phase];
+    enemy.phase = phase+1;
+    enemy.atk = Math.max(1, Math.round(enemy.atk*step.atkMult));
+    enemy.def = Math.max(0, Math.round(enemy.def*step.defMult));
+    enemy.maxhp = Math.round(enemy.maxhp*(step.hpMult||1));
+    enemy.hp = enemy.maxhp;
+    enemy.skillChance = step.skillChance;
+    enemy.dots = [];
+    updateEnemyHpBar();
+    updateStatusBadges();
+    document.getElementById('bt-stage').classList.remove('dying');
+    shakeEnemy();
+    playBanner(step.label, 'enrage');
+    Sound.gameOver();
+    setBattleMsg(`${enemy.name}이(가) 쓰러지지 않는다…!`, `${step.label} — 체력을 되찾고 더욱 강력해졌다!`);
+    setTimeout(()=>{
+      if(battleOver) return;
+      enemyTurn();
+    }, 1400);
+  }
+
   // 난이도에 따라 몬스터 스탯을 조금씩(보통) 또는 크게(하드코어) 강화한다.
   function getDifficultyMonsterMult(){
     const d = player && player.difficulty;
@@ -3433,6 +3475,9 @@
     // 엘리트: 보스가 아닌 일반 몬스터 중 낮은 확률로 강화판이 등장한다. 처치 시 유물이 확정으로 주어진다.
     const isElite = !isBoss && depth>=3 && Math.random()<0.10;
     const eliteMult = isElite ? {hp:1.8, atk:1.35, def:1.3, reward:2.2} : {hp:1, atk:1, def:1, reward:1};
+    // 보스소굴은 에픽/희귀 파밍을 위한 공간이므로, 여기서 잡는 보스는 골드/경험치 보상이 크게 줄어든다
+    // (드랍 확률 자체는 그대로 유지되어, 장비 파밍 목적은 그대로 살아있다).
+    const bossDenRewardMult = (isBoss && inBossDen) ? 0.35 : 1;
     const skills = isElite ? base.skills.concat(['eliteFerocity']) : base.skills;
     return scaleEnemyForDifficulty({
       type: base.type, name: (isElite?'정예 ':'')+base.name, isBoss, isElite,
@@ -3440,8 +3485,8 @@
       atk: Math.round((base.atk*scale*0.8 + depth*0.4)*eliteMult.atk),
       def: Math.round((base.def + depth*0.15)*eliteMult.def),
       spd: base.spd,
-      exp: Math.round(base.exp*(1+depth*0.08)*eliteMult.reward),
-      gold: [Math.round(base.gold[0]*(1+depth*0.08)*eliteMult.reward), Math.round(base.gold[1]*(1+depth*0.08)*eliteMult.reward)],
+      exp: Math.round(base.exp*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult),
+      gold: [Math.round(base.gold[0]*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult), Math.round(base.gold[1]*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult)],
       skills, guarding:false,
     });
   }
@@ -3612,6 +3657,10 @@
 
   function checkBattleEnd(){
     if(enemy.hp<=0){
+      if(canEnrage(enemy)){
+        triggerEnragePhase();
+        return true;
+      }
       battleOver = true;
       setCommandsEnabled(false);
       revertDiceDelta();
@@ -3779,7 +3828,10 @@
     while(player.exp >= player.expNext){
       player.exp -= player.expNext;
       player.level += 1;
-      player.expNext = Math.round(player.expNext*1.28 + 6);
+      // 20레벨 이후부터는(쉬움 제외) 레벨업에 필요한 경험치 성장률이 더 가팔라진다.
+      // 레벨업 노가다만으로 진보스/최종보스를 손쉽게 찍어누르는 것을 막기 위함이다.
+      const growthRate = (player.difficulty!=='easy' && player.level>=20) ? 1.36 : 1.28;
+      player.expNext = Math.round(player.expNext*growthRate + 6);
       player.maxhp += 9; player.maxmp += 4;
       player.atk += 2; player.def += 1; player.mag += 2; player.spd += 1;
       if(hasRelicFlag('noPostBattleHeal')){
@@ -3985,7 +4037,7 @@
   function enemyAction(){
     setTimeout(()=>{
       let skillKey = null;
-      if(enemy.skills.length && Math.random()<0.4){
+      if(enemy.skills.length && Math.random()<(enemy.skillChance||0.4)){
         skillKey = enemy.skills[Math.floor(Math.random()*enemy.skills.length)];
       }
       if(skillKey==='heal' && enemy.hp < enemy.maxhp*0.5){
