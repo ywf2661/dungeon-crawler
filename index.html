@@ -2208,14 +2208,49 @@
     return true;
   }
 
+  // 회랑자의 칼날/칼자루는 일반 유물 목록에는 절대 이름으로 등장하지 않고,
+  // ？？？ 알 수 없는 유물 자리를 골랐을 때만 확률적으로 나온다.
+  const BLADE_HILT_IDS = ['relic_blade', 'relic_hilt'];
+  const BLADE_HILT_MYSTERY_CHANCE = 0.22;
+
   function rollRelicChoices(){
-    const pool = RELIC_ALTAR_POOL.filter(id=>!player.relics.includes(id));
-    const shuffled = pool.slice();
+    const owned = player.relics||[];
+    const namedPool = RELIC_ALTAR_POOL.filter(id=> !BLADE_HILT_IDS.includes(id) && !owned.includes(id));
+    const shuffled = namedPool.slice();
     for(let i=shuffled.length-1;i>0;i--){
       const j = Math.floor(Math.random()*(i+1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    return shuffled.slice(0, 3);
+    const unclaimedBladeHilt = BLADE_HILT_IDS.filter(id=>!owned.includes(id));
+    if(!shuffled.length && !unclaimedBladeHilt.length) return {choices:[], mysteryIdx:-1};
+
+    // 이름이 보이는 두 자리 — 칼날/칼자루는 여기 절대 포함되지 않는다.
+    const named = shuffled.slice(0, 2);
+
+    // ？？？ 자리의 실제 정체를 정한다: 낮은 확률로 미획득 칼날/칼자루, 그 외에는 평범한 유물.
+    let mysteryId = null;
+    if(unclaimedBladeHilt.length && Math.random() < BLADE_HILT_MYSTERY_CHANCE){
+      mysteryId = unclaimedBladeHilt[Math.floor(Math.random()*unclaimedBladeHilt.length)];
+    } else {
+      const rest = shuffled.filter(id=>!named.includes(id));
+      const fallbackPool = rest.length ? rest : shuffled;
+      if(fallbackPool.length) mysteryId = fallbackPool[Math.floor(Math.random()*fallbackPool.length)];
+      else if(unclaimedBladeHilt.length) mysteryId = unclaimedBladeHilt[Math.floor(Math.random()*unclaimedBladeHilt.length)];
+    }
+
+    const slotIds = named.slice();
+    const mysterySlotIdx = mysteryId!==null ? slotIds.push(mysteryId)-1 : -1;
+    if(!slotIds.length) return {choices:[], mysteryIdx:-1};
+
+    // 세 자리의 순서를 섞어 ？？？가 항상 같은 칸에만 나오지 않게 한다.
+    const order = slotIds.map((_,i)=>i);
+    for(let i=order.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const choices = order.map(i=>slotIds[i]);
+    const mysteryIdx = mysterySlotIdx===-1 ? -1 : order.indexOf(mysterySlotIdx);
+    return {choices, mysteryIdx};
   }
 
   function finalizeRelicPick(id, isMystery){
@@ -2274,10 +2309,9 @@
   }
 
   function showRelicAltar(atDepth){
-    const choices = rollRelicChoices();
+    const {choices, mysteryIdx} = rollRelicChoices();
     if(!choices.length) return; // 고를 수 있는 신규 유물이 더 없다
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
-    const mysteryIdx = choices.length>=2 ? Math.floor(Math.random()*choices.length) : -1;
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'relic-overlay';
@@ -2717,6 +2751,11 @@
     if(id==='relic_revengering'){
       const armed = battleFlags && battleFlags.revengeArmed;
       return r.desc + (armed ? ' <span class="relic-pos">(다음 공격 강화 대기 중!)</span>' : '');
+    }
+    if(id==='relic_blade' || id==='relic_hilt'){
+      return r.desc + (hasBladeHiltSet()
+        ? ' <span class="relic-pos">(짝이 맞았다! 모든 스킬 피해 2배 발동 중)</span>'
+        : ' <span style="opacity:.7;">(아직 짝을 찾지 못했다 — 단독으로는 효과가 없다)</span>');
     }
     return r.desc;
   }
