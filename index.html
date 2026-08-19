@@ -3665,7 +3665,7 @@
         showScreen('gameover');
         if(player.difficulty==='hardcore'){
           document.getElementById('go-summary').textContent =
-            `깊이 ${depth}까지 도달했으나, 하드코어의 규칙에 따라 모든 것이 처음으로 되돌아간다. `
+            `깊이 ${depth}까지 도달했으나, 미궁의 알수없는 힘에 의해 모든 것이 원래대로 되돌아간다. `
             + `레벨 1, 1층부터 다시 시작한다. 그러나 손에 넣은 유물만은 그대로 남는다.`;
           const oldRelics = (player.relics||[]).slice();
           const oldRelicSlots = player.relicSlots;
