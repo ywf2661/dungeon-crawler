@@ -3326,12 +3326,12 @@
   // 회랑의 최종보스는 고정된 몬스터가 아니라, 플레이어가 고를 수 있는 6개 직업 중
   // 하나의 모습을 한 "타락한 용사"로 매번 랜덤하게 등장한다.
   const FINAL_BOSS_BY_JOB = {
-    warrior:  {name:'잠식된 전사 용사',   type:'herowarrior',  hp:250, atk:23, def:14, spd:7,  exp:600, gold:[350,450], skills:['heroWarriorSmite']},
-    mage:     {name:'잠식된 마법사 용사', type:'heromage',     hp:210, atk:26, def:9,  spd:8,  exp:600, gold:[350,450], skills:['heroMageBurst']},
-    rogue:    {name:'잠식된 도적 용사',   type:'herorogue',    hp:220, atk:24, def:10, spd:13, exp:600, gold:[350,450], skills:['heroRogueSlash']},
-    paladin:  {name:'잠식된 성기사 용사', type:'heropaladin',  hp:260, atk:20, def:16, spd:6,  exp:600, gold:[350,450], skills:['heroPaladinSmite','heal']},
-    mechanic: {name:'잠식된 메카닉 용사', type:'heromechanic', hp:230, atk:22, def:12, spd:9,  exp:600, gold:[350,450], skills:['heroMechanicBlast']},
-    jester:   {name:'잠식된 도박사 용사',   type:'herojester',   hp:215, atk:24, def:10, spd:11, exp:600, gold:[350,450], skills:['heroJesterGamble']},
+    warrior:  {name:'잠식된 전사 용사',   type:'herowarrior',  hp:320, atk:32, def:14, spd:7,  exp:600, gold:[350,450], skills:['heroWarriorSmite']},
+    mage:     {name:'잠식된 마법사 용사', type:'heromage',     hp:280, atk:38, def:9,  spd:8,  exp:600, gold:[350,450], skills:['heroMageBurst']},
+    rogue:    {name:'잠식된 도적 용사',   type:'herorogue',    hp:290, atk:35, def:10, spd:13, exp:600, gold:[350,450], skills:['heroRogueSlash']},
+    paladin:  {name:'잠식된 성기사 용사', type:'heropaladin',  hp:340, atk:29, def:16, spd:6,  exp:600, gold:[350,450], skills:['heroPaladinSmite','heal']},
+    mechanic: {name:'잠식된 메카닉 용사', type:'heromechanic', hp:310, atk:32, def:12, spd:9,  exp:600, gold:[350,450], skills:['heroMechanicBlast']},
+    jester:   {name:'잠식된 도박사 용사',   type:'herojester',   hp:285, atk:35, def:10, spd:11, exp:600, gold:[350,450], skills:['heroJesterGamble']},
   };
   // 단 한 번도 쓰러지지 않고(deathCount===0) 50층에 도달했을 때만 등장하는 진짜 최종보스.
   // 일반 최종보스(잠식된 OO 용사)보다, 그리고 여느 보스들보다도 훨씬 강하다.
