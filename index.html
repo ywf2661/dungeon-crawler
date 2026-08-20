@@ -287,6 +287,7 @@
   }
   .dmg-pop.counter{color:#8fb4e8; text-shadow:0 0 10px #000, 0 0 18px #8fb4e888;}
   .dmg-pop.crit{font-size:31px; color:#ffe08a; text-shadow:0 0 10px #000, 0 0 22px #ffe08acc;}
+  .dmg-pop.rig{color:#8fd0ff; text-shadow:0 0 10px #000, 0 0 16px #8fd0ff88; font-size:22px;}
 
   /* ---------- 스킬 / 상태이상 이펙트 ---------- */
   .slash-mark{
@@ -375,6 +376,7 @@
   .status-badge.poison{color:#9dd66a; border-color:#9dd66a88;}
   .status-badge.burn{color:var(--ember); border-color:#e0793a88;}
   .status-badge.bleed{color:#ff6a5a; border-color:#ff6a5a88;}
+  .status-badge.expose{color:#8fd0ff; border-color:#8fd0ff88;}
   @keyframes badgein{ from{opacity:0; transform:translateY(-4px) scale(0.8);} to{opacity:1; transform:translateY(0) scale(1);} }
 
   .enemy-name-bar{
@@ -1509,9 +1511,9 @@
       statMods:{maxhp:5, maxmp:4, atk:1, def:3, mag:1, spd:-3},
       skillLevels:{1:'judgment', 3:'paladinblessing', 5:'retributionoath', 7:'holylight', 10:'divinejudgment'}},
     {id:'mechanic', name:'메카닉', icon:'⚙️',
-      desc:'다양한 장치와 화합물로 여러 추가 피해를 동시에 새겨넣는 유틸리티 딜러. 홀로는 화력이 낮지만 중첩되는 상태이상으로 서서히 적을 무너뜨린다.',
+      desc:'포탑과 드론, 전투로봇을 전개해 함께 싸우는 기계공학자. 장치를 설치하고 가동하는 리듬으로 전투를 지배한다.',
       statMods:{maxhp:-4, maxmp:6, atk:0, def:-2, mag:5, spd:3},
-      skillLevels:{1:'sparkshot', 3:'causticbomb', 5:'shrapnelmine', 7:'voltaicfusion', 10:'annihilationprotocol'}},
+      skillLevels:{1:'deployturret', 3:'maintenancepulse', 5:'deploydrone', 7:'detonate', 10:'omegaunit'}},
     {id:'jester', name:'도박사', icon:'🎭',
       desc:'숫자 대신 운명을 정면으로 다루는 자. 스킬마다 성패가 갈려, 잘 풀리면 누구보다 강력하지만 그만큼 위험도 확실하다.',
       statMods:{maxhp:-2, maxmp:2, atk:1, def:-3, mag:1, spd:2},
@@ -1700,8 +1702,8 @@
       set2Name:'신성한 맹세', set2Desc:'HP 50% 이상이면 받는 피해 -15%, HP 50% 이하면 가하는 피해 +25%',
       set3Name:'최후의 심판', set3Desc:'전투 중 HP 50% 이하가 된 순간부터 피해 +50%, 흡혈 2배, 방어력 40% 관통 (HP 25% 이하 시 1회 추가로 피해 +100%)'},
     mechanic: {name:'종말기계 Mk.Ω',
-      set2Name:'과부하', set2Desc:'적에게 활성화된 상태이상 1종마다 모든 피해 +15% (최대 3종, +45%)',
-      set3Name:'세계종말 프로토콜', set3Desc:'적에게 화상·중독·출혈이 모두 걸려 있을 때, 다음 공격이 상태이상을 폭발시켜(잔여 피해의 250%) 큰 피해를 추가로 주고 피해 +80%, 방어력 50% 관통'},
+      set2Name:'과부하', set2Desc:'가동 중인 장치(포탑/드론/오메가 유닛)가 있으면 모든 피해 +20%',
+      set3Name:'세계종말 프로토콜', set3Desc:'장치가 가동 중인 동안 방어력 40% 관통. 자폭 기동 시 위력이 대폭 강화되며, 사용 즉시 새로운 포탑이 무료로 재전개된다'},
     jester:   {name:'운명의 마지막 패',
       set2Name:'판돈 상승', set2Desc:'운 스킬 성공 시 다음 운 스킬 피해 +30% (최대 2중첩, 실패 시 중첩 초기화)',
       set3Name:'세계의 마지막 카드', set3Desc:'운 스킬 성공 3회마다 다음 운 스킬 성공 확률 최소 90%, 피해 +150%, 방어력 60% 관통, 실패해도 자해 피해 없음'},
@@ -1829,11 +1831,6 @@
     const c = getEpicSetCounts()[setId] || 0;
     return c>=3 ? 3 : (c>=2 ? 2 : 0);
   }
-  function mechExplosionReady(){
-    if(!enemy || !enemy.dots) return false;
-    const types = ['burn','poison','bleed'];
-    return types.every(t=> enemy.dots.some(d=>d.type===t && d.turns>0));
-  }
   function epicLifestealMult(){
     const pt = epicSetTier('paladin');
     return (pt>=3 && battleFlags && battleFlags.paladinAwoken) ? 2 : 1;
@@ -1938,16 +1935,10 @@
       }
     }
 
-    // 메카닉 — 종말기계 Mk.Ω
+    // 메카닉 — 종말기계 Mk.Ω (가동 중인 장치가 있을 때 화력이 오른다. 자폭 기동의 강화/재전개는 detonaterig 핸들러에서 처리)
     const mct = epicSetTier('mechanic');
-    if(mct>=2 && enemy){
-      const activeTypes = new Set((enemy.dots||[]).filter(d=>d.turns>0).map(d=>d.type)).size;
-      const capped = Math.min(3, activeTypes);
-      if(capped>0) mult *= (1+capped*0.15);
-    }
-    if(mct>=3 && enemy && mechExplosionReady() && battleFlags){
-      mult *= 1.8;
-      battleFlags.mechExplodeTriggered = true;
+    if(mct>=2 && battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0){
+      mult *= mct>=3 ? 1.35 : 1.2;
     }
 
     // 도박사 — 운명의 마지막 패
@@ -1962,24 +1953,6 @@
 
     return mult;
   }
-  // 메카닉 3세트 폭발 등, 배율이 아닌 고정 추가 피해를 처리한다
-  function getEpicFlatBonus(){
-    let bonus = 0;
-    if(battleFlags && battleFlags.mechExplodeTriggered){
-      battleFlags.mechExplodeTriggered = false;
-      const types = ['burn','poison','bleed'];
-      let total = 0;
-      (enemy.dots||[]).forEach(d=>{
-        if(types.includes(d.type) && d.turns>0){
-          total += d.dmgPerTurn * d.turns;
-          d.turns = 0;
-        }
-      });
-      bonus += Math.round(total*1.6);
-      updateStatusBadges();
-    }
-    return bonus;
-  }
 
   function getEffectiveEnemyDef(base){
     let pierce = 0;
@@ -1987,8 +1960,9 @@
     if(epicSetTier('warrior')>=3 && hpRatio<=0.5) pierce += 0.3;
     if(epicSetTier('paladin')>=3 && battleFlags && battleFlags.paladinAwoken) pierce += 0.4;
     if(epicSetTier('rogue')>=3 && battleFlags && battleFlags.execReady) pierce += 0.5;
-    if(epicSetTier('mechanic')>=3 && mechExplosionReady()) pierce += 0.5;
+    if(epicSetTier('mechanic')>=3 && battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0) pierce += 0.4;
     if(epicSetTier('jester')>=3 && battleFlags && battleFlags.jackpotArmed) pierce += 0.6;
+    if(enemy && enemy.exposedTurns>0) pierce += (enemy.exposePierce||0);
     if(pierce<=0) return base;
     return Math.max(0, Math.round(base*(1-Math.min(0.9, pierce))));
   }
@@ -2040,7 +2014,6 @@
     mult *= (ctx.onHitMult||1);
     if(ctx.type!=='basic' && hasBladeHiltSet()) mult *= 2;
     let result = Math.max(1, Math.round(dmg*mult));
-    result += getEpicFlatBonus();
     return Math.max(1, result);
   }
 
@@ -2508,18 +2481,17 @@
     holylight:      {name:'신성한 빛',     mp:11, desc:'성스러운 빛으로 크게 회복한다',            type:'heal',    mult:0.8},
     divinejudgment: {name:'심판의 빛',     mp:15, desc:'신성한 빛의 심판을 내려 적을 무찌른다. 상태이상에 걸린 적일수록 더 강력하며 피해의 일부를 흡수한다',
       type:'phys',    mult:3.0, statusSynergyBonus:0.18, lifesteal:0.2},
-    // 메카닉
-    sparkshot:      {name:'스파크 샷',     mp:4,  desc:'소형 전격 장치를 발사해 적을 지지듯 태운다',
-      type:'magic',   mult:1.5, dot:{type:'burn', basis:'mag', ratio:0.28, turns:3, label:'화상'}},
-    causticbomb:    {name:'부식 폭탄',     mp:7,  desc:'부식성 화합물이 든 폭탄을 던져 적을 서서히 갈아낸다',
-      type:'magic',   mult:1.8, dot:{type:'poison', basis:'mag', ratio:0.32, turns:4, label:'중독'}},
-    shrapnelmine:   {name:'파편 지뢰',     mp:8,  desc:'파편이 튀는 소형 지뢰를 설치해 적의 발밑에서 터뜨린다',
-      type:'phys',    mult:1.6, dot:{type:'bleed', basis:'atk', ratio:0.28, turns:3, label:'출혈'}},
-    voltaicfusion:  {name:'융합 폭발',     mp:11, desc:'전격과 화합물을 동시에 터뜨려 화상과 중독을 함께 새긴다',
-      type:'magic',   mult:2.0, dots:[{type:'burn', basis:'mag', ratio:0.3, turns:3, label:'화상'}, {type:'poison', basis:'mag', ratio:0.3, turns:3, label:'중독'}]},
-    annihilationprotocol: {name:'섬멸 프로토콜', mp:16, desc:'보유한 장치를 한계까지 가동해 화상과 중독을 동시에 새긴다. 이미 상태이상이 걸려 있을수록 폭발적인 피해를 준다. 파편 지뢰의 출혈까지 함께 걸려있다면 진정한 위력을 발휘한다',
-      type:'magic',   mult:2.2, statusSynergyBonus:0.5,
-      dots:[{type:'burn', basis:'mag', ratio:0.35, turns:3, label:'화상'}, {type:'poison', basis:'mag', ratio:0.35, turns:4, label:'중독'}]},
+    // 메카닉 — 장치를 전개하고 가동하는 기계공학자 (가동 중인 장치는 최대 1개, 매 턴 자동으로 추가 피해를 준다)
+    deployturret:   {name:'자동 포탑 설치', mp:6,  desc:'소형 포탑을 설치한다. 설치와 동시에 첫 사격을 가하고, 이후 3턴간 무엇을 하든 매 턴 자동으로 사격한다. 이미 가동 중인 장치가 있다면 교체된다',
+      type:'deployrig', mult:1.0, rigKind:'turret', rigName:'자동 포탑', rigTurns:3, rigMult:0.85},
+    maintenancepulse:{name:'정비 신호', mp:6,  desc:'가동 중인 장치가 있으면 지속시간을 늘리고 사격 위력을 강화한다. 장치가 없으면 대신 2턴간 공격력이 오른다',
+      type:'rigsupport', extendTurns:2, boostMult:1.25, fallbackAtkMult:1.2, fallbackTurns:2},
+    deploydrone:    {name:'정찰 드론 투입', mp:9,  desc:'정찰 드론을 띄운다. 포탑보다 한 발 한 발은 약하지만, 3턴간 적의 급소를 표시해 받는 모든 피해가 늘어난다. 이미 가동 중인 장치가 있다면 교체된다',
+      type:'deployrig', mult:0.9, rigKind:'drone', rigName:'정찰 드론', rigTurns:3, rigMult:0.55, exposeTurns:3, exposePierce:0.25},
+    detonate:       {name:'자폭 기동', mp:7,  desc:'가동 중인 장치를 그 자리에서 폭파시켜, 남은 가동력을 한꺼번에 쏟아붓는 즉발 피해로 바꾼다. 가동 중인 장치가 없으면 예비 폭발물을 대신 투척한다',
+      type:'detonaterig', noRigMult:1.3, burstMult:2.2},
+    omegaunit:      {name:'오메가 유닛 기동', mp:15, desc:'중장갑 전투로봇을 투입한다. 투입과 동시에 강력한 첫 사격을 가하고, 이후 4턴간 매 턴 강력하게 자동 사격하며 그동안 받는 피해의 일부를 로봇이 대신 막아준다',
+      type:'deployrig', mult:1.6, rigKind:'omega', rigName:'오메가 유닛', rigTurns:4, rigMult:1.5, shieldPct:0.35},
     // 전직(하이브리드) 전용 스킬 — 직업 특색에 맞는 상태이상/특수효과 부여
     sacredflame:      {name:'신성한 화염',   mp:9,  desc:'성스러운 불꽃으로 적을 태우고, 신성한 화상을 남긴다',
       type:'magic',   mult:1.7, dot:{type:'burn', basis:'mag', ratio:0.4, turns:3, label:'신성한 화상'}},
@@ -2926,7 +2898,7 @@
     player = newPlayer(nameInput, selectedJobId, selectedDifficulty);
     depth = 0; town = true; enemy = null; battleOver = false; subMode = null;
     inBossDen = false; bossDenFloor = 0;
-    battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, mechExplodeTriggered:false, hourglassTurn:0, witchClockUsedThisTurn:false};
+    battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, rig:null};
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
@@ -3495,7 +3467,7 @@
     revertDiceDelta(); // 직전 전투의 불확실성의 주사위 효과가 남아있다면 먼저 되돌린다(안전망).
     enemy = pickEnemy(isBoss, isFinal, isTrueFinal);
     battleOver = false; subMode = null;
-    battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, mechExplodeTriggered:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null};
+    battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null};
     if(hasRelicFlag('diceRoll')) rollDiceEffectForBattle();
     checkPaladinAwoken();
     const hpLockPct = getRelicSum('hpLockPct');
@@ -3615,6 +3587,12 @@
       box.appendChild(b);
       stage.classList.add('dot-'+d.type);
     });
+    if(enemy && enemy.exposedTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge expose';
+      b.textContent = `🎯 급소 노출 ${enemy.exposedTurns}턴`;
+      box.appendChild(b);
+    }
   }
 
   function openSub(mode){
@@ -3987,10 +3965,39 @@
       }
     }
     if(battleFlags) battleFlags.witchClockUsedThisTurn = false;
+    if(battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0){
+      tickActiveRig();
+      return;
+    }
     enemyTurnReal();
+  }
+  // 가동 중인 장치(포탑/드론/오메가 유닛)가 있으면, 적의 턴이 시작되기 직전에 자동으로 한 발 쏜다.
+  function tickActiveRig(){
+    const rig = battleFlags.rig;
+    setTimeout(()=>{
+      if(battleOver) return;
+      const dmg = Math.max(1, rig.dmgPerTick);
+      enemy.hp = Math.max(0, enemy.hp - dmg);
+      updateEnemyHpBar(); popDamage('-'+dmg, 'rig');
+      Sound.hit();
+      setBattleMsg(`${rig.name}이(가) 자동으로 사격한다!`, `${dmg}의 추가 피해!`);
+      rig.turnsLeft -= 1;
+      const expired = rig.turnsLeft<=0;
+      if(expired) battleFlags.rig = null;
+      renderStatus();
+      if(checkBattleEnd()) return;
+      setTimeout(()=>{
+        if(expired){ setBattleMsg(`${rig.name}의 가동이 멈췄다.`, ''); }
+        setTimeout(()=> enemyTurnReal(), expired?500:250);
+      }, expired?250:0);
+    }, 450);
   }
   function enemyTurnReal(){
     if(battleOver) return;
+    if(enemy && enemy.exposedTurns>0){
+      enemy.exposedTurns -= 1;
+      updateStatusBadges();
+    }
     if(battleFlags){
       battleFlags.hourglassTurn = (battleFlags.hourglassTurn||0) + 1;
       const limit = getRelicSum('turnLimitTurns');
@@ -4104,6 +4111,9 @@
       let reduceMult = 1;
       if(epicSetTier('paladin')>=2 && player.maxhp>0 && (player.hp/player.maxhp)>0.5){
         reduceMult -= 0.15;
+      }
+      if(battleFlags && battleFlags.rig && battleFlags.rig.shieldPct){
+        reduceMult -= battleFlags.rig.shieldPct;
       }
       reduceMult += getRelicSum('dmgTakenPctMult');
       if(battleFlags && battleFlags.diceEffect==='dmgtaken') reduceMult += 0.3;
@@ -4324,6 +4334,87 @@
       playCastBurst('def');
       Sound.guard();
       setBattleMsg(`${player.name}은(는) 방어 태세를 취했다.`, '다음 공격의 피해가 크게 줄어든다.');
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='deployrig'){
+      const edef = getEffectiveEnemyDef(enemy.def);
+      const mechTier = epicSetTier('mechanic');
+      let tickMult = s.rigMult;
+      let turns = s.rigTurns;
+      if(mechTier>=2) tickMult *= 1.2;
+      if(mechTier>=3) turns += 1;
+      const dmgPerTick = Math.max(1, Math.round(player.mag*tickMult));
+      battleFlags.rig = {
+        kind: s.rigKind, name: s.rigName, turnsLeft: turns, dmgPerTick,
+        shieldPct: s.shieldPct||0,
+      };
+      if(s.exposeTurns){
+        enemy.exposedTurns = s.exposeTurns;
+        enemy.exposePierce = s.exposePierce||0;
+      }
+      let dmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edef*0.5));
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, s.rigKind==='omega'?'crit':undefined);
+      if(s.rigKind==='omega') Sound.bomb(); else Sound.magic();
+      renderStatus();
+      let msg2 = `${s.rigName}을(를) 전개했다! 첫 사격으로 ${dmg}의 피해를 입혔다. 이후 ${turns}턴간 자동으로 사격한다.`;
+      if(s.exposeTurns) msg2 += ' 적의 급소가 드러나 받는 피해가 늘어난다.';
+      if(s.shieldPct) msg2 += ` 가동 중엔 받는 피해의 ${Math.round(s.shieldPct*100)}%를 대신 막아준다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='rigsupport'){
+      if(battleFlags.rig && battleFlags.rig.turnsLeft>0){
+        battleFlags.rig.turnsLeft += s.extendTurns;
+        battleFlags.rig.dmgPerTick = Math.max(1, Math.round(battleFlags.rig.dmgPerTick * s.boostMult));
+        renderStatus();
+        playCastBurst('def');
+        Sound.buff();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `${battleFlags.rig.name}을(를) 정비했다. 지속시간 +${s.extendTurns}턴, 사격 위력이 강화되었다!`);
+      } else {
+        player.buffAtkTurns = s.fallbackTurns;
+        player.buffAtkMult = s.fallbackAtkMult;
+        renderStatus();
+        playCastBurst();
+        Sound.buff();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `가동 중인 장치가 없어, 대신 ${s.fallbackTurns}턴간 공격력이 오른다.`);
+      }
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='detonaterig'){
+      const edef = getEffectiveEnemyDef(enemy.def);
+      let dmg, msg2;
+      if(battleFlags.rig && battleFlags.rig.turnsLeft>0){
+        const rig = battleFlags.rig;
+        let burst = Math.round(rig.dmgPerTick * rig.turnsLeft * s.burstMult);
+        if(epicSetTier('mechanic')>=3) burst = Math.round(burst*1.4);
+        dmg = Math.max(1, burst - edef);
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+        msg2 = `${rig.name}을(를) 자폭시켰다! 남은 가동력이 한꺼번에 터지며 ${dmg}의 피해를 입혔다!`;
+        battleFlags.rig = null;
+        if(epicSetTier('mechanic')>=3){
+          battleFlags.rig = {kind:'turret', name:'자동 포탑', turnsLeft:3, dmgPerTick: Math.max(1, Math.round(player.mag*0.85*1.2))};
+          msg2 += ' 종말기계의 힘으로 새로운 포탑이 즉시 재전개된다!';
+        }
+      } else {
+        dmg = Math.max(1, Math.round(player.mag*s.noRigMult) - Math.round(edef*0.5));
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+        msg2 = `가동 중인 장치가 없어 예비 폭발물을 투척했다. ${dmg}의 피해!`;
+      }
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+      Sound.bomb();
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
       enemyTurn();
       return;
     }
