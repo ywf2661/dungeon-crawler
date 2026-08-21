@@ -1411,6 +1411,27 @@
     }catch(e){ /* ignore */ }
     return dex;
   }
+  // 패치노트 — 버전 문자열을 바꾸면 "다시 보지 않기"를 눌렀던 사람에게도 새 패치노트가 다시 뜬다.
+  const PATCHNOTE_VERSION = 'mechanic-renewal-1';
+  const PATCHNOTE_KEY = 'patchnote_dismissed';
+  async function loadDismissedPatchNote(){
+    if(!storageAvailable()) return null;
+    try{
+      if(hasArtifactStorage()){
+        const res = await window.storage.get(PATCHNOTE_KEY, false);
+        if(res && res.value) return res.value;
+      } else if(hasLocalStorage()){
+        return window.localStorage.getItem(PATCHNOTE_KEY);
+      }
+    }catch(e){ /* ignore */ }
+    return null;
+  }
+  async function dismissPatchNoteForever(){
+    try{
+      if(hasArtifactStorage()) await window.storage.set(PATCHNOTE_KEY, PATCHNOTE_VERSION, false);
+      else if(hasLocalStorage()) window.localStorage.setItem(PATCHNOTE_KEY, PATCHNOTE_VERSION);
+    }catch(e){ /* ignore */ }
+  }
   // 저장 기능에서 발생하는 예기치 못한 오류가 게임 전체를 멈추지 않도록 방지
   window.addEventListener('unhandledrejection', function(ev){
     if(ev && ev.reason){ console.warn('처리되지 않은 오류(무시됨):', ev.reason); }
@@ -1547,16 +1568,16 @@
       skills:{10:'shadowlordstrike', 13:'shadowlorddrain', 16:'shadowlordexecute'}},
     'paladin+paladin':{name:'대성기사', icon:'🛡️👑', desc:'신의 축복을 온몸에 두른 수호의 화신.',
       skills:{10:'grandpaladinsmite', 13:'grandpaladinlight', 16:'grandpaladinaegis'}},
-    // 메카닉 전직 조합 — 여러 추가 피해를 동시에 새기는 것이 핵심 테마
-    'mage+mechanic':{name:'연금기갑사', icon:'🔮⚙️', desc:'마법과 기계장치를 결합해 원소의 재앙을 다루는 발명가.',
+    // 메카닉 전직 조합 — 장치를 함께 전개해 싸운다는 것이 핵심 테마
+    'mage+mechanic':{name:'연금기갑사', icon:'🔮⚙️', desc:'원소 마력을 두른 장치를 전개해 함께 싸우는 발명가.',
       skills:{10:'alchemicshot', 13:'elementalpayload', 16:'grandinvention'}},
-    'mechanic+paladin':{name:'수호공학자', icon:'⚙️🛡️', desc:'신성한 힘과 정교한 장치를 결합해 적을 정화하며 무너뜨리는 수호자.',
+    'mechanic+paladin':{name:'수호공학자', icon:'⚙️🛡️', desc:'신성한 힘을 두른 장치가 함께 싸우고 지켜주는 수호자.',
       skills:{10:'sanctifiedgear', 13:'purgingblast', 16:'judgmentengine'}},
-    'mechanic+rogue':{name:'폭탄술사', icon:'⚙️🗡️', desc:'은밀하게 함정과 폭탄을 설치해 적을 궁지로 모는 파괴 전문가.',
+    'mechanic+rogue':{name:'폭탄술사', icon:'⚙️🗡️', desc:'은신 장치와 함정을 전개해 적을 궁지로 모는 파괴 전문가.',
       skills:{10:'trapblade', 13:'shrapnelvolley', 16:'silentdetonation'}},
-    'mechanic+warrior':{name:'기갑전사', icon:'⚙️⚔️', desc:'기계 장치를 두르고 전선에 뛰어드는 돌격형 전사.',
+    'mechanic+warrior':{name:'기갑전사', icon:'⚙️⚔️', desc:'기계 장갑을 두르고 전선에 뛰어드는 돌격형 전사.',
       skills:{10:'gearcrusher', 13:'overloadslam', 16:'demolitionstrike'}},
-    'mechanic+mechanic':{name:'종말기계', icon:'⚙️👑', desc:'모든 장치와 화합물을 완벽히 통제하는 파괴 공학의 극치.',
+    'mechanic+mechanic':{name:'종말기계', icon:'⚙️👑', desc:'모든 장치를 완벽히 통제하는 파괴 공학의 극치.',
       skills:{10:'masterworkshot', 13:'cascadingtoxin', 16:'worldenderprotocol'}},
     // 도박사 전직 조합 — 확률·베팅으로 파트너 직업의 색을 뒤섞는 것이 핵심 테마
     'jester+mage':{name:'환영술사', icon:'🎭🔮', desc:'환영과 확률을 뒤섞어 적을 현혹하는 술사.',
@@ -2546,43 +2567,44 @@
       type:'phys',    mult:1.8, lifesteal:0.3},
     grandpaladinlight:  {name:'대치유의 빛',   mp:10, desc:'축복의 빛으로 크게 회복한다',              type:'heal',    mult:0.9},
     grandpaladinaegis:  {name:'절대방어',      mp:12, desc:'4턴간 받는 피해를 압도적으로 줄인다',      type:'defbuff', turns:4, mult:0.4},
-    // 연금기갑사(마법사+메카닉)
-    alchemicshot:       {name:'연금 탄환',     mp:9,  desc:'연금술로 정제한 독성 탄환을 발사해 적을 부식시킨다',
-      type:'magic',   mult:1.8, dot:{type:'poison', basis:'mag', ratio:0.38, turns:4, label:'중독'}},
-    elementalpayload:   {name:'원소 탑재탄',   mp:11, desc:'화염과 맹독을 함께 탑재한 탄환을 발사해 두 가지 상처를 새긴다',
-      type:'magic',   mult:2.0, dots:[{type:'burn', basis:'mag', ratio:0.35, turns:3, label:'화상'}, {type:'poison', basis:'mag', ratio:0.35, turns:4, label:'중독'}]},
-    grandinvention:     {name:'대발명 가동',   mp:16, desc:'모든 발명품을 동시에 가동해 화상과 중독을 짙게 새긴다. 이미 상태이상이 걸려 있을수록 폭발적인 피해를 준다',
-      type:'magic',   mult:2.4, statusSynergyBonus:0.45,
-      dots:[{type:'burn', basis:'mag', ratio:0.5, turns:3, label:'화상'}, {type:'poison', basis:'mag', ratio:0.5, turns:4, label:'중독'}]},
-    // 수호공학자(메카닉+성기사)
-    sanctifiedgear:     {name:'신성 기어',     mp:8,  desc:'신성한 힘을 두른 기어를 내리쳐 적을 태운다',
-      type:'phys',    mult:1.7, dot:{type:'burn', basis:'mag', ratio:0.32, turns:3, label:'화상'}},
-    purgingblast:       {name:'정화 폭발',     mp:10, desc:'정화의 화합물을 터뜨려 적을 서서히 부식시킨다',
-      type:'magic',   mult:2.1, dot:{type:'poison', basis:'mag', ratio:0.4, turns:4, label:'중독'}},
-    judgmentengine:     {name:'심판의 엔진',   mp:14, desc:'신성과 기계가 융합된 엔진을 가동해 화상과 중독을 동시에 새긴다',
-      type:'phys',    mult:2.4, defPierce:0.25, dots:[{type:'burn', basis:'mag', ratio:0.4, turns:3, label:'화상'}, {type:'poison', basis:'mag', ratio:0.4, turns:4, label:'중독'}]},
-    // 폭탄술사(메카닉+도적)
-    trapblade:          {name:'함정 칼날',     mp:9,  desc:'은밀히 설치한 칼날 함정으로 적을 베어 상처를 남긴다',
-      type:'phys',    mult:1.9, dot:{type:'bleed', basis:'atk', ratio:0.32, turns:3, label:'출혈'}},
-    shrapnelvolley:     {name:'파편 연사',     mp:10, desc:'소형 파편탄을 연달아 발사해 세 번 상처를 새긴다',
-      type:'multihit',mult:0.9, hits:3, dot:{type:'bleed', basis:'atk', ratio:0.3, turns:3, label:'출혈'}},
-    silentdetonation:   {name:'침묵의 폭발',   mp:14, desc:'소리 없이 설치한 폭탄을 터뜨려 출혈과 중독을 동시에 새긴다',
-      type:'phys',    mult:2.3, defPierce:0.3, dots:[{type:'bleed', basis:'atk', ratio:0.35, turns:3, label:'출혈'}, {type:'poison', basis:'mag', ratio:0.3, turns:4, label:'중독'}]},
-    // 기갑전사(메카닉+전사)
-    gearcrusher:        {name:'기어 크러셔',   mp:8,  desc:'회전하는 기어로 적을 짓눌러 상처를 남긴다',
-      type:'phys',    mult:1.9, dot:{type:'bleed', basis:'atk', ratio:0.3, turns:3, label:'출혈'}},
-    overloadslam:       {name:'과부하 강타',   mp:10, desc:'장치를 과부하시켜 폭발적인 열기로 적을 내리찍는다',
-      type:'phys',    mult:2.2, dot:{type:'burn', basis:'mag', ratio:0.35, turns:3, label:'화상'}},
-    demolitionstrike:   {name:'해체의 일격',   mp:15, desc:'모든 화력을 집중한 필살의 일격. 상처와 화상을 동시에 새긴다',
-      type:'phys',    mult:2.7, defPierce:0.3, dots:[{type:'bleed', basis:'atk', ratio:0.35, turns:3, label:'출혈'}, {type:'burn', basis:'mag', ratio:0.35, turns:3, label:'화상'}]},
-    // 종말기계(메카닉 마스터리)
-    masterworkshot:     {name:'명공의 사격',   mp:9,  desc:'정밀하게 벼려낸 탄환으로 적을 꿰뚫고 짙은 화상을 남긴다',
-      type:'magic',   mult:1.9, dot:{type:'burn', basis:'mag', ratio:0.42, turns:3, label:'화상'}},
-    cascadingtoxin:     {name:'연쇄 맹독',     mp:11, desc:'연쇄적으로 폭발하는 맹독 장치를 살포해 중독과 출혈을 함께 새긴다',
-      type:'magic',   mult:2.2, dots:[{type:'poison', basis:'mag', ratio:0.42, turns:4, label:'중독'}, {type:'bleed', basis:'atk', ratio:0.3, turns:3, label:'출혈'}]},
-    worldenderprotocol: {name:'종말 프로토콜', mp:18, desc:'모든 장치를 극한까지 가동시켜 화상과 중독을 동시에 새긴다. 이미 상태이상이 걸려 있을수록 폭발적인 피해를 준다. 출혈까지 함께 걸려있다면 진정한 위력을 발휘한다',
-      type:'magic',   mult:2.6, statusSynergyBonus:0.55,
-      dots:[{type:'burn', basis:'mag', ratio:0.45, turns:3, label:'화상'}, {type:'poison', basis:'mag', ratio:0.45, turns:4, label:'중독'}]},
+    // 연금기갑사(마법사+메카닉) — 원소 마력을 두른 장치를 전개한다
+    alchemicshot:       {name:'원소 포탑 전개', mp:9,  desc:'원소 마력을 두른 포탑을 설치한다. 첫 사격에 화상을 남기고, 이후 3턴간 자동으로 원소탄을 사격한다',
+      type:'deployrig', mult:1.1, rigKind:'turret', rigName:'원소 포탑', rigTurns:3, rigMult:0.9,
+      dot:{type:'burn', basis:'mag', ratio:0.28, turns:3, label:'원소 화상'}},
+    elementalpayload:   {name:'원소 과충전',   mp:11, desc:'가동 중인 장치에 원소 마력을 충전해 지속시간과 위력을 강화하며, 동시에 충전탄을 발사한다. 장치가 없으면 대신 공격력이 오른다',
+      type:'rigsupport', extendTurns:2, boostMult:1.3, burstMult:1.3, fallbackAtkMult:1.2, fallbackTurns:2},
+    grandinvention:     {name:'대발명 가동',   mp:16, desc:'가동 중인 장치를 극한까지 과충전해 자폭시킨다. 폭발과 함께 짙은 화상을 남기며, 장치가 없으면 예비 폭발물을 투척한다',
+      type:'detonaterig', noRigMult:1.5, burstMult:2.4,
+      dot:{type:'burn', basis:'mag', ratio:0.5, turns:3, label:'원소 화상'}},
+    // 수호공학자(메카닉+성기사) — 신성한 힘을 두른 장치가 함께 싸우고 지켜준다
+    sanctifiedgear:     {name:'신성 포탑 전개', mp:8,  desc:'신성한 힘을 두른 포탑을 설치한다. 첫 사격의 일부를 흡수해 회복하며, 이후 3턴간 받는 피해를 소폭 막아준다',
+      type:'deployrig', mult:1.0, rigKind:'turret', rigName:'신성 포탑', rigTurns:3, rigMult:0.8, lifesteal:0.2, shieldPct:0.1},
+    purgingblast:       {name:'정화 신호',     mp:10, desc:'가동 중인 장치를 정화하여 지속시간을 늘리고, 자신의 상처도 함께 회복한다. 장치가 없으면 대신 공격력이 오른다',
+      type:'rigsupport', extendTurns:2, boostMult:1.2, healSelfRatio:0.12, fallbackAtkMult:1.2, fallbackTurns:2},
+    judgmentengine:     {name:'심판의 엔진 가동', mp:14, desc:'가동 중인 장치를 심판의 엔진으로 폭발시켜 큰 피해를 주고, 그 힘의 일부를 회복한다. 장치가 없으면 예비 폭발물을 투척한다',
+      type:'detonaterig', noRigMult:1.4, burstMult:2.2, lifesteal:0.25},
+    // 폭탄술사(메카닉+도적) — 은신 장치와 함정으로 적을 궁지로 몬다
+    trapblade:          {name:'은신 지뢰 설치', mp:9,  desc:'은밀한 지뢰를 설치한다. 첫 사격에 상처를 남기고, 이후 3턴간 자동으로 터진다',
+      type:'deployrig', mult:1.1, rigKind:'turret', rigName:'은신 지뢰', rigTurns:3, rigMult:0.95,
+      dot:{type:'bleed', basis:'atk', ratio:0.22, turns:3, label:'출혈'}},
+    shrapnelvolley:     {name:'연쇄 뇌관 삽입', mp:10, desc:'설치된 장치에 연쇄 뇌관을 추가로 심어 지속시간과 위력을 강화하며, 동시에 파편탄을 날린다. 장치가 없으면 대신 공격력이 오른다',
+      type:'rigsupport', extendTurns:2, boostMult:1.25, burstMult:1.2, fallbackAtkMult:1.25, fallbackTurns:2},
+    silentdetonation:   {name:'침묵의 폭발',   mp:14, desc:'가동 중인 장치를 소리 없이 폭파시킨다. 적의 체력이 낮을수록 위력이 폭발적으로 증가한다. 장치가 없으면 예비 폭발물을 투척한다',
+      type:'detonaterig', noRigMult:1.5, burstMult:2.3, executeThreshold:0.3, executeMult:1.6},
+    // 기갑전사(메카닉+전사) — 기계 장갑을 두르고 전선에 뛰어드는 돌격형 전사
+    gearcrusher:        {name:'기계 장갑 가동', mp:8,  desc:'자율 기계 장갑을 가동한다. 첫 격돌로 피해를 입히고, 이후 3턴간 자동으로 짓누르며, 2턴간 자신의 공격력도 함께 오른다',
+      type:'deployrig', mult:1.1, rigKind:'turret', rigName:'기계 장갑', rigTurns:3, rigMult:0.85, selfAtkBuffTurns:2, selfAtkBuffMult:1.2},
+    overloadslam:       {name:'과부하 돌격',   mp:10, desc:'가동 중인 장갑을 과부하시켜 지속시간과 위력을 강화하며, 그대로 몸을 던져 들이받는다. 장치가 없으면 대신 공격력이 오른다',
+      type:'rigsupport', extendTurns:2, boostMult:1.3, burstMult:1.3, fallbackAtkMult:1.3, fallbackTurns:2},
+    demolitionstrike:   {name:'해체의 일격',   mp:15, desc:'가동 중인 장갑의 동력을 전부 끌어내 방어를 크게 무시하는 필살의 일격을 꽂는다. 장치가 없으면 예비 폭발물을 투척한다',
+      type:'detonaterig', noRigMult:1.6, burstMult:2.4, defPierceBonus:0.3},
+    // 종말기계(메카닉 마스터리) — 모든 장치를 완벽히 통제하는 파괴 공학의 극치
+    masterworkshot:     {name:'명공의 포탑 전개', mp:9,  desc:'명공이 벼려낸 포탑을 설치한다. 첫 사격부터 강력하며, 이후 4턴간 자동으로 사격한다',
+      type:'deployrig', mult:1.3, rigKind:'turret', rigName:'명공의 포탑', rigTurns:4, rigMult:1.0},
+    cascadingtoxin:     {name:'연쇄 정비',     mp:11, desc:'가동 중인 장치를 완벽히 정비해 지속시간과 위력을 크게 강화하며, 동시에 강력한 사격을 가한다. 장치가 없으면 대신 공격력이 크게 오른다',
+      type:'rigsupport', extendTurns:3, boostMult:1.4, burstMult:1.4, fallbackAtkMult:1.35, fallbackTurns:3},
+    worldenderprotocol: {name:'종말 프로토콜', mp:18, desc:'가동 중인 장치를 세상의 끝을 상정한 위력으로 폭파시킨다. 폭발 직후 곧바로 새로운 포탑이 무료로 재전개된다. 장치가 없으면 예비 폭발물을 투척한다',
+      type:'detonaterig', noRigMult:1.8, burstMult:3.0, guaranteedRedeploy:true, redeployRigName:'명공의 포탑', redeployRigTurns:4, redeployRigMult:1.0},
     // 도박사 — 숫자 대신 운을 정면으로 다루는 고위험 고보상 직업
     coinflip: {name:'동전 던지기', mp:3,  desc:'운명의 동전을 던진다. 50% 확률로 2배의 피해를 입히고, 50% 확률로 완전히 빗나간다',
       type:'coinflip', mult:1.0, chance:0.5, critMult:2.0, luck:true},
@@ -2859,6 +2881,45 @@
       hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
       renderDifficultySelect();
     }).catch(e=>{ console.warn('기록 불러오기 실패(무시):', e); });
+
+    loadDismissedPatchNote().then(dismissedVersion=>{
+      if(dismissedVersion !== PATCHNOTE_VERSION) showPatchNoteModal();
+    }).catch(e=>{ console.warn('패치노트 상태 불러오기 실패(무시):', e); });
+  }
+
+  function showPatchNoteModal(){
+    if(document.getElementById('patchnote-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'patchnote-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `
+      <h3 style="color:var(--gold-bright);">📜 패치노트</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 12px;">⚙️ 메카닉 직업 리뉴얼</p>
+      <div style="font-size:13px; line-height:1.75; color:var(--parchment);">
+        <p style="margin:0 0 8px;">메카닉이 상태이상 위주의 화학자에서, <b style="color:var(--gold-bright);">장치를 전개해 함께 싸우는 진짜 기계공학자</b>로 새로 태어났다.</p>
+        <p style="margin:0 0 4px;"><b style="color:#8fd0ff;">⚙ 가동 중인 장치(Active Rig)</b></p>
+        <p style="margin:0 0 8px; color:var(--parchment-dim);">포탑·드론·전투로봇 중 하나를 전개하면, 이후 몇 턴간 무엇을 하든 매 턴 자동으로 추가 사격이 나간다.</p>
+        <p style="margin:0 0 4px;"><b style="color:#8fd0ff;">신규 스킬 5종</b></p>
+        <p style="margin:0 0 2px; color:var(--parchment-dim);">· 자동 포탑 설치 — 즉시 첫 사격 + 3턴 자동사격</p>
+        <p style="margin:0 0 2px; color:var(--parchment-dim);">· 정비 신호 — 장치 지속시간·위력 강화 (없으면 대체 버프)</p>
+        <p style="margin:0 0 2px; color:var(--parchment-dim);">· 정찰 드론 투입 — 적의 급소를 노출시켜 방어력 관통</p>
+        <p style="margin:0 0 2px; color:var(--parchment-dim);">· 자폭 기동 — 장치를 즉발 버스트 피해로 전환</p>
+        <p style="margin:0 0 8px; color:var(--parchment-dim);">· 오메가 유닛 기동 — 강력한 자동사격 + 피해 일부 흡수(탱킹)</p>
+        <p style="margin:0; color:var(--parchment-dim);">에픽 세트 「종말기계 Mk.Ω」도 새 장치 시스템에 맞춰 함께 조정되었다.</p>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;">
+        <button class="btn" id="patchnote-dismiss">다시 보지 않기</button>
+        <button class="btn btn-primary" id="patchnote-close">닫기</button>
+      </div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    panel.querySelector('#patchnote-close').addEventListener('click', ()=> overlay.remove());
+    panel.querySelector('#patchnote-dismiss').addEventListener('click', async ()=>{
+      await dismissPatchNoteForever();
+      overlay.remove();
+    });
   }
 
   function startGame(isContinue){
@@ -4354,15 +4415,28 @@
         enemy.exposedTurns = s.exposeTurns;
         enemy.exposePierce = s.exposePierce||0;
       }
+      if(s.selfAtkBuffTurns){
+        player.buffAtkTurns = s.selfAtkBuffTurns;
+        player.buffAtkMult = s.selfAtkBuffMult||1.15;
+      }
       let dmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edef*0.5));
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, s.rigKind==='omega'?'crit':undefined);
       if(s.rigKind==='omega') Sound.bomb(); else Sound.magic();
+      let healed = 0;
+      if(s.lifesteal){
+        healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal));
+        player.hp = Math.min(player.maxhp, player.hp+healed);
+      }
       renderStatus();
       let msg2 = `${s.rigName}을(를) 전개했다! 첫 사격으로 ${dmg}의 피해를 입혔다. 이후 ${turns}턴간 자동으로 사격한다.`;
+      const dotLabelsDeploy = applySkillDots(s);
+      if(dotLabelsDeploy) msg2 += ` ${dotLabelsDeploy} 효과 부여!`;
       if(s.exposeTurns) msg2 += ' 적의 급소가 드러나 받는 피해가 늘어난다.';
       if(s.shieldPct) msg2 += ` 가동 중엔 받는 피해의 ${Math.round(s.shieldPct*100)}%를 대신 막아준다.`;
+      if(s.selfAtkBuffTurns) msg2 += ` ${s.selfAtkBuffTurns}턴간 공격력도 함께 오른다.`;
+      if(healed>0) msg2 += ` HP ${healed} 흡수.`;
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
       enemyTurn();
@@ -4370,37 +4444,64 @@
     }
 
     if(s.type==='rigsupport'){
+      let burstDmg = 0;
+      if(s.burstMult){
+        const edefB = getEffectiveEnemyDef(enemy.def);
+        burstDmg = Math.max(1, Math.round(player.mag*s.burstMult) - Math.round(edefB*0.5));
+        burstDmg = applyOutgoingDamageMods(burstDmg, {type:'magicskill', mpCost});
+        enemy.hp = Math.max(0, enemy.hp-burstDmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+burstDmg);
+        Sound.magic();
+      }
+      let healed = 0;
+      if(s.healSelfRatio){
+        healed = Math.min(player.maxhp-player.hp, Math.round(player.maxhp*s.healSelfRatio));
+        player.hp = Math.min(player.maxhp, player.hp+healed);
+      }
       if(battleFlags.rig && battleFlags.rig.turnsLeft>0){
         battleFlags.rig.turnsLeft += s.extendTurns;
         battleFlags.rig.dmgPerTick = Math.max(1, Math.round(battleFlags.rig.dmgPerTick * s.boostMult));
         renderStatus();
         playCastBurst('def');
         Sound.buff();
-        setBattleMsg(`${player.name}의 ${s.name}!`, `${battleFlags.rig.name}을(를) 정비했다. 지속시간 +${s.extendTurns}턴, 사격 위력이 강화되었다!`);
+        let msg2 = `${battleFlags.rig.name}을(를) 정비했다. 지속시간 +${s.extendTurns}턴, 사격 위력이 강화되었다!`;
+        if(burstDmg>0) msg2 = `${enemy.name}에게 ${burstDmg}의 피해를 입혔다. `+msg2;
+        if(healed>0) msg2 += ` HP ${healed} 회복.`;
+        setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       } else {
         player.buffAtkTurns = s.fallbackTurns;
         player.buffAtkMult = s.fallbackAtkMult;
         renderStatus();
         playCastBurst();
         Sound.buff();
-        setBattleMsg(`${player.name}의 ${s.name}!`, `가동 중인 장치가 없어, 대신 ${s.fallbackTurns}턴간 공격력이 오른다.`);
+        let msg2 = `가동 중인 장치가 없어, 대신 ${s.fallbackTurns}턴간 공격력이 오른다.`;
+        if(burstDmg>0) msg2 = `${enemy.name}에게 ${burstDmg}의 피해를 입혔다. `+msg2;
+        if(healed>0) msg2 += ` HP ${healed} 회복.`;
+        setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       }
+      if(checkBattleEnd()) return;
       enemyTurn();
       return;
     }
 
     if(s.type==='detonaterig'){
-      const edef = getEffectiveEnemyDef(enemy.def);
+      const edef = Math.max(0, Math.round(getEffectiveEnemyDef(enemy.def)*(1-(s.defPierceBonus||0))));
       let dmg, msg2;
       if(battleFlags.rig && battleFlags.rig.turnsLeft>0){
         const rig = battleFlags.rig;
         let burst = Math.round(rig.dmgPerTick * rig.turnsLeft * s.burstMult);
         if(epicSetTier('mechanic')>=3) burst = Math.round(burst*1.4);
+        if(s.executeThreshold && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=s.executeThreshold){
+          burst = Math.round(burst*(s.executeMult||1.5));
+        }
         dmg = Math.max(1, burst - edef);
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
         msg2 = `${rig.name}을(를) 자폭시켰다! 남은 가동력이 한꺼번에 터지며 ${dmg}의 피해를 입혔다!`;
         battleFlags.rig = null;
-        if(epicSetTier('mechanic')>=3){
+        if(s.guaranteedRedeploy){
+          battleFlags.rig = {kind:'turret', name: s.redeployRigName||'자동 포탑', turnsLeft: s.redeployRigTurns||3, dmgPerTick: Math.max(1, Math.round(player.mag*(s.redeployRigMult||0.85)))};
+          msg2 += ` ${battleFlags.rig.name}이(가) 즉시 재전개된다!`;
+        } else if(epicSetTier('mechanic')>=3){
           battleFlags.rig = {kind:'turret', name:'자동 포탑', turnsLeft:3, dmgPerTick: Math.max(1, Math.round(player.mag*0.85*1.2))};
           msg2 += ' 종말기계의 힘으로 새로운 포탑이 즉시 재전개된다!';
         }
@@ -4412,7 +4513,15 @@
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
       Sound.bomb();
+      let healed2 = 0;
+      if(s.lifesteal){
+        healed2 = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal));
+        player.hp = Math.min(player.maxhp, player.hp+healed2);
+      }
       renderStatus();
+      const dotLabelsDet = applySkillDots(s);
+      if(dotLabelsDet) msg2 += ` ${dotLabelsDet} 효과 부여!`;
+      if(healed2>0) msg2 += ` HP ${healed2} 흡수.`;
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
       enemyTurn();
