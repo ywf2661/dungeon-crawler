@@ -233,9 +233,14 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   }
 
   function onAdvance(){
-    if(exploreAdvanceLock) return; // 연타로 인한 중복 진행 방지
+    const advBtn = document.getElementById('btn-advance');
+    if(exploreAdvanceLock || (advBtn && advBtn.disabled)) return; // 연타로 인한 중복 진행 방지
     exploreAdvanceLock = true;
-    setTimeout(()=>{ exploreAdvanceLock = false; }, 500);
+    if(advBtn) advBtn.disabled = true;
+    setTimeout(()=>{
+      exploreAdvanceLock = false;
+      if(advBtn) advBtn.disabled = false;
+    }, 500);
 
     if(inBossDen){
       proceedBossDenAdvance();
