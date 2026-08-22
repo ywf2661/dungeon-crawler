@@ -77,6 +77,51 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       player.mp -= mpCost;
     }
 
+    if(s.type==='arm'){
+      // 상시 토글형 스킬(예: 혈서) — 턴을 소모하지 않고 즉시 켜고 끈다.
+      player[s.armFlag] = !player[s.armFlag];
+      player.mp += mpCost; // 토글은 MP를 쓰지 않는다(위에서 미리 깎인 것을 되돌림)
+      renderStatus();
+      Sound.buff();
+      setBattleMsg(`${player.name}의 ${s.name}!`, player[s.armFlag]
+        ? `${s.name}이(가) 켜졌다. 다음 스킬 사용 시 HP를 태워 위력이 증폭된다.`
+        : `${s.name}이(가) 꺼졌다.`);
+      setCommandsEnabled(true);
+      return;
+    }
+
+    if(s.type==='passive'){
+      // 상시 발동형 마스터리(예: 인내) — 직접 사용해도 턴을 소모하지 않고 효과는
+      // 자동으로만 발동한다(설명만 보여줌).
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}`, `${s.desc}`);
+      setCommandsEnabled(true);
+      return;
+    }
+
+    if(s.type==='enduranceburst'){
+      const stacks = (battleFlags && battleFlags.enduranceStacks) || 0;
+      battleFlags.enduranceStacks = 0;
+      const mult = s.baseMult + s.stackMult*stacks;
+      const edef = Math.round(getEffectiveEnemyDef(enemy.def)*(1-(s.defPierce||0)));
+      const onHitMult = consumeOnHitBonuses();
+      let dmg = Math.max(1, Math.round(effectiveAtk()*mult) - edef);
+      dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, onHitMult});
+      consumeAtkBuff();
+      rogueRegisterHit(true);
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
+      Sound.slash();
+      renderStatus();
+      const msg2 = stacks>0
+        ? `쌓아온 인내(${stacks}스택)를 모두 쏟아부어 ${enemy.name}에게 ${dmg}의 강력한 피해를 입혔다!`
+        : `쌓인 인내가 없어 기본 위력으로 ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='guard'){
       player.guardingNextHit = true;
       renderStatus();
@@ -550,6 +595,17 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       ? Math.round(edef*0.5)
       : Math.round(edef*(1-(s.defPierce||0)));
     let dmg = Math.max(1, Math.round(base*s.mult) - defMitigation);
+    // 혈서(mastery_bloodpact)가 켜져 있으면, 이 스킬 한 번에 한해 HP를 태워 위력을 증폭시킨다.
+    let bloodPactMsg = '';
+    if(player.bloodPactArmed){
+      const hpCost = Math.max(1, Math.round(player.hp*0.15));
+      if(player.hp > hpCost){
+        player.hp -= hpCost;
+        dmg = Math.round(dmg*1.5);
+        bloodPactMsg = ` 혈서의 힘으로 HP ${hpCost}을(를) 태워 위력이 크게 증폭됐다!`;
+      }
+      player.bloodPactArmed = false;
+    }
     const onHitMult = consumeOnHitBonuses();
     dmg = applyOutgoingDamageMods(dmg, {type: s.type==='magic'?'magicskill':'physkill', mpCost, onHitMult});
     const mod = applySkillModifiers(dmg, s);
@@ -568,6 +624,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     renderStatus();
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
     if(mod.triggered) msg2 = '약점을 정확히 노렸다! '+msg2;
+    if(bloodPactMsg) msg2 += bloodPactMsg;
     const dotLabels3 = applySkillDots(s);
     if(dotLabels3) msg2 += ` ${dotLabels3} 효과 부여!`;
     if(healed2>0){ msg2 += ` HP ${healed2} 흡수.`; }
@@ -638,4 +695,3 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemyTurn();
     }
   }
-
