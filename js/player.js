@@ -12,7 +12,7 @@ export(전역): newPlayer
     const p = {
       name: name || '용사',
       difficulty: diff,
-      job: job.id, job2: null, jobChosenAt10:false,
+      job: job.id, job2: null, specialization: null, jobChosenAt10:false,
       level:1, exp:0, expNext:24,
       maxhp:32+m.maxhp, hp:0, maxmp:12+m.maxmp, mp:0,
       atk:7+m.atk, def:3+m.def, mag:6+m.mag, spd:6+m.spd,
@@ -32,4 +32,3 @@ export(전역): newPlayer
     p.hp = p.maxhp; p.mp = p.maxmp;
     return p;
   }
-
