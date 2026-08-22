@@ -8,8 +8,9 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
               RELICS, RELIC_ALTAR_POOL/FLOORS, CURSE_ALTAR_POOL/FLOORS, getRelicSlotUsage,
               getCurseCount / getCurseRewardMult / getCurseEpicBonus, getRelicDef,
               applyRelicEffect, removeRelic, BLADE_HILT_IDS, rollRelicChoices, finalizeRelicPick,
-              showRelicSwapPrompt, showRelicAltar, showCurseAltar, RELIC_SKIP_GOLD_COST,
-              findEquipmentForDepth, findRareDropForDepth, findEpicDropForDepth
+              showRelicSwapPrompt, showRelicAltar, showCurseAltar,
+              findEquipmentForDepth, findRareDropForDepth, findEpicDropForDepth,
+              applyMerchantSealPurchase
 의존성: player/enemy/depth(state.js), EQUIPMENT류(data/equipment.js), Sound(sound.js)
 */
 
@@ -84,17 +85,17 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     relic_mirrorshard: {type:'wild', name:'거울의 파편',     desc:'받은 피해의 10%를 공격한 적에게 그대로 반사한다.', effect:{mirrorReflectPct:0.10}},
     relic_dice:        {type:'wild', name:'불확실성의 주사위', desc:'전투 시작 시 공격력/마력/방어력/최대HP +30%, 속도 +10, 받는 피해 +30% 중 하나가 무작위로 선택되어 전투가 끝날 때까지 유지된다.', effect:{diceRoll:true}},
     relic_flask:       {type:'wild', name:'연금술사의 플라스크', desc:'포션을 사용할 때마다 다음 공격의 피해가 +20%씩 늘어난다(최대 3스택, 최대 +60%). 공격 시 스택을 모두 소모한다.', effect:{flaskPotionBoost:true}},
-    relic_infiniteclip:{type:'wild', name:'무한한 탄창',     desc:'스킬 사용 시 50% 확률로 MP를 소비하지 않는다.', effect:{freeCastChance:0.50}},
+    relic_infiniteclip:{type:'wild', name:'무한한 탄창',     desc:'스킬 사용 시 10% 확률로 MP를 소비하지 않는다.', effect:{freeCastChance:0.10}},
     relic_revengering: {type:'wild', name:'복수자의 반지',   desc:'피해를 받으면 다음 공격의 피해가 +30% 증가한다. 공격 1회로 효과가 사라진다.', effect:{revengeArmBonus:true}},
+    relic_emptysack:   {type:'wild', name:'빈 자루의 각오', desc:'물약/상급 물약/에테르가 모두 떨어지면, 벼랑 끝에 몰린 만큼 가한 피해가 크게 오른다.', effect:{emptySackDmg:true}},
+
+    relic_merchantseal:{type:'blessing', name:'상인의 그림자 인장', desc:'상점에서 아이템을 구매할 때마다 공격력이 오른다(최대 10스택, 스택당 현재 공격력의 +2%).', effect:{merchantSeal:true}},
   };
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
   const RELIC_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type!=='curse');
   const RELIC_ALTAR_FLOORS = [6,12,18,24,36,42,48];
   const CURSE_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type==='curse');
   const CURSE_ALTAR_FLOORS = [9,21,33,44];
-
-  // 유물 제단에서 "고르지 않는다"를 선택할 때 소모되는 골드. 횟수 제한 대신 골드 비용으로 대체.
-  const RELIC_SKIP_GOLD_COST = 1000;
 
   // 저주를 감수할수록 보상이 커진다: 저주 1개 → 골드/드랍 +10%, 2개 이상 → +25%, 3개 이상 → 에픽 확률 추가 보너스.
   // 저주형은 유물 슬롯을 차지하지 않는다 — 저주는 페널티 그 자체가 대가이므로,
@@ -164,7 +165,26 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     player.mp = Math.max(0, Math.min(player.mp, player.maxmp));
     player.relics.splice(idx,1);
     if(player.relicAppliedDeltas) delete player.relicAppliedDeltas[id];
+    if(id==='relic_merchantseal') player.merchantSealStack = 0;
     return true;
+  }
+
+  // 상인의 그림자 인장: 상점에서 구매할 때마다 호출된다(shop.js). 스택 최대 10, 스택당
+  // "구매 시점의 현재 공격력" 기준 +2%를 즉시 반영한다. relicAppliedDeltas에 누적 기록해
+  // 슬롯 교체로 유물을 내려놓을 때 지금까지 쌓인 보너스를 정확히 원복할 수 있게 한다.
+  function applyMerchantSealPurchase(){
+    if(!hasRelicFlag('merchantSeal')) return;
+    player.merchantSealStack = player.merchantSealStack || 0;
+    if(player.merchantSealStack >= 10) return;
+    player.merchantSealStack += 1;
+    const before = player.atk;
+    player.atk = Math.max(1, player.atk + Math.round(before*0.02));
+    const diff = player.atk - before;
+    if(diff!==0){
+      player.relicAppliedDeltas = player.relicAppliedDeltas || {};
+      const d = player.relicAppliedDeltas['relic_merchantseal'] = player.relicAppliedDeltas['relic_merchantseal'] || {};
+      d.atk = (d.atk||0) + diff;
+    }
   }
 
   // 회랑자의 칼날/칼자루는 일반 유물 목록에는 절대 이름으로 등장하지 않고,
@@ -280,7 +300,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     const slotNote = slotUsage>=player.relicSlots
       ? `<p style="text-align:center;color:#ff9a7a;font-size:12px;margin:0 0 8px;">유물 슬롯(${player.relicSlots})이 가득 찼다. 새 유물을 고르면 하나를 내려놓아야 한다.</p>`
       : `<p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:0 0 8px;">유물 슬롯 ${slotUsage}/${player.relicSlots}</p>`;
-    const canSkip = player.gold >= RELIC_SKIP_GOLD_COST;
+    const skipsLeft = Math.max(0, (player.relicSkipsMax||0) - (player.relicSkipsUsed||0));
     panel.innerHTML = `<h3>✦ 유물 제단 ✦</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 6px;">세 개의 유물이 그대를 기다리고 있다. 하나를 선택하라.</p>
       ${slotNote}
@@ -303,7 +323,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
       }).join('')}
       </div>
       <div style="text-align:center; margin-top:10px;">
-        <button class="link-btn" id="relic-skip-btn" disabled>${canSkip ? `고르지 않는다 (골드 ${RELIC_SKIP_GOLD_COST} 소모)` : `고르지 않는다 (골드 부족, ${RELIC_SKIP_GOLD_COST} 필요)`}</button>
+        <button class="link-btn" id="relic-skip-btn" disabled>${skipsLeft>0 ? `고르지 않는다 (남은 횟수 ${skipsLeft}회)` : '고르지 않는다 (더 이상 사용 불가)'}</button>
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
@@ -313,7 +333,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
       panel.classList.remove('relic-panel-locked');
       panel.querySelectorAll('.relic-card').forEach(btn=>{ btn.disabled = false; });
       const skipBtn = panel.querySelector('#relic-skip-btn');
-      if(skipBtn && canSkip) skipBtn.disabled = false;
+      if(skipBtn && skipsLeft>0) skipBtn.disabled = false;
       const msg = panel.querySelector('#relic-lock-msg');
       if(msg) msg.remove();
     }, LOCK_MS);
@@ -336,12 +356,11 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     if(skipBtn){
       skipBtn.addEventListener('click', ()=>{
         if(skipBtn.disabled) return;
-        if(player.gold < RELIC_SKIP_GOLD_COST) return;
-        player.gold -= RELIC_SKIP_GOLD_COST;
-        renderStatus();
+        if((player.relicSkipsUsed||0) >= (player.relicSkipsMax||0)) return;
+        player.relicSkipsUsed = (player.relicSkipsUsed||0) + 1;
         saveGame();
         overlay.remove();
-        addLog(`골드 ${RELIC_SKIP_GOLD_COST}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
+        addLog('제단을 뒤로하고 발길을 돌렸다.', 'warn');
       });
     }
   }
