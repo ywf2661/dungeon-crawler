@@ -22,6 +22,38 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
     if(healed>0) msg2 += ` HP ${healed} 흡수.`;
 
+    // 잔영(mastery_afterimage): 기본 공격 적중 시 25% 확률로 분신을 예약한다.
+    // 실제 추가 공격은 적의 턴이 열리기 직전(combat/enemy-turn.js의 enemyTurn())에 처리된다.
+    if(enemy.hp>0 && player.skills && player.skills.includes('mastery_afterimage') && battleFlags){
+      if(Math.random() < 0.25){
+        battleFlags.afterimagePending = true;
+        msg2 += ' 분신이 그림자 속에 어른거린다…';
+      }
+    }
+
+    // 삼중 조제(mastery_triplepoison): 기본 공격 적중 시 독 3종 중 하나가 무작위로
+    // 축적된다. 이미 3종이 모두 채워진 상태라면, 이번 공격에서 곧바로 폭발 효과가
+    // 발동해 추가 피해를 입히고 축적을 초기화한다.
+    if(enemy.hp>0 && player.skills && player.skills.includes('mastery_triplepoison') && battleFlags){
+      if(!battleFlags.triplePoison) battleFlags.triplePoison = {toxin:false, venom:false, blight:false};
+      const tp = battleFlags.triplePoison;
+      if(tp.toxin && tp.venom && tp.blight){
+        const edefP = getEffectiveEnemyDef(enemy.def);
+        const explodeDmg = Math.max(1, Math.round(effectiveAtk()*1.4) - edefP);
+        enemy.hp = Math.max(0, enemy.hp - explodeDmg);
+        updateEnemyHpBar(); popDamage('-'+explodeDmg, 'crit');
+        Sound.poisonHit();
+        tp.toxin = tp.venom = tp.blight = false;
+        msg2 += ` 삼중으로 조제된 맹독이 한꺼번에 터지며 ${explodeDmg}의 추가 피해를 입혔다!`;
+      } else {
+        const missing = ['toxin','venom','blight'].filter(k=>!tp[k]);
+        const pick = missing[Math.floor(Math.random()*missing.length)];
+        tp[pick] = true;
+        const filled = ['toxin','venom','blight'].filter(k=>tp[k]).length;
+        msg2 += ` 맹독이 축적됐다(${filled}/3).`;
+      }
+    }
+
     if(enemy.hp>0 && maybeWarriorExtraHit()){
       const edef3 = getEffectiveEnemyDef(enemy.def);
       let extraDmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef3);
@@ -96,6 +128,29 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}`, `${s.desc}`);
       setCommandsEnabled(true);
+      return;
+    }
+
+    if(s.type==='catalyst'){
+      // 촉매 주입(rogueCatalyst): 부족한 맹독 중 하나를 즉시 채운다(무작위 — 위 SKILLDB
+      // 주석 참고). 세 종류가 이미 모두 채워져 있으면 폭발 없이 안내만 표시한다.
+      if(!battleFlags.triplePoison) battleFlags.triplePoison = {toxin:false, venom:false, blight:false};
+      const tp = battleFlags.triplePoison;
+      const missing = ['toxin','venom','blight'].filter(k=>!tp[k]);
+      let msg2;
+      if(missing.length){
+        const pick = missing[Math.floor(Math.random()*missing.length)];
+        tp[pick] = true;
+        const filled = ['toxin','venom','blight'].filter(k=>tp[k]).length;
+        msg2 = `촉매를 주입해 맹독이 즉시 축적됐다(${filled}/3).`;
+      } else {
+        msg2 = '이미 세 가지 맹독이 모두 준비되어 있다. 다음 기본 공격에서 자동으로 폭발한다!';
+      }
+      renderStatus();
+      playCastBurst('def');
+      Sound.buff();
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      enemyTurn();
       return;
     }
 
