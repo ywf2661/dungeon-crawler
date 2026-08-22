@@ -13,7 +13,7 @@ export(전역): renderRecords, getRelicDisplayDesc, showMyRelics
     box.innerHTML = '';
     records.slice().reverse().forEach(r=>{
       const row = document.createElement('div');
-      row.className = 'record-row';
+      row.className = 'record-row' + (r.trueEnding ? ' flawless' : '');
       const left = document.createElement('span');
       left.className = 'rec-name';
       left.textContent = r.name;
@@ -25,6 +25,15 @@ export(전역): renderRecords, getRelicDisplayDesc, showMyRelics
       stat.className = 'rec-stat';
       stat.textContent = `${diffLabel} · Lv.${r.level} · 사망 ${r.deathCount}회`;
       row.appendChild(left); row.appendChild(job); row.appendChild(stat);
+      if(r.trueEnding){
+        const badge = document.createElement('span');
+        badge.className = 'rec-flawless-badge';
+        badge.style.color = 'var(--gold-bright)';
+        badge.style.marginLeft = '6px';
+        badge.title = '한 번도 쓰러지지 않고 진 최종보스를 물리쳤다';
+        badge.textContent = '👑 무결';
+        row.appendChild(badge);
+      }
       box.appendChild(row);
     });
   }
