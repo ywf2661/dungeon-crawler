@@ -142,6 +142,14 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     enemy = pickEnemy(isBoss, isFinal, isTrueFinal);
     battleOver = false; subMode = null;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null};
+    battleFlags.creed = null; battleFlags.creedStacks = 0;
+    // 계율(mastery_creed): 전투 시작 시 두 계율 중 하나를 무작위로 자동 선택한다(선택 UI가
+    // 없어 단순화 — 계약술사/촉매 주입과 동일한 종류의 설계 타협).
+    let creedLabel = '';
+    if(player.skills && player.skills.includes('mastery_creed')){
+      battleFlags.creed = Math.random()<0.5 ? 'nopotion' : 'skillonly';
+      creedLabel = battleFlags.creed==='nopotion' ? '물약 사용 금지' : '기본 공격 금지(스킬만 사용)';
+    }
     if(hasRelicFlag('diceRoll')) rollDiceEffectForBattle();
     checkPaladinAwoken();
     const hpLockPct = getRelicSum('hpLockPct');
@@ -163,5 +171,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // 불확실성의 주사위: 전투 시작 시 어떤 효과가 뽑혔는지 토스트로 알려준다.
     if(battleFlags.diceEffect){
       showToast(`<h3>🎲 불확실성의 주사위</h3><p>${DICE_EFFECT_LABELS[battleFlags.diceEffect]}</p>`, '#ffcf6a');
+    }
+    if(battleFlags.creed){
+      showToast(`<h3>📜 계율</h3><p>이번 전투의 계율: <b>${creedLabel}</b><br>유지할수록 공격력이 오르고, 어기면 즉시 상실한다.</p>`, '#d9c07a');
     }
   }
