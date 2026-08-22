@@ -262,4 +262,29 @@ export(전역): SKILLDB
     // 안내 메시지만 표시하고 턴은 그대로 소모한다.
     rogueCatalyst: {name:'촉매 주입', mp:4, type:'catalyst',
       desc:'부족한 맹독 중 하나를 즉시 채운다(무작위). 세 종류가 이미 모두 채워져 있으면 다음 기본 공격에서 자동으로 폭발한다.'},
+
+    // 성기사 - 순교자(paladin_martyr)
+    // 마스터리 "희생의 맹세": 혈서(mastery_bloodpact)와 동일한 상시 토글형(arm) 스킬이다.
+    // 다만 혈서는 이번 전투에서만 유효한 임시 위력 증폭인 반면, 희생의 맹세는 실제로
+    // player.maxhp/player.atk를 영구히 바꾼다(세이브에도 그대로 반영될 것으로 예상되나,
+    // storage.js를 열어 실제 저장/복원까지 확인하지는 않았다 — player 객체 필드를 직접
+    // 바꾸는 것뿐이라 별도 저장 로직 추가는 필요 없을 것으로 보임). 범위를 좁히기 위해
+    // 액티브 스킬(심판의 빛)을 사용할 때만 발동하도록 한정했다(player-actions.js 하단
+    // 범용 phys/magic 분기 참고 — 혈서처럼 모든 스킬에 걸리지 않고 이 스킬 하나에만 걸림).
+    mastery_martyrvow: {name:'희생의 맹세', mp:0, type:'arm', armFlag:'martyrVowArmed',
+      desc:'다음 심판의 빛 사용 시 최대HP 8%를 영구히 깎는 대신 공격력을 영구히 3 올릴지 여부를 켜고 끈다.'},
+    paladinJudgmentLight: {name:'심판의 빛', mp:7, desc:'적을 강타하고 그 힘의 일부로 소량 회복한다. 희생의 맹세가 켜져 있다면 최대HP를 영구히 깎는 대신 영구히 강해진다',
+      type:'phys', mult:1.6, lifesteal:0.2},
+
+    // 성기사 - 계율의 파수꾼(paladin_creed)
+    // 마스터리 "계율": 전투 시작 시 두 계율(물약 사용 금지 / 기본 공격 금지) 중 하나를
+    // 무작위로 자동 선택한다(combat/battle-setup.js의 startBattle() — 원 기획은 "스스로
+    // 선택"이지만 선택 UI가 없어 무작위 자동 선택으로 단순화했다. 계약술사/촉매 주입과
+    // 동일한 종류의 설계 타협). 계율을 지키는 행동을 할 때마다(player-actions.js) 스택이
+    // 쌓여 공격력이 오르고(combat/enemy-turn.js의 effectiveAtk), 어기는 순간 스택이 즉시
+    // 0으로 초기화된다.
+    mastery_creed: {name:'계율', mp:0, type:'passive',
+      desc:'전투 시작 시 계율(물약 사용 금지 또는 기본 공격 금지)을 자동으로 선택한다. 지킬수록 공격력이 오르고(스택당 +5%, 최대 +25%), 어기면 즉시 상실한다.'},
+    paladinBlessedWall: {name:'축복의 벽', mp:8, desc:'몇 턴간 자신을 감싸는 보호막을 둘러 받는 피해를 크게 줄인다',
+      type:'defbuff', turns:3, mult:0.55},
   };
