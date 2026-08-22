@@ -2,7 +2,8 @@
 /*
 난이도 선택 데이터 및 UI 렌더.
 export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlocked,
-              isDifficultyUnlocked, showToast, renderDifficultySelect
+              easyFlawless, normalFlawless, hardcoreFlawless, isDifficultyUnlocked,
+              isDifficultyFlawless, showToast, renderDifficultySelect
 의존성: 없음(단, showToast는 다른 여러 모듈에서 범용 토스트 함수로 재사용됨)
 */
 
@@ -20,11 +21,22 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
   let selectedDifficulty = 'easy';
   let normalUnlocked = false;
   let hardcoreUnlocked = false;
+  // 죽지 않고 진 최종보스(무결 엔딩)를 본 적이 있는 난이도인지 — 난이도별로 따로 기록된다.
+  // bootstrap.js가 기록(records)을 불러온 뒤 계산해서 여기에 채워 넣는다.
+  let easyFlawless = false;
+  let normalFlawless = false;
+  let hardcoreFlawless = false;
 
   function isDifficultyUnlocked(id){
     if(id==='easy') return true;
     if(id==='normal') return normalUnlocked;
     if(id==='hardcore') return hardcoreUnlocked;
+    return false;
+  }
+  function isDifficultyFlawless(id){
+    if(id==='easy') return easyFlawless;
+    if(id==='normal') return normalFlawless;
+    if(id==='hardcore') return hardcoreFlawless;
     return false;
   }
   function showToast(html, borderColor){
@@ -40,8 +52,10 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
     if(!wrap) return;
     wrap.innerHTML = DIFFICULTIES.map(d=>{
       const unlocked = isDifficultyUnlocked(d.id);
-      return `<div class="diff-card type-${d.id}${d.id===selectedDifficulty?' selected':''}${unlocked?'':' locked'}" data-diff="${d.id}">
-        <div class="di-name">${unlocked?'':'🔒 '}${d.name}</div>
+      const flawless = isDifficultyFlawless(d.id);
+      const flawlessMark = flawless ? `<span class="di-flawless" title="이 난이도에서 한 번도 쓰러지지 않고 진 최종보스를 물리쳤다">👑</span> ` : '';
+      return `<div class="diff-card type-${d.id}${d.id===selectedDifficulty?' selected':''}${unlocked?'':' locked'}${flawless?' flawless':''}" data-diff="${d.id}">
+        <div class="di-name">${unlocked?'':'🔒 '}${flawlessMark}${d.name}</div>
         <div class="di-desc">${d.desc}</div>
       </div>`;
     }).join('');
@@ -58,4 +72,3 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
       });
     });
   }
-
