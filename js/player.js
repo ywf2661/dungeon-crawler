@@ -25,7 +25,7 @@ export(전역): newPlayer
       fateBoostChance:0, fateBoostMult:0,
       equipment:{weapon:null, armor:null, accessory:null},
       equipOwned:[],
-      relics:[], relicSlots: diff==='hardcore'?4:2, relicAltarsSeen:[], curseAltarsSeen:[], relicSkipsUsed:0, relicSkipsMax:2, ledgerStack:0, relicAppliedDeltas:{},
+      relics:[], relicSlots: diff==='hardcore'?4:(diff==='normal'?3:2), relicAltarsSeen:[], curseAltarsSeen:[], relicSkipsUsed:0, relicSkipsMax:2, ledgerStack:0, relicAppliedDeltas:{},
       candleUsed:false, diceDelta:null,
       endingSeen:false, deathCount:0,
     };
