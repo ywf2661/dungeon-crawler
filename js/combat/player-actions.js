@@ -9,6 +9,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   function playerAttack(){
     if(battleOver) return;
     setCommandsEnabled(false);
+    // 계율(mastery_creed): '기본 공격 금지' 계율 중이면 기본 공격이 위반이다.
+    // '물약 금지' 계율 중이면 기본 공격은 계율을 지킨 것이므로 스택이 오른다.
+    let creedMsg = '';
+    if(battleFlags && battleFlags.creed==='skillonly'){
+      if(battleFlags.creedStacks>0) creedMsg = ' 계율을 어겼다! 쌓인 버프가 즉시 사라졌다.';
+      battleFlags.creedStacks = 0;
+    } else if(battleFlags && battleFlags.creed==='nopotion'){
+      battleFlags.creedStacks = Math.min(5, (battleFlags.creedStacks||0)+1);
+    }
     const onHitMult = consumeOnHitBonuses();
     const edef = getEffectiveEnemyDef(enemy.def);
     let dmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef);
@@ -21,6 +30,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     rogueRegisterHit(true);
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
     if(healed>0) msg2 += ` HP ${healed} 흡수.`;
+    if(creedMsg) msg2 += creedMsg;
 
     // 잔영(mastery_afterimage): 기본 공격 적중 시 25% 확률로 분신을 예약한다.
     // 실제 추가 공격은 적의 턴이 열리기 직전(combat/enemy-turn.js의 enemyTurn())에 처리된다.
@@ -162,6 +172,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       setBattleMsg(`${player.name}의 ${s.name}!`, '시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다!');
       resetCommandUI();
       return;
+    }
+
+    // 계율(mastery_creed): 스킬 사용은 두 계율 모두에 대해 위반이 아니므로 스택이 오른다.
+    if(battleFlags && battleFlags.creed){
+      battleFlags.creedStacks = Math.min(5, (battleFlags.creedStacks||0)+1);
     }
 
     if(s.type==='enduranceburst'){
@@ -689,6 +704,20 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       player.bloodPactArmed = false;
     }
+    // 희생의 맹세(mastery_martyrvow): 성기사의 액티브 스킬(심판의 빛)을 사용할 때만
+    // 발동한다(혈서와 달리 모든 스킬이 아니라 "특정 스킬"에 한정 — JOB_SPECIALIZATIONS
+    // 설명 그대로). 최대HP를 영구히 깎는 대신 공격력을 영구히 올린다.
+    let martyrVowMsg = '';
+    if(key==='paladinJudgmentLight' && player.martyrVowArmed){
+      const hpLoss = Math.max(1, Math.round(player.maxhp*0.08));
+      if(player.maxhp > hpLoss + 10){
+        player.maxhp -= hpLoss;
+        player.hp = Math.min(player.hp, player.maxhp);
+        player.atk += 3;
+        martyrVowMsg = ` 순교자의 맹세로 최대HP ${hpLoss}을(를) 영구히 바쳐 공격력이 영구히 3 올랐다!`;
+      }
+      player.martyrVowArmed = false;
+    }
     const onHitMult = consumeOnHitBonuses();
     dmg = applyOutgoingDamageMods(dmg, {type: s.type==='magic'?'magicskill':'physkill', mpCost, onHitMult});
     const mod = applySkillModifiers(dmg, s);
@@ -708,6 +737,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
     if(mod.triggered) msg2 = '약점을 정확히 노렸다! '+msg2;
     if(bloodPactMsg) msg2 += bloodPactMsg;
+    if(martyrVowMsg) msg2 += martyrVowMsg;
     if(elementMsg) msg2 += elementMsg;
     const dotLabels3 = applySkillDots(s);
     if(dotLabels3) msg2 += ` ${dotLabels3} 효과 부여!`;
@@ -731,6 +761,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
     setCommandsEnabled(false);
+    // 계율(mastery_creed): '물약 금지' 계율 중이면 물약 사용이 위반이다.
+    // '기본 공격 금지' 계율 중이면 물약 사용은 계율을 지킨 것이므로 스택이 오른다.
+    let creedMsg = '';
+    if(battleFlags && battleFlags.creed==='nopotion'){
+      if(battleFlags.creedStacks>0) creedMsg = ' 계율을 어겼다! 쌓인 버프가 즉시 사라졌다.';
+      battleFlags.creedStacks = 0;
+    } else if(battleFlags && battleFlags.creed==='skillonly'){
+      battleFlags.creedStacks = Math.min(5, (battleFlags.creedStacks||0)+1);
+    }
     player.inv[key]-=1;
     const potBoost = Math.max(0.2, 1 + getRelicSum('potionEffMult'));
     let msg='';
@@ -741,6 +780,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.flaskStacks = Math.min(3, (battleFlags.flaskStacks||0)+1);
       msg += ` (다음 공격 피해 +${battleFlags.flaskStacks*20}%)`;
     }
+    if(creedMsg) msg += creedMsg;
     renderStatus();
     popDamage('+','heal');
     Sound.potion();
