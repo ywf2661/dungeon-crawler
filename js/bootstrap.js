@@ -48,13 +48,13 @@ export(전역): init, showPatchNoteModal
     });
     document.getElementById('btn-ending-title').addEventListener('click', async ()=>{
       const job = getJob(player);
-      const hybrid = getHybrid(player);
-      const jobLabel = hybrid ? `${hybrid.icon} ${hybrid.name}` : `${job.icon} ${job.name}`;
+      const spec = getSpecialization(player);
+      const hybrid = !spec ? getHybrid(player) : null; // 레거시 하이브리드 과도기 캐릭터용 폴백
+      const jobLabel = spec ? `${spec.icon} ${spec.name}` : (hybrid ? `${hybrid.icon} ${hybrid.name}` : `${job.icon} ${job.name}`);
       const record = {
         name: player.name, jobLabel, level: player.level,
         deathCount: player.deathCount||0, ts: Date.now(),
         difficulty: player.difficulty||'easy',
-        trueEnding: !!player.trueEndingSeen,
       };
       await addRecord(record);
       await deleteSave();
@@ -68,9 +68,6 @@ export(전역): init, showPatchNoteModal
         renderRecords(records);
         normalUnlocked = records.length > 0;
         hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
-        easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding);
-        normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding);
-        hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding);
         renderDifficultySelect();
       });
     });
@@ -92,8 +89,9 @@ export(전역): init, showPatchNoteModal
       if(saved && saved.player){
         window.__savedGame = saved;
         const savedJob = getJob(saved.player);
-        const savedHybrid = getHybrid(saved.player);
-        const jobLabel = savedHybrid ? `${savedHybrid.icon} ${savedHybrid.name}` : `${savedJob.icon} ${savedJob.name}`;
+        const savedSpec = getSpecialization(saved.player);
+        const savedHybrid = !savedSpec ? getHybrid(saved.player) : null; // 레거시 하이브리드 과도기 캐릭터용 폴백
+        const jobLabel = savedSpec ? `${savedSpec.icon} ${savedSpec.name}` : (savedHybrid ? `${savedHybrid.icon} ${savedHybrid.name}` : `${savedJob.icon} ${savedJob.name}`);
         document.getElementById('continue-info').textContent =
           `${saved.player.name} · ${jobLabel} · Lv.${saved.player.level} · ${saved.town?'마을':'깊이 '+saved.depth}`;
         document.getElementById('continue-info').style.display='block';
@@ -106,9 +104,6 @@ export(전역): init, showPatchNoteModal
       renderRecords(records);
       normalUnlocked = records.length > 0;
       hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
-      easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding);
-      normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding);
-      hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding);
       renderDifficultySelect();
     }).catch(e=>{ console.warn('기록 불러오기 실패(무시):', e); });
 
