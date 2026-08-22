@@ -51,7 +51,10 @@ export(전역): renderRecords, getRelicDisplayDesc, showMyRelics
       const row = document.createElement('div');
       row.className = 'relicdex-row' + (found?'':' locked');
       if(found){
-        row.innerHTML = `<span style="color:var(--gold-bright); font-family:'Cinzel';">${r.name}</span><span>${typeLabel[r.type]}</span>`;
+        row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:var(--gold-bright); font-family:'Cinzel';">${r.name}</span><span>${typeLabel[r.type]}</span>
+          </div>
+          <div class="relic-desc" style="margin-top:3px;">${r.desc}</div>`;
       } else {
         row.innerHTML = `<span>？？？</span><span>🔒</span>`;
       }
