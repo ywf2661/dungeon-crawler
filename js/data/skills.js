@@ -193,5 +193,22 @@ export(전역): SKILLDB
       type:'fateshift', chanceBonus:0.45, multBonus:0.9},
     ultimategamble: {name:'궁극의 패', mp:16, desc:'체력이 낮을수록 성공률과 배율이 극단으로 치솟는, 운명 그 자체의 패. 실패해도 반동은 미미하다',
       type:'finalcard', baseChance:0.45, maxChance:0.99, baseMult:2.6, maxMult:7.5, defPierce:0.25, failSelfRatio:0.05},
-  };
 
+    // ---------- 전직 2차 세분화(JOB_SPECIALIZATIONS) ----------
+    // 전사 - 혈맹의 검투사(warrior_bloodpact)
+    // 마스터리 "혈서": 액티브 스킬이 아니라 상시 켜고 끄는 토글(player-actions.js).
+    // 켜두면 다음 스킬 사용 시 HP를 태워 위력을 증폭시키고, HP가 낮을수록 회피율도
+    // 오른다(combat/enemy-turn.js의 getBloodPactDodgeBonus).
+    mastery_bloodpact: {name:'혈서', mp:0, type:'arm', armFlag:'bloodPactArmed',
+      desc:'다음 스킬 사용 시 HP 15%를 태워 위력을 크게 증폭시킬지 여부를 켜고 끈다. HP가 낮을수록 회피율도 오른다.'},
+    warriorBloodpactActive: {name:'저돌', mp:6, desc:'앞뒤 재지 않고 돌진해 벤다. 체력이 낮을수록 위력이 크게 오른다',
+      type:'phys', mult:1.6, selfHpBonusMax:0.9},
+
+    // 전사 - 인내의 파훼자(warrior_endurance)
+    // 마스터리 "인내": 실제로 HP 피해를 입을 때마다 battleFlags.enduranceStacks가
+    // 자동으로 쌓인다(combat/enemy-turn.js). 액티브(파훼일격)로 전부 소모한다.
+    mastery_endurance: {name:'인내', mp:0, type:'passive',
+      desc:'피격당할 때마다 자동으로 "인내" 스택을 얻는다(전투 중에만 유지).'},
+    warriorEnduranceActive: {name:'파훼일격', mp:5, desc:'그동안 쌓아온 인내 스택을 모두 소모해, 쌓인 만큼 강력한 필살기를 꽂는다. 스택이 없으면 위력이 크게 줄어든다',
+      type:'enduranceburst', baseMult:1.2, stackMult:0.35, defPierce:0.2},
+  };
