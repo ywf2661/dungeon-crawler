@@ -7,14 +7,14 @@
 export(전역): getWitchClockExtraChance, enemyTurn, tickActiveRig, enemyTurnReal,
               processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
-              getBloodPactDodgeBonus
+              getBloodPactDodgeBonus, getTimeWarpExtraChance
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
 */
 
   function enemyTurn(){
     if(battleOver) return;
     if(battleFlags && !battleFlags.witchClockUsedThisTurn){
-      const chance = getWitchClockExtraChance();
+      const chance = getWitchClockExtraChance() + getTimeWarpExtraChance();
       if(chance>0 && Math.random()<chance){
         battleFlags.witchClockUsedThisTurn = true;
         resetCommandUI();
@@ -328,4 +328,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, tickActiveRig, enemyTurnRea
     if(!player.maxhp) return 0;
     const missingRatio = 1 - (player.hp/player.maxhp);
     return missingRatio * 0.35;
+  }
+  // 시간 왜곡(mastery_timewarp): 마녀의 시계 유물과 동일한 "이번 턴 이미 사용함" 안전
+  // 장치(battleFlags.witchClockUsedThisTurn)를 공유하는 고정 20% 확률 추가 행동.
+  function getTimeWarpExtraChance(){
+    if(!(player.skills && player.skills.includes('mastery_timewarp'))) return 0;
+    return 0.20;
   }
