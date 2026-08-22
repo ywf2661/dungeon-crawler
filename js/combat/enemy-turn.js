@@ -7,7 +7,7 @@
 export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, tickActiveRig,
               enemyTurnReal, processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
-              getBloodPactDodgeBonus, getTimeWarpExtraChance
+              getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
 */
 
@@ -342,6 +342,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function effectiveAtk(){
     let a = player.atk;
     if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
+    a = Math.round(a * (1 + getCreedAtkBonus()));
     return a;
   }
   function consumeAtkBuff(){
@@ -362,4 +363,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function getTimeWarpExtraChance(){
     if(!(player.skills && player.skills.includes('mastery_timewarp'))) return 0;
     return 0.20;
+  }
+  // 계율(mastery_creed): 계율을 유지한 스택 수만큼 공격력이 오른다(스택당 +5%, 최대 +25%).
+  function getCreedAtkBonus(){
+    if(!(battleFlags && battleFlags.creed)) return 0;
+    return Math.min(5, battleFlags.creedStacks||0) * 0.05;
   }
