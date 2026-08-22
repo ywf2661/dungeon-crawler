@@ -4,8 +4,8 @@
 -> enemyTurnReal -> enemyAction(실제 적 행동) -> finishEnemyTurn, 상태이상(dot) 적용.
 주의: enemyTurn/tickActiveRig/enemyTurnReal/enemyAction의 호출 순서는 원본 그대로이며
 반드시 이 순서를 유지해야 유물 효과(마녀의 시계, 가동 장치)가 정상 동작한다.
-export(전역): getWitchClockExtraChance, enemyTurn, tickActiveRig, enemyTurnReal,
-              processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
+export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, tickActiveRig,
+              enemyTurnReal, processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
               getBloodPactDodgeBonus, getTimeWarpExtraChance
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
@@ -26,11 +26,34 @@ export(전역): getWitchClockExtraChance, enemyTurn, tickActiveRig, enemyTurnRea
       }
     }
     if(battleFlags) battleFlags.witchClockUsedThisTurn = false;
+    // 잔영(mastery_afterimage): 기본 공격 적중 시 확률적으로 예약된 분신 공격을,
+    // 적의 턴이 열리기 직전 이 지점에서 대신 한 번 처리한다(가동 장치 자동사격과
+    // 동일한 타이밍 규칙). 분신 공격 후에는 적의 턴이 정상적으로 이어진다.
+    if(battleFlags && battleFlags.afterimagePending){
+      battleFlags.afterimagePending = false;
+      triggerAfterimageStrike();
+      return;
+    }
     if(battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0){
       tickActiveRig();
       return;
     }
     enemyTurnReal();
+  }
+  // 환영검사의 분신이 적의 턴이 열리기 직전 자동으로 한 번 더 공격한다.
+  function triggerAfterimageStrike(){
+    setTimeout(()=>{
+      if(battleOver) return;
+      const edef = getEffectiveEnemyDef(enemy.def);
+      const dmg = Math.max(1, Math.round(effectiveAtk()*0.7) - edef);
+      enemy.hp = Math.max(0, enemy.hp - dmg);
+      updateEnemyHpBar(); popDamage('-'+dmg, 'crit');
+      Sound.slash();
+      setBattleMsg('그림자 속에서 분신이 튀어나온다!', `잔영이 ${dmg}의 추가 피해를 입혔다!`);
+      renderStatus();
+      if(checkBattleEnd()) return;
+      setTimeout(()=> enemyTurnReal(), 400);
+    }, 450);
   }
   // 가동 중인 장치(포탑/드론/오메가 유닛)가 있으면, 적의 턴이 시작되기 직전에 자동으로 한 발 쏜다.
   function tickActiveRig(){
@@ -291,6 +314,11 @@ export(전역): getWitchClockExtraChance, enemyTurn, tickActiveRig, enemyTurnRea
   function applySkillModifiers(dmg, s){
     let d = dmg;
     let triggered = false;
+    // 그림자일격(rogueShadowStrike): 조건 없이 항상 발동하는 확정 치명타.
+    if(s.guaranteedCritMult){
+      d = Math.round(d * s.guaranteedCritMult);
+      triggered = true;
+    }
     if(s.executeBonus && enemy.maxhp>0 && (enemy.hp/enemy.maxhp) <= s.executeBonus.vsHpPct){
       d = Math.round(d * s.executeBonus.mult); triggered = true;
     }
