@@ -8,7 +8,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
               RELICS, RELIC_ALTAR_POOL/FLOORS, CURSE_ALTAR_POOL/FLOORS, getRelicSlotUsage,
               getCurseCount / getCurseRewardMult / getCurseEpicBonus, getRelicDef,
               applyRelicEffect, removeRelic, BLADE_HILT_IDS, rollRelicChoices, finalizeRelicPick,
-              showRelicSwapPrompt, showRelicAltar, showCurseAltar,
+              showRelicSwapPrompt, showRelicAltar, showCurseAltar, RELIC_SKIP_GOLD_COST,
               findEquipmentForDepth, findRareDropForDepth, findEpicDropForDepth
 의존성: player/enemy/depth(state.js), EQUIPMENT류(data/equipment.js), Sound(sound.js)
 */
@@ -92,6 +92,9 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   const RELIC_ALTAR_FLOORS = [6,12,18,24,36,42,48];
   const CURSE_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type==='curse');
   const CURSE_ALTAR_FLOORS = [9,21,33,44];
+
+  // 유물 제단에서 "고르지 않는다"를 선택할 때 소모되는 골드. 횟수 제한 대신 골드 비용으로 대체.
+  const RELIC_SKIP_GOLD_COST = 1000;
 
   // 저주를 감수할수록 보상이 커진다: 저주 1개 → 골드/드랍 +10%, 2개 이상 → +25%, 3개 이상 → 에픽 확률 추가 보너스.
   // 저주형은 유물 슬롯을 차지하지 않는다 — 저주는 페널티 그 자체가 대가이므로,
@@ -277,7 +280,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     const slotNote = slotUsage>=player.relicSlots
       ? `<p style="text-align:center;color:#ff9a7a;font-size:12px;margin:0 0 8px;">유물 슬롯(${player.relicSlots})이 가득 찼다. 새 유물을 고르면 하나를 내려놓아야 한다.</p>`
       : `<p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:0 0 8px;">유물 슬롯 ${slotUsage}/${player.relicSlots}</p>`;
-    const skipsLeft = Math.max(0, (player.relicSkipsMax||0) - (player.relicSkipsUsed||0));
+    const canSkip = player.gold >= RELIC_SKIP_GOLD_COST;
     panel.innerHTML = `<h3>✦ 유물 제단 ✦</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 6px;">세 개의 유물이 그대를 기다리고 있다. 하나를 선택하라.</p>
       ${slotNote}
@@ -300,7 +303,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
       }).join('')}
       </div>
       <div style="text-align:center; margin-top:10px;">
-        <button class="link-btn" id="relic-skip-btn" disabled>${skipsLeft>0 ? `고르지 않는다 (남은 횟수 ${skipsLeft}회)` : '고르지 않는다 (더 이상 사용 불가)'}</button>
+        <button class="link-btn" id="relic-skip-btn" disabled>${canSkip ? `고르지 않는다 (골드 ${RELIC_SKIP_GOLD_COST} 소모)` : `고르지 않는다 (골드 부족, ${RELIC_SKIP_GOLD_COST} 필요)`}</button>
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
@@ -310,7 +313,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
       panel.classList.remove('relic-panel-locked');
       panel.querySelectorAll('.relic-card').forEach(btn=>{ btn.disabled = false; });
       const skipBtn = panel.querySelector('#relic-skip-btn');
-      if(skipBtn && skipsLeft>0) skipBtn.disabled = false;
+      if(skipBtn && canSkip) skipBtn.disabled = false;
       const msg = panel.querySelector('#relic-lock-msg');
       if(msg) msg.remove();
     }, LOCK_MS);
@@ -333,11 +336,12 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     if(skipBtn){
       skipBtn.addEventListener('click', ()=>{
         if(skipBtn.disabled) return;
-        if((player.relicSkipsUsed||0) >= (player.relicSkipsMax||0)) return;
-        player.relicSkipsUsed = (player.relicSkipsUsed||0) + 1;
+        if(player.gold < RELIC_SKIP_GOLD_COST) return;
+        player.gold -= RELIC_SKIP_GOLD_COST;
+        renderStatus();
         saveGame();
         overlay.remove();
-        addLog('제단을 뒤로하고 발길을 돌렸다.', 'warn');
+        addLog(`골드 ${RELIC_SKIP_GOLD_COST}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
       });
     }
   }
