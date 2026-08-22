@@ -9,6 +9,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
 의존성: state.js, storage.js, relics.js, combat/battle-setup.js(startBattle 호출)
 */
 
+  // '나아가다' 버튼 연타 시 층이 중복 진행되는 것을 막기 위한 잠금.
+  // onAdvance() 내부에서 depth 증가 등은 동기적으로 즉시 일어나지만, 이어지는 전투/제단
+  // 진입은 setTimeout(350~500ms)으로 지연되어 그 사이 버튼이 계속 클릭 가능한 상태로 남는다.
+  let exploreAdvanceLock = false;
+
   function startGame(isContinue){
     if(isContinue && window.__savedGame){
       const saved = window.__savedGame;
@@ -228,6 +233,10 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   }
 
   function onAdvance(){
+    if(exploreAdvanceLock) return; // 연타로 인한 중복 진행 방지
+    exploreAdvanceLock = true;
+    setTimeout(()=>{ exploreAdvanceLock = false; }, 500);
+
     if(inBossDen){
       proceedBossDenAdvance();
       return;
@@ -345,4 +354,3 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     }
     saveGame();
   }
-
