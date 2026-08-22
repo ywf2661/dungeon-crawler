@@ -6,7 +6,8 @@
 반드시 이 순서를 유지해야 유물 효과(마녀의 시계, 가동 장치)가 정상 동작한다.
 export(전역): getWitchClockExtraChance, enemyTurn, tickActiveRig, enemyTurnReal,
               processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
-              applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff
+              applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
+              getBloodPactDodgeBonus
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
 */
 
@@ -144,7 +145,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, tickActiveRig, enemyTurnRea
         return;
       }
 
-      const dodgeChance = getSpecialSum('dodgeChance');
+      const dodgeChance = getSpecialSum('dodgeChance') + getBloodPactDodgeBonus();
       if(dodgeChance>0 && Math.random()<dodgeChance){
         playBanner('회피!','dodge');
         setBattleMsg(label, `${player.name}이(가) 재빠르게 공격을 피했다!`);
@@ -219,6 +220,11 @@ export(전역): getWitchClockExtraChance, enemyTurn, tickActiveRig, enemyTurnRea
         }
         if(hasRelicFlag('revengeArmBonus') && battleFlags){
           battleFlags.revengeArmed = true;
+        }
+        // 인내(mastery_endurance): 실제로 HP 피해를 입을 때마다 스택이 쌓인다.
+        // 파훼일격(warriorEnduranceActive) 사용 시 전부 소모된다.
+        if(player.skills && player.skills.includes('mastery_endurance') && battleFlags){
+          battleFlags.enduranceStacks = (battleFlags.enduranceStacks||0) + 1;
         }
       }
 
@@ -316,4 +322,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, tickActiveRig, enemyTurnRea
       if(player.buffAtkTurns <= 0){ player.buffAtkTurns = 0; player.buffAtkMult = 1; }
     }
   }
-
+  // 혈서(mastery_bloodpact): HP가 낮을수록 회피율이 오른다(체력 0에 가까울수록 최대 +35%p).
+  function getBloodPactDodgeBonus(){
+    if(!(player.skills && player.skills.includes('mastery_bloodpact'))) return 0;
+    if(!player.maxhp) return 0;
+    const missingRatio = 1 - (player.hp/player.maxhp);
+    return missingRatio * 0.35;
+  }
