@@ -84,7 +84,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     relic_mirrorshard: {type:'wild', name:'거울의 파편',     desc:'받은 피해의 10%를 공격한 적에게 그대로 반사한다.', effect:{mirrorReflectPct:0.10}},
     relic_dice:        {type:'wild', name:'불확실성의 주사위', desc:'전투 시작 시 공격력/마력/방어력/최대HP +30%, 속도 +10, 받는 피해 +30% 중 하나가 무작위로 선택되어 전투가 끝날 때까지 유지된다.', effect:{diceRoll:true}},
     relic_flask:       {type:'wild', name:'연금술사의 플라스크', desc:'포션을 사용할 때마다 다음 공격의 피해가 +20%씩 늘어난다(최대 3스택, 최대 +60%). 공격 시 스택을 모두 소모한다.', effect:{flaskPotionBoost:true}},
-    relic_infiniteclip:{type:'wild', name:'무한한 탄창',     desc:'스킬 사용 시 10% 확률로 MP를 소비하지 않는다.', effect:{freeCastChance:0.10}},
+    relic_infiniteclip:{type:'wild', name:'무한한 탄창',     desc:'스킬 사용 시 50% 확률로 MP를 소비하지 않는다.', effect:{freeCastChance:0.50}},
     relic_revengering: {type:'wild', name:'복수자의 반지',   desc:'피해를 받으면 다음 공격의 피해가 +30% 증가한다. 공격 1회로 효과가 사라진다.', effect:{revengeArmBonus:true}},
   };
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
@@ -410,4 +410,3 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     if(!pool.length) return null;
     return pool[Math.floor(Math.random()*pool.length)];
   }
-
