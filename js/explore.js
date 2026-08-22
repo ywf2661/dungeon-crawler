@@ -289,7 +289,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   function proceedAdvance(){
     depth += 1;
     const loc = currentLocation();
-    document.getElementById('ex-depth-tag').textContent = '깊이 '+depth;
+    document.getElementById('ex-depth-tag').textContent = hasRelicFlag('hideDepth') ? '깊이 ???' : ('깊이 '+depth);
     document.getElementById('ex-loc-name').textContent = loc.name;
     document.getElementById('ex-loc-desc').textContent = loc.desc;
     saveGame();
