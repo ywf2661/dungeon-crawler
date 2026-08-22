@@ -142,6 +142,8 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
 
   function showEnding(isTrueEnding){
     showScreen('ending');
+    // 기록(record) 저장 시(bootstrap.js) 무결 클리어 여부 판정에 쓰인다.
+    player.trueEndingSeen = !!isTrueEnding;
     const job = getJob(player);
     const hybrid = getHybrid(player);
     const jobLabel = hybrid ? `${hybrid.icon} ${hybrid.name}` : `${job.icon} ${job.name}`;
@@ -243,4 +245,3 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
     document.getElementById('app').appendChild(t);
     setTimeout(()=>t.remove(), 3400);
   }
-
