@@ -93,6 +93,17 @@ export(전역): renderRecords, getRelicDisplayDesc, showMyRelics
         ? ' <span class="relic-pos">(짝이 맞았다! 모든 스킬 피해 2배 발동 중)</span>'
         : ' <span style="opacity:.7;">(아직 짝을 찾지 못했다 — 단독으로는 효과가 없다)</span>');
     }
+    if(id==='relic_emptysack'){
+      const inv = player.inv || {};
+      const isEmpty = (inv.potion||0)===0 && (inv.hipotion||0)===0 && (inv.ether||0)===0;
+      return r.desc + (isEmpty
+        ? ' <span class="relic-pos">(지금 발동 중!)</span>'
+        : ' <span style="opacity:.7;">(포션류를 모두 소진하면 발동)</span>');
+    }
+    if(id==='relic_merchantseal'){
+      const st = player.merchantSealStack||0;
+      return r.desc + ` <span class="relic-pos">(현재 스택: ${st}/10)</span>`;
+    }
     return r.desc;
   }
 
@@ -123,4 +134,3 @@ export(전역): renderRecords, getRelicDisplayDesc, showMyRelics
     document.getElementById('app').appendChild(overlay);
     panel.querySelector('#myrelics-close').addEventListener('click', ()=> overlay.remove());
   }
-
