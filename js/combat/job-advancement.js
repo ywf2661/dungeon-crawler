@@ -1,10 +1,14 @@
 "use strict";
 /*
-레벨 10 하이브리드 전직 선택 UI.
+레벨 10 전직 선택 UI(본인 직업 내 2분기 선택 — 세분화 시스템).
 export(전역): showJobAdvancement, resolveJobAdvancement
-의존성: state.js, data/jobs.js(JOB_HYBRIDS/getHybrid)
+의존성: state.js, data/jobs.js(JOB_SPECIALIZATIONS/getSpecialization/needsSpecializationMigration)
+주의: 구조 전환 1단계 상태. 분기 데이터(이름/설명)는 확정되어 있으나, 각 분기의 실제
+     전투 스킬(SKILLDB의 masterySkillId/activeSkillId)은 2단계에서 직업별로 순차
+     구현될 예정이라, resolveJobAdvancement()는 SKILLDB에 아직 없는 키는 지급을
+     건너뛴다(방어적 처리 — 2단계에서 SKILLDB에 채워 넣기만 하면 자동으로 지급됨).
 */
-  /* ---------- 전직 선택 UI (레벨 10) ---------- */
+  /* ---------- 전직 선택 UI (레벨 10 / 레거시 하이브리드 재전직) ---------- */
   function showJobAdvancement(){
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
@@ -12,11 +16,18 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     const panel = document.createElement('div');
     panel.className = 'shop-panel relic-panel-locked';
     const myJob = getJob(player);
+    const isMigration = needsSpecializationMigration(player);
+    const introHtml = isMigration
+      ? `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;line-height:1.6;margin-bottom:12px;">
+          전직 체계가 새롭게 개편되었다. 이전에 택했던 길은 저물고,
+          <b style="color:var(--gold-bright);">${myJob.name}</b> 본연의 두 갈래 중 하나를 다시 선택해야 한다.
+        </p>`
+      : `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;line-height:1.6;margin-bottom:12px;">
+          레벨 10에 도달했다. <b style="color:var(--gold-bright);">${myJob.name}</b>의 두 갈래 중
+          하나를 선택해 각성하라.
+        </p>`;
     panel.innerHTML = `<h3>전직의 때가 왔다!</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;line-height:1.6;margin-bottom:12px;">
-        레벨 10에 도달했다. 이대로 <b style="color:var(--gold-bright);">${myJob.name}</b>의 길을 계속 갈지,
-        다른 직업의 힘을 받아들여 새로운 존재로 각성할지 선택하라.
-      </p>
+      ${introHtml}
       <p class="relic-lock-msg" id="jobadv-lock-msg">내용을 살펴보는 중…</p>
       <div class="job-select" id="jobadv-select"></div>`;
     overlay.appendChild(panel);
@@ -26,17 +37,16 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     // 실수 선택되는 것을 방지한다(job-card는 <div>라 disabled 속성이 안 먹히므로
     // JS 플래그로 직접 막는다).
     let locked = true;
-    JOBS.forEach(j=>{
-      const isSelf = j.id === myJob.id;
-      const hybrid = JOB_HYBRIDS[sortedPairKey(myJob.id, j.id)];
+    const branches = JOB_SPECIALIZATIONS[myJob.id] || [];
+    branches.forEach(spec=>{
       const card = document.createElement('div');
       card.className = 'job-card';
-      card.innerHTML = `<div class="ji-icon">${hybrid ? hybrid.icon : j.icon}</div>
-        <div class="ji-name">${hybrid ? hybrid.name : j.name}</div>
-        <div class="ji-desc">${hybrid ? hybrid.desc : j.desc}</div>`;
+      card.innerHTML = `<div class="ji-icon">${spec.icon}</div>
+        <div class="ji-name">${spec.name}</div>
+        <div class="ji-desc">${spec.desc}</div>`;
       card.addEventListener('click', ()=>{
         if(locked) return;
-        resolveJobAdvancement(isSelf ? null : j.id);
+        resolveJobAdvancement(spec.id);
         overlay.remove();
       });
       grid.appendChild(card);
@@ -49,37 +59,34 @@ export(전역): showJobAdvancement, resolveJobAdvancement
       if(msg) msg.remove();
     }, LOCK_MS);
   }
-  function resolveJobAdvancement(secondJobId){
+  function resolveJobAdvancement(specId){
     player.jobChosenAt10 = true;
     player.jobAdvancePending = false;
-    const chosenSecond = secondJobId || player.job;
-    const isSelfPick = chosenSecond === player.job;
-    player.job2 = chosenSecond;
-    if(isSelfPick){
-      player.maxhp += 16; player.maxmp += 8;
-      player.atk += 3; player.def += 3; player.mag += 3; player.spd += 3;
-    } else {
-      const secondJob = JOBS.find(j=>j.id===chosenSecond);
-      const m = secondJob.statMods;
-      player.maxhp += 10 + Math.round((m.maxhp||0)*0.5);
-      player.maxmp += 4 + Math.round((m.maxmp||0)*0.5);
-      player.atk += Math.round((m.atk||0)*0.5);
-      player.def += Math.round((m.def||0)*0.5);
-      player.mag += Math.round((m.mag||0)*0.5);
-      player.spd += Math.round((m.spd||0)*0.5);
-    }
+    player.job2 = null; // 레거시 하이브리드 파트너 직업 필드 — 신규 시스템에서는 더 이상 쓰지 않는다.
+    player.specialization = specId;
+    // 스탯 보너스: 기존 하이브리드 시스템의 "본인 직업 재선택" 보너스 공식을 그대로 재사용.
+    player.maxhp += 16; player.maxmp += 8;
+    player.atk += 3; player.def += 3; player.mag += 3; player.spd += 3;
     if(hasRelicFlag('noPostBattleHeal')){
       player.hp = Math.min(player.hp, player.maxhp);
       player.mp = Math.min(player.mp, player.maxmp);
     } else {
       player.hp = player.maxhp; player.mp = player.maxmp;
     }
-    const hybrid = getHybrid(player);
-    const skillKey = hybrid && hybrid.skills[10];
-    if(skillKey && !player.skills.includes(skillKey)) player.skills.push(skillKey);
+    const spec = getSpecialization(player);
+    if(spec){
+      // 마스터리 패시브/액티브 스킬은 SKILLDB에 실제 정의가 있을 때만 지급한다.
+      // 2단계에서 직업별로 SKILLDB 항목을 채워 넣으면, 이후 전직하는 캐릭터부터
+      // 자동으로 지급되기 시작한다(이미 전직을 마친 캐릭터는 재전직 없이는 소급되지 않음).
+      [spec.masterySkillId, spec.activeSkillId].forEach(skillKey=>{
+        if(skillKey && typeof SKILLDB!=='undefined' && SKILLDB[skillKey] && !player.skills.includes(skillKey)){
+          player.skills.push(skillKey);
+        }
+      });
+    }
     renderStatus();
-    if(hybrid){
-      addLog(`${player.name}은(는) ${hybrid.icon} ${hybrid.name}(으)로 각성했다! 새로운 스킬 「${SKILLDB[skillKey].name}」을(를) 익혔다.`, 'gold');
+    if(spec){
+      addLog(`${player.name}은(는) ${spec.icon} ${spec.name}(으)로 각성했다! 「${spec.masteryName}」이(가) 상시 발동하기 시작했고, 「${spec.activeName}」을(를) 익혔다.`, 'gold');
     }
     saveGame();
   }
