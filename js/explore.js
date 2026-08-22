@@ -6,7 +6,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
               currentLocation, renderExplore, addLog, onRest, onReturnTown, enterBossDen,
               showBossDenConfirm, proceedEnterBossDen, proceedBossDenAdvance, onAdvance,
               showFinalFloorConfirm, proceedAdvance
-의존성: state.js, storage.js, relics.js, combat/battle-setup.js(startBattle 호출)
+의존성: state.js, storage.js, relics.js, combat/battle-setup.js(startBattle 호출),
+       data/jobs.js(needsSpecializationMigration)
 */
 
   // '나아가다' 버튼 연타 시 층이 중복 진행되는 것을 막기 위한 잠금.
@@ -20,6 +21,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       player = saved.player; depth = saved.depth; town = saved.town;
       inBossDen = saved.inBossDen||false; bossDenFloor = saved.bossDenFloor||0;
       if(player.job2===undefined) player.job2 = null;
+      if(player.specialization===undefined) player.specialization = null;
       if(player.jobChosenAt10===undefined) player.jobChosenAt10 = false;
       if(!player.equipment) player.equipment = {weapon:null, armor:null, accessory:null};
       if(!player.equipOwned) player.equipOwned = [];
@@ -41,6 +43,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.endingSeen===undefined) player.endingSeen = false;
       if(player.deathCount===undefined) player.deathCount = 0;
       if(player.level>=10 && !player.jobChosenAt10) player.jobAdvancePending = true;
+      if(needsSpecializationMigration(player)) player.jobAdvancePending = true; // 레거시 하이브리드 → 재전직 필요
       document.getElementById('statusbar').style.display='flex';
       showScreen('explore');
       renderStatus();
@@ -79,10 +82,14 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
 
   // 레벨10 전직 안내를 안전하게 예약한다. 전투 중이면 절대 띄우지 않고,
   // 탐험 화면으로 돌아올 때마다 다시 확인해 결국 한 번은 반드시 뜨도록 한다.
+  // 레거시 하이브리드 캐릭터(job2는 있지만 specialization이 없는 경우)는
+  // jobChosenAt10이 이미 true이더라도 재전직 대상이므로 별도로 통과시킨다.
   function scheduleJobAdvancementCheck(){
-    if(!player || player.jobChosenAt10 || !player.jobAdvancePending) return;
+    if(!player || !player.jobAdvancePending) return;
+    if(player.jobChosenAt10 && !needsSpecializationMigration(player)) return;
     setTimeout(()=>{
-      if(!player || player.jobChosenAt10 || !player.jobAdvancePending) return;
+      if(!player || !player.jobAdvancePending) return;
+      if(player.jobChosenAt10 && !needsSpecializationMigration(player)) return;
       if(isBattleActive()) return; // 다음 탐험 화면 진입 시 다시 시도된다.
       if(document.getElementById('jobadv-overlay')) return;
       showJobAdvancement();
@@ -289,7 +296,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   function proceedAdvance(){
     depth += 1;
     const loc = currentLocation();
-    document.getElementById('ex-depth-tag').textContent = hasRelicFlag('hideDepth') ? '깊이 ???' : ('깊이 '+depth);
+    document.getElementById('ex-depth-tag').textContent = '깊이 '+depth;
     document.getElementById('ex-loc-name').textContent = loc.name;
     document.getElementById('ex-loc-desc').textContent = loc.desc;
     saveGame();
