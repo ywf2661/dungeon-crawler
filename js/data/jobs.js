@@ -1,8 +1,12 @@
 "use strict";
 /*
-직업(클래스) 및 전직(하이브리드 2차 직업) 데이터/조회 함수.
-export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid
-의존성: getJob/getHybrid는 인자로 받은 플레이어 유사 객체의 job/job2 필드를 참조.
+직업(클래스) 및 전직(레벨10 세분화) 데이터/조회 함수.
+export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIALIZATIONS,
+              getSpecialization, needsSpecializationMigration
+의존성: getJob/getHybrid/getSpecialization은 인자로 받은 플레이어 유사 객체의 job/job2/specialization
+       필드를 참조.
+주의: JOB_HYBRIDS/getHybrid는 신규 전직 로직에서는 더 이상 쓰이지 않는다(레거시 세이브 감지 및
+     과도기 라벨 표시용으로만 유지). 신규 전직은 JOB_SPECIALIZATIONS/getSpecialization을 쓴다.
 */
 
   /* ============ 직업(클래스) ============ */
@@ -90,3 +94,82 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid
     return JOB_HYBRIDS[sortedPairKey(p.job, p.job2)] || null;
   }
 
+  /* ---------- 전직(레벨10 세분화 — 본인 직업 내 2분기 선택) ----------
+     구조 전환 1단계: 데이터 구조와 선택 UI만 마련한 상태. 각 분기의 마스터리
+     패시브/액티브 스킬의 실제 수치·전투 로직(SKILLDB 항목)은 2단계에서 직업별로
+     순차 구현 예정 — masterySkillId/activeSkillId는 그 시점에 채워질 SKILLDB
+     키를 미리 지정해둔 것이며, 아직 SKILLDB에 해당 키가 없는 동안은
+     resolveJobAdvancement()에서 자동으로 스킬 지급을 건너뛴다(방어적 처리). */
+  const JOB_SPECIALIZATIONS = {
+    warrior: [
+      {id:'warrior_bloodpact', name:'혈맹의 검투사', icon:'🩸',
+        desc:'스킬 사용 시 자신의 HP 일부를 태워 위력을 크게 증폭시키는 선택지가 상시 열려있다. HP가 낮을수록 회피율도 함께 오른다.',
+        masteryName:'혈서', masteryDesc:'스킬 사용 시 HP를 태워 위력을 증폭시키는 선택지가 상시 열림. HP가 낮을수록 회피율 상승.', masterySkillId:'mastery_bloodpact',
+        activeName:'저돌', activeDesc:'HP가 낮을수록 위력이 커지는 강타.', activeSkillId:'warriorBloodpactActive'},
+      {id:'warrior_endurance', name:'인내의 파훼자', icon:'⛓',
+        desc:'피격당할 때마다 자동으로 "인내" 스택이 쌓인다. 스택을 모두 소모해 강력한 필살기를 발동할 수 있다.',
+        masteryName:'인내', masteryDesc:'피격당할 때마다 자동으로 "인내" 스택 획득.', masterySkillId:'mastery_endurance',
+        activeName:'파훼일격', activeDesc:'인내 스택을 모두 소모해 강력한 필살기 발동.', activeSkillId:'warriorEnduranceActive'},
+    ],
+    mage: [
+      {id:'mage_pact', name:'계약술사', icon:'🎴',
+        desc:'매 턴 시작 시 무작위 원소와 자동으로 계약해, 보유 스킬들이 계약 원소에 따라 속성과 효과가 바뀐다.',
+        masteryName:'원소 계약', masteryDesc:'매 턴 시작 시 무작위 원소와 자동 계약, 스킬 속성/효과가 그에 따라 바뀜.', masterySkillId:'mastery_elementpact',
+        activeName:'연쇄폭발', activeDesc:'도트 걸린 적 처치 시 주변까지 피해.', activeSkillId:'mageChainExplosion'},
+      {id:'mage_time', name:'시간술사', icon:'⏳',
+        desc:'매 턴 일정 확률로 자신의 턴이 한 번 더 오거나 적의 턴이 밀린다.',
+        masteryName:'시간 왜곡', masteryDesc:'매 턴 일정 확률로 자신 턴이 한 번 더 오거나 적 턴이 밀림(자동 발동).', masterySkillId:'mastery_timewarp',
+        activeName:'가속 주문', activeDesc:'즉시 발동으로 다음 자기 턴을 확정적으로 앞당김.', activeSkillId:'mageHaste'},
+    ],
+    rogue: [
+      {id:'rogue_phantom', name:'환영검사', icon:'👥',
+        desc:'공격 적중 시 일정 확률로 분신이 생성되어, 다음 턴 자동으로 추가 공격을 가한다.',
+        masteryName:'잔영', masteryDesc:'공격 적중 시 일정 확률로 분신 생성, 다음 턴 자동 추가 공격.', masterySkillId:'mastery_afterimage',
+        activeName:'그림자일격', activeDesc:'첫 타격 필중 치명타.', activeSkillId:'rogueShadowStrike'},
+      {id:'rogue_alchemist', name:'맹독 연금술사', icon:'⚗',
+        desc:'공격할 때마다 독 3종 중 하나가 자동으로 축적되며, 세 종류가 다 채워지면 폭발 효과를 발동할 수 있다.',
+        masteryName:'삼중 조제', masteryDesc:'공격할 때마다 독 3종 중 하나 자동 축적, 3종 완성 시 폭발 효과 발동 가능.', masterySkillId:'mastery_triplepoison',
+        activeName:'촉매 주입', activeDesc:'즉시 원하는 독 하나를 추가 축적.', activeSkillId:'rogueCatalyst'},
+    ],
+    paladin: [
+      {id:'paladin_martyr', name:'순교자', icon:'✝',
+        desc:'특정 스킬 사용 시 최대HP를 영구히 깎는 대신 공격력 등 영구 스탯을 얻는 선택지가 상시 열려있다.',
+        masteryName:'희생의 맹세', masteryDesc:'특정 스킬 사용 시 최대HP를 영구히 깎는 대신 영구 스탯을 얻는 선택지가 상시 열림.', masterySkillId:'mastery_martyrvow',
+        activeName:'심판의 빛', activeDesc:'공격 + 소량 자힐 복합기.', activeSkillId:'paladinJudgmentLight'},
+      {id:'paladin_creed', name:'계율의 파수꾼', icon:'📜',
+        desc:'전투 시작 시 스스로 계율을 선택해, 유지할수록 버프 스택이 쌓이고 어기면 즉시 상실한다.',
+        masteryName:'계율', masteryDesc:'전투 시작 시 스스로 계율(예: 물약 사용 금지)을 선택, 유지 시 버프 스택 증가·어기면 즉시 상실.', masterySkillId:'mastery_creed',
+        activeName:'축복의 벽', activeDesc:'몇 턴간 자신에게 피해 흡수 보호막.', activeSkillId:'paladinBlessedWall'},
+    ],
+    mechanic: [
+      {id:'mechanic_legion', name:'로봇군단장', icon:'🤖',
+        desc:'로봇을 한 기가 아니라 여러 기 동시에 배치할 수 있게 된다. 대신 폭발 계열 스킬은 일절 사용할 수 없다.',
+        masteryName:'다중 전개', masteryDesc:'로봇을 여러 기 동시에 배치 가능. 대신 폭발 계열 스킬은 일절 사용 불가.', masterySkillId:'mastery_multideploy',
+        activeName:'역할 배치', activeDesc:'정찰/화력/방벽 등 역할이 다른 로봇 한 기를 즉시 소환.', activeSkillId:'mechanicRoleDeploy'},
+      {id:'mechanic_detonator', name:'데토네이터', icon:'💥',
+        desc:'설치해둔 폭발물 개수만큼 기폭 시 배율이 자동으로 누적된다.',
+        masteryName:'연쇄 기폭', masteryDesc:'설치된 폭발물 개수만큼 기폭 시 배율 자동 누적.', masterySkillId:'mastery_chaindetonate',
+        activeName:'기폭', activeDesc:'설치된 폭발물을 한 번에 전부 터뜨림(범위 내 자신도 휘말릴 수 있음).', activeSkillId:'mechanicDetonate'},
+    ],
+    jester: [
+      {id:'jester_rebel', name:'운명의 반란자', icon:'🎰',
+        desc:'매 턴 "운" 게이지가 자동으로 오르내리며, 그 수치에 따라 전투 전체 배율이 실시간으로 적용된다.',
+        masteryName:'행운의 파도', masteryDesc:'매 턴 "운" 게이지가 자동으로 오르내리며 전투 전체 배율에 실시간 반영.', masterySkillId:'mastery_luckwave',
+        activeName:'파도타기', activeDesc:'현재 운 게이지를 즉시 유리한 방향으로 크게 밀어붙임.', activeSkillId:'jesterRideWave'},
+      {id:'jester_cardmaster', name:'패의 마술사', icon:'🃏',
+        desc:'스킬을 사용할 때마다 자동으로 카드 한 장을 손에 쥐며, 페어/스트레이트 등 조합 완성 시 강력한 효과가 발동할 수 있다.',
+        masteryName:'패 획득', masteryDesc:'스킬 사용마다 자동으로 카드 한 장 획득, 조합 완성 시 강력한 효과 발동 가능.', masterySkillId:'mastery_drawcard',
+        activeName:'패 교환', activeDesc:'원치 않는 카드 한 장을 즉시 새 카드로 교체.', activeSkillId:'jesterExchange'},
+    ],
+  };
+  function getSpecialization(p){
+    if(!p || !p.specialization) return null;
+    const list = JOB_SPECIALIZATIONS[p.job];
+    if(!list) return null;
+    return list.find(s=>s.id===p.specialization) || null;
+  }
+  // 구조 전환 이전(하이브리드 시스템)에 이미 전직을 마친 캐릭터인지 판별한다.
+  // job2가 있는데 specialization이 없으면, 다음 접속 시 새 분기 중 하나를 다시 선택해야 한다.
+  function needsSpecializationMigration(p){
+    return !!(p && p.job2 && !p.specialization);
+  }
