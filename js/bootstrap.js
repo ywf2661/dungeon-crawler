@@ -54,6 +54,7 @@ export(전역): init, showPatchNoteModal
         name: player.name, jobLabel, level: player.level,
         deathCount: player.deathCount||0, ts: Date.now(),
         difficulty: player.difficulty||'easy',
+        trueEnding: !!player.trueEndingSeen,
       };
       await addRecord(record);
       await deleteSave();
@@ -67,6 +68,9 @@ export(전역): init, showPatchNoteModal
         renderRecords(records);
         normalUnlocked = records.length > 0;
         hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
+        easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding);
+        normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding);
+        hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding);
         renderDifficultySelect();
       });
     });
@@ -102,6 +106,9 @@ export(전역): init, showPatchNoteModal
       renderRecords(records);
       normalUnlocked = records.length > 0;
       hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
+      easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding);
+      normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding);
+      hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding);
       renderDifficultySelect();
     }).catch(e=>{ console.warn('기록 불러오기 실패(무시):', e); });
 
@@ -144,4 +151,3 @@ export(전역): init, showPatchNoteModal
       overlay.remove();
     });
   }
-
