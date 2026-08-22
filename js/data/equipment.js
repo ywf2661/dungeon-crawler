@@ -418,6 +418,14 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     const missing = 0.75-ratio;
     return 1 + missing*missing*2.5;
   }
+  // 빈 자루의 각오: 물약/상급 물약/에테르가 전부 0개일 때만 발동하는 실시간 조건부 배율.
+  // 포션을 쓰는 순간 발동하고, 다시 채워 넣으면 곧바로 해제되는 동적 효과다.
+  function getEmptySackMult(){
+    if(!hasRelicFlag('emptySackDmg')) return 1;
+    const inv = player.inv || {};
+    const isEmpty = (inv.potion||0)===0 && (inv.hipotion||0)===0 && (inv.ether||0)===0;
+    return isEmpty ? 1.4 : 1;
+  }
   // 죽음의 모래시계: 전투 시작 후 제한 턴 이내면 피해가 오른다.
   // 회랑자의 칼날 + 칼자루: 두 개를 동시에 지니고 있을 때만 효과가 있다.
   // player.relics를 매번 실시간으로 검사하므로, 둘 중 하나가 교체로 빠지는 즉시 효과도 사라진다.
@@ -446,6 +454,7 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(enemy && enemy.isBoss) mult *= (1 + getRelicSum('bossDmgPctMult'));
     mult *= getLowHpScalingMult();
     mult *= getHourglassMult();
+    mult *= getEmptySackMult();
     mult *= (ctx.onHitMult||1);
     if(ctx.type!=='basic' && hasBladeHiltSet()) mult *= 2;
     let result = Math.max(1, Math.round(dmg*mult));
