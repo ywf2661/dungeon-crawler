@@ -2,7 +2,7 @@
 /*
 상점 데이터 및 UI.
 export(전역): SHOP_ITEMS, openShop
-의존성: player(state.js), Sound(sound.js)
+의존성: player(state.js), Sound(sound.js), applyMerchantSealPurchase(relics.js)
 */
 
   /* ============ 상점 ============ */
@@ -52,6 +52,7 @@ export(전역): SHOP_ITEMS, openShop
       b.addEventListener('click', ()=>{
         const kind=b.dataset.kind, key=b.dataset.key, price=+b.dataset.price;
         if(player.gold<price) return;
+        applyMerchantSealPurchase();
         if(kind==='item'){
           player.gold -= price; player.inv[key]+=1;
           renderStatus();
@@ -68,4 +69,3 @@ export(전역): SHOP_ITEMS, openShop
     });
     panel.querySelector('#shop-close').addEventListener('click', ()=>overlay.remove());
   }
-
