@@ -91,11 +91,21 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='passive'){
-      // 상시 발동형 마스터리(예: 인내) — 직접 사용해도 턴을 소모하지 않고 효과는
-      // 자동으로만 발동한다(설명만 보여줌).
+      // 상시 발동형 마스터리(예: 인내, 시간 왜곡) — 직접 사용해도 턴을 소모하지 않고
+      // 효과는 자동으로만 발동한다(설명만 보여줌).
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}`, `${s.desc}`);
       setCommandsEnabled(true);
+      return;
+    }
+
+    if(s.type==='haste'){
+      // 가속 주문(시간술사 액티브): 적의 턴을 건너뛰고 곧바로 플레이어가 다시 행동한다.
+      renderStatus();
+      playCastBurst('def');
+      Sound.buff();
+      setBattleMsg(`${player.name}의 ${s.name}!`, '시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다!');
+      resetCommandUI();
       return;
     }
 
@@ -595,6 +605,24 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       ? Math.round(edef*0.5)
       : Math.round(edef*(1-(s.defPierce||0)));
     let dmg = Math.max(1, Math.round(base*s.mult) - defMitigation);
+    // 원소 계약(mastery_elementpact): 마법 스킬을 쓸 때마다 화염/빙결/번개 중 하나를
+    // 즉석에서 계약해 추가 효과를 싣는다.
+    let elementMsg = '';
+    if(s.type==='magic' && player.skills && player.skills.includes('mastery_elementpact')){
+      const roll = ['fire','ice','lightning'][Math.floor(Math.random()*3)];
+      if(roll==='fire'){
+        if(!s.dot && !s.dots){
+          applyDot({type:'burn', basis:'mag', ratio:0.3, turns:3, label:'원소 계약: 화염'});
+          elementMsg = ' 화염과 계약해 화상을 남겼다!';
+        }
+      } else if(roll==='ice'){
+        dmg = Math.round(dmg*1.15);
+        elementMsg = ' 빙결과 계약해 위력이 올랐다!';
+      } else if(roll==='lightning'){
+        dmg = dmg + Math.round(defMitigation*0.3);
+        elementMsg = ' 번개와 계약해 방어를 일부 꿰뚫었다!';
+      }
+    }
     // 혈서(mastery_bloodpact)가 켜져 있으면, 이 스킬 한 번에 한해 HP를 태워 위력을 증폭시킨다.
     let bloodPactMsg = '';
     if(player.bloodPactArmed){
@@ -625,6 +653,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
     if(mod.triggered) msg2 = '약점을 정확히 노렸다! '+msg2;
     if(bloodPactMsg) msg2 += bloodPactMsg;
+    if(elementMsg) msg2 += elementMsg;
     const dotLabels3 = applySkillDots(s);
     if(dotLabels3) msg2 += ` ${dotLabels3} 효과 부여!`;
     if(healed2>0){ msg2 += ` HP ${healed2} 흡수.`; }
