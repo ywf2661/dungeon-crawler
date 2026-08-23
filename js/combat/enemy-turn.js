@@ -4,6 +4,10 @@
 -> enemyTurnReal -> enemyAction(실제 적 행동) -> finishEnemyTurn, 상태이상(dot) 적용.
 주의: enemyTurn/tickActiveRig/enemyTurnReal/enemyAction의 호출 순서는 원본 그대로이며
 반드시 이 순서를 유지해야 유물 효과(마녀의 시계, 가동 장치)가 정상 동작한다.
+로봇군단장(mastery_multideploy) 대응으로 tickActiveRig(slotKey, onDone)이 슬롯 인자를
+받도록 바뀌었다 — battleFlags.rig를 틱한 뒤 battleFlags.rig2가 있으면 이어서 틱하고,
+그 다음에야 enemyTurnReal로 넘어간다(단일 rig만 쓰는 기존 직업들은 rig2가 항상 비어
+있으므로 동작에 변화가 없다).
 export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, tickActiveRig,
               enemyTurnReal, processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
@@ -34,8 +38,18 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       triggerAfterimageStrike();
       return;
     }
+    tickRigsThenProceed();
+  }
+  // 가동 중인 로봇(rig, rig2)이 있으면 순서대로 자동사격을 처리한 뒤 적의 실제 턴으로
+  // 넘어간다. 대부분의 직업은 rig2를 쓰지 않으므로(항상 비어 있음) 기존과 동일하게
+  // rig 하나만 틱하고 바로 enemyTurnReal로 이어진다.
+  function tickRigsThenProceed(){
     if(battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0){
-      tickActiveRig();
+      tickActiveRig('rig', tickRigsThenProceed);
+      return;
+    }
+    if(battleFlags && battleFlags.rig2 && battleFlags.rig2.turnsLeft>0){
+      tickActiveRig('rig2', enemyTurnReal);
       return;
     }
     enemyTurnReal();
@@ -55,9 +69,11 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       setTimeout(()=> enemyTurnReal(), 400);
     }, 450);
   }
-  // 가동 중인 장치(포탑/드론/오메가 유닛)가 있으면, 적의 턴이 시작되기 직전에 자동으로 한 발 쏜다.
-  function tickActiveRig(){
-    const rig = battleFlags.rig;
+  // 가동 중인 장치(포탑/드론/오메가 유닛/역할 로봇)가 있으면, 적의 턴이 시작되기
+  // 직전에 자동으로 한 발 쏜다. slotKey는 'rig' 또는 'rig2'이며, 처리가 끝나면
+  // onDone()을 호출해 다음 단계(다른 슬롯 틱 또는 enemyTurnReal)로 넘어간다.
+  function tickActiveRig(slotKey, onDone){
+    const rig = battleFlags[slotKey];
     setTimeout(()=>{
       if(battleOver) return;
       const dmg = Math.max(1, rig.dmgPerTick);
@@ -67,17 +83,24 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       setBattleMsg(`${rig.name}이(가) 자동으로 사격한다!`, `${dmg}의 추가 피해!`);
       rig.turnsLeft -= 1;
       const expired = rig.turnsLeft<=0;
-      if(expired) battleFlags.rig = null;
+      if(expired) battleFlags[slotKey] = null;
       renderStatus();
       if(checkBattleEnd()) return;
       setTimeout(()=>{
         if(expired){ setBattleMsg(`${rig.name}의 가동이 멈췄다.`, ''); }
-        setTimeout(()=> enemyTurnReal(), expired?500:250);
+        setTimeout(()=> onDone(), expired?500:250);
       }, expired?250:0);
     }, 450);
   }
   function enemyTurnReal(){
     if(battleOver) return;
+    // 행운의 파도(mastery_luckwave): 매 라운드(적의 실제 턴이 열릴 때)마다 운
+    // 게이지가 -1~+1 사이에서 무작위로 오르내린다(누적 상한 ±3). 값은
+    // getLuckWaveBonus()를 통해 effectiveAtk()에 실시간 반영된다.
+    if(battleFlags && player.skills && player.skills.includes('mastery_luckwave')){
+      const drift = Math.random()*2 - 1;
+      battleFlags.luckGauge = Math.max(-3, Math.min(3, (battleFlags.luckGauge||0) + drift));
+    }
     if(enemy && enemy.exposedTurns>0){
       enemy.exposedTurns -= 1;
       updateStatusBadges();
@@ -198,6 +221,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
       if(battleFlags && battleFlags.rig && battleFlags.rig.shieldPct){
         reduceMult -= battleFlags.rig.shieldPct;
+      }
+      if(battleFlags && battleFlags.rig2 && battleFlags.rig2.shieldPct){
+        reduceMult -= battleFlags.rig2.shieldPct;
       }
       reduceMult += getRelicSum('dmgTakenPctMult');
       if(battleFlags && battleFlags.diceEffect==='dmgtaken') reduceMult += 0.3;
@@ -342,7 +368,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function effectiveAtk(){
     let a = player.atk;
     if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
-    a = Math.round(a * (1 + getCreedAtkBonus()));
+    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus()));
     return a;
   }
   function consumeAtkBuff(){
@@ -368,4 +394,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function getCreedAtkBonus(){
     if(!(battleFlags && battleFlags.creed)) return 0;
     return Math.min(5, battleFlags.creedStacks||0) * 0.05;
+  }
+  // 행운의 파도(mastery_luckwave): 운 게이지(-3~+3)를 공격력 배율로 환산한다
+  // (게이지 1당 ±7%, 최대 ±21%).
+  function getLuckWaveBonus(){
+    if(!(player.skills && player.skills.includes('mastery_luckwave'))) return 0;
+    return (battleFlags.luckGauge||0) * 0.07;
   }
