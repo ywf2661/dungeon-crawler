@@ -287,4 +287,54 @@ export(전역): SKILLDB
       desc:'전투 시작 시 계율(물약 사용 금지 또는 기본 공격 금지)을 자동으로 선택한다. 지킬수록 공격력이 오르고(스택당 +5%, 최대 +25%), 어기면 즉시 상실한다.'},
     paladinBlessedWall: {name:'축복의 벽', mp:8, desc:'몇 턴간 자신을 감싸는 보호막을 둘러 받는 피해를 크게 줄인다',
       type:'defbuff', turns:3, mult:0.55},
+
+    // 메카닉 - 로봇군단장(mechanic_legion)
+    // 마스터리 "다중 전개": 이 마스터리를 보유하면 로봇(가동 장치)을 battleFlags.rig
+    // 하나가 아니라 battleFlags.rig2까지 총 2기까지 동시에 유지할 수 있다(사용자
+    // 요청에 따라 상한 2기로 고정). 실제 슬롯 배분/2기 자동사격 로직은
+    // combat/player-actions.js의 'legiondeploy' 타입, combat/enemy-turn.js의
+    // tickActiveRig()에 구현되어 있다. 대신 폭발 계열(detonaterig 타입) 스킬은
+    // 아예 선택할 수 없다(player-actions.js의 playerSkill() 진입부에서 차단 —
+    // 기존 '자폭 기동' 등 detonaterig 타입 스킬 전부가 대상이며 이 스킬 하나에
+    // 한정되지 않는다).
+    mastery_multideploy: {name:'다중 전개', mp:0, type:'passive',
+      desc:'로봇(가동 장치)을 최대 2기까지 동시에 배치할 수 있게 된다. 대신 폭발 계열 스킬은 일절 사용할 수 없다.'},
+    mechanicRoleDeploy: {name:'역할 배치', mp:8, desc:'정찰/화력/방벽 중 하나의 역할을 무작위로 맡은 로봇 한 기를 즉시 배치한다. 이미 로봇이 2기 있다면 가장 먼저 배치된 로봇을 대신 교체한다',
+      type:'legiondeploy', rigTurns:3},
+
+    // 메카닉 - 데토네이터(mechanic_detonator)
+    // 마스터리 "연쇄 기폭": 장치를 설치(전개)할 때마다 battleFlags.detonatorStacks가
+    // 자동으로 오른다(최대 5스택, player-actions.js의 deployrig 분기). 이후 폭발
+    // 계열(detonaterig 타입) 스킬을 사용하면 그 스택 수만큼 배율이 곱해지고(스택당
+    // +15%) 스택은 0으로 초기화된다(player-actions.js의 detonaterig 분기). 로봇군단장과
+    // 달리 rig 자체는 기존과 동일하게 1개만 유지되며, "폭발물 개수"는 별도의 스택
+    // 카운터로만 표현한다(사용자 확정 사항). 이 마스터리를 가진 캐릭터는 어떤
+    // detonaterig 계열 스킬(기존 '자폭 기동' 포함)을 써도 동일하게 스택 보너스가 적용된다.
+    mastery_chaindetonate: {name:'연쇄 기폭', mp:0, type:'passive',
+      desc:'장치를 설치할 때마다 자동으로 "기폭 스택"이 쌓인다(최대 5, 스택당 폭발 위력 +15%). 폭발 계열 스킬 사용 시 스택 수만큼 배율이 곱해지고 스택은 초기화된다.'},
+    mechanicDetonate: {name:'기폭', mp:7, desc:'가동 중인 장치를 그 자리에서 폭파시킨다. 연쇄 기폭 스택이 쌓여 있을수록 훨씬 강력하다. 가동 중인 장치가 없으면 예비 폭발물을 대신 투척한다',
+      type:'detonaterig', noRigMult:1.3, burstMult:2.2},
+
+    // 도박사 - 운명의 반란자(jester_rebel)
+    // 마스터리 "행운의 파도": 매 라운드(적의 실제 턴이 열릴 때, combat/enemy-turn.js의
+    // enemyTurnReal())마다 battleFlags.luckGauge가 -3~+3 사이에서 무작위로 오르내리고,
+    // 그 값이 combat/enemy-turn.js의 effectiveAtk()에 실시간으로 반영된다
+    // (getLuckWaveBonus() — 계율의 getCreedAtkBonus()와 같은 방식). 액티브(파도타기)는
+    // 게이지를 즉시 최댓값(+3)으로 밀어붙인다.
+    mastery_luckwave: {name:'행운의 파도', mp:0, type:'passive',
+      desc:'매 라운드 "운" 게이지가 -3~+3 사이에서 자동으로 오르내리며, 그 값이 전투 내내 공격력에 실시간으로 반영된다(게이지 1당 공격력 ±7%).'},
+    jesterRideWave: {name:'파도타기', mp:6, desc:'운명의 파도를 강제로 밀어붙여 운 게이지를 즉시 최고조로 끌어올린다',
+      type:'ridewave'},
+
+    // 도박사 - 패의 마술사(jester_cardmaster)
+    // 마스터리 "패 획득": 실제로 턴을 소모하는 스킬을 사용할 때마다(player-actions.js의
+    // playerSkill(), arm/passive/catalyst/haste 조기 반환 다음 지점) 카드 한 장(1~7)을
+    // 뽑아 최대 3장까지 손에 쥔다. 페어/스트레이트/트리플이 완성되면 즉시 추가 피해를
+    // 입히고 손을 비운다(player-actions.js의 resolveCardCombo() 헬퍼 — 마스터리 훅과
+    // 액티브(패 교환) 양쪽에서 공유). 여러 스킬 타입에 걸쳐 공통으로 발동해야 해서, 각
+    // 분기의 메시지를 개별로 건드리는 대신 완성 시 배너(playBanner)로 별도 안내한다.
+    mastery_drawcard: {name:'패 획득', mp:0, type:'passive',
+      desc:'스킬을 사용할 때마다 카드 한 장을 자동으로 뽑는다(최대 3장). 페어/스트레이트/트리플이 완성되면 즉시 추가 피해를 입히고 손을 비운다.'},
+    jesterExchange: {name:'패 교환', mp:5, desc:'원치 않는 카드 한 장을 새 카드로 교체한다. 이미 세 장이 있으면 마지막 카드를 대신 교체한다',
+      type:'cardexchange'},
   };
