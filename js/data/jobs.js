@@ -105,7 +105,10 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       {id:'warrior_bloodpact', name:'혈맹의 검투사', icon:'🩸',
         desc:'스킬 사용 시 자신의 HP 일부를 태워 위력을 크게 증폭시키는 선택지가 상시 열려있다. HP가 낮을수록 회피율도 함께 오른다.',
         masteryName:'혈서', masteryDesc:'스킬 사용 시 HP를 태워 위력을 증폭시키는 선택지가 상시 열림. HP가 낮을수록 회피율 상승.', masterySkillId:'mastery_bloodpact',
-        activeName:'저돌', activeDesc:'HP가 낮을수록 위력이 커지는 강타.', activeSkillId:'warriorBloodpactActive'},
+        activeName:'저돌', activeDesc:'HP가 낮을수록 위력이 커지는 강타.', activeSkillId:'warriorBloodpactActive',
+        // 2차 전직 후 레벨 12/15에 추가로 배우는 스킬(전직 컨셉을 이어감).
+        // combat/battle-end.js의 grantExp()가 이 맵을 읽어 레벨업 시 자동 지급한다.
+        skillLevels: {12:'warriorBloodrend', 15:'warriorBloodpactUltimate'}},
       {id:'warrior_endurance', name:'인내의 파훼자', icon:'⛓',
         desc:'피격당할 때마다 자동으로 "인내" 스택이 쌓인다. 스택을 모두 소모해 강력한 필살기를 발동할 수 있다.',
         masteryName:'인내', masteryDesc:'피격당할 때마다 자동으로 "인내" 스택 획득.', masterySkillId:'mastery_endurance',
