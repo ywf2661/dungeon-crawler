@@ -32,38 +32,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(healed>0) msg2 += ` HP ${healed} 흡수.`;
     if(creedMsg) msg2 += creedMsg;
 
-    // 잔영(mastery_afterimage): 기본 공격 적중 시 25% 확률로 분신을 예약한다.
-    // 실제 추가 공격은 적의 턴이 열리기 직전(combat/enemy-turn.js의 enemyTurn())에 처리된다.
-    if(enemy.hp>0 && player.skills && player.skills.includes('mastery_afterimage') && battleFlags){
-      if(Math.random() < 0.25){
-        battleFlags.afterimagePending = true;
-        msg2 += ' 분신이 그림자 속에 어른거린다…';
-      }
-    }
-
-    // 삼중 조제(mastery_triplepoison): 기본 공격 적중 시 독 3종 중 하나가 무작위로
-    // 축적된다. 이미 3종이 모두 채워진 상태라면, 이번 공격에서 곧바로 폭발 효과가
-    // 발동해 추가 피해를 입히고 축적을 초기화한다.
-    if(enemy.hp>0 && player.skills && player.skills.includes('mastery_triplepoison') && battleFlags){
-      if(!battleFlags.triplePoison) battleFlags.triplePoison = {toxin:false, venom:false, blight:false};
-      const tp = battleFlags.triplePoison;
-      if(tp.toxin && tp.venom && tp.blight){
-        const edefP = getEffectiveEnemyDef(enemy.def);
-        const explodeDmg = Math.max(1, Math.round(effectiveAtk()*1.4) - edefP);
-        enemy.hp = Math.max(0, enemy.hp - explodeDmg);
-        updateEnemyHpBar(); popDamage('-'+explodeDmg, 'crit');
-        Sound.poisonHit();
-        tp.toxin = tp.venom = tp.blight = false;
-        msg2 += ` 삼중으로 조제된 맹독이 한꺼번에 터지며 ${explodeDmg}의 추가 피해를 입혔다!`;
-      } else {
-        const missing = ['toxin','venom','blight'].filter(k=>!tp[k]);
-        const pick = missing[Math.floor(Math.random()*missing.length)];
-        tp[pick] = true;
-        const filled = ['toxin','venom','blight'].filter(k=>tp[k]).length;
-        msg2 += ` 맹독이 축적됐다(${filled}/3).`;
-      }
-    }
-
     if(enemy.hp>0 && maybeWarriorExtraHit()){
       const edef3 = getEffectiveEnemyDef(enemy.def);
       let extraDmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef3);
@@ -163,7 +131,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         const filled = ['toxin','venom','blight'].filter(k=>tp[k]).length;
         msg2 = `촉매를 주입해 맹독이 즉시 축적됐다(${filled}/3).`;
       } else {
-        msg2 = '이미 세 가지 맹독이 모두 준비되어 있다. 다음 기본 공격에서 자동으로 폭발한다!';
+        msg2 = '이미 세 가지 맹독이 모두 준비되어 있다. 다음 스킬 적중에서 자동으로 폭발한다!';
       }
       renderStatus();
       playCastBurst('def');
@@ -180,6 +148,21 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       Sound.buff();
       setBattleMsg(`${player.name}의 ${s.name}!`, '시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다!');
       resetCommandUI();
+      return;
+    }
+
+    if(s.type==='stealth'){
+      // 은신(도적 기본 스킬, 구 '흡수의 손길'을 대체): 이번에 오는 적의 공격을 전부
+      // 피하고, 다음 자신의 공격(기본 공격/스킬 모두)에 피해 +30%가 붙는다. 회피
+      // 소모는 combat/enemy-turn.js의 enemyAction()에서, 피해 보너스 소모는
+      // playerAttack()과 이 함수 하단 범용 phys/magic 분기·multihit 분기에서 처리한다.
+      player.stealthEvadeArmed = true;
+      player.stealthDmgBonusArmed = true;
+      renderStatus();
+      playCastBurst('def');
+      Sound.guard();
+      setBattleMsg(`${player.name}의 ${s.name}!`, '그림자 속으로 몸을 숨겼다. 이번에 오는 공격을 전부 피하고, 다음 공격의 위력이 크게 오른다.');
+      enemyTurn();
       return;
     }
 
@@ -798,6 +781,18 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       ? Math.round(edef*0.5)
       : Math.round(edef*(1-(s.defPierce||0)));
     let dmg = Math.max(1, Math.round(base*s.mult) - defMitigation);
+    // 확정 HP 소모형 스킬(예: 혈인/혈옥쇄): 혈서 토글과 달리 선택의 여지 없이 쓸
+    // 때마다 최대HP의 s.hpCostPct 비율만큼 피를 바친다. HP 1은 항상 남기도록
+    // 클램프한다(즉사 방지).
+    let hpSacMsg = '';
+    if(s.hpCostPct){
+      const desiredCost = Math.max(1, Math.round(player.maxhp*s.hpCostPct));
+      const actualCost = Math.min(desiredCost, player.hp-1);
+      if(actualCost>0){
+        player.hp -= actualCost;
+        hpSacMsg = ` 스스로의 피 ${actualCost}을(를) 대가로 바쳤다.`;
+      }
+    }
     // 원소 계약(mastery_elementpact): 마법 스킬을 쓸 때마다 화염/빙결/번개 중 하나를
     // 즉석에서 계약해 추가 효과를 싣는다.
     let elementMsg = '';
@@ -862,6 +857,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(bloodPactMsg) msg2 += bloodPactMsg;
     if(martyrVowMsg) msg2 += martyrVowMsg;
     if(elementMsg) msg2 += elementMsg;
+    if(hpSacMsg) msg2 += hpSacMsg;
     const dotLabels3 = applySkillDots(s);
     if(dotLabels3) msg2 += ` ${dotLabels3} 효과 부여!`;
     if(healed2>0){ msg2 += ` HP ${healed2} 흡수.`; }
