@@ -3,7 +3,8 @@
 전투 종료 판정 및 결과 처리 — 승리/패배/광폭화 재판정, 엔딩 화면,
 경험치 지급, 레벨업/희귀드랍/에픽드랍 토스트.
 export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRareDropToast, showEpicDropToast
-의존성: state.js, storage.js, explore.js(renderExplore/showScreen), combat/battle-setup.js(triggerEnragePhase)
+의존성: state.js, storage.js, explore.js(renderExplore/showScreen), combat/battle-setup.js(triggerEnragePhase),
+        data/jobs.js(getSpecialization)
 */
 
   function checkBattleEnd(){
@@ -176,6 +177,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
   function grantExp(amount){
     const job = getJob(player);
     const hybrid = getHybrid(player);
+    const specialization = getSpecialization(player);
     player.exp += amount;
     const levelsGained = [];
     while(player.exp >= player.expNext){
@@ -197,6 +199,11 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
       if(unlockKey && !player.skills.includes(unlockKey)) player.skills.push(unlockKey);
       const hybridKey = hybrid && hybrid.skills[player.level];
       if(hybridKey && !player.skills.includes(hybridKey)) player.skills.push(hybridKey);
+      // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 추가 스킬(예: 혈맹의 검투사
+      // 12/15). specialization.skillLevels가 없는 분기는 이 줄이 그냥 undefined라
+      // 아무 영향이 없다(아직 skillLevels를 채우지 않은 다른 분기들도 안전).
+      const specKey = specialization && specialization.skillLevels && specialization.skillLevels[player.level];
+      if(specKey && !player.skills.includes(specKey)) player.skills.push(specKey);
       levelsGained.push(player.level);
     }
     return levelsGained;
@@ -245,3 +252,4 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
     document.getElementById('app').appendChild(t);
     setTimeout(()=>t.remove(), 3400);
   }
+
