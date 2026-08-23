@@ -21,7 +21,8 @@ export(전역): SKILLDB
     // 도적
     doubleslash:    {name:'연속 베기',     mp:4,  desc:'빠르게 두 번 베어낸다',                    type:'multihit',mult:0.95, hits:2},
     backstab:       {name:'급소 찌르기',   mp:5,  desc:'적의 급소를 정확히 찔러 큰 피해를 입힌다', type:'phys',    mult:2.0},
-    draintouch:     {name:'흡수의 손길',   mp:8,  desc:'적의 생명력을 빼앗아 흡수한다',            type:'drain',   mult:1.6, drainRatio:0.5},
+    draintouch:     {name:'은신',         mp:8,  desc:'그림자에 몸을 숨긴다. 이번에 다가오는 적의 공격을 전부 피하고, 다음 자신의 공격(기본 공격/스킬 모두)에 피해 +30%가 붙는다',
+      type:'stealth'},
     shadowslash:    {name:'그림자 베기',   mp:10, desc:'그림자처럼 스며들어 세 번 베어낸다',       type:'multihit',mult:0.85, hits:3},
     assassinate:    {name:'암살',          mp:15, desc:'모든 것을 걸고 치명적인 일격을 노린다',    type:'phys',    mult:3.4},
     // 성기사
@@ -203,6 +204,15 @@ export(전역): SKILLDB
       desc:'다음 스킬 사용 시 HP 15%를 태워 위력을 크게 증폭시킬지 여부를 켜고 끈다. HP가 낮을수록 회피율도 오른다.'},
     warriorBloodpactActive: {name:'저돌', mp:6, desc:'앞뒤 재지 않고 돌진해 벤다. 체력이 낮을수록 위력이 크게 오른다',
       type:'phys', mult:1.6, selfHpBonusMax:0.9},
+    // 레벨12 "혈인": 혈서처럼 선택적(토글)이 아니라, 쓸 때마다 확정으로 HP를 태우는
+    // 스킬(hpCostPct — 최대HP 기준 비율, player-actions.js의 범용 phys/magic 분기에서
+    // 공용으로 처리). 저돌보다 한 단계 무거운 피의 대가를 요구하는 대신 짙은 출혈도 남긴다.
+    warriorBloodrend: {name:'혈인', mp:8, desc:'스스로의 피를 무기에 둘러 벤다. 최대HP의 12%를 확정으로 소모하는 대신 강력한 피해를 입히고 짙은 출혈을 남긴다',
+      type:'phys', mult:2.2, hpCostPct:0.12, dot:{type:'bleed', basis:'atk', ratio:0.35, turns:3, label:'출혈'}},
+    // 레벨15 궁극기 "혈옥쇄": 최대HP의 50%를 제물로 바치는 필살기(HP 1은 항상 남도록
+    // player-actions.js에서 방어적으로 클램프한다).
+    warriorBloodpactUltimate: {name:'혈옥쇄', mp:14, desc:'자신의 생명력 절반을 제물로 바쳐 필멸의 일격을 꽂는다. 최대HP의 50%를 소모하는 대신(HP 1은 항상 남는다) 압도적인 피해를 입힌다',
+      type:'phys', mult:4.5, defPierce:0.35, hpCostPct:0.5},
 
     // 전사 - 인내의 파훼자(warrior_endurance)
     // 마스터리 "인내": 실제로 HP 피해를 입을 때마다 battleFlags.enduranceStacks가
@@ -237,31 +247,32 @@ export(전역): SKILLDB
       type:'haste'},
 
     // 도적 - 환영검사(rogue_phantom)
-    // 마스터리 "잔영": 기본 공격(playerAttack)이 적중할 때마다 25% 확률로 분신이
+    // 마스터리 "잔영": 스킬로 적에게 피해를 입힐 때마다 25% 확률로 분신이
     // 생성되어 battleFlags.afterimagePending을 세운다. 적의 턴이 열리기 직전
     // (combat/enemy-turn.js의 enemyTurn() → triggerAfterimageStrike())에 분신이
     // 자동으로 한 번 더 공격한 뒤, 적의 턴은 정상적으로 이어진다.
-    // 설계 범위: 스킬로 인한 적중에는 적용하지 않고 기본 공격에만 한정했다(다른
-    // 마스터리 패시브들과 동일하게, 범위를 명확히 하기 위한 선택).
+    // 설계 범위(수정): 원래는 기본 공격에만 한정했으나, 기본 공격을 잘 쓰지 않을
+    // 것 같다는 이유로 "스킬로 피해를 입혔을 때"로 발동 조건을 옮겼다
+    // (player-actions.js의 범용 phys/magic 분기, multihit 분기 참고).
     mastery_afterimage: {name:'잔영', mp:0, type:'passive',
-      desc:'기본 공격이 적중할 때마다 25% 확률로 분신이 나타나, 적의 턴이 오기 직전 자동으로 한 번 더 공격한다(기본 공격에만 적용).'},
+      desc:'스킬로 적에게 피해를 입힐 때마다 25% 확률로 분신이 나타나, 적의 턴이 오기 직전 자동으로 한 번 더 공격한다.'},
     rogueShadowStrike: {name:'그림자일격', mp:7, desc:'그림자 속에서 급소를 노려 첫 타격을 반드시 적중시킨다. 확정 치명타',
       type:'phys', mult:1.5, guaranteedCritMult:1.7},
 
     // 도적 - 맹독 연금술사(rogue_alchemist)
-    // 마스터리 "삼중 조제": 기본 공격이 적중할 때마다 독 3종(맹독/독액/역병) 중 무작위
-    // 하나가 battleFlags.triplePoison에 축적된다. 세 종류가 모두 채워진 뒤 다시 기본
-    // 공격을 적중시키면, 그 자리에서 자동으로 폭발 효과가 발동해 추가 피해를 입히고
-    // 축적은 초기화된다(player-actions.js의 playerAttack 참고). 잔영과 동일한 이유로
-    // 기본 공격에만 적용을 한정했다.
+    // 마스터리 "삼중 조제": 스킬로 적에게 피해를 입힐 때마다 독 3종(맹독/독액/역병) 중
+    // 무작위 하나가 battleFlags.triplePoison에 축적된다. 세 종류가 모두 채워진 뒤 다시
+    // 스킬로 피해를 입히면, 그 자리에서 자동으로 폭발 효과가 발동해 추가 피해를 입히고
+    // 축적은 초기화된다(player-actions.js 참고). 잔영과 동일한 이유로 발동 조건을
+    // "기본 공격"에서 "스킬로 피해를 입혔을 때"로 옮겼다.
     mastery_triplepoison: {name:'삼중 조제', mp:0, type:'passive',
-      desc:'기본 공격 적중 시 독 3종 중 하나가 무작위로 축적된다(기본 공격에만 적용). 3종이 모두 채워진 뒤 다시 적중시키면 자동으로 폭발 효과가 발동한다.'},
+      desc:'스킬로 적에게 피해를 입힐 때마다 독 3종 중 하나가 무작위로 축적된다. 3종이 모두 채워진 뒤 다시 피해를 입히면 자동으로 폭발 효과가 발동한다.'},
     // 촉매 주입: 원 기획은 "원하는 독 하나"를 직접 지정하는 것이지만, 이를 위한 선택
     // UI가 없어(계약술사의 원소 계약과 동일한 종류의 설계 타협) 부족한 독 중 하나를
     // 무작위로 채우는 것으로 단순화했다. 세 종류가 이미 다 채워져 있으면 폭발 없이
     // 안내 메시지만 표시하고 턴은 그대로 소모한다.
     rogueCatalyst: {name:'촉매 주입', mp:4, type:'catalyst',
-      desc:'부족한 맹독 중 하나를 즉시 채운다(무작위). 세 종류가 이미 모두 채워져 있으면 다음 기본 공격에서 자동으로 폭발한다.'},
+      desc:'부족한 맹독 중 하나를 즉시 채운다(무작위). 세 종류가 이미 모두 채워져 있으면 다음 스킬 적중에서 자동으로 폭발한다.'},
 
     // 성기사 - 순교자(paladin_martyr)
     // 마스터리 "희생의 맹세": 혈서(mastery_bloodpact)와 동일한 상시 토글형(arm) 스킬이다.
