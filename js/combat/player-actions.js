@@ -112,6 +112,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     const mpCost = s.mp;
     if(player.mp < mpCost) return;
     setCommandsEnabled(false);
+
+    // 다중 전개(mastery_multideploy): 이 마스터리를 가진 캐릭터는 폭발 계열
+    // (detonaterig 타입) 스킬을 아예 사용할 수 없다. MP를 깎기 전에 즉시 막는다.
+    if(s.type==='detonaterig' && player.skills && player.skills.includes('mastery_multideploy')){
+      setCommandsEnabled(true);
+      setBattleMsg('로봇군단의 규율', '다중 전개 상태에서는 폭발 계열 스킬을 사용할 수 없다!');
+      return;
+    }
+
     const freeCast = mpCost>0 && hasRelicFlag('freeCastChance') && Math.random() < getRelicSum('freeCastChance');
     if(freeCast){
       playBanner('무한한 탄창!','def');
@@ -179,6 +188,49 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.creedStacks = Math.min(5, (battleFlags.creedStacks||0)+1);
     }
 
+    // 패 획득(mastery_drawcard): 턴을 소모하는 스킬을 사용할 때마다 카드 한 장을
+    // 자동으로 뽑는다. 완성된 조합이 있으면 resolveCardCombo()가 즉시 추가 피해를
+    // 입히고 손을 비운다(이 마스터리가 없는 캐릭터에게는 아무 영향 없음). 패 교환
+    // (cardexchange)은 스스로 카드를 뽑는 별도 로직이 있으므로 여기서는 제외해
+    // 한 번의 사용에 카드가 두 장 뽑히지 않게 한다.
+    if(s.type!=='cardexchange' && player.skills && player.skills.includes('mastery_drawcard')){
+      if(!battleFlags.cardHand) battleFlags.cardHand = [];
+      battleFlags.cardHand.push(1 + Math.floor(Math.random()*7));
+      if(battleFlags.cardHand.length>3) battleFlags.cardHand.shift();
+      resolveCardCombo();
+    }
+
+    if(s.type==='ridewave'){
+      // 파도타기(운명의 반란자 액티브): 운 게이지를 즉시 최댓값으로 밀어붙인다.
+      battleFlags.luckGauge = 3;
+      renderStatus();
+      playCastBurst();
+      Sound.buff();
+      setBattleMsg(`${player.name}의 ${s.name}!`, '운명의 파도를 강제로 밀어붙여 운 게이지가 최고조에 달했다! 당분간 공격력이 크게 오른다.');
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='cardexchange'){
+      // 패 교환(패의 마술사 액티브): 카드 한 장을 새 카드로 교체한다. 이미 조합
+      // 훅에서 카드를 한 장 뽑았을 수 있으므로(위 마스터리 훅), 손이 이미 3장이면
+      // 마지막 카드를 대신 교체하고, 아니면 그냥 한 장을 추가한다.
+      if(!battleFlags.cardHand) battleFlags.cardHand = [];
+      if(battleFlags.cardHand.length>=3) battleFlags.cardHand.pop();
+      battleFlags.cardHand.push(1 + Math.floor(Math.random()*7));
+      const exchangeCombo = resolveCardCombo();
+      renderStatus();
+      playCastBurst('def');
+      Sound.buff();
+      const msg2 = exchangeCombo
+        ? `카드를 바꿔치기하자 ${exchangeCombo.label}이(가) 완성되어 ${exchangeCombo.dmg}의 추가 피해를 입혔다!`
+        : `카드를 바꿔치기했다(${battleFlags.cardHand.length}장).`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='enduranceburst'){
       const stacks = (battleFlags && battleFlags.enduranceStacks) || 0;
       battleFlags.enduranceStacks = 0;
@@ -212,6 +264,48 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='legiondeploy'){
+      // 역할 배치(로봇군단장 액티브): 정찰/화력/방벽 역할 중 하나를 무작위로 맡은
+      // 로봇 한 기를 즉시 배치한다(원 기획은 "역할 선택"이지만 선택 UI가 없어 다른
+      // 마스터리들과 동일한 방식으로 무작위 선택으로 단순화했다). battleFlags.rig가
+      // 비어있으면 그 자리에, 이미 차 있으면 battleFlags.rig2에 배치한다(다중 전개
+      // 마스터리로 상한 2기). 둘 다 차 있으면 rig(먼저 배치된 쪽)를 교체한다.
+      const roles = [
+        {kind:'recon', label:'정찰', rigMult:0.55, exposeTurns:3, exposePierce:0.25},
+        {kind:'firepower', label:'화력', rigMult:0.95},
+        {kind:'shield', label:'방벽', rigMult:0.45, shieldPct:0.2},
+      ];
+      const role = roles[Math.floor(Math.random()*roles.length)];
+      const dmgPerTick = Math.max(1, Math.round(player.mag*role.rigMult));
+      const newRig = {kind:role.kind, name:`역할 로봇(${role.label})`, turnsLeft: s.rigTurns, dmgPerTick, shieldPct: role.shieldPct||0};
+      let slotMsg;
+      if(!battleFlags.rig || battleFlags.rig.turnsLeft<=0){
+        battleFlags.rig = newRig; slotMsg = '로봇을 새로 배치했다.';
+      } else if(!battleFlags.rig2 || battleFlags.rig2.turnsLeft<=0){
+        battleFlags.rig2 = newRig; slotMsg = '두 번째 로봇을 배치했다.';
+      } else {
+        battleFlags.rig = newRig; slotMsg = '이미 2기가 있어 가장 먼저 배치된 로봇을 교체했다.';
+      }
+      if(role.kind==='recon'){
+        enemy.exposedTurns = role.exposeTurns;
+        enemy.exposePierce = role.exposePierce||0;
+      }
+      const edef = getEffectiveEnemyDef(enemy.def);
+      let dmg = Math.max(1, dmgPerTick*2 - Math.round(edef*0.5));
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+      Sound.magic();
+      renderStatus();
+      let msg2 = `${role.label} 역할의 로봇을 배치했다! 첫 사격으로 ${dmg}의 피해를 입혔다. ${slotMsg}`;
+      if(role.kind==='recon') msg2 += ' 적의 급소가 드러나 받는 피해가 늘어난다.';
+      if(role.kind==='shield') msg2 += ` 가동 중엔 받는 피해의 ${Math.round((role.shieldPct||0)*100)}%를 대신 막아준다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='deployrig'){
       const edef = getEffectiveEnemyDef(enemy.def);
       const mechTier = epicSetTier('mechanic');
@@ -224,6 +318,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         kind: s.rigKind, name: s.rigName, turnsLeft: turns, dmgPerTick,
         shieldPct: s.shieldPct||0,
       };
+      // 연쇄 기폭(mastery_chaindetonate): 장치를 설치(전개)할 때마다 기폭 스택이
+      // 자동으로 오른다(최대 5). 데토네이터가 아닌 캐릭터는 이 마스터리가 없으므로
+      // 아무 영향이 없다.
+      if(player.skills && player.skills.includes('mastery_chaindetonate')){
+        battleFlags.detonatorStacks = Math.min(5, (battleFlags.detonatorStacks||0)+1);
+      }
       if(s.exposeTurns){
         enemy.exposedTurns = s.exposeTurns;
         enemy.exposePierce = s.exposePierce||0;
@@ -281,6 +381,18 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(burstDmg>0) msg2 = `${enemy.name}에게 ${burstDmg}의 피해를 입혔다. `+msg2;
         if(healed>0) msg2 += ` HP ${healed} 회복.`;
         setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      } else if(battleFlags.rig2 && battleFlags.rig2.turnsLeft>0){
+        // 다중 전개로 두 번째 슬롯에만 로봇이 있는 경우(첫 슬롯은 비었거나 만료됨)에도
+        // 정비 대상으로 삼는다.
+        battleFlags.rig2.turnsLeft += s.extendTurns;
+        battleFlags.rig2.dmgPerTick = Math.max(1, Math.round(battleFlags.rig2.dmgPerTick * s.boostMult));
+        renderStatus();
+        playCastBurst('def');
+        Sound.buff();
+        let msg2 = `${battleFlags.rig2.name}을(를) 정비했다. 지속시간 +${s.extendTurns}턴, 사격 위력이 강화되었다!`;
+        if(burstDmg>0) msg2 = `${enemy.name}에게 ${burstDmg}의 피해를 입혔다. `+msg2;
+        if(healed>0) msg2 += ` HP ${healed} 회복.`;
+        setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       } else {
         player.buffAtkTurns = s.fallbackTurns;
         player.buffAtkMult = s.fallbackAtkMult;
@@ -298,6 +410,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='detonaterig'){
+      // 연쇄 기폭(mastery_chaindetonate): 쌓아둔 기폭 스택 수만큼 배율이 곱해진다
+      // (스택당 +15%). 마스터리가 없는 캐릭터는 chainStacks가 항상 0이라 영향이 없다.
+      const chainStacks = (player.skills && player.skills.includes('mastery_chaindetonate'))
+        ? Math.min(5, battleFlags.detonatorStacks||0) : 0;
+      const chainMult = 1 + chainStacks*0.15;
       const edef = Math.max(0, Math.round(getEffectiveEnemyDef(enemy.def)*(1-(s.defPierceBonus||0))));
       let dmg, msg2;
       if(battleFlags.rig && battleFlags.rig.turnsLeft>0){
@@ -308,6 +425,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
           burst = Math.round(burst*(s.executeMult||1.5));
         }
         dmg = Math.max(1, burst - edef);
+        dmg = Math.round(dmg*chainMult);
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
         msg2 = `${rig.name}을(를) 자폭시켰다! 남은 가동력이 한꺼번에 터지며 ${dmg}의 피해를 입혔다!`;
         battleFlags.rig = null;
@@ -320,8 +438,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         }
       } else {
         dmg = Math.max(1, Math.round(player.mag*s.noRigMult) - Math.round(edef*0.5));
+        dmg = Math.round(dmg*chainMult);
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
         msg2 = `가동 중인 장치가 없어 예비 폭발물을 투척했다. ${dmg}의 피해!`;
+      }
+      if(chainStacks>0){
+        msg2 += ` 연쇄 기폭 스택(${chainStacks})까지 더해져 위력이 크게 증폭됐다!`;
+        battleFlags.detonatorStacks = 0;
       }
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
@@ -818,4 +941,32 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       setBattleMsg('도망칠 수 없었다!', '');
       enemyTurn();
     }
+  }
+
+  // 패의 마술사 공용 헬퍼: battleFlags.cardHand(최대 3장)를 검사해 트리플(3장 모두
+  // 동일) > 페어(2장 이상 동일) > 스트레이트(3장이 연속된 숫자) 순으로 완성 여부를
+  // 판정한다. 완성되면 즉시 추가 피해를 입히고 손을 비운 뒤 {label, dmg}를 반환하고,
+  // 아니면 null을 반환한다. mastery_drawcard 훅과 cardexchange 액티브 양쪽에서 공유한다.
+  function resolveCardCombo(){
+    const hand = battleFlags.cardHand||[];
+    let comboMult = 0, comboLabel = '';
+    if(hand.length===3 && hand[0]===hand[1] && hand[1]===hand[2]){
+      comboMult = 2.2; comboLabel = '트리플';
+    } else if(new Set(hand).size < hand.length){
+      comboMult = 1.1; comboLabel = '페어';
+    } else if(hand.length===3){
+      const sorted = [...hand].sort((a,b)=>a-b);
+      if(sorted[1]===sorted[0]+1 && sorted[2]===sorted[1]+1){
+        comboMult = 1.6; comboLabel = '스트레이트';
+      }
+    }
+    if(comboMult<=0) return null;
+    const edefCard = getEffectiveEnemyDef(enemy.def);
+    const dmg = Math.max(1, Math.round(effectiveAtk()*comboMult) - edefCard);
+    enemy.hp = Math.max(0, enemy.hp - dmg);
+    updateEnemyHpBar(); popDamage('-'+dmg, 'crit');
+    Sound.coin();
+    playBanner(`🃏 ${comboLabel}!`, 'crit');
+    battleFlags.cardHand = [];
+    return {label: comboLabel, dmg};
   }
