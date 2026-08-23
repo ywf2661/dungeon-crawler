@@ -30,5 +30,22 @@ export(전역): newPlayer
       endingSeen:false, deathCount:0,
     };
     p.hp = p.maxhp; p.mp = p.maxmp;
+    // 테스트용: 아이디(이름)가 'admin'이면 레벨 9부터 시작한다. combat/battle-end.js의
+    // grantExp() 레벨업 공식(HP+9/MP+4/ATK+2/DEF+1/MAG+2/SPD+1, expNext = round(expNext*1.28+6))을
+    // 그대로 재현해 레벨 1→9까지의 스탯 증가분·필요경험치·스킬 습득을 미리 적용한다.
+    // 1.28은 grantExp()에서 레벨 20 미만(난이도 무관)일 때 쓰는 성장률이며, 목표 레벨이
+    // 9이므로 항상 이 값만 해당된다.
+    if(p.name === 'admin'){
+      const startLevel = 9;
+      while(p.level < startLevel){
+        p.level += 1;
+        p.expNext = Math.round(p.expNext*1.28 + 6);
+        p.maxhp += 9; p.maxmp += 4;
+        p.atk += 2; p.def += 1; p.mag += 2; p.spd += 1;
+        const unlockKey = job.skillLevels[p.level];
+        if(unlockKey && !p.skills.includes(unlockKey)) p.skills.push(unlockKey);
+      }
+      p.hp = p.maxhp; p.mp = p.maxmp;
+    }
     return p;
   }
