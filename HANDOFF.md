@@ -2,144 +2,156 @@
 
 ## 현재 작업
 
-전직 시스템 개편(`JOB_SPECIALIZATIONS` 2분기 선택) 이어서 진행. 전사·마법사·도적에
-이어 이번 세션에 **성기사**(순교자/계율의 파수꾼) 2개 분기·4개 스킬(마스터리 2 +
-액티브 2)을 구현했다. 남은 직업은 메카닉/도박사 2개.
+전직 시스템 개편(`JOB_SPECIALIZATIONS` 2분기 선택) 진행. **6개 직업(전사·마법사·
+도적·성기사·메카닉·도박사) 12분기 전부 코드 작성 완료.** 이번 세션에 메카닉
+(로봇군단장/데토네이터)에 이어 도박사(운명의 반란자/패의 마술사)까지 마무리했다.
+이번 메시지에서 4개 수정 파일(`skills.js`, `player-actions.js`, `enemy-turn.js`,
+`battle-setup.js`)을 실제로 사용자에게 전달함.
 
-## 리팩토링 결과
+## 이번 세션 진행 방식
 
-이번 세션도 구조 변경 없이 22파일 구조 안에서 기능(신규 스킬) 추가만 진행했다.
+사용자가 4개 파일(`data/skills.js`, `combat/player-actions.js`,
+`combat/enemy-turn.js`, `combat/battle-setup.js`, `data/jobs.js`)의 실제 내용을
+채팅에 직접 붙여넣어 제공했다. 실제로 컨테이너에 파일을 써서 `node --check` 문법
+검증과 원본 대비 `diff` 대조를 메카닉·도박사 두 단계 모두에서 수행했다(브라우저/
+jsdom 스모크 테스트는 여전히 못함 — 다른 22개 파일이 없어 실행 자체가 불가능,
+문법과 라인 단위 diff까지만 확인 가능). 최종 산출물인 4개 파일을 present_files로
+사용자에게 전달했다.
 
-## 변경된 파일
+## 메카닉(로봇군단장/데토네이터) 구현 요약
 
-- `data/skills.js` — 성기사 분기 4개 스킬 추가(`mastery_martyrvow`,
-  `paladinJudgmentLight`, `mastery_creed`, `paladinBlessedWall`). 둘 다 기존 스킬
-  타입(`arm`/`phys`/`passive`/`defbuff`)을 그대로 재사용해 새 타입을 만들지 않았다.
+구현 전 사용자에게 확인한 설계 두 가지:
+1. 로봇군단장 동시 유지 로봇 수 상한 → **2기**
+2. 데토네이터 "폭발물 개수" → **rig는 기존처럼 1개만 유지, 설치할 때마다 별도
+   스택 카운터가 올라 기폭 시 스택만큼 배율이 곱해지는 방식**(다중 rig 방식 아님)
+
+변경 내용:
+- `data/skills.js` — `mastery_multideploy`, `mechanicRoleDeploy`,
+  `mastery_chaindetonate`, `mechanicDetonate` 4개 스킬 추가(순수 추가)
+- `combat/player-actions.js` — `playerSkill()` 진입부에 `mastery_multideploy`
+  보유 시 `detonaterig` 타입 스킬 전체 차단, 신규 타입 `legiondeploy`(역할 배치:
+  정찰/화력/방벽 무작위, 빈 슬롯 우선 배치) 핸들러 추가, 기존 `deployrig`에
+  `mastery_chaindetonate` 스택 증가 로직 추가, 기존 `rigsupport`에 rig2 대상
+  분기 추가, 기존 `detonaterig`에 스택×15% 배율 추가(순수 추가)
+- `combat/enemy-turn.js` — **유일하게 기존 라인을 수정한 파일.**
+  `tickActiveRig()`를 `tickActiveRig(slotKey, onDone)`로 시그니처 변경해
+  `rig`/`rig2` 순차 처리(`tickRigsThenProceed()` 신설), 피해 경감 계산에
+  `rig2.shieldPct` 합산 추가. 단일 rig만 쓰는 기존 직업은 `rig2`가 항상
+  비어 있어 실행 흐름·결과는 원본과 동일할 것으로 예상(미검증)
+- `combat/battle-setup.js` — `battleFlags.rig2 = null`,
+  `battleFlags.detonatorStacks = 0` 초기화 추가(순수 추가)
+- `data/jobs.js` — 열람만 함, 수정 안 함(masterySkillId/activeSkillId가 이미
+  정확히 사전 정의되어 있었음)
+
+## 도박사(운명의 반란자/패의 마술사) 구현 요약
+
+- `data/skills.js` — `mastery_luckwave`, `jesterRideWave`, `mastery_drawcard`,
+  `jesterExchange` 4개 스킬 추가(순수 추가)
 - `combat/player-actions.js` —
-  - `playerAttack()`/`playerItem()` 상단에 계율(계율의 파수꾼) 위반/유지 체크 추가
-  - `playerSkill()`의 arm/passive/catalyst/haste 조기 반환 다음, `enduranceburst`
-    분기 앞에 계율 유지 스택 증가 로직 추가
-  - 범용 phys/magic 분기(혈서 처리 바로 다음)에 희생의 맹세(순교자) 처리 추가 —
-    `key==='paladinJudgmentLight' && player.martyrVowArmed`일 때만 발동하도록
-    스킬 하나에 한정(혈서처럼 전체 스킬에 걸리지 않음)
-- `combat/enemy-turn.js` — `effectiveAtk()`에 계율 공격력 보너스 곱연산 추가,
-  `getCreedAtkBonus()` 신규 함수 추가(export 목록 주석에도 추가 필요 — 아직 안 함)
-- `combat/battle-setup.js` — `startBattle()`의 `battleFlags` 초기화 직후에 계율
-  무작위 자동 선택 로직 추가, 기존 주사위 토스트 다음에 계율 토스트 추가
+  - `mastery_drawcard` 보유 시 턴 소모 스킬 사용마다 카드(1~7) 자동 드로우
+    (최대 3장 유지) 훅 추가(계율 스택 증가 블록 다음, `cardexchange` 타입은
+    중복 드로우 방지를 위해 제외)
+  - 신규 타입 `ridewave`(파도타기: 운 게이지 즉시 +3) 핸들러 추가
+  - 신규 타입 `cardexchange`(패 교환: 카드 1장 교체 후 조합 재판정) 핸들러 추가
+  - `resolveCardCombo()` 헬퍼 함수 신설(트리플>페어>스트레이트 순 판정,
+    완성 시 즉시 추가 피해 + `playBanner` 안내 + 손 초기화) — 마스터리 훅과
+    `cardexchange` 액티브가 공유
+  - 순수 추가만 있고 기존 라인은 diff상 전혀 변경되지 않음
+- `combat/enemy-turn.js` —
+  - `enemyTurnReal()`(적 실제 턴, 즉 라운드당 1회)에 `mastery_luckwave` 보유
+    시 운 게이지 -1~+1 무작위 드리프트(±3 상한) 로직 추가
+  - `getLuckWaveBonus()` 신설(게이지 1당 ±7%)
+  - `effectiveAtk()`의 배율 계산에 `getLuckWaveBonus()`를 `getCreedAtkBonus()`와
+    합산하도록 **기존 한 줄을 수정**(메카닉 단계의 `tickActiveRig` 시그니처
+    변경과 마찬가지로, 이번 세션에서 기존 라인 자체를 건드린 두 번째 지점)
+- `combat/battle-setup.js` — `battleFlags.luckGauge = 0`,
+  `battleFlags.cardHand = []` 초기화 추가(순수 추가)
 
-(`jobs.js`는 이전 세션에 이미 완성된 상태를 확인만 하고 수정하지 않았다.)
+## 현재 정상 동작(확인 수준)
 
-## 이번 세션에 처음 확보한 파일 / 해소된 이전 미확보 항목
+- 메카닉·도박사 두 단계 모두 4개 파일 전부 `node --check` 문법 통과 확인
+- 메카닉 완료 시점 스냅샷과 도박사 반영 후를 diff로 대조해, 도박사 단계에서
+  추가된 변경도 `effectiveAtk()`의 의도된 한 줄 수정 외에는 전부 순수 추가임을
+  확인함
+- **이번 세션 전체를 통틀어 기존 코드 라인 자체가 바뀐 곳은 정확히 두 곳**:
+  (1) `enemy-turn.js`의 `tickActiveRig` 시그니처(메카닉 단계),
+  (2) `enemy-turn.js`의 `effectiveAtk()` 배율 계산 한 줄(도박사 단계).
+  둘 다 기존 마스터리가 없는 캐릭터에게는 결과적으로 영향이 없을 것으로
+  설계했으나 실행 테스트로는 확인되지 않았다
 
-- **`combat/battle-setup.js`를 이번에 처음 확보했다.** 확인 결과 `battleFlags`는
-  `startBattle()`에서 매 전투 새 객체 리터럴로 생성됨을 확정했다(이전 두 세션의
-  "확실하지 않음, 추정" 메모는 이제 해소됨).
-- 성기사 계율 마스터리가 "전투 시작 시" 훅이 필요했는데, battle-setup.js를 확보한
-  덕분에 이번 세션에 실제로 `startBattle()`을 수정해 구현할 수 있었다(마법사/도적
-  세션 때는 이 파일이 없어 단순화로 우회했던 것과 달리, 이번엔 원래 의도에 더
-  가깝게 구현함 — 단, "스스로 선택"은 여전히 선택 UI가 없어 무작위 자동 선택으로
-  단순화했다).
+## 테스트 필요
 
-## 현재 정상 동작 (미검증 — 이번 세션은 코드만 작성, 테스트 미실행)
-
-**중요**: 이번 세션은 이전 두 세션과 달리 jsdom 스모크 테스트를 실행하지
-않았다(대화 형태상 코드 실행 환경이 없어 텍스트로만 diff를 작성함). 다음
-세션에서 반드시 실제로 파일에 반영한 뒤 문법 검사 및 스모크 테스트를 처음부터
-돌려야 한다:
-
-- `node --check`로 전체 22개 파일 문법 통과 여부
-- 순교자: 희생의 맹세 토글 → 심판의 빛 사용 시 maxhp/atk 영구 변화 확인, 다른
-  스킬(예: judgment)에는 발동하지 않는지 확인
-- 계율의 파수꾼: 전투 시작 시 계율이 실제로 하나 선택되는지(토스트 노출),
-  기본 공격/물약 각각의 위반·유지 분기가 올바른 창구(playerAttack/playerItem)에서
-  정확히 발동하는지, `effectiveAtk()`에 계율 보너스가 실제로 반영되는지
-- `mastery_creed`를 가진 캐릭터가 없는 일반 전투에서 `battleFlags.creed`가
-  `null`로 유지되어 아무 부작용이 없는지(회귀 테스트)
-
-## 테스트 필요 (이전부터 누적)
-
-- 유물/저주 제단, 장비 세트효과, 보스소굴, 최종보스+광폭화, 실제 브라우저 사운드
-  재생, PWA 설치, `window.storage` 경로 — 전부 여전히 미검증
-- **희생의 맹세로 인한 player.maxhp/atk 영구 변화가 저장(storage.js)/불러오기 시
-  실제로 그대로 유지되는지 — storage.js를 아직 확보하지 않아 미확인.** player
-  객체 필드를 직접 바꾸는 것뿐이라 별도 저장 로직 없이도 될 것으로 예상하지만
-  추정일 뿐이다.
-- 전사(잔영·삼중 조제)와 동일하게, 성기사 마스터리 두 개(희생의 맹세/계율)의
-  수치(HP 8%/ATK+3, 스택당 5%/최대 5스택)는 감으로 맞춘 가배치값 — 밸런스
-  검증 안 됨
+- 로봇군단장/데토네이터: 이전 HANDOFF와 동일(로봇 2기 동시사격, 슬롯 교체,
+  폭발 스킬 차단 UI, 기폭 스택 상한/리셋)
+- 운명의 반란자: 운 게이지가 실제로 라운드마다 오르내리는지, `effectiveAtk()`
+  반영이 물리 스킬뿐 아니라 도박사의 다른 데미지 타입(coinflip/gamble/
+  finalcard/dicecast — 이들은 `effectiveAtk()`를 그대로 가져다 쓰므로 이론상
+  자동 반영되지만 실제 확인 안 됨)에도 자연스럽게 반영되는지, 파도타기 사용
+  시 UI에 게이지 상태가 안 보이는데(현재 메시지 텍스트로만 안내) 이대로
+  괜찮은지
+- 패의 마술사: 카드 3장이 실제로 쌓이고 조합이 정확히 판정되는지(특히 페어
+  판정 — `new Set(hand).size < hand.length` 로직이 2장/3장 모두에서 의도대로
+  동작하는지), 패 교환 사용 시 카드가 중복으로 뽑히지 않는지, 조합 완성 후
+  손이 실제로 비워지는지, 카드 손 UI 표시가 전혀 없는데 이대로 괜찮은지
+- `effectiveAtk()` 한 줄 변경이 다른 모든 마스터리 없는 일반 캐릭터에게
+  회귀를 일으키지 않는지(게이지가 0이면 `getLuckWaveBonus()`가 0을 반환하므로
+  이론상 무영향이나 확인 안 됨)
+- 이전 세션들의 테스트 필요 항목(전사~메카닉 전체, 유물/저주 제단, 장비
+  세트효과, 보스소굴, 최종보스, 사운드, PWA, `storage.js` 저장 확인 등) 전부
+  여전히 누적 미해결
 
 ## 알려진 문제 / 미해결
 
-- **`paladinJudgmentLight`(심판의 빛)와 기존 `divinejudgment`(성기사 10레벨
-  스킬, 이름도 "심판의 빛")가 표시 이름이 겹친다.** 이건 이번 세션에서 만든 게
-  아니라 `jobs.js`의 `JOB_SPECIALIZATIONS.paladin[0].activeName`에 이미 그렇게
-  정의되어 있던 값을 그대로 따른 것이다(이번 세션은 skills.js/player-actions.js/
-  enemy-turn.js/battle-setup.js만 수정 권한이 있어 jobs.js는 건드리지 않았다).
-  UI에서 두 스킬이 같은 이름으로 보여 혼동될 수 있으니, 사용자 확인 후 skills.js
-  쪽 표시 이름만 바꿀지(`paladinJudgmentLight`의 이름을 "심판의 빛" 대신 다른
-  이름으로) 결정 필요
-- **계율의 "스스로 선택"이 실제로는 무작위 자동 선택으로 단순화되어 있다**(선택
-  UI가 없어서). 마법사 계약술사/도적 촉매 주입과 동일한 종류의 타협
-- 계율이 부여하는 버프가 공격력 하나뿐이다(원문 설명은 "버프 스택"이라 방어력
-  등 다른 효과도 암시될 수 있음 — 범위를 좁혀 공격력만 구현). 확장 여부는
-  사용자 확인 후 결정
-- `combat/enemy-turn.js` 파일 상단 export 목록 주석에 신규 함수
-  `getCreedAtkBonus`를 아직 추가하지 않았다(사소하지만 다음 세션에서 반영할 것)
-- 저주 제단 보상 강화 방향, CSS 분리, GitHub 반영(`ywf2661/dungeon-crawler`),
-  전체 브라우저 수동 테스트 — 전부 여전히 미착수(누적)
-- 잔영/삼중 조제를 스킬 적중에도 반응하도록 확장할지, 촉매 주입을 실제 선택
-  UI로 개선할지 — 이전 세션부터 대기 중, 미결정
+- `paladinJudgmentLight`/`divinejudgment` 이름 중복 — 여전히 미해결
+- 데토네이터 기폭 스택, 도박사 운 게이지, 카드 손 — 셋 다 전용 UI 표시가
+  전혀 없음(메시지 텍스트로만 안내). 12분기 전체 완료 시점에서 한 번에
+  UI 필요 여부를 사용자와 재확인할 필요
+- `storage.js` 여전히 미확보
+- 이전부터 밀려있는 항목(저주 제단 보상, CSS 분리, GitHub 반영, 전체 브라우저
+  테스트) 전부 여전히 미착수
 
 ## 주의사항
 
-- **`enemyTurn()`의 4단 체크 순서는 이번 세션에 변경되지 않았다**(순교자/계율
-  둘 다 "적 턴 직전 자동 발동" 계열이 아니라서 이 체인을 건드릴 필요가 없었다).
-  여전히: 마녀의 시계/시간 왜곡 확률 체크 → 잔영 체크 → 가동 장치 체크 →
-  `enemyTurnReal()`. 다음 직업(메카닉/도박사) 중에도 "적 턴 직전 자동 발동"
-  계열이 있다면 이 순서 안에 끼워 넣을 것
-- `battleFlags.creed`/`battleFlags.creedStacks`는 이번 세션에 신규 도입한
-  필드다. `combat/battle-setup.js`의 `startBattle()`에서 매 전투 초기화됨을
-  이번에 직접 확인했으므로 확실하다(이전 세션들의 "추정" 상태와 다름)
-- 계율/희생의 맹세 로직은 마법사/도적 세션의 관례를 따라 대부분 인라인으로
-  삽입했다(별도 함수로 추출하지 않음). 단, `getCreedAtkBonus()`는 다른 마스터리들
-  (`getBloodPactDodgeBonus`, `getTimeWarpExtraChance`)과 마찬가지로
-  `combat/enemy-turn.js`에 작은 헬퍼 함수로 분리했다 — 이 관례(전투 계산에
-  관여하는 마스터리는 enemy-turn.js에 헬퍼로, 스킬 사용 시점 로직은
-  player-actions.js에 인라인으로)를 다음 직업 구현 때도 유지할 것
+- `enemyTurn()` 디스패치 순서: 마녀의 시계/시간 왜곡 확률 체크 → 잔영 체크 →
+  로봇 슬롯 순차 틱(rig → rig2) → `enemyTurnReal()`(여기서 행운의 파도 게이지
+  드리프트 발생) → 상태이상(dot) 처리 → `enemyAction()`. 이 순서는 메카닉
+  단계에서 정리된 그대로 유지됨
+- `effectiveAtk()`는 이제 `getCreedAtkBonus()` + `getLuckWaveBonus()`를 함께
+  합산한다 — 향후 마스터리가 추가로 필요해지면 같은 패턴(작은 get*Bonus 함수를
+  만들어 합산식에 더하기)을 유지할 것
+- `resolveCardCombo()`처럼 여러 스킬 타입에 걸쳐 공유해야 하는 로직은 별도
+  헬퍼 함수로 분리하는 관례가 이번 세션에서도 유지됐다(메카닉의
+  `tickActiveRig`, 도박사의 `resolveCardCombo`)
 
 ## 다음 작업
 
-1. **최우선**: 이번 세션에서 작성한 diff를 실제 파일에 반영한 뒤, `node --check`
-   전체 통과 및 jsdom 스모크 테스트(순교자/계율 각각) 처음 실행 — 아직 한 번도
-   실행되지 않은 코드다
-2. 메카닉 분기(로봇군단장/데토네이터) 구현 — `jobs.js`의
-   `JOB_SPECIALIZATIONS.mechanic`에 이미 정의되어 있음. 메카닉은 이미 `deployrig`/
-   `rigsupport`/`detonaterig` 타입과 `battleFlags.rig` 시스템이 기본 스킬(자동
-   포탑 등)에 존재하므로, 마스터리 구현 시 이 기존 rig 시스템과의 상호작용(다중
-   전개, 연쇄 기폭)을 어떻게 얹을지 설계가 필요 — 순교자/계율보다 설계 난이도 높음
-3. 이어서 도박사(운명의 반란자/패의 마술사) 구현
-4. 3개 직업(6개 분기) 전부 완료되면, 레벨10 도달 시 실제 전직 UI가 뜨는 트리거
-   지점을 확보해 실제 게임 플로우 전체 검증
-5. `paladinJudgmentLight` 이름 중복 문제 사용자 확인 후 결정
-6. 이전부터 밀려있는 항목(저주 제단 보상, CSS 분리, GitHub 반영, 전체 브라우저
-   테스트, 잔영/삼중 조제 확장, 촉매 주입 선택 UI) 우선순위 재확인
+1. **최우선**: 이번 세션에서 전달한 4개 파일(및 이전 세션들의 성기사까지
+   반영분 포함해 누적된 전체 diff)을 실제 프로젝트에 반영한 뒤, `node --check`
+   전체 통과 및 jsdom/브라우저 스모크 테스트를 **처음으로** 실행 — 12분기
+   전부 아직 한 번도 실행 테스트가 안 된 상태
+2. 레벨10 도달 시 실제 전직 UI가 뜨는 트리거 지점을 확보해 전체 게임 플로우
+   검증(선택 UI, 마스터리 자동 습득, 세이브/로드)
+3. 데토네이터 스택/운 게이지/카드 손에 대한 전용 UI 표시 필요 여부 사용자
+   확인
+4. `paladinJudgmentLight` 이름 중복 문제 사용자 확인 후 결정
+5. 이전부터 밀려있는 항목(저주 제단 보상, CSS 분리, GitHub 반영) 우선순위
+   재확인
 
 ## 다음 작업 시 확인할 파일
 
-- `data/jobs.js`의 `JOB_SPECIALIZATIONS.mechanic` / `.jester` — 다음 2개 직업
-  정의가 이미 되어 있음(재요청 불필요, 이전 세션에 전체 내용 확보됨)
-- `data/skills.js`, `combat/player-actions.js`, `combat/enemy-turn.js`,
-  `combat/battle-setup.js` — 다음 직업 구현 시 계속 열어야 하는 4개 파일(이번
-  세션에 battle-setup.js가 새로 이 목록에 추가됨)
-- **`storage.js`는 여전히 미확보.** 희생의 맹세로 인한 영구 스탯 변화가 저장에
-  실제로 반영되는지 확인하려면 필요
+- 이번 세션에서 전달한 4개 파일(`skills.js`, `player-actions.js`,
+  `enemy-turn.js`, `battle-setup.js`)이 최신 상태 — 다음 세션은 이 파일들을
+  다시 요청하지 않아도 되도록, 실제 프로젝트에 반영한 뒤 그 결과(반영 완료
+  여부, 테스트 결과)를 다음 세션 시작 시 알려줄 것
+- `data/jobs.js` — 12분기 전부 이미 정의되어 있어 추가 수정 불필요(확인만
+  필요하다면 재요청)
+- **`storage.js`는 여전히 미확보**
 - 플레이어 턴이 실제로 다시 열리는 지점을 정의한 파일(파일명 미상) — 여전히
-  미확보. 계약술사의 "턴 시작" 훅 정확화 등에 필요할 수 있음
+  미확보, 우선순위 낮음
 
 ## 작업 중단 지점
 
-전사(2분기)+마법사(2분기)+도적(2분기)+성기사(2분기), 총 8개 분기·18개 스킬 구현
-완료(단, 성기사 분은 이번 세션에 테스트 미실행 상태로 코드만 작성됨). 메카닉/
-도박사 2개 직업(4개 분기)이 아직 남아있고, 그 중 어느 것도 시작하지 않았다.
-다음 세션은 "다음 작업" 1번(이번 diff 반영 + 테스트)부터 이어가면 된다. 사용자
-로부터 다음 지시가 아직 없는 상태.
+12분기(전사·마법사·도적·성기사·메카닉·도박사) 전체 코드 작성 완료. 이번
+세션 산출물인 4개 파일을 사용자에게 전달함. 실제 프로젝트 반영과 첫 실행
+테스트는 아직 이루어지지 않았다. 다음 세션은 "다음 작업" 1번(파일 반영 +
+스모크 테스트)부터 시작하면 된다.
