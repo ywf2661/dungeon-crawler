@@ -143,6 +143,13 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     battleOver = false; subMode = null;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null};
     battleFlags.creed = null; battleFlags.creedStacks = 0;
+    // 로봇군단장(mastery_multideploy)의 두 번째 로봇 슬롯, 데토네이터
+    // (mastery_chaindetonate)의 기폭 스택 — 둘 다 매 전투 새로 초기화된다.
+    battleFlags.rig2 = null;
+    battleFlags.detonatorStacks = 0;
+    // 도박사 세분화(운명의 반란자/패의 마술사)용 필드 — 둘 다 매 전투 새로 초기화된다.
+    battleFlags.luckGauge = 0;
+    battleFlags.cardHand = [];
     // 계율(mastery_creed): 전투 시작 시 두 계율 중 하나를 무작위로 자동 선택한다(선택 UI가
     // 없어 단순화 — 계약술사/촉매 주입과 동일한 종류의 설계 타협).
     let creedLabel = '';
