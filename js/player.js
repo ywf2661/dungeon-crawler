@@ -45,6 +45,8 @@ export(전역): newPlayer
         const unlockKey = job.skillLevels[p.level];
         if(unlockKey && !p.skills.includes(unlockKey)) p.skills.push(unlockKey);
       }
+      // 몬스터 한 마리만 잡아도 바로 레벨업하도록, 레벨9 요구 경험치의 99%를 채워서 시작한다.
+      p.exp = Math.floor(p.expNext * 0.99);
       p.hp = p.maxhp; p.mp = p.maxmp;
     }
     return p;
