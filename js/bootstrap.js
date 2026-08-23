@@ -1,10 +1,17 @@
 "use strict";
 /*
-앱 부트스트랩 — init() 함수(모든 DOM 이벤트 바인딩) + 패치노트 모달.
+앱 부트스트랩 — init() 함수(모든 DOM 이벤트 바인딩) + 점검중(관리자 전용) 모달.
 반드시 다른 모든 모듈이 로드된 뒤, 파일 로드 순서상 가장 마지막에 위치해야 한다(index.html 참고).
-export(전역): init, showPatchNoteModal
+export(전역): init, showMaintenanceModal, isAdminName
 의존성: 사실상 전체 모듈(이벤트 핸들러 안에서 다른 모든 모듈의 함수를 호출함)
 */
+
+  // 현재는 별도의 로그인/계정 시스템이 없어, 타이틀 화면의 이름 입력 필드(#name-input)
+  // 값을 "아이디"로 취급한다. 이 값이 정확히 'admin'일 때만 정식 접속을 허용한다.
+  function isAdminName(){
+    const raw = document.getElementById('name-input').value || '';
+    return raw.trim() === 'admin';
+  }
 
   function init(){
     town = true; depth = 0; battleOver=false; subMode=null;
@@ -30,8 +37,15 @@ export(전역): init, showPatchNoteModal
     const wakeAudioOnce = ()=>{ Sound.ensureCtx(); Sound.ensureBgmRunning(); document.removeEventListener('pointerdown', wakeAudioOnce); };
     document.addEventListener('pointerdown', wakeAudioOnce, {once:true});
 
-    document.getElementById('btn-start').addEventListener('click', ()=>startGame(false));
-    document.getElementById('btn-continue').addEventListener('click', startGame.bind(null, true));
+    // 점검 중: 아이디(이름 입력)가 'admin'이 아니면 시작/이어하기 모두 점검중 모달만 띄운다.
+    document.getElementById('btn-start').addEventListener('click', ()=>{
+      if(!isAdminName()){ showMaintenanceModal(); return; }
+      startGame(false);
+    });
+    document.getElementById('btn-continue').addEventListener('click', ()=>{
+      if(!isAdminName()){ showMaintenanceModal(); return; }
+      startGame(true);
+    });
     document.getElementById('btn-delete-save').addEventListener('click', async ()=>{
       await deleteSave();
       document.getElementById('continue-info').style.display='none';
@@ -83,7 +97,12 @@ export(전역): init, showPatchNoteModal
     document.getElementById('cmd-item').addEventListener('click', ()=>{ Sound.click(); openSub('item'); });
     document.getElementById('cmd-run').addEventListener('click', ()=>{ Sound.click(); playerRun(); });
     document.getElementById('cmd-back').addEventListener('click', ()=>{ Sound.click(); closeSub(); });
-    document.getElementById('name-input').addEventListener('keydown', e=>{ if(e.key==='Enter') startGame(false); });
+    document.getElementById('name-input').addEventListener('keydown', e=>{
+      if(e.key==='Enter'){
+        if(!isAdminName()){ showMaintenanceModal(); return; }
+        startGame(false);
+      }
+    });
 
     loadGame().then(saved=>{
       if(saved && saved.player){
@@ -106,43 +125,24 @@ export(전역): init, showPatchNoteModal
       hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
       renderDifficultySelect();
     }).catch(e=>{ console.warn('기록 불러오기 실패(무시):', e); });
-
-    loadDismissedPatchNote().then(dismissedVersion=>{
-      if(dismissedVersion !== PATCHNOTE_VERSION) showPatchNoteModal();
-    }).catch(e=>{ console.warn('패치노트 상태 불러오기 실패(무시):', e); });
   }
 
-  function showPatchNoteModal(){
-    if(document.getElementById('patchnote-overlay')) return;
+  // 점검 중 안내 모달 — 아이디가 관리자가 아닐 때 시작/이어하기 버튼을 누르면 뜬다.
+  // 확인 버튼 외에는 아무 동작도 하지 않으며(게임 진입 불가), 닫으면 그대로 타이틀 화면에 남는다.
+  function showMaintenanceModal(){
+    if(document.getElementById('maintenance-overlay')) return;
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
-    overlay.id = 'patchnote-overlay';
+    overlay.id = 'maintenance-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
     panel.innerHTML = `
-      <h3 style="color:var(--gold-bright);">📜 패치노트</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 12px;">⚙️ 메카닉 직업 리뉴얼</p>
-      <div style="font-size:13px; line-height:1.75; color:var(--parchment);">
-        <p style="margin:0 0 8px;">메카닉이 상태이상 위주의 화학자에서, <b style="color:var(--gold-bright);">장치를 전개해 함께 싸우는 진짜 기계공학자</b>로 새로 태어났다.</p>
-        <p style="margin:0 0 4px;"><b style="color:#8fd0ff;">⚙ 가동 중인 장치(Active Rig)</b></p>
-        <p style="margin:0 0 8px; color:var(--parchment-dim);">포탑·드론·전투로봇 중 하나를 전개하면, 이후 몇 턴간 무엇을 하든 매 턴 자동으로 추가 사격이 나간다.</p>
-        <p style="margin:0 0 4px;"><b style="color:#8fd0ff;">신규 스킬 5종</b></p>
-        <p style="margin:0 0 2px; color:var(--parchment-dim);">· 자동 포탑 설치 — 즉시 첫 사격 + 3턴 자동사격</p>
-        <p style="margin:0 0 2px; color:var(--parchment-dim);">· 정비 신호 — 장치 지속시간·위력 강화 (없으면 대체 버프)</p>
-        <p style="margin:0 0 2px; color:var(--parchment-dim);">· 정찰 드론 투입 — 적의 급소를 노출시켜 방어력 관통</p>
-        <p style="margin:0 0 2px; color:var(--parchment-dim);">· 자폭 기동 — 장치를 즉발 버스트 피해로 전환</p>
-        <p style="margin:0 0 8px; color:var(--parchment-dim);">· 오메가 유닛 기동 — 강력한 자동사격 + 피해 일부 흡수(탱킹)</p>
-        <p style="margin:0; color:var(--parchment-dim);">에픽 세트 「종말기계 Mk.Ω」도 새 장치 시스템에 맞춰 함께 조정되었다.</p>
-      </div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px;">
-        <button class="btn" id="patchnote-dismiss">다시 보지 않기</button>
-        <button class="btn btn-primary" id="patchnote-close">닫기</button>
-      </div>`;
+      <h3 style="color:var(--rust-bright);">🛠 점검 중</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:13px;line-height:1.7;margin:0 0 16px;">
+        현재 회랑은 점검 중입니다.<br>잠시 후 다시 접속해 주세요.
+      </p>
+      <button class="btn btn-primary btn-wide" id="maintenance-close">확인</button>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
-    panel.querySelector('#patchnote-close').addEventListener('click', ()=> overlay.remove());
-    panel.querySelector('#patchnote-dismiss').addEventListener('click', async ()=>{
-      await dismissPatchNoteForever();
-      overlay.remove();
-    });
+    panel.querySelector('#maintenance-close').addEventListener('click', ()=> overlay.remove());
   }
