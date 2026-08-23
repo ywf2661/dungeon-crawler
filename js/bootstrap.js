@@ -139,7 +139,7 @@ export(전역): init, showMaintenanceModal, isAdminName
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">🛠 점검 중</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:13px;line-height:1.7;margin:0 0 16px;">
-        현재 회랑은 점검 중입니다.<br>잠시 후 다시 접속해 주세요.
+        회랑의 입구가 막혔다.<br>
       </p>
       <button class="btn btn-primary btn-wide" id="maintenance-close">확인</button>`;
     overlay.appendChild(panel);
