@@ -41,18 +41,22 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     tickRigsThenProceed();
   }
   // 가동 중인 로봇(rig, rig2)이 있으면 순서대로 자동사격을 처리한 뒤 적의 실제 턴으로
-  // 넘어간다. 대부분의 직업은 rig2를 쓰지 않으므로(항상 비어 있음) 기존과 동일하게
-  // rig 하나만 틱하고 바로 enemyTurnReal로 이어진다.
+  // 넘어간다. 각 슬롯은 라운드당 정확히 한 번만 틱해야 한다 — tickRigSlotOnce()가
+  // "이 슬롯이 남아있으면 한 번 쏘고 next로", "없으면 바로 next로"만 담당하고,
+  // rig 슬롯을 다 쏜 뒤의 next가 곧바로 rig2 슬롯 체크로 넘어가도록 체인을 구성한다.
+  // (주의: rig 슬롯의 콜백으로 tickRigsThenProceed 자신을 다시 넘기면 안 된다 — 그러면
+  // rig.turnsLeft가 남아있는 한 같은 라운드 안에서 즉시 재귀적으로 계속 쏴 버려서,
+  // 예를 들어 3턴짜리 장치가 설치 직후 한 라운드 만에 3번 다 쏘고 소멸하는 버그가
+  // 생긴다 — 실제로 발생했던 회귀였다.)
   function tickRigsThenProceed(){
-    if(battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0){
-      tickActiveRig('rig', tickRigsThenProceed);
-      return;
+    tickRigSlotOnce('rig', ()=> tickRigSlotOnce('rig2', enemyTurnReal));
+  }
+  function tickRigSlotOnce(slotKey, next){
+    if(battleFlags && battleFlags[slotKey] && battleFlags[slotKey].turnsLeft>0){
+      tickActiveRig(slotKey, next);
+    } else {
+      next();
     }
-    if(battleFlags && battleFlags.rig2 && battleFlags.rig2.turnsLeft>0){
-      tickActiveRig('rig2', enemyTurnReal);
-      return;
-    }
-    enemyTurnReal();
   }
   // 환영검사의 분신이 적의 턴이 열리기 직전 자동으로 한 번 더 공격한다.
   function triggerAfterimageStrike(){
