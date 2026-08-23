@@ -212,6 +212,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
   function showLevelUpToast(lv){
     const job = getJob(player);
     const hybrid = getHybrid(player);
+    const specialization = getSpecialization(player);
     const t = document.createElement('div');
     t.className='toast';
     const names = [];
@@ -219,6 +220,12 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
     if(unlockKey) names.push(SKILLDB[unlockKey].name);
     const hybridKey = hybrid && hybrid.skills[lv];
     if(hybridKey) names.push(SKILLDB[hybridKey].name);
+    // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 스킬(예: 혈맹의 검투사 12/15레벨).
+    // grantExp()는 이 스킬을 이미 정상적으로 지급하고 있었지만, 토스트 문구를 만드는
+    // 이 함수가 job.skillLevels/hybrid.skills만 확인하고 specialization.skillLevels는
+    // 빠뜨리고 있어서 "새로운 스킬 습득" 문구에 반영되지 않고 있었다.
+    const specKey = specialization && specialization.skillLevels && specialization.skillLevels[lv];
+    if(specKey) names.push(SKILLDB[specKey].name);
     Sound.levelUp();
     t.innerHTML = `<h3>레벨 업! Lv.${lv}</h3><p>최대 HP/MP와 능력치가 상승했다.</p>${names.length?`<p>새로운 스킬 습득: <b>${names.join(', ')}</b></p>`:''}`;
     document.getElementById('app').appendChild(t);
@@ -252,4 +259,3 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
     document.getElementById('app').appendChild(t);
     setTimeout(()=>t.remove(), 3400);
   }
-
