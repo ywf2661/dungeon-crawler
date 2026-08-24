@@ -56,20 +56,23 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       msg2 += ` 거인강림의 힘으로 한 번 더 몰아쳐 ${extraDmg}의 추가 피해!`;
     }
 
-    // 쌍격의 파문(warriorPuristDoubleStrike, 레벨15): 기존 희귀 장비의
-    // doubleStrikeChance와 완전히 동일한 "확률로 기본 공격이 한 번 더 나가는" 메커니즘에
-    // 그대로 확률을 얹어 재사용한다(사용자 요청 — 희귀 아이템과 같은 방식).
-    let doubleChance = getSpecialSum('doubleStrikeChance');
-    if(player.skills && player.skills.includes('warriorPuristDoubleStrike')){
-      doubleChance += 0.2;
-    }
-    if(enemy.hp>0 && doubleChance>0 && Math.random()<doubleChance){
+    // 쌍격의 파문(warriorPuristDoubleStrike, 레벨15): 사용자 요청으로 "확률로 한 번
+    // 더"에서 "무조건 한 번 더"로 변경. 대신 두 번째 타격의 위력을 50%로 낮춰
+    // 밸런스를 맞췄다(기존 20% 확률로 100% 위력이었을 때 기대값은 0.2배였는데,
+    // 확정으로 바뀌면 매번 0.5배를 보장 — RNG 프러스트레이션은 없애면서도
+    // 지나치게 강해지지 않게 조정한 값). 기존 희귀 장비의 doubleStrikeChance
+    // (확률형)는 그대로 두고, 이 패시브는 별도의 확정 트리거로 분리했다 — 그래야
+    // 확률형 발동 시에는 원래대로 100% 위력이 유지된다.
+    const doubleChance = getSpecialSum('doubleStrikeChance');
+    const guaranteedSecondHit = !!(player.skills && player.skills.includes('warriorPuristDoubleStrike'));
+    if(enemy.hp>0 && (guaranteedSecondHit || (doubleChance>0 && Math.random()<doubleChance))){
       renderStatus();
       setBattleMsg(`${player.name}의 공격!`, msg2);
       setTimeout(()=>{
         const edef2 = getEffectiveEnemyDef(enemy.def);
         let dmg2 = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef2);
         dmg2 = applyOutgoingDamageMods(dmg2, {type:'basic', onHitMult});
+        if(guaranteedSecondHit) dmg2 = Math.max(1, Math.round(dmg2*0.5));
         enemy.hp = Math.max(0, enemy.hp-dmg2);
         updateEnemyHpBar(); shakeEnemy(); spawnSlashMark(1); popDamage('-'+dmg2);
         Sound.slash();
