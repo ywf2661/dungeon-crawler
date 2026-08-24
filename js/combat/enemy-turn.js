@@ -11,8 +11,11 @@
 export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, tickActiveRig,
               enemyTurnReal, processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
-              getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus
+              getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus, getLuckWaveBonus
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
+주의: applySkillModifiers()에 저주술사(mageCurseNova)의 s.curseCountBonus 처리가 추가되어
+     있다 — 기존 statusSynergyBonus와 완전히 동일한 패턴(보유 개수만큼 곱연산 배율)이라
+     별도 신규 헬퍼 없이 relics.js의 getCurseCount()를 직접 호출한다.
 */
 
   function enemyTurn(){
@@ -359,6 +362,15 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       const activeTypes = new Set(((enemy && enemy.dots) ? enemy.dots : []).filter(dt=>dt.turns>0).map(dt=>dt.type)).size;
       if(activeTypes > 0){
         d = Math.round(d * (1 + activeTypes*s.statusSynergyBonus));
+        triggered = true;
+      }
+    }
+    // 저주 폭발(mageCurseNova, 저주술사): statusSynergyBonus와 동일한 패턴으로, 보유한
+    // 저주 개수만큼 곱연산 배율이 붙는다(relics.js의 getCurseCount() 재사용).
+    if(s.curseCountBonus){
+      const curses = (typeof getCurseCount === 'function') ? getCurseCount() : 0;
+      if(curses > 0){
+        d = Math.round(d * (1 + curses*s.curseCountBonus));
         triggered = true;
       }
     }
