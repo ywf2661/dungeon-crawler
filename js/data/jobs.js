@@ -1,185 +1,189 @@
 "use strict";
 /*
-전투 시작 세팅 — 최종보스/진 최종보스 데이터, 광폭화(엔레이지) 페이즈 시스템,
-난이도별 몬스터 스탯 보정, 적 선택(pickEnemy), 전투 시작(startBattle).
-export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pickFinalBossJob,
-              canEnrage, triggerEnragePhase, getDifficultyMonsterMult, scaleEnemyForDifficulty,
-              pickEnemy, startBattle
-의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS 등), Sound(sound.js), showToast(ui/difficulty.js)
+직업(클래스) 및 전직(레벨10 세분화) 데이터/조회 함수.
+export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIALIZATIONS,
+              getSpecialization, needsSpecializationMigration
+의존성: getJob/getHybrid/getSpecialization은 인자로 받은 플레이어 유사 객체의 job/job2/specialization
+       필드를 참조.
+주의: JOB_HYBRIDS/getHybrid는 신규 전직 로직에서는 더 이상 쓰이지 않는다(레거시 세이브 감지 및
+     과도기 라벨 표시용으로만 유지). 신규 전직은 JOB_SPECIALIZATIONS/getSpecialization을 쓴다.
 */
 
-  /* ============ 전투 ============ */
-  // 회랑의 최종보스는 고정된 몬스터가 아니라, 플레이어가 고를 수 있는 6개 직업 중
-  // 하나의 모습을 한 "타락한 용사"로 매번 랜덤하게 등장한다.
-  const FINAL_BOSS_BY_JOB = {
-    warrior:  {name:'잠식된 전사 용사',   type:'herowarrior',  hp:320, atk:32, def:14, spd:7,  exp:600, gold:[350,450], skills:['heroWarriorSmite']},
-    mage:     {name:'잠식된 마법사 용사', type:'heromage',     hp:280, atk:38, def:9,  spd:8,  exp:600, gold:[350,450], skills:['heroMageBurst']},
-    rogue:    {name:'잠식된 도적 용사',   type:'herorogue',    hp:290, atk:35, def:10, spd:13, exp:600, gold:[350,450], skills:['heroRogueSlash']},
-    paladin:  {name:'잠식된 성기사 용사', type:'heropaladin',  hp:340, atk:29, def:16, spd:6,  exp:600, gold:[350,450], skills:['heroPaladinSmite','heal']},
-    mechanic: {name:'잠식된 메카닉 용사', type:'heromechanic', hp:310, atk:32, def:12, spd:9,  exp:600, gold:[350,450], skills:['heroMechanicBlast']},
-    jester:   {name:'잠식된 도박사 용사',   type:'herojester',   hp:285, atk:35, def:10, spd:11, exp:600, gold:[350,450], skills:['heroJesterGamble']},
-  };
-  // 단 한 번도 쓰러지지 않고(deathCount===0) 50층에 도달했을 때만 등장하는 진짜 최종보스.
-  // 일반 최종보스(잠식된 OO 용사)보다, 그리고 여느 보스들보다도 훨씬 강하다.
-  const TRUE_FINAL_BOSS = {
-    name:'회랑의 시조', type:'progenitor', hp:460, atk:32, def:22, spd:10,
-    exp:1200, gold:[600,800], skills:['trueBossJudgment','heal'],
-  };
-  function pickFinalBossJob(){
-    const ids = JOBS.map(j=>j.id);
-    return ids[Math.floor(Math.random()*ids.length)];
-  }
-
-  // ---------- 최종보스 / 진 최종보스 페이즈(광폭화) 시스템 ----------
-  // 체력이 0이 되어도 곧바로 쓰러지지 않고, 남은 페이즈가 있으면 체력을 가득 채우며
-  // 더욱 강력해진 모습으로 다시 일어선다. 쉬움 난이도에서는 적용되지 않는다.
-  const ENRAGE_STEPS_FINAL = [
-    {atkMult:1.35, defMult:1.15, hpMult:1.15, skillChance:0.55, label:'광폭화! 잠식된 힘이 폭주한다'},
+  /* ============ 직업(클래스) ============ */
+  const JOBS = [
+    {id:'warrior', name:'전사', icon:'⚔️',
+      desc:'강인한 육체로 적을 압도하는 근접 전사. 체력과 방어력이 뛰어나다.',
+      statMods:{maxhp:8, maxmp:-2, atk:3, def:2, mag:-3, spd:-1},
+      skillLevels:{1:'powerstrike', 3:'guard', 5:'warcry', 7:'crushingblow', 10:'earthrend'}},
+    {id:'mage', name:'마법사', icon:'🔮',
+      desc:'원소 마법으로 적을 멀리서 불태우는 술사. 마력은 강하나 몸이 약하다.',
+      statMods:{maxhp:-8, maxmp:10, atk:-3, def:-2, mag:6, spd:0},
+      skillLevels:{1:'fireball', 3:'icelance', 5:'thunderbolt', 7:'blizzard', 10:'meteor'}},
+    {id:'rogue', name:'도적', icon:'🗡️',
+      desc:'빠른 몸놀림과 급소 공격으로 승부하는 자. 속도가 매우 빠르다.',
+      statMods:{maxhp:-3, maxmp:0, atk:2, def:-2, mag:-2, spd:6},
+      skillLevels:{1:'doubleslash', 3:'backstab', 5:'draintouch', 7:'shadowslash', 10:'assassinate'}},
+    {id:'paladin', name:'성기사', icon:'🛡️',
+      desc:'신성한 힘으로 자신과 전황을 지키는 수호자. 축복과 응징으로 전투의 흐름을 지배한다.',
+      statMods:{maxhp:5, maxmp:4, atk:1, def:3, mag:1, spd:-3},
+      skillLevels:{1:'judgment', 3:'paladinblessing', 5:'retributionoath', 7:'holylight', 10:'divinejudgment'}},
+    {id:'mechanic', name:'메카닉', icon:'⚙️',
+      desc:'포탑과 드론, 전투로봇을 전개해 함께 싸우는 기계공학자. 장치를 설치하고 가동하는 리듬으로 전투를 지배한다.',
+      statMods:{maxhp:-4, maxmp:6, atk:0, def:-2, mag:5, spd:3},
+      skillLevels:{1:'deployturret', 3:'maintenancepulse', 5:'deploydrone', 7:'detonate', 10:'omegaunit'}},
+    {id:'jester', name:'도박사', icon:'🎭',
+      desc:'숫자 대신 운명을 정면으로 다루는 자. 스킬마다 성패가 갈려, 잘 풀리면 누구보다 강력하지만 그만큼 위험도 확실하다.',
+      statMods:{maxhp:-2, maxmp:2, atk:1, def:-3, mag:1, spd:2},
+      skillLevels:{1:'coinflip', 3:'fateshift', 5:'wildcard', 7:'gamble', 10:'finalcard'}},
   ];
-  const ENRAGE_STEPS_TRUE = [
-    {atkMult:1.3, defMult:1.12, hpMult:1.15, skillChance:0.55, label:'1차 각성 — 태초의 분노가 깨어난다'},
-    {atkMult:1.5, defMult:1.2,  hpMult:1.25, skillChance:0.75, label:'2차 각성 — 회랑 그 자체가 몸부림친다'},
-  ];
-  function canEnrage(e){
-    if(!e || !(e.isFinal || e.isTrueFinal)) return false;
-    if(!player || player.difficulty==='easy') return false;
-    const steps = e.isTrueFinal ? ENRAGE_STEPS_TRUE : ENRAGE_STEPS_FINAL;
-    return (e.phase||0) < steps.length;
+  function getJob(p){
+    return JOBS.find(j=>j.id===(p&&p.job)) || JOBS[0];
   }
-  function triggerEnragePhase(){
-    setCommandsEnabled(false);
-    const steps = enemy.isTrueFinal ? ENRAGE_STEPS_TRUE : ENRAGE_STEPS_FINAL;
-    const phase = enemy.phase||0;
-    const step = steps[phase];
-    enemy.phase = phase+1;
-    enemy.atk = Math.max(1, Math.round(enemy.atk*step.atkMult));
-    enemy.def = Math.max(0, Math.round(enemy.def*step.defMult));
-    enemy.maxhp = Math.round(enemy.maxhp*(step.hpMult||1));
-    enemy.hp = enemy.maxhp;
-    enemy.skillChance = step.skillChance;
-    enemy.dots = [];
-    updateEnemyHpBar();
-    updateStatusBadges();
-    document.getElementById('bt-stage').classList.remove('dying');
-    shakeEnemy();
-    playBanner(step.label, 'enrage');
-    Sound.gameOver();
-    setBattleMsg(`${enemy.name}이(가) 쓰러지지 않는다…!`, `${step.label} — 체력을 되찾고 더욱 강력해졌다!`);
-    setTimeout(()=>{
-      if(battleOver) return;
-      enemyTurn();
-    }, 1400);
+  function sortedPairKey(a,b){ return [a,b].sort().join('+'); }
+
+  /* ---------- 전직(레벨10 하이브리드 직업) ---------- */
+  const JOB_HYBRIDS = {
+    'mage+paladin': {name:'현자',       icon:'📖', desc:'지혜와 신성한 힘을 함께 다루는 현자.',
+      skills:{10:'sacredflame', 13:'blessedburst', 16:'starofjudgment'}},
+    'mage+rogue':   {name:'그림자술사', icon:'🌑', desc:'그림자와 마법을 넘나드는 은밀한 술사.',
+      skills:{10:'shadowstab', 13:'darkorb', 16:'abyssalscythe'}},
+    'mage+warrior': {name:'마검사',     icon:'🌀', desc:'검과 마법을 동시에 다루는 전사.',
+      skills:{10:'runeslash', 13:'flameblade', 16:'bladeofruin'}},
+    'paladin+rogue':{name:'심판자',     icon:'⚖️', desc:'은밀함과 신성한 심판을 함께 쓰는 자.',
+      skills:{10:'executionstrike', 13:'chainpunishment', 16:'finaljudgment'}},
+    'paladin+warrior':{name:'성전사',   icon:'✝️', desc:'신념과 힘을 함께 두른 기사.',
+      skills:{10:'holysmite', 13:'guardiansblessing', 16:'judgmentcharge'}},
+    'rogue+warrior':{name:'광전사',     icon:'🪓', desc:'이성을 넘어선 힘을 휘두르는 전투광.',
+      skills:{10:'frenziedflurry', 13:'bloodlust', 16:'executionersaxe'}},
+    // 같은 직업을 다시 선택했을 때 — 한 길을 극한까지 파고든 마스터리 클래스
+    'warrior+warrior':{name:'검성',     icon:'🗡️👑', desc:'검의 극의에 도달해 누구도 따를 수 없는 경지에 이른 전사.',
+      skills:{10:'swordsaintstrike', 13:'swordsaintguard', 16:'swordsaintultimate'}},
+    'mage+mage':{name:'대마법사',       icon:'🔮👑', desc:'세상의 모든 원소를 다스리는 마법의 정점.',
+      skills:{10:'archmagebolt', 13:'archmagebarrier', 16:'archmageapocalypse'}},
+    'rogue+rogue':{name:'그림자군주',   icon:'🌑👑', desc:'그림자 그 자체가 되어버린 암살의 극의.',
+      skills:{10:'shadowlordstrike', 13:'shadowlorddrain', 16:'shadowlordexecute'}},
+    'paladin+paladin':{name:'대성기사', icon:'🛡️👑', desc:'신의 축복을 온몸에 두른 수호의 화신.',
+      skills:{10:'grandpaladinsmite', 13:'grandpaladinlight', 16:'grandpaladinaegis'}},
+    // 메카닉 전직 조합 — 장치를 함께 전개해 싸운다는 것이 핵심 테마
+    'mage+mechanic':{name:'연금기갑사', icon:'🔮⚙️', desc:'원소 마력을 두른 장치를 전개해 함께 싸우는 발명가.',
+      skills:{10:'alchemicshot', 13:'elementalpayload', 16:'grandinvention'}},
+    'mechanic+paladin':{name:'수호공학자', icon:'⚙️🛡️', desc:'신성한 힘을 두른 장치가 함께 싸우고 지켜주는 수호자.',
+      skills:{10:'sanctifiedgear', 13:'purgingblast', 16:'judgmentengine'}},
+    'mechanic+rogue':{name:'폭탄술사', icon:'⚙️🗡️', desc:'은신 장치와 함정을 전개해 적을 궁지로 모는 파괴 전문가.',
+      skills:{10:'trapblade', 13:'shrapnelvolley', 16:'silentdetonation'}},
+    'mechanic+warrior':{name:'기갑전사', icon:'⚙️⚔️', desc:'기계 장갑을 두르고 전선에 뛰어드는 돌격형 전사.',
+      skills:{10:'gearcrusher', 13:'overloadslam', 16:'demolitionstrike'}},
+    'mechanic+mechanic':{name:'종말기계', icon:'⚙️👑', desc:'모든 장치를 완벽히 통제하는 파괴 공학의 극치.',
+      skills:{10:'masterworkshot', 13:'cascadingtoxin', 16:'worldenderprotocol'}},
+    // 도박사 전직 조합 — 확률·베팅으로 파트너 직업의 색을 뒤섞는 것이 핵심 테마
+    'jester+mage':{name:'환영술사', icon:'🎭🔮', desc:'환영과 확률을 뒤섞어 적을 현혹하는 술사.',
+      skills:{10:'illusionbolt', 13:'mirageshift', 16:'grandillusion'}},
+    'jester+mechanic':{name:'확률공학자', icon:'🎭⚙️', desc:'승률까지 조작하는 장치로 대박과 폭사를 오가는 발명가.',
+      skills:{10:'riggedmine', 13:'overclockedluck', 16:'jackpotprotocol'}},
+    'jester+paladin':{name:'심판의 도박사', icon:'🎭🛡️', desc:'신의 뜻마저 확률로 시험하는 이단적인 심판자.',
+      skills:{10:'divinegamble', 13:'oathoffortune', 16:'judgmentcard'}},
+    'jester+rogue':{name:'그림자 도박사', icon:'🎭🗡️', desc:'그림자 속에서 목숨을 걸고 승부를 거는 무법자.',
+      skills:{10:'shadowbet', 13:'quickdraw', 16:'deathgamble'}},
+    'jester+warrior':{name:'광기의 결투가', icon:'🎭⚔️', desc:'힘과 운을 동시에 시험하는 위험한 결투가.',
+      skills:{10:'berserkcoin', 13:'warfateroar', 16:'lastwargamble'}},
+    'jester+jester':{name:'운명의 지배자', icon:'🎭👑', desc:'운명 그 자체를 손에 쥔 궁극의 도박사.',
+      skills:{10:'fatestrike', 13:'perfectodds', 16:'ultimategamble'}},
+  };
+  function getHybrid(p){
+    if(!p || !p.job2) return null;
+    return JOB_HYBRIDS[sortedPairKey(p.job, p.job2)] || null;
   }
 
-  // 난이도에 따라 몬스터 스탯을 조금씩(보통) 또는 크게(하드코어) 강화한다.
-  function getDifficultyMonsterMult(){
-    const d = player && player.difficulty;
-    if(d==='hardcore') return {hp:1.28, atk:1.22, def:1.12};
-    if(d==='normal') return {hp:1.12, atk:1.10, def:1.05};
-    return {hp:1, atk:1, def:1};
+  /* ---------- 전직(레벨10 세분화 — 본인 직업 내 2분기 선택) ----------
+     구조 전환 1단계: 데이터 구조와 선택 UI만 마련한 상태. 각 분기의 마스터리
+     패시브/액티브 스킬의 실제 수치·전투 로직(SKILLDB 항목)은 2단계에서 직업별로
+     순차 구현 예정 — masterySkillId/activeSkillId는 그 시점에 채워질 SKILLDB
+     키를 미리 지정해둔 것이며, 아직 SKILLDB에 해당 키가 없는 동안은
+     resolveJobAdvancement()에서 자동으로 스킬 지급을 건너뛴다(방어적 처리). */
+  const JOB_SPECIALIZATIONS = {
+    warrior: [
+      {id:'warrior_bloodpact', name:'혈맹의 검투사', icon:'🩸',
+        desc:'스킬 사용 시 자신의 HP 일부를 태워 위력을 크게 증폭시키는 선택지가 상시 열려있다. HP가 낮을수록 회피율도 함께 오른다.',
+        masteryName:'혈서', masteryDesc:'스킬 사용 시 HP를 태워 위력을 증폭시키는 선택지가 상시 열림. HP가 낮을수록 회피율 상승.', masterySkillId:'mastery_bloodpact',
+        activeName:'저돌', activeDesc:'HP가 낮을수록 위력이 커지는 강타.', activeSkillId:'warriorBloodpactActive',
+        // 2차 전직 후 레벨 12/15에 추가로 배우는 스킬(전직 컨셉을 이어감).
+        // combat/battle-end.js의 grantExp()가 이 맵을 읽어 레벨업 시 자동 지급한다.
+        skillLevels: {12:'warriorBloodrend', 15:'warriorBloodpactUltimate'}},
+      // [교체됨] 기존 '인내의 파훼자(warrior_endurance)'를 대체하는 신규 분기.
+      // 액티브 스킬이 없고, 레벨10/12/15에 걸쳐 패시브 3개만 습득한다(오직 기본
+      // 공격만으로 싸우는 컨셉). activeName/activeDesc/activeSkillId를 모두 null로
+      // 비워두었으며, combat/job-advancement.js의 resolveJobAdvancement()는
+      // activeSkillId가 falsy면 지급을 건너뛰도록 이미 방어적으로 짜여 있어 추가
+      // 수정 없이도 안전하다(단, 각성 안내 로그 문구는 activeName이 없을 때를 대비해
+      // 별도로 손봐야 한다 — HANDOFF 참고).
+      {id:'warrior_purist', name:'일격의 구도자', icon:'🎯',
+        desc:'오직 기본 공격만을 갈고닦은 자. 액티브 스킬 없이, 세 개의 패시브만으로 기본 공격 하나를 극한까지 강화한다.',
+        masteryName:'순일격', masteryDesc:'기본 공격의 피해가 항상 25% 증가한다.', masterySkillId:'mastery_purestrike',
+        activeName:null, activeDesc:null, activeSkillId:null,
+        // 레벨12: 메아리 타격(짝수 번째 기본 공격 강화), 레벨15: 쌍격의 파문(확률로
+        // 기본 공격이 한 번 더 나감). 전부 combat/player-actions.js의 playerAttack()
+        // 안에서 직접 처리한다.
+        skillLevels: {12:'warriorPuristEcho', 15:'warriorPuristDoubleStrike'}},
+    ],
+    mage: [
+      {id:'mage_pact', name:'계약술사', icon:'🎴',
+        desc:'매 턴 시작 시 무작위 원소와 자동으로 계약해, 보유 스킬들이 계약 원소에 따라 속성과 효과가 바뀐다.',
+        masteryName:'원소 계약', masteryDesc:'매 턴 시작 시 무작위 원소와 자동 계약, 스킬 속성/효과가 그에 따라 바뀜.', masterySkillId:'mastery_elementpact',
+        activeName:'연쇄폭발', activeDesc:'도트 걸린 적 처치 시 주변까지 피해.', activeSkillId:'mageChainExplosion'},
+      {id:'mage_time', name:'시간술사', icon:'⏳',
+        desc:'매 턴 일정 확률로 자신의 턴이 한 번 더 오거나 적의 턴이 밀린다.',
+        masteryName:'시간 왜곡', masteryDesc:'매 턴 일정 확률로 자신 턴이 한 번 더 오거나 적 턴이 밀림(자동 발동).', masterySkillId:'mastery_timewarp',
+        activeName:'가속 주문', activeDesc:'즉시 발동으로 다음 자기 턴을 확정적으로 앞당김.', activeSkillId:'mageHaste'},
+    ],
+    rogue: [
+      {id:'rogue_phantom', name:'환영검사', icon:'👥',
+        desc:'공격 적중 시 일정 확률로 분신이 생성되어, 다음 턴 자동으로 추가 공격을 가한다.',
+        masteryName:'잔영', masteryDesc:'공격 적중 시 일정 확률로 분신 생성, 다음 턴 자동 추가 공격.', masterySkillId:'mastery_afterimage',
+        activeName:'그림자일격', activeDesc:'첫 타격 필중 치명타.', activeSkillId:'rogueShadowStrike'},
+      {id:'rogue_alchemist', name:'맹독 연금술사', icon:'⚗',
+        desc:'공격할 때마다 독 3종 중 하나가 자동으로 축적되며, 세 종류가 다 채워지면 폭발 효과를 발동할 수 있다.',
+        masteryName:'삼중 조제', masteryDesc:'공격할 때마다 독 3종 중 하나 자동 축적, 3종 완성 시 폭발 효과 발동 가능.', masterySkillId:'mastery_triplepoison',
+        activeName:'촉매 주입', activeDesc:'즉시 원하는 독 하나를 추가 축적.', activeSkillId:'rogueCatalyst'},
+    ],
+    paladin: [
+      {id:'paladin_martyr', name:'순교자', icon:'✝',
+        desc:'특정 스킬 사용 시 최대HP를 영구히 깎는 대신 공격력 등 영구 스탯을 얻는 선택지가 상시 열려있다.',
+        masteryName:'희생의 맹세', masteryDesc:'특정 스킬 사용 시 최대HP를 영구히 깎는 대신 영구 스탯을 얻는 선택지가 상시 열림.', masterySkillId:'mastery_martyrvow',
+        activeName:'심판의 빛', activeDesc:'공격 + 소량 자힐 복합기.', activeSkillId:'paladinJudgmentLight'},
+      {id:'paladin_creed', name:'계율의 파수꾼', icon:'📜',
+        desc:'전투 시작 시 스스로 계율을 선택해, 유지할수록 버프 스택이 쌓이고 어기면 즉시 상실한다.',
+        masteryName:'계율', masteryDesc:'전투 시작 시 스스로 계율(예: 물약 사용 금지)을 선택, 유지 시 버프 스택 증가·어기면 즉시 상실.', masterySkillId:'mastery_creed',
+        activeName:'축복의 벽', activeDesc:'몇 턴간 자신에게 피해 흡수 보호막.', activeSkillId:'paladinBlessedWall'},
+    ],
+    mechanic: [
+      {id:'mechanic_legion', name:'로봇군단장', icon:'🤖',
+        desc:'로봇을 한 기가 아니라 여러 기 동시에 배치할 수 있게 된다. 대신 폭발 계열 스킬은 일절 사용할 수 없다.',
+        masteryName:'다중 전개', masteryDesc:'로봇을 여러 기 동시에 배치 가능. 대신 폭발 계열 스킬은 일절 사용 불가.', masterySkillId:'mastery_multideploy',
+        activeName:'역할 배치', activeDesc:'정찰/화력/방벽 등 역할이 다른 로봇 한 기를 즉시 소환.', activeSkillId:'mechanicRoleDeploy'},
+      {id:'mechanic_detonator', name:'데토네이터', icon:'💥',
+        desc:'설치해둔 폭발물 개수만큼 기폭 시 배율이 자동으로 누적된다.',
+        masteryName:'연쇄 기폭', masteryDesc:'설치된 폭발물 개수만큼 기폭 시 배율 자동 누적.', masterySkillId:'mastery_chaindetonate',
+        activeName:'기폭', activeDesc:'설치된 폭발물을 한 번에 전부 터뜨림(범위 내 자신도 휘말릴 수 있음).', activeSkillId:'mechanicDetonate'},
+    ],
+    jester: [
+      {id:'jester_rebel', name:'운명의 반란자', icon:'🎰',
+        desc:'매 턴 "운" 게이지가 자동으로 오르내리며, 그 수치에 따라 전투 전체 배율이 실시간으로 적용된다.',
+        masteryName:'행운의 파도', masteryDesc:'매 턴 "운" 게이지가 자동으로 오르내리며 전투 전체 배율에 실시간 반영.', masterySkillId:'mastery_luckwave',
+        activeName:'파도타기', activeDesc:'현재 운 게이지를 즉시 유리한 방향으로 크게 밀어붙임.', activeSkillId:'jesterRideWave'},
+      {id:'jester_cardmaster', name:'패의 마술사', icon:'🃏',
+        desc:'스킬을 사용할 때마다 자동으로 카드 한 장을 손에 쥐며, 페어/스트레이트 등 조합 완성 시 강력한 효과가 발동할 수 있다.',
+        masteryName:'패 획득', masteryDesc:'스킬 사용마다 자동으로 카드 한 장 획득, 조합 완성 시 강력한 효과 발동 가능.', masterySkillId:'mastery_drawcard',
+        activeName:'패 교환', activeDesc:'원치 않는 카드 한 장을 즉시 새 카드로 교체.', activeSkillId:'jesterExchange'},
+    ],
+  };
+  function getSpecialization(p){
+    if(!p || !p.specialization) return null;
+    const list = JOB_SPECIALIZATIONS[p.job];
+    if(!list) return null;
+    return list.find(s=>s.id===p.specialization) || null;
   }
-  function scaleEnemyForDifficulty(e){
-    const m = getDifficultyMonsterMult();
-    if(m.hp!==1){ e.maxhp = Math.max(1, Math.round(e.maxhp*m.hp)); e.hp = e.maxhp; }
-    if(m.atk!==1) e.atk = Math.max(1, Math.round(e.atk*m.atk));
-    if(m.def!==1) e.def = Math.max(0, Math.round(e.def*m.def));
-    return e;
-  }
-  function pickEnemy(isBoss, isFinal, isTrueFinal){
-    if(isTrueFinal){
-      const base = TRUE_FINAL_BOSS;
-      const scale = 1 + depth*0.05;
-      return scaleEnemyForDifficulty({
-        type: base.type, name: base.name, isBoss:true, isFinal:true, isTrueFinal:true,
-        maxhp: Math.round(base.hp*scale), hp: Math.round(base.hp*scale),
-        atk: Math.round(base.atk*scale*0.8),
-        def: Math.round(base.def + depth*0.12),
-        spd: base.spd,
-        exp: base.exp,
-        gold: base.gold,
-        skills: base.skills, guarding:false,
-      });
-    }
-    if(isFinal){
-      const jobId = pickFinalBossJob();
-      const base = FINAL_BOSS_BY_JOB[jobId];
-      const scale = 1 + depth*0.05;
-      return scaleEnemyForDifficulty({
-        type: base.type, name: base.name, isBoss:true, isFinal:true, finalJobId: jobId,
-        maxhp: Math.round(base.hp*scale), hp: Math.round(base.hp*scale),
-        atk: Math.round(base.atk*scale*0.8),
-        def: Math.round(base.def + depth*0.12),
-        spd: base.spd,
-        exp: base.exp,
-        gold: base.gold,
-        skills: base.skills, guarding:false,
-      });
-    }
-    const pool = (isBoss?BOSSES:MONSTERS).filter(m=>depth>=m.minDepth);
-    const base = pool[Math.floor(Math.random()*pool.length)] || (isBoss?BOSSES[0]:MONSTERS[0]);
-    const scale = 1 + depth*0.06;
-    // 엘리트: 보스가 아닌 일반 몬스터 중 낮은 확률로 강화판이 등장한다. 처치 시 유물이 확정으로 주어진다.
-    const isElite = !isBoss && depth>=3 && Math.random()<0.10;
-    const eliteMult = isElite ? {hp:1.8, atk:1.35, def:1.3, reward:2.2} : {hp:1, atk:1, def:1, reward:1};
-    // 보스소굴은 에픽/희귀 파밍을 위한 공간이므로, 여기서 잡는 보스는 골드/경험치 보상이 크게 줄어든다
-    // (드랍 확률 자체는 그대로 유지되어, 장비 파밍 목적은 그대로 살아있다).
-    const bossDenRewardMult = (isBoss && inBossDen) ? 0.35 : 1;
-    const skills = isElite ? base.skills.concat(['eliteFerocity']) : base.skills;
-    return scaleEnemyForDifficulty({
-      type: base.type, name: (isElite?'정예 ':'')+base.name, isBoss, isElite,
-      maxhp: Math.round(base.hp*scale*eliteMult.hp), hp: Math.round(base.hp*scale*eliteMult.hp),
-      atk: Math.round((base.atk*scale*0.8 + depth*0.4)*eliteMult.atk),
-      def: Math.round((base.def + depth*0.15)*eliteMult.def),
-      spd: base.spd,
-      exp: Math.round(base.exp*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult),
-      gold: [Math.round(base.gold[0]*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult), Math.round(base.gold[1]*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult)],
-      skills, guarding:false,
-    });
-  }
-
-  function startBattle(isBoss, isFinal, isTrueFinal){
-    revertDiceDelta(); // 직전 전투의 불확실성의 주사위 효과가 남아있다면 먼저 되돌린다(안전망).
-    enemy = pickEnemy(isBoss, isFinal, isTrueFinal);
-    battleOver = false; subMode = null;
-    battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null};
-    battleFlags.creed = null; battleFlags.creedStacks = 0;
-    // 로봇군단장(mastery_multideploy)의 두 번째 로봇 슬롯, 데토네이터
-    // (mastery_chaindetonate)의 기폭 스택 — 둘 다 매 전투 새로 초기화된다.
-    battleFlags.rig2 = null;
-    battleFlags.detonatorStacks = 0;
-    // 도박사 세분화(운명의 반란자/패의 마술사)용 필드 — 둘 다 매 전투 새로 초기화된다.
-    battleFlags.luckGauge = 0;
-    battleFlags.cardHand = [];
-    // 계율(mastery_creed): 전투 시작 시 두 계율 중 하나를 무작위로 자동 선택한다(선택 UI가
-    // 없어 단순화 — 계약술사/촉매 주입과 동일한 종류의 설계 타협).
-    let creedLabel = '';
-    if(player.skills && player.skills.includes('mastery_creed')){
-      battleFlags.creed = Math.random()<0.5 ? 'nopotion' : 'skillonly';
-      creedLabel = battleFlags.creed==='nopotion' ? '물약 사용 금지' : '기본 공격 금지(스킬만 사용)';
-    }
-    if(hasRelicFlag('diceRoll')) rollDiceEffectForBattle();
-    checkPaladinAwoken();
-    const hpLockPct = getRelicSum('hpLockPct');
-    if(hpLockPct>0 && player.maxhp>0){
-      player.hp = Math.max(1, Math.round(player.maxhp*hpLockPct));
-    }
-    showScreen('battle');
-    document.getElementById('bt-ename').innerHTML =
-      (enemy.isElite ? '<span class="elite-tag">⚔ 정예</span>' : '')
-      + (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))
-      + enemy.name;
-    document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
-    document.getElementById('bt-stage').className='enemy-stage'+(enemy.isElite?' elite':'');
-    updateEnemyHpBar();
-    updateStatusBadges();
-    setBattleMsg(isTrueFinal ? `${enemy.name}이(가) 마침내 진정한 모습을 드러낸다!` : (isFinal ? `${enemy.name}이(가) 마침내 모습을 드러냈다!` : (isBoss ? `${enemy.name}이(가) 앞을 가로막는다!` : (enemy.isElite ? `심상치 않은 기운이 감돈다… ${enemy.name}이(가) 나타났다!` : `${enemy.name}이(가) 나타났다!`))), '');
-    resetCommandUI();
-    renderStatus();
-    // 불확실성의 주사위: 전투 시작 시 어떤 효과가 뽑혔는지 토스트로 알려준다.
-    if(battleFlags.diceEffect){
-      showToast(`<h3>🎲 불확실성의 주사위</h3><p>${DICE_EFFECT_LABELS[battleFlags.diceEffect]}</p>`, '#ffcf6a');
-    }
-    if(battleFlags.creed){
-      showToast(`<h3>📜 계율</h3><p>이번 전투의 계율: <b>${creedLabel}</b><br>유지할수록 공격력이 오르고, 어기면 즉시 상실한다.</p>`, '#d9c07a');
-    }
+  // 구조 전환 이전(하이브리드 시스템)에 이미 전직을 마친 캐릭터인지 판별한다.
+  // job2가 있는데 specialization이 없으면, 다음 접속 시 새 분기 중 하나를 다시 선택해야 한다.
+  function needsSpecializationMigration(p){
+    return !!(p && p.job2 && !p.specialization);
   }
