@@ -2,7 +2,7 @@
 /*
 직업(클래스) 및 전직(레벨10 세분화) 데이터/조회 함수.
 export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIALIZATIONS,
-              getSpecialization, needsSpecializationMigration
+              getSpecialization, needsSpecializationMigration, getJobLabel
 의존성: getJob/getHybrid/getSpecialization은 인자로 받은 플레이어 유사 객체의 job/job2/specialization
        필드를 참조.
 주의: JOB_HYBRIDS/getHybrid는 신규 전직 로직에서는 더 이상 쓰이지 않는다(레거시 세이브 감지 및
@@ -185,6 +185,20 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
     const list = JOB_SPECIALIZATIONS[p.job];
     if(!list) return null;
     return list.find(s=>s.id===p.specialization) || null;
+  }
+  // 화면에 표시할 "직업 이름표"를 한 곳에서 결정한다. 전직(세분화)을 마쳤으면 그
+  // 분기 이름(예: "혈맹의 검투사")을, 레거시 하이브리드 캐릭터면 하이브리드 이름을,
+  // 둘 다 없으면 기본 직업 이름(예: "전사")을 반환한다.
+  // 예전에는 화면마다 각자 getJob()/getHybrid()만 보고 라벨을 조립해서, 전직 후에도
+  // "전사"로 계속 표시되는 버그가 여러 곳에 있었다(예: combat/battle-end.js의
+  // showEnding()) — 앞으로 직업 이름을 표시할 일이 있으면 이 함수를 쓸 것.
+  function getJobLabel(p){
+    const spec = getSpecialization(p);
+    if(spec) return `${spec.icon} ${spec.name}`;
+    const hybrid = getHybrid(p);
+    if(hybrid) return `${hybrid.icon} ${hybrid.name}`;
+    const job = getJob(p);
+    return `${job.icon} ${job.name}`;
   }
   // 구조 전환 이전(하이브리드 시스템)에 이미 전직을 마친 캐릭터인지 판별한다.
   // job2가 있는데 specialization이 없으면, 다음 접속 시 새 분기 중 하나를 다시 선택해야 한다.
