@@ -283,6 +283,23 @@ export(전역): SKILLDB
     // 동일한 패턴).
     mageCurseNova: {name:'저주 폭발', mp:9, desc:'짊어진 저주의 힘을 한꺼번에 쏟아낸다. 저주를 많이 짊어질수록 훨씬 강력하다',
       type:'magic', mult:1.6, curseCountBonus:0.25},
+    // 레벨12 "저주 전가": 저주 폭발과 마찬가지로 curseCountBonus를 그대로 재사용하므로
+    // (combat/enemy-turn.js의 applySkillModifiers()가 이미 처리함) player-actions.js에
+    // 새 코드가 전혀 필요 없다 — 데이터 추가만으로 끝난다. 여기에 더해 s.dot도 기존
+    // 범용 phys/magic 파이프라인이 자동으로 처리하는 필드라, 저주형 도트를 남기는
+    // 부분도 신규 로직 없이 그대로 동작한다(dot 타입은 poison을 재사용 — 기존에
+    // 완전히 지원되는 타입이라 이펙트/사운드가 안전하게 뜬다. 별도 'curse' 타입을
+    // 새로 만들면 연출이 지원 안 될 위험이 있어 피했다).
+    mageCurseTransfer: {name:'저주 전가', mp:10, desc:'짊어진 저주의 파편을 뜯어내 적에게 나눠준다. 저주를 많이 짊어질수록 더 강력하며, 적을 잠식하는 저주를 남긴다',
+      type:'magic', mult:1.6, curseCountBonus:0.15,
+      dot:{type:'poison', basis:'mag', ratio:0.35, turns:3, label:'전이된 저주'}},
+    // 레벨15 궁극기 "천 개의 저주": 저주를 많이 모을수록 압도적으로 강해지지만,
+    // 저주가 적으면(0~1개) 상대적으로 평범한 위력에 그친다 — "저주를 수집하는" 이
+    // 분기의 플레이스타일을 궁극기에서도 그대로 강조하기 위한 설계(curseCountBonus를
+    // 저주 폭발/저주 전가보다 높게 잡아 저주 개수에 따른 체감 차이를 크게 벌렸다).
+    mageThousandCurses: {name:'천 개의 저주', mp:16, desc:'짊어진 모든 저주를 한꺼번에 개화시켜 압도적인 파괴를 부른다. 저주를 많이 짊어질수록 폭발적으로 강력해지지만, 저주가 거의 없다면 위력은 평범하다',
+      type:'magic', mult:1.8, curseCountBonus:0.3,
+      dot:{type:'poison', basis:'mag', ratio:0.5, turns:4, label:'만개한 저주'}},
 
     // 도적 - 환영검사(rogue_phantom)
     // 마스터리 "잔영": 스킬로 적에게 피해를 입힐 때마다 25% 확률로 분신이
