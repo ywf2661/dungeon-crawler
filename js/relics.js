@@ -7,11 +7,18 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
               applyOutgoingDamageMods, revertDiceDelta, rollDiceEffectForBattle, getHourglassMult,
               RELICS, RELIC_ALTAR_POOL/FLOORS, CURSE_ALTAR_POOL/FLOORS, getRelicSlotUsage,
               getCurseCount / getCurseRewardMult / getCurseEpicBonus, getRelicDef,
+              getCurseSealBypassChance, isCurseSealActive,
               applyRelicEffect, removeRelic, BLADE_HILT_IDS, rollRelicChoices, finalizeRelicPick,
               showRelicSwapPrompt, showRelicAltar, showCurseAltar,RELIC_SKIP_GOLD_COST
               findEquipmentForDepth, findRareDropForDepth, findEpicDropForDepth,
               applyMerchantSealPurchase
 의존성: player/enemy/depth(state.js), EQUIPMENT류(data/equipment.js), Sound(sound.js)
+주의: applyRelicEffect()에 저주술사(mastery_curseweaver, mage_curseweaver) 전용 예외 처리가
+     추가되어 있다 — 저주(type:'curse')의 수치형 페널티를 절반만 받고, 저주를 받아들일
+     때마다 마력이 영구히 오른다. 또한 isCurseSealActive()가 온오프형 봉인(스킬 봉인/
+     물약 봉인/무회복)에도 저주 개수 비례 확률로 저항할 수 있게 한다 — 아래 해당 함수
+     내부 주석 참고. hasRelicFlag('skillLocked')/hasRelicFlag('potionLocked')를 직접
+     검사하던 곳(combat/player-actions.js)은 이제 isCurseSealActive(...)를 대신 호출한다.
 */
 
   const DICE_EFFECT_LABELS = {
@@ -122,6 +129,28 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
 
   function getRelicDef(id){ return RELICS[id]; }
 
+  // 저주술사(mastery_curseweaver) 전용: 온오프형 저주 봉인(스킬 봉인/물약 봉인/
+  // 무회복)을 완전히 무력화하지는 못하지만, 저주를 짊어질수록(개수 비례) 확률적으로
+  // 뚫고 나올 수 있게 한다. 수치형 페널티 완화(절반)와 같은 "저주가 힘의 원천이
+  // 된다" 테마를 온오프형 봉인에도 동일하게 적용한 것 — 저주 1개당 15%p, 최대 60%.
+  function getCurseSealBypassChance(){
+    if(!(player.skills && player.skills.includes('mastery_curseweaver'))) return 0;
+    return Math.min(0.6, getCurseCount()*0.15);
+  }
+  // 봉인형 저주 플래그(skillLocked/potionLocked/noPostBattleHeal)가 "이번에" 실제로
+  // 발동할지를 판정한다. 저주술사가 아니거나 저주가 아예 없으면 항상 hasRelicFlag()
+  // 그대로 따른다(true=봉인 작동, false=봉인 없음 또는 이번엔 뚫음). bypassLabel을
+  // 주면, 뚫었을 때 배너로 알려준다(매 시도마다 다시 굴리므로 매번 결과가 다를 수 있음).
+  function isCurseSealActive(flagName, bypassLabel){
+    if(!hasRelicFlag(flagName)) return false;
+    const bypass = getCurseSealBypassChance();
+    if(bypass>0 && Math.random() < bypass){
+      if(bypassLabel && typeof playBanner==='function') playBanner(bypassLabel, 'pact-fire');
+      return false;
+    }
+    return true;
+  }
+
   // atkPct/defPct/magPct/maxhpPct/maxmpPct/spdFlat/mpZero 는 획득 즉시 스탯에 반영한다.
   // 슬롯 교체로 유물을 버릴 때 정확히 되돌릴 수 있도록, 실제로 변한 값(before/after 차이)을
   // player.relicAppliedDeltas[id]에 기록해둔다 — 퍼센트 기반 효과라 나중에 그대로 역산할 수 없기 때문.
@@ -129,7 +158,18 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     const relic = RELICS[id];
     if(!relic) return;
     const before = {atk:player.atk, def:player.def, mag:player.mag, maxhp:player.maxhp, hp:player.hp, maxmp:player.maxmp, mp:player.mp, spd:player.spd};
-    const e = relic.effect;
+    let e = relic.effect;
+    // 저주 계약(mastery_curseweaver, 저주술사): 저주(type:'curse')의 수치형(퍼센트/고정치)
+    // 페널티를 절반만 받는다. noPostBattleHeal/potionLocked/skillLocked처럼 온오프형
+    // 봉인 효과는 "절반"의 의미가 없어 그대로 적용된다(설계상 의도적 범위 제한).
+    if(relic.type==='curse' && player.skills && player.skills.includes('mastery_curseweaver')){
+      const mitigated = {};
+      Object.keys(e).forEach(k=>{
+        const v = e[k];
+        mitigated[k] = (typeof v === 'number' && v < 0) ? v*0.5 : v;
+      });
+      e = mitigated;
+    }
     if(e.atkPct) player.atk = Math.max(1, player.atk + Math.round(player.atk*e.atkPct));
     if(e.defPct) player.def = Math.max(0, player.def + Math.round(player.def*e.defPct));
     if(e.magPct) player.mag = Math.max(0, player.mag + Math.round(player.mag*e.magPct));
@@ -145,6 +185,11 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     }
     if(e.spdFlat) player.spd += e.spdFlat;
     if(e.mpZero){ player.maxmp = 0; player.mp = 0; }
+    // 저주 계약(mastery_curseweaver): 저주를 받아들일 때마다("이번 유물이 저주일 때") 마력이
+    // 영구히 오른다 — "저주를 획득할 때마다 강력해진다"는 컨셉의 핵심 보상.
+    if(relic.type==='curse' && player.skills && player.skills.includes('mastery_curseweaver')){
+      player.mag = Math.max(0, player.mag + 4);
+    }
     const delta = {};
     Object.keys(before).forEach(k=>{ const diff = player[k]-before[k]; if(diff!==0) delta[k]=diff; });
     player.relicAppliedDeltas = player.relicAppliedDeltas || {};
