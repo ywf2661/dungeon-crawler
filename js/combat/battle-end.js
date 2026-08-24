@@ -199,7 +199,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
         player.maxmp += 4;
       }
       player.atk += 2; player.def += 1; player.mag += 2; player.spd += 1;
-      if(hasRelicFlag('noPostBattleHeal')){
+      // 저주술사(mastery_curseweaver)는 레벨업 시 무회복 저주도 저주 개수만큼의
+      // 확률로 뚫을 수 있다(레벨업이 한 번에 여러 번 처리될 수 있어, 매번 배너가
+      // 뜨면 스팸이 될 수 있으므로 여기서는 안내 문구 없이 조용히 판정만 한다).
+      if(isCurseSealActive('noPostBattleHeal')){
         player.hp = Math.min(player.hp, player.maxhp);
         player.mp = Math.min(player.mp, player.maxmp);
       } else {
