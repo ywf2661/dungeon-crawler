@@ -571,7 +571,17 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       renderStatus();
       playCastBurst('def');
       Sound.guard();
-      setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, `${player.buffDefTurns}턴 동안 받는 피해가 크게 줄어든다.`);
+      // 환영 은신(rogueShadowStrike): 일반 defbuff에 없는 전용 필드 armsAfterimage가
+      // true면, 이 스킬 자체가 분신 예약을 강제로 건다(잔영 마스터리의 "공격 스킬
+      // 사용 시" 조건과는 별개 — 은신은 피해를 주지 않는 스킬이라 마스터리 트리거
+      // 대상이 아니므로, 이 스킬이 직접 예약을 세워야 한다). 이 필드가 없는 다른
+      // defbuff 스킬(축복의 벽, 완벽한 방어 등)에는 아무 영향이 없다.
+      let defbuffMsg = `${player.buffDefTurns}턴 동안 받는 피해가 크게 줄어든다.`;
+      if(s.armsAfterimage && battleFlags){
+        battleFlags.afterimagePending = true;
+        defbuffMsg += ' 그림자 속에서 분신이 예약되었다 — 적의 턴이 오기 직전 자동으로 한 번 더 공격한다.';
+      }
+      setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, defbuffMsg);
       enemyTurn();
       return;
     }
@@ -630,6 +640,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const total = parts.reduce((a,b)=>a+b,0);
       if(!magicBased) consumeAtkBuff();
       rogueRegisterHit(!magicBased);
+      // 잔영(mastery_afterimage): 연속 공격형 스킬도 확정 발동 대상이다(범용
+      // phys/magic 분기와 동일한 조건).
+      let afterimageMsgMulti = '';
+      if(player.skills && player.skills.includes('mastery_afterimage') && battleFlags && !battleFlags.afterimagePending){
+        battleFlags.afterimagePending = true;
+        afterimageMsgMulti = ' 그림자 속에서 분신이 어른거린다…';
+      }
       // 한 타씩 순차적으로 베어내는 연출
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, '연속 공격 중...');
       parts.forEach((hitDmg, i)=>{
@@ -647,6 +664,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(mod.triggered) msg2 = '급소를 꿰뚫었다! '+msg2;
         const dotLabels1 = applySkillDots(s);
         if(dotLabels1) msg2 += ` ${dotLabels1} 효과 부여!`;
+        if(afterimageMsgMulti) msg2 += afterimageMsgMulti;
         setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
         if(checkBattleEnd()) return;
         enemyTurn();
@@ -959,6 +977,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       player.martyrVowArmed = false;
     }
+    // 잔영(mastery_afterimage, 환영검사): 공격형 스킬(이 범용 phys/magic 분기에
+    // 도달하는 모든 스킬)을 사용하면 확정적으로 분신이 예약된다. 실제 추가 공격은
+    // 적의 턴이 열리기 직전(combat/enemy-turn.js의 triggerAfterimageStrike())에
+    // 처리된다.
+    let afterimageMsg2 = '';
+    if(player.skills && player.skills.includes('mastery_afterimage') && battleFlags && !battleFlags.afterimagePending){
+      battleFlags.afterimagePending = true;
+      afterimageMsg2 = ' 그림자 속에서 분신이 어른거린다…';
+    }
     const onHitMult = consumeOnHitBonuses();
     dmg = applyOutgoingDamageMods(dmg, {type: s.type==='magic'?'magicskill':'physkill', mpCost, onHitMult});
     const mod = applySkillModifiers(dmg, s);
@@ -981,6 +1008,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(martyrVowMsg) msg2 += martyrVowMsg;
     if(elementMsg) msg2 += elementMsg;
     if(hpSacMsg) msg2 += hpSacMsg;
+    if(afterimageMsg2) msg2 += afterimageMsg2;
     const dotLabels3 = applySkillDots(s);
     if(dotLabels3) msg2 += ` ${dotLabels3} 효과 부여!`;
     if(healed2>0){ msg2 += ` HP ${healed2} 흡수.`; }
