@@ -16,6 +16,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
 주의: applySkillModifiers()에 저주술사(mageCurseNova)의 s.curseCountBonus 처리가 추가되어
      있다 — 기존 statusSynergyBonus와 완전히 동일한 패턴(보유 개수만큼 곱연산 배율)이라
      별도 신규 헬퍼 없이 relics.js의 getCurseCount()를 직접 호출한다.
+     triggerAfterimageStrike()는 고정된 일반 공격이 아니라, battleFlags.afterimageQueue
+     (combat/player-actions.js가 스킬 사용 직후 기록)를 읽어 방금 쓴 스킬의 이름·타격
+     횟수·연출을 그대로 재현하되 총 피해는 그 스킬이 실제로 낸 피해의 50%로 절반만
+     입힌다(연속 베기 같은 다단히트 스킬은 다단히트 연출 그대로, 단발 스킬은 단발로).
+     환영 은신(rogueShadowStrike, defbuff 타입)처럼 직접 피해가 없는 스킬로 예약된
+     경우엔 queue가 비어 있어 effectiveAtk() 기반 기본 강타로 대체된다.
 */
 
   function enemyTurn(){
@@ -62,19 +68,57 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     }
   }
   // 환영검사의 분신이 적의 턴이 열리기 직전 자동으로 한 번 더 공격한다.
-  // (사용자 요청으로 배율을 0.7 → 0.5로 낮췄다 — 확률 25%에서 확정 발동으로
-  // 바뀌면서 기대 피해량이 크게 늘었으므로 균형을 맞췄다: 0.25*0.7=0.175배 →
-  // 1.0*0.5=0.5배, 그래도 상당히 강화된 수치지만 "매번 확실히 발동"하는 것 자체가
-  // 이 마스터리의 정체성이라 사용자가 제시한 50%를 그대로 반영했다.)
+  // 사용자 요청: 그냥 고정된 일반 공격이 아니라, 방금 사용한 스킬의 이름과 연출을
+  // 그대로 재현한다(예: 연속 베기를 썼다면 분신도 연속 베기 이펙트로 여러 번
+  // 베어낸다) — 다만 총 피해량은 방금 그 스킬이 낸 실제 피해의 50%로 줄어든다.
+  // battleFlags.afterimageQueue에 combat/player-actions.js가 미리 기록해둔
+  // {name, magic, multihit, hits, totalDamage}를 읽어 재현 방식을 결정한다.
   function triggerAfterimageStrike(){
+    const queue = battleFlags && battleFlags.afterimageQueue;
+    const skillName = (queue && queue.name) || '환영검';
+    const isMagic = !!(queue && queue.magic);
+    const isMultihit = !!(queue && queue.multihit);
+    const hits = Math.max(1, (queue && queue.hits) || 1);
+    const fallbackDmg = Math.max(1, Math.round(effectiveAtk()*1.0));
+    const halfTotal = Math.max(1, Math.round(((queue && queue.totalDamage) || fallbackDmg) * 0.5));
+    battleFlags.afterimageQueue = null;
+
+    if(isMultihit && hits>1){
+      setTimeout(()=>{
+        if(battleOver) return;
+        setBattleMsg('그림자 속에서 잔영이 다시 나타난다!', `'${skillName}'의 잔영이 재현된다…`);
+        const per = Math.max(1, Math.round(halfTotal/hits));
+        let dealt = 0;
+        let idx = 0;
+        const doHit = ()=>{
+          if(battleOver) return;
+          const isLast = idx===hits-1;
+          const hitDmg = isLast ? Math.max(1, halfTotal-dealt) : per;
+          dealt += hitDmg;
+          enemy.hp = Math.max(0, enemy.hp - hitDmg);
+          updateEnemyHpBar(); popDamage('-'+hitDmg, 'crit'); spawnSlashMark(idx);
+          if(isMagic) Sound.magic(); else Sound.slash();
+          idx++;
+          if(idx<hits){
+            setTimeout(doHit, 220);
+          } else {
+            renderStatus();
+            if(checkBattleEnd()) return;
+            setTimeout(()=> enemyTurnReal(), 400);
+          }
+        };
+        doHit();
+      }, 450);
+      return;
+    }
+
     setTimeout(()=>{
       if(battleOver) return;
-      const edef = getEffectiveEnemyDef(enemy.def);
-      const dmg = Math.max(1, Math.round(effectiveAtk()*0.5) - edef);
+      const dmg = halfTotal;
       enemy.hp = Math.max(0, enemy.hp - dmg);
       updateEnemyHpBar(); popDamage('-'+dmg, 'crit');
-      Sound.slash();
-      setBattleMsg('그림자 속에서 분신이 튀어나온다!', `잔영이 ${dmg}의 추가 피해를 입혔다!`);
+      if(isMagic) Sound.magic(); else Sound.slash();
+      setBattleMsg('그림자 속에서 분신이 튀어나온다!', `'${skillName}'의 잔영이 ${dmg}의 추가 피해를 입혔다!`);
       renderStatus();
       if(checkBattleEnd()) return;
       setTimeout(()=> enemyTurnReal(), 400);
