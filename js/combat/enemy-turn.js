@@ -20,8 +20,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
      (combat/player-actions.js가 스킬 사용 직후 기록)를 읽어 방금 쓴 스킬의 이름·타격
      횟수·연출을 그대로 재현하되 총 피해는 그 스킬이 실제로 낸 피해의 50%로 절반만
      입힌다(연속 베기 같은 다단히트 스킬은 다단히트 연출 그대로, 단발 스킬은 단발로).
-     환영 은신(rogueShadowStrike, defbuff 타입)처럼 직접 피해가 없는 스킬로 예약된
-     경우엔 queue가 비어 있어 effectiveAtk() 기반 기본 강타로 대체된다.
+     환영 은신(직접 피해 없는 defbuff)처럼 대응 스킬 없이 예약되는 경우를 대비한
+     방어적 처리로, queue가 비어 있으면 effectiveAtk() 기반 기본 강타로 대체된다
+     (현재 환영검사의 스킬 구성상 실제로는 항상 queue가 채워져 있지만, 안전장치로
+     남겨둔다).
 */
 
   function enemyTurn(){
