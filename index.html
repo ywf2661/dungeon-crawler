@@ -548,6 +548,22 @@
     background:#3a1f0f22; border:1px solid var(--epic); border-radius:4px;
     padding:6px 8px; margin-bottom:6px; font-size:11.5px; color:var(--parchment-dim); line-height:1.6;
   }
+  
+  /* ============================================================
+   원소 계약(계약술사) 연출용 CSS — index.html의 <style> 안에 추가하세요.
+   붙여넣을 위치: 기존 `.status-fx.bleed{...}` 줄 바로 아래,
+   그리고 `.fx-banner.enrage{...}` 줄 바로 아래(둘 다 아래에 함께 적어뒀습니다).
+   ============================================================ */
+
+/* --- 1) 화면 플래시: 기존 .status-fx.poison/.burn/.bleed 아래에 추가 --- */
+.status-fx.pact-ice{background:radial-gradient(ellipse at 50% 55%, #7ad4ff66 0%, transparent 70%);}
+.status-fx.pact-lightning{background:radial-gradient(ellipse at 50% 55%, #ffe98a77 0%, transparent 70%);}
+
+/* --- 2) 배너 색상: 기존 .fx-banner.enrage 아래에 추가 --- */
+.fx-banner.pact-fire{color:#ff9a4a; border-color:#ff8a3a; text-shadow:0 0 10px #ff8a3a88, 0 1px 3px #000;}
+.fx-banner.pact-ice{color:#8fdcff; border-color:#7ad4ff; text-shadow:0 0 10px #7ad4ff88, 0 1px 3px #000;}
+.fx-banner.pact-lightning{color:#ffe98a; border-color:#ffe06a; text-shadow:0 0 10px #ffe06a99, 0 1px 3px #000;}
+
 
   ::-webkit-scrollbar{width:7px;}
   ::-webkit-scrollbar-thumb{background:#4a3a24; border-radius:4px;}
