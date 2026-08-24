@@ -641,11 +641,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(!magicBased) consumeAtkBuff();
       rogueRegisterHit(!magicBased);
       // 잔영(mastery_afterimage): 연속 공격형 스킬도 확정 발동 대상이다(범용
-      // phys/magic 분기와 동일한 조건).
+      // phys/magic 분기와 동일한 조건). 몇 타짜리 스킬이었는지·최종 합산 피해가
+      // 얼마였는지를 기록해둬, 적 턴 직전 재현 시 같은 타수·같은 연출로
+      // 다시 나타나게 한다(combat/enemy-turn.js의 triggerAfterimageStrike()).
       let afterimageMsgMulti = '';
       if(player.skills && player.skills.includes('mastery_afterimage') && battleFlags && !battleFlags.afterimagePending){
         battleFlags.afterimagePending = true;
-        afterimageMsgMulti = ' 그림자 속에서 분신이 어른거린다…';
+        battleFlags.afterimageQueue = { name: s.name, magic: magicBased, multihit: true, hits: parts.length, totalDamage: total };
+        afterimageMsgMulti = ` 그림자 속에서 '${s.name}'의 잔영이 어른거린다…`;
       }
       // 한 타씩 순차적으로 베어내는 연출
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, '연속 공격 중...');
@@ -978,14 +981,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       player.martyrVowArmed = false;
     }
     // 잔영(mastery_afterimage, 환영검사): 공격형 스킬(이 범용 phys/magic 분기에
-    // 도달하는 모든 스킬)을 사용하면 확정적으로 분신이 예약된다. 실제 추가 공격은
-    // 적의 턴이 열리기 직전(combat/enemy-turn.js의 triggerAfterimageStrike())에
-    // 처리된다.
-    let afterimageMsg2 = '';
-    if(player.skills && player.skills.includes('mastery_afterimage') && battleFlags && !battleFlags.afterimagePending){
-      battleFlags.afterimagePending = true;
-      afterimageMsg2 = ' 그림자 속에서 분신이 어른거린다…';
-    }
+    // 도달하는 모든 스킬)을 사용하면 확정적으로 분신이 예약된다. 어떤 스킬을 얼마의
+    // 피해로 재현할지는 최종 dmg가 확정된 뒤 battleFlags.afterimageQueue에 기록하고,
+    // 실제 재현은 적의 턴이 열리기 직전(combat/enemy-turn.js의
+    // triggerAfterimageStrike())에 처리된다.
+    const willQueueAfterimage = !!(player.skills && player.skills.includes('mastery_afterimage') && battleFlags && !battleFlags.afterimagePending);
     const onHitMult = consumeOnHitBonuses();
     dmg = applyOutgoingDamageMods(dmg, {type: s.type==='magic'?'magicskill':'physkill', mpCost, onHitMult});
     const mod = applySkillModifiers(dmg, s);
@@ -995,6 +995,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
     if(s.type==='magic') Sound.magic(); else Sound.slash();
+    let afterimageMsg2 = '';
+    if(willQueueAfterimage){
+      battleFlags.afterimagePending = true;
+      battleFlags.afterimageQueue = { name: s.name, magic: s.type==='magic', multihit: false, hits: 1, totalDamage: dmg };
+      afterimageMsg2 = ` 그림자 속에서 '${s.name}'의 잔영이 어른거린다…`;
+    }
     let healed2 = 0;
     if(s.lifesteal){
       healed2 = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal*epicLifestealMult()));
