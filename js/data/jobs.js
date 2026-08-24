@@ -144,9 +144,9 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
     ],
     rogue: [
       {id:'rogue_phantom', name:'환영검사', icon:'👥',
-        desc:'공격 적중 시 일정 확률로 분신이 생성되어, 다음 턴 자동으로 추가 공격을 가한다.',
-        masteryName:'잔영', masteryDesc:'공격 적중 시 일정 확률로 분신 생성, 다음 턴 자동 추가 공격.', masterySkillId:'mastery_afterimage',
-        activeName:'그림자일격', activeDesc:'첫 타격 필중 치명타.', activeSkillId:'rogueShadowStrike'},
+        desc:'공격 스킬을 쓸 때마다 분신이 나타나 다음 턴 자동으로 50% 위력의 추가 공격을 가한다. 은신에 능해 그림자 속으로 완전히 숨어들 수도 있다.',
+        masteryName:'잔영', masteryDesc:'공격형 스킬 사용 시 확정적으로 분신 생성, 적 턴 직전 자동으로 50% 위력의 추가 공격.', masterySkillId:'mastery_afterimage',
+        activeName:'환영 은신', activeDesc:'2턴간 받는 피해 대폭 감소 + 분신 즉시 예약(직접 피해 없음).', activeSkillId:'rogueShadowStrike'},
       {id:'rogue_alchemist', name:'맹독 연금술사', icon:'⚗',
         desc:'공격할 때마다 독 3종 중 하나가 자동으로 축적되며, 세 종류가 다 채워지면 폭발 효과를 발동할 수 있다.',
         masteryName:'삼중 조제', masteryDesc:'공격할 때마다 독 3종 중 하나 자동 축적, 3종 완성 시 폭발 효과 발동 가능.', masterySkillId:'mastery_triplepoison',
