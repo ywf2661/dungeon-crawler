@@ -232,16 +232,16 @@ export(전역): SKILLDB
     // 요구하지 않으므로 "오직 기본 공격만 쓸 수 있는 직업"이라는 컨셉에 맞춰
     // 셋 다 type:'passive'로 두었다(직접 선택해도 턴을 소모하지 않고 설명만 표시).
     mastery_purestrike: {name:'순일격', mp:0, type:'passive',
-      desc:'기본 공격의 피해가 항상 25% 증가한다.'},
+      desc:'기본 공격의 피해가 항상 15% 증가한다.'},
     // 레벨12: 기본 공격 횟수를 세어(전투마다 초기화) 2번째·4번째·6번째… 짝수 번째
     // 타격마다 추가로 강하게 들어간다(player-actions.js의 battleFlags.basicAtkCount).
     warriorPuristEcho: {name:'메아리 타격', mp:0, type:'passive',
-      desc:'기본 공격을 두 번째 낼 때마다(2타/4타/6타…) 40% 더 강하게 꽂힌다.'},
+      desc:'기본 공격을 두 번째 낼 때마다(2타/4타/6타…) 25% 더 강하게 꽂힌다.'},
     // 레벨15: 기존에 이미 존재하는 "일정 확률로 기본 공격이 한 번 더 나가는" 시스템
     // (희귀 장비의 doubleStrikeChance와 완전히 동일한 메커니즘)에 확률을 얹어서
     // 재사용한다 — player-actions.js의 doubleChance 계산부에 그대로 합산.
     warriorPuristDoubleStrike: {name:'쌍격의 파문', mp:0, type:'passive',
-      desc:'기본 공격 시 30% 확률로 한 번 더 공격한다(희귀 장비의 연속 공격과 동일한 방식으로 중첩).'},
+      desc:'기본 공격 시 20% 확률로 한 번 더 공격한다(희귀 장비의 연속 공격과 동일한 방식으로 중첩).'},
 
     // 마법사 - 계약술사(mage_pact)
     // 마스터리 "원소 계약": 마법 스킬을 시전할 때마다 화염/빙결/번개 중 하나를 무작위로
