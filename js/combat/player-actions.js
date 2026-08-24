@@ -163,11 +163,24 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='haste'){
-      // 가속 주문(시간술사 액티브): 적의 턴을 건너뛰고 곧바로 플레이어가 다시 행동한다.
+      // 가속 주문(시간술사 액티브): 마법 피해를 입히는 동시에 적의 턴을 건너뛰고
+      // 곧바로 다시 행동한다. 예전 버전은 피해가 전혀 없어서, 사실상 "적 공격
+      // 1회를 회피하는 것" 이상의 의미가 없었다(공격 횟수 자체는 늘지 않음 —
+      // 턴이 그대로 alternating이라 스킵해봐야 총 공격 횟수는 동일하고 피격만
+      // 한 번 준다). 이제는 스킵 효과에 실제 마법 피해까지 더해, 확실하게
+      // "공격 + 적 턴 무효화"를 동시에 얻는 스킬로 재설계했다.
+      const edefHaste = getEffectiveEnemyDef(enemy.def);
+      let hasteDmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edefHaste*0.5));
+      const onHitMultHaste = consumeOnHitBonuses();
+      hasteDmg = applyOutgoingDamageMods(hasteDmg, {type:'magicskill', mpCost, onHitMult:onHitMultHaste});
+      enemy.hp = Math.max(0, enemy.hp-hasteDmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+hasteDmg);
+      Sound.magic();
       renderStatus();
       playCastBurst('def');
       Sound.buff();
-      setBattleMsg(`${player.name}의 ${s.name}!`, '시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다!');
+      setBattleMsg(`${player.name}의 ${s.name}!`, `시간이 압축되어 ${enemy.name}에게 ${hasteDmg}의 피해를 입혔다! 그대로 시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다!`);
+      if(checkBattleEnd()) return;
       resetCommandUI();
       return;
     }
@@ -816,20 +829,36 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
     // 원소 계약(mastery_elementpact): 마법 스킬을 쓸 때마다 화염/빙결/번개 중 하나를
     // 즉석에서 계약해 추가 효과를 싣는다.
+    // UI 연출: 예전에는 결과가 메시지 텍스트로만 스쳐 지나가 어떤 원소와 계약했는지
+    // 체감이 전혀 안 됐다(특히 빙결/번개는 숫자만 조용히 바뀌고 아무 연출이 없었음).
+    // 이제 세 원소 모두 전용 배너 + 화면 플래시(status-fx)를 띄워, 매 시전마다
+    // "이번엔 무슨 원소가 걸렸는지"가 한눈에 보이도록 했다.
     let elementMsg = '';
     if(s.type==='magic' && player.skills && player.skills.includes('mastery_elementpact')){
       const roll = ['fire','ice','lightning'][Math.floor(Math.random()*3)];
       if(roll==='fire'){
+        playBanner('🔥 화염 계약!', 'pact-fire');
+        playStatusFx('burn');
+        Sound.magic();
         if(!s.dot && !s.dots){
           applyDot({type:'burn', basis:'mag', ratio:0.3, turns:3, label:'원소 계약: 화염'});
           elementMsg = ' 화염과 계약해 화상을 남겼다!';
+        } else {
+          elementMsg = ' 화염과 계약했지만, 이미 타오르고 있어 화상은 더해지지 않았다.';
         }
       } else if(roll==='ice'){
         dmg = Math.round(dmg*1.15);
-        elementMsg = ' 빙결과 계약해 위력이 올랐다!';
+        playBanner('❄ 빙결 계약!', 'pact-ice');
+        playStatusFx('pact-ice');
+        Sound.magic();
+        elementMsg = ' 빙결과 계약해 위력이 15% 올랐다!';
       } else if(roll==='lightning'){
-        dmg = dmg + Math.round(defMitigation*0.3);
-        elementMsg = ' 번개와 계약해 방어를 일부 꿰뚫었다!';
+        const pierced = Math.round(defMitigation*0.3);
+        dmg = dmg + pierced;
+        playBanner('⚡ 번개 계약!', 'pact-lightning');
+        playStatusFx('pact-lightning');
+        Sound.magic();
+        elementMsg = ` 번개와 계약해 방어를 ${pierced}만큼 꿰뚫었다!`;
       }
     }
     // 혈서(mastery_bloodpact)가 켜져 있으면, 이 스킬 한 번에 한해 HP를 태워 위력을 증폭시킨다.
