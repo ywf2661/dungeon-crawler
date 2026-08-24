@@ -70,6 +70,12 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     // 스탯 보너스: 기존 하이브리드 시스템의 "본인 직업 재선택" 보너스 공식을 그대로 재사용.
     player.maxhp += 16; player.maxmp += 8;
     player.atk += 3; player.def += 3; player.mag += 3; player.spd += 3;
+    // 일격의 구도자(warrior_purist): 스킬을 전혀 쓰지 않는(패시브 3개뿐인) 컨셉이라
+    // 마나 자체가 필요 없다. 위에서 계산된 maxmp 증가분을 포함해 완전히 0으로
+    // 되돌린다(사용자 요청).
+    if(specId === 'warrior_purist'){
+      player.maxmp = 0;
+    }
     if(hasRelicFlag('noPostBattleHeal')){
       player.hp = Math.min(player.hp, player.maxhp);
       player.mp = Math.min(player.mp, player.maxmp);
