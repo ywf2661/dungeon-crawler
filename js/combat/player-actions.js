@@ -171,6 +171,30 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 턴이 그대로 alternating이라 스킵해봐야 총 공격 횟수는 동일하고 피격만
       // 한 번 준다). 이제는 스킵 효과에 실제 마법 피해까지 더해, 확실하게
       // "공격 + 적 턴 무효화"를 동시에 얻는 스킬로 재설계했다.
+      //
+      // 남용 방지(사용자 지적): 이 스킬은 enemyTurn()을 아예 호출하지 않고 바로
+      // resetCommandUI()로 커맨드를 다시 연다 — 즉 MP만 충분하면 적이 단 한 번도
+      // 행동하지 못하고 계속 얻어맞는 것이 가능했다. 단순히 기본 MP를 올리는
+      // 것만으로는 마나를 많이 쌓은 캐릭터에게는 여전히 무한 스팸이 가능하므로,
+      // 같은 전투 안에서 재사용할 때마다 추가 비용이 기하급수적으로(1.8배씩)
+      // 불어나는 방식으로 막는다. battleFlags.hasteCastCount는 전투마다 새로
+      // 생성되는 battleFlags에 저장되므로 전투가 바뀌면 자연히 0으로 리셋된다.
+      const castNum = battleFlags.hasteCastCount || 0;
+      const comboMult = s.comboCostMult || 1.8;
+      const extraCost = castNum>0 ? Math.round(s.mp * (Math.pow(comboMult, castNum) - 1)) : 0;
+      if(extraCost>0){
+        if(player.mp < extraCost){
+          // 추가 비용을 감당할 MP가 없다 — 위에서 이미 깎인 기본 비용(mpCost)을 돌려주고 취소한다.
+          player.mp += mpCost;
+          renderStatus();
+          setCommandsEnabled(true);
+          setBattleMsg('시간이 버틴다…', `연달아 시간을 뒤트는 데 필요한 마나가 부족하다! (추가로 ${extraCost} 필요)`);
+          return;
+        }
+        player.mp -= extraCost;
+      }
+      battleFlags.hasteCastCount = castNum + 1;
+
       const edefHaste = getEffectiveEnemyDef(enemy.def);
       let hasteDmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edefHaste*0.5));
       const onHitMultHaste = consumeOnHitBonuses();
@@ -181,7 +205,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       renderStatus();
       playCastBurst('def');
       Sound.buff();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `시간이 압축되어 ${enemy.name}에게 ${hasteDmg}의 피해를 입혔다! 그대로 시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다!`);
+      let hasteMsg = `시간이 압축되어 ${enemy.name}에게 ${hasteDmg}의 피해를 입혔다! 그대로 시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다!`;
+      if(extraCost>0) hasteMsg += ` (연속 사용으로 MP ${extraCost} 추가 소모)`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, hasteMsg);
       if(checkBattleEnd()) return;
       resetCommandUI();
       return;
