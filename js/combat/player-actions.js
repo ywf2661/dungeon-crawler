@@ -276,6 +276,51 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='cursemark'){
+      // 저주의 표식(mageCurseMark, 레벨12): 적에게 낙인을 하나 새긴다. 데미지는
+      // 약하게(기본 마법 공격 수준) 잡고, 진짜 보상은 낙인을 소모하는 저주 회수
+      // (cursereap)에서 나온다. battleFlags.curseMarkStacks는 전투마다 새로
+      // 생성되는 battleFlags에 저장되므로 전투가 바뀌면 자연히 리셋된다.
+      const edefMark = getEffectiveEnemyDef(enemy.def);
+      let markDmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edefMark*0.5));
+      const onHitMultMark = consumeOnHitBonuses();
+      markDmg = applyOutgoingDamageMods(markDmg, {type:'magicskill', mpCost, onHitMult:onHitMultMark});
+      enemy.hp = Math.max(0, enemy.hp-markDmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+markDmg);
+      Sound.magic();
+      battleFlags.curseMarkStacks = Math.min(5, (battleFlags.curseMarkStacks||0)+1);
+      playStatusFx('poison');
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${enemy.name}의 영혼에 저주의 표식을 새겼다(${battleFlags.curseMarkStacks}/5). ${markDmg}의 피해를 입혔다.`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='cursereap'){
+      // 저주 회수(mageCurseReap, 레벨15): 저주의 표식으로 쌓아둔 낙인을 전부
+      // 소모해 낙인 수에 비례한 강력한 일격을 꽂는다. 인내의 파훼자
+      // (warriorEnduranceActive)의 baseMult+stackMult 패턴을 그대로 재사용했다.
+      const stacks = (battleFlags && battleFlags.curseMarkStacks) || 0;
+      battleFlags.curseMarkStacks = 0;
+      const reapMult = s.baseMult + s.stackMult*stacks;
+      const edefReap = Math.round(getEffectiveEnemyDef(enemy.def)*(1-(s.defPierce||0)));
+      const onHitMultReap = consumeOnHitBonuses();
+      let reapDmg = Math.max(1, Math.round(player.mag*reapMult) - edefReap);
+      reapDmg = applyOutgoingDamageMods(reapDmg, {type:'magicskill', mpCost, onHitMult:onHitMultReap});
+      enemy.hp = Math.max(0, enemy.hp-reapDmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+reapDmg, stacks>0?'crit':undefined);
+      Sound.magic();
+      renderStatus();
+      const reapMsg = stacks>0
+        ? `새겨둔 저주의 표식(${stacks}개)을 한꺼번에 거둬들여 ${enemy.name}에게 ${reapDmg}의 압도적인 피해를 입혔다!`
+        : `거둬들일 표식이 없어 기본 위력으로 ${enemy.name}에게 ${reapDmg}의 피해를 입혔다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, reapMsg);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='enduranceburst'){
       const stacks = (battleFlags && battleFlags.enduranceStacks) || 0;
       battleFlags.enduranceStacks = 0;
