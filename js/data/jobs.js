@@ -133,7 +133,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       {id:'mage_time', name:'시간술사', icon:'⏳',
         desc:'매 턴 일정 확률로 자신의 턴이 한 번 더 오거나 적의 턴이 밀린다.',
         masteryName:'시간 왜곡', masteryDesc:'매 턴 일정 확률로 자신 턴이 한 번 더 오거나 적 턴이 밀림(자동 발동).', masterySkillId:'mastery_timewarp',
-        activeName:'가속 주문', activeDesc:'즉시 발동으로 다음 자기 턴을 확정적으로 앞당김.', activeSkillId:'mageHaste'},
+        activeName:'가속 주문', activeDesc:'마법 피해를 입히는 동시에 적의 턴을 건너뛰고 다시 행동.', activeSkillId:'mageHaste'},
     ],
     rogue: [
       {id:'rogue_phantom', name:'환영검사', icon:'👥',
