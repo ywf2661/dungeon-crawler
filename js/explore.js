@@ -7,7 +7,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
               showBossDenConfirm, proceedEnterBossDen, proceedBossDenAdvance, onAdvance,
               showFinalFloorConfirm, proceedAdvance
 의존성: state.js, storage.js, relics.js, combat/battle-setup.js(startBattle 호출),
-       data/jobs.js(needsSpecializationMigration)
+       data/jobs.js(needsSpecializationMigration, getJobLabel)
+주의: renderStatus()가 전직(세분화) 후에도 상태바 왼쪽에 항상 기본 직업 이름("전사")만
+     표시하던 버그가 있었다(hybrid만 확인하고 specialization은 확인하지 않았음) —
+     data/jobs.js의 getJobLabel()로 교체해 고쳤다. combat/battle-end.js의 showEnding()도
+     동일한 종류의 버그가 있어 같은 방식으로 이미 고쳐졌다.
 */
 
   // '나아가다' 버튼 연타 시 층이 중복 진행되는 것을 막기 위한 잠금.
@@ -101,12 +105,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     if(player && hasRelicFlag('mpZero')){
       player.maxmp = 0; player.mp = 0;
     }
-    const job = getJob(player);
-    const hybrid = getHybrid(player);
+    // 전직(세분화) 후 상태바에 항상 기본 직업 이름("전사")만 뜨던 버그를 고쳤다.
+    // getJobLabel()(data/jobs.js)이 전직했으면 분기 이름을, 레거시 하이브리드면
+    // 그 이름을, 둘 다 아니면 기본 직업 이름을 알아서 골라 반환한다.
     document.getElementById('sb-name').textContent = player.name;
-    document.getElementById('sb-lvl').textContent = hybrid
-      ? `Lv.${player.level} · ${hybrid.icon} ${hybrid.name}`
-      : `Lv.${player.level} · ${job.icon} ${job.name}`;
+    document.getElementById('sb-lvl').textContent = `Lv.${player.level} · ${getJobLabel(player)}`;
     document.getElementById('sb-hp-bar').style.width = Math.max(0,(player.hp/player.maxhp*100))+'%';
     document.getElementById('sb-hp-val').textContent = `${Math.max(0,player.hp)}/${player.maxhp}`;
     document.getElementById('sb-mp-bar').style.width = Math.max(0,(player.mp/player.maxmp*100))+'%';
