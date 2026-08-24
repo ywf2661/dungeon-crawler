@@ -76,7 +76,9 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     if(specId === 'warrior_purist'){
       player.maxmp = 0;
     }
-    if(hasRelicFlag('noPostBattleHeal')){
+    // 저주술사(mastery_curseweaver)는 무회복(굶주린 회랑)도 저주 개수만큼의 확률로
+    // 뚫고 나올 수 있다 — isCurseSealActive()가 확률 판정과 배너 안내를 처리한다.
+    if(isCurseSealActive('noPostBattleHeal', '저주를 찢고 완전히 회복했다!')){
       player.hp = Math.min(player.hp, player.maxhp);
       player.mp = Math.min(player.mp, player.maxmp);
     } else {
