@@ -264,8 +264,8 @@ export(전역): SKILLDB
     //장치를 공유 — 유물과 마스터리를 동시에 가져도 한 턴에 추가 행동은 최대 1회).
     mastery_timewarp: {name:'시간 왜곡', mp:0, type:'passive',
       desc:'매 턴 20% 확률로 시간이 뒤틀려, 적의 턴을 건너뛰고 자신이 한 번 더 행동한다(자동 발동).'},
-    mageHaste: {name:'가속 주문', mp:8, desc:'시간을 압축해 벼락같이 몰아친다. 마법 피해를 입히는 동시에, 시간이 뒤틀려 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 된다',
-      type:'haste', mult:1.5},
+    mageHaste: {name:'가속 주문', mp:14, desc:'시간을 압축해 벼락같이 몰아친다. 마법 피해를 입히는 동시에, 시간이 뒤틀려 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 된다. 같은 전투에서 연달아 쓸수록 시간을 거스르는 대가가 가파르게 불어난다(재사용마다 소모 MP 1.8배)',
+      type:'haste', mult:1.5, comboCostMult:1.8},
 
     // 마법사 - 저주술사(mage_curseweaver) — 마법사의 3번째 분기. JOB_SPECIALIZATIONS는
     // 배열이라 직업당 분기 수가 고정이 아니며, 전직 UI(job-advancement.js)도 배열
