@@ -7,6 +7,9 @@ export(전역): showJobAdvancement, resolveJobAdvancement
      전투 스킬(SKILLDB의 masterySkillId/activeSkillId)은 2단계에서 직업별로 순차
      구현될 예정이라, resolveJobAdvancement()는 SKILLDB에 아직 없는 키는 지급을
      건너뛴다(방어적 처리 — 2단계에서 SKILLDB에 채워 넣기만 하면 자동으로 지급됨).
+     일격의 구도자(warrior_purist)처럼 activeSkillId가 아예 없는(null) 액티브-없음
+     분기도 있을 수 있어, 아래 각성 안내 로그는 activeName이 없을 때 그 부분을
+     자연스럽게 생략하도록 처리되어 있다.
 */
   /* ---------- 전직 선택 UI (레벨 10 / 레거시 하이브리드 재전직) ---------- */
   function showJobAdvancement(){
@@ -86,7 +89,13 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     }
     renderStatus();
     if(spec){
-      addLog(`${player.name}은(는) ${spec.icon} ${spec.name}(으)로 각성했다! 「${spec.masteryName}」이(가) 상시 발동하기 시작했고, 「${spec.activeName}」을(를) 익혔다.`, 'gold');
+      // 일격의 구도자처럼 activeName이 없는(액티브 스킬 자체가 없는) 분기를 대비해,
+      // 마스터리/액티브 각각 실제로 존재할 때만 안내 문구에 포함시킨다.
+      const parts = [];
+      if(spec.masteryName) parts.push(`「${spec.masteryName}」이(가) 상시 발동하기 시작했다`);
+      if(spec.activeName) parts.push(`「${spec.activeName}」을(를) 익혔다`);
+      const detail = parts.length ? ' ' + parts.join(', ') + '.' : '';
+      addLog(`${player.name}은(는) ${spec.icon} ${spec.name}(으)로 각성했다!${detail}`, 'gold');
     }
     saveGame();
   }
