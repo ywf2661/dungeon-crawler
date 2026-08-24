@@ -571,17 +571,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       renderStatus();
       playCastBurst('def');
       Sound.guard();
-      // 환영 은신(rogueShadowStrike): 일반 defbuff에 없는 전용 필드 armsAfterimage가
-      // true면, 이 스킬 자체가 분신 예약을 강제로 건다(잔영 마스터리의 "공격 스킬
-      // 사용 시" 조건과는 별개 — 은신은 피해를 주지 않는 스킬이라 마스터리 트리거
-      // 대상이 아니므로, 이 스킬이 직접 예약을 세워야 한다). 이 필드가 없는 다른
-      // defbuff 스킬(축복의 벽, 완벽한 방어 등)에는 아무 영향이 없다.
-      let defbuffMsg = `${player.buffDefTurns}턴 동안 받는 피해가 크게 줄어든다.`;
-      if(s.armsAfterimage && battleFlags){
-        battleFlags.afterimagePending = true;
-        defbuffMsg += ' 그림자 속에서 분신이 예약되었다 — 적의 턴이 오기 직전 자동으로 한 번 더 공격한다.';
-      }
-      setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, defbuffMsg);
+      setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, `${player.buffDefTurns}턴 동안 받는 피해가 크게 줄어든다.`);
       enemyTurn();
       return;
     }
