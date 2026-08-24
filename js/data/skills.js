@@ -267,6 +267,23 @@ export(전역): SKILLDB
     mageHaste: {name:'가속 주문', mp:8, desc:'시간을 압축해 벼락같이 몰아친다. 마법 피해를 입히는 동시에, 시간이 뒤틀려 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 된다',
       type:'haste', mult:1.5},
 
+    // 마법사 - 저주술사(mage_curseweaver) — 마법사의 3번째 분기. JOB_SPECIALIZATIONS는
+    // 배열이라 직업당 분기 수가 고정이 아니며, 전직 UI(job-advancement.js)도 배열
+    // 길이만큼 그대로 카드를 그리므로 이 분기를 3번째로 추가해도 별도 구조 변경이
+    // 필요 없다.
+    // 마스터리 "저주 계약": 저주 제단(relics.js의 showCurseAltar)에서 저주를 받아들일
+    // 때마다 마력이 영구히 4 오르고, 그 저주의 수치형 페널티(퍼센트/고정치)는 절반만
+    // 적용된다. 실제 처리는 relics.js의 applyRelicEffect()에서 한다(온오프형 봉인
+    // 효과인 굶주린 회랑/침묵의 서약은 "절반"의 의미가 없어 그대로 적용됨 — 설계상
+    // 의도적 범위 제한).
+    mastery_curseweaver: {name:'저주 계약', mp:0, type:'passive',
+      desc:'저주 제단에서 저주를 받아들일 때마다 마력이 영구히 4 오른다. 받아들이는 저주의 수치형 페널티(퍼센트/고정치)도 절반만 적용된다.'},
+    // 액티브 "저주 폭발": 보유한 저주 개수만큼 배율이 곱해지는 마법 공격(스택당 +25%,
+    // combat/enemy-turn.js의 applySkillModifiers()에서 처리 — 기존 statusSynergyBonus와
+    // 동일한 패턴).
+    mageCurseNova: {name:'저주 폭발', mp:9, desc:'짊어진 저주의 힘을 한꺼번에 쏟아낸다. 저주를 많이 짊어질수록 훨씬 강력하다',
+      type:'magic', mult:1.6, curseCountBonus:0.25},
+
     // 도적 - 환영검사(rogue_phantom)
     // 마스터리 "잔영": 스킬로 적에게 피해를 입힐 때마다 25% 확률로 분신이
     // 생성되어 battleFlags.afterimagePending을 세운다. 적의 턴이 열리기 직전
