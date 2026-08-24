@@ -241,7 +241,7 @@ export(전역): SKILLDB
     // (희귀 장비의 doubleStrikeChance와 완전히 동일한 메커니즘)에 확률을 얹어서
     // 재사용한다 — player-actions.js의 doubleChance 계산부에 그대로 합산.
     warriorPuristDoubleStrike: {name:'쌍격의 파문', mp:0, type:'passive',
-      desc:'기본 공격 시 20% 확률로 한 번 더 공격한다(희귀 장비의 연속 공격과 동일한 방식으로 중첩).'},
+      desc:'기본 공격 시 반드시 한 번 더 공격한다. 두 번째 타격의 위력은 50%.'},
 
     // 마법사 - 계약술사(mage_pact)
     // 마스터리 "원소 계약": 마법 스킬을 시전할 때마다 화염/빙결/번개 중 하나를 무작위로
