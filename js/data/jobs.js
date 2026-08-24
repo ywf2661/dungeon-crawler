@@ -117,8 +117,8 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // 수정 없이도 안전하다(단, 각성 안내 로그 문구는 activeName이 없을 때를 대비해
       // 별도로 손봐야 한다 — HANDOFF 참고).
       {id:'warrior_purist', name:'일격의 구도자', icon:'🎯',
-        desc:'오직 기본 공격만을 갈고닦은 자. 기본 공격 하나를 극한까지 강화한다.',
-        masteryName:'순일격', masteryDesc:'기본 공격의 피해가 항상 80% 증가한다.', masterySkillId:'mastery_purestrike',
+        desc:'오직 기본 공격만을 갈고닦은 자. 액티브 스킬 없이, 세 개의 패시브만으로 기본 공격 하나를 극한까지 강화한다.',
+        masteryName:'순일격', masteryDesc:'기본 공격의 피해가 항상 15% 증가한다.', masterySkillId:'mastery_purestrike',
         activeName:null, activeDesc:null, activeSkillId:null,
         // 레벨12: 메아리 타격(짝수 번째 기본 공격 강화), 레벨15: 쌍격의 파문(확률로
         // 기본 공격이 한 번 더 나감). 전부 combat/player-actions.js의 playerAttack()
