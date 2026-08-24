@@ -1,8 +1,12 @@
 "use strict";
 /*
-이전 모험 기록 렌더 + 유물 도감 표시(획득한 유물의 현재 상태를 설명에 덧붙임).
+이전 모험 기록 렌더 + 유물 도감 표시(획득한 유물의 현재 상태를 설명에 덧붙인다).
 export(전역): renderRecords, getRelicDisplayDesc, showMyRelics
 의존성: player(state.js), RELICS(relics.js)
+주의: showMyRelics()가 저주(type:'curse')를 일반 유물과 분리해 별도 묶음("☠ 저주")으로
+     보여주도록 바뀌었다 — 저주는 슬롯을 차지하지 않고 영구히 유지된다는 성격이 일반
+     유물과 달라 섞여 있으면 헷갈리기 쉽다는 이유. relics.js의 showRelicSwapPrompt()도
+     같은 이유로 저주를 교체 후보에서 아예 제외하도록 이미 고쳐져 있다.
 */
 
   function renderRecords(records){
@@ -119,6 +123,20 @@ export(전역): renderRecords, getRelicDisplayDesc, showMyRelics
     return r.desc;
   }
 
+  // 유물 카드 묶음 하나를 그린다(showMyRelics 전용 헬퍼). 저주/일반 유물 두 묶음을
+  // 같은 방식으로 그리기 위해 분리했다.
+  function renderRelicCardGroup(ids, typeLabel){
+    return `<div class="relic-grid">` + ids.map(id=>{
+      const r = RELICS[id];
+      if(!r) return '';
+      return `<div class="relic-card type-${r.type}" style="cursor:default;">
+        <div class="relic-type">${typeLabel[r.type]}</div>
+        <div class="relic-name">${r.name}</div>
+        <div class="relic-desc">${getRelicDisplayDesc(id)}</div>
+      </div>`;
+    }).join('') + `</div>`;
+  }
+
   function showMyRelics(){
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
     const overlay = document.createElement('div');
@@ -127,17 +145,26 @@ export(전역): renderRecords, getRelicDisplayDesc, showMyRelics
     const panel = document.createElement('div');
     panel.className = 'shop-panel relic-panel';
     const held = (player.relics||[]);
-    const body = held.length
-      ? `<div class="relic-grid">` + held.map(id=>{
-          const r = RELICS[id];
-          if(!r) return '';
-          return `<div class="relic-card type-${r.type}" style="cursor:default;">
-            <div class="relic-type">${typeLabel[r.type]}</div>
-            <div class="relic-name">${r.name}</div>
-            <div class="relic-desc">${getRelicDisplayDesc(id)}</div>
-          </div>`;
-        }).join('') + `</div>`
-      : `<p style="text-align:center;color:var(--parchment-dim);font-size:13px;font-style:italic;padding:10px 0;">아직 손에 넣은 유물이 없다.</p>`;
+    // 저주(type:'curse')는 일반 유물과 분리해서 별도 묶음("☠ 저주")으로 보여준다.
+    // 슬롯을 차지하지 않고(getRelicSlotUsage 참고) 영구히 유지된다는 점이 일반
+    // 유물과 근본적으로 달라, 섞어놓으면 어떤 게 저주인지 한눈에 안 들어온다.
+    const normalRelics = held.filter(id=>{ const r=RELICS[id]; return r && r.type!=='curse'; });
+    const curseRelics = held.filter(id=>{ const r=RELICS[id]; return r && r.type==='curse'; });
+
+    let body;
+    if(!held.length){
+      body = `<p style="text-align:center;color:var(--parchment-dim);font-size:13px;font-style:italic;padding:10px 0;">아직 손에 넣은 유물이 없다.</p>`;
+    } else {
+      body = '';
+      if(normalRelics.length){
+        body += `<h4 style="color:var(--gold-bright); font-family:'Cinzel'; font-size:13px; letter-spacing:.08em; margin:6px 0 6px;">유물</h4>`
+          + renderRelicCardGroup(normalRelics, typeLabel);
+      }
+      if(curseRelics.length){
+        body += `<h4 style="color:#d99fff; font-family:'Cinzel'; font-size:13px; letter-spacing:.08em; margin:16px 0 6px;">☠ 저주</h4>`
+          + renderRelicCardGroup(curseRelics, typeLabel);
+      }
+    }
     panel.innerHTML = `<h3>✦ 보유 중인 유물 ✦</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:-4px 0 10px;">유물 슬롯 ${getRelicSlotUsage()}/${player.relicSlots} <span style="opacity:.7;">(저주는 슬롯을 차지하지 않는다)</span></p>
       ${body}
