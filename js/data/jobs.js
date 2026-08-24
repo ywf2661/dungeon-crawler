@@ -134,6 +134,10 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         desc:'매 턴 일정 확률로 자신의 턴이 한 번 더 오거나 적의 턴이 밀린다.',
         masteryName:'시간 왜곡', masteryDesc:'매 턴 일정 확률로 자신 턴이 한 번 더 오거나 적 턴이 밀림(자동 발동).', masterySkillId:'mastery_timewarp',
         activeName:'가속 주문', activeDesc:'마법 피해를 입히는 동시에 적의 턴을 건너뛰고 다시 행동.', activeSkillId:'mageHaste'},
+      {id:'mage_curseweaver', name:'저주술사', icon:'☠',
+        desc:'저주의 힘을 스스로의 힘으로 바꾸는 자. 저주 제단에서 저주를 받아들일 때마다 강해지며, 저주의 페널티도 절반만 받는다.',
+        masteryName:'저주 계약', masteryDesc:'저주를 받아들일 때마다 마력이 영구히 오르고, 저주의 수치형 페널티는 절반만 적용됨.', masterySkillId:'mastery_curseweaver',
+        activeName:'저주 폭발', activeDesc:'짊어진 저주 개수만큼 강력해지는 마법 공격.', activeSkillId:'mageCurseNova'},
     ],
     rogue: [
       {id:'rogue_phantom', name:'환영검사', icon:'👥',
