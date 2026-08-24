@@ -93,7 +93,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
 
   function playerSkill(key){
     if(battleOver) return;
-    if(hasRelicFlag('skillLocked')){
+    // 저주술사(mastery_curseweaver)는 스킬 봉인(침묵의 서약)을 저주 개수만큼의 확률로
+    // 뚫고 나올 수 있다 — isCurseSealActive()가 이 확률 판정과 배너 안내까지 처리한다.
+    if(isCurseSealActive('skillLocked', '저주를 찢고 목소리를 되찾았다!')){
       setBattleMsg('침묵이 목소리를 삼킨다…', '스킬을 사용할 수 없다!');
       return;
     }
@@ -925,7 +927,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   function playerItem(key){
     if(battleOver) return;
     if((player.inv[key]||0)<=0) return;
-    if(hasRelicFlag('potionLocked')){
+    // 저주술사(mastery_curseweaver)는 물약 봉인(굶주린 회랑)도 저주 개수만큼의
+    // 확률로 뚫고 나올 수 있다.
+    if(isCurseSealActive('potionLocked', '저주를 찢고 물약을 들이켰다!')){
       setBattleMsg('저주가 목을 조여온다…', '물약을 마실 수 없다!');
       return;
     }
