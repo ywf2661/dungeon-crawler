@@ -298,6 +298,10 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
 
   // 유물 슬롯이 가득 찬 상태에서 새 유물을 고르면, 먼저 내려놓을 유물을 선택하게 한다.
   // (한 번 열리면 반드시 하나를 내려놓아야 하며, 취소할 수 없다.)
+  // 주의: 저주(type:'curse')는 애초에 유물 슬롯을 차지하지 않으며(getRelicSlotUsage
+  // 참고), showCurseAltar()의 안내 문구("저주를 가져가면 두 번 다시 떼어낼 수 없다")
+  // 그대로 영구히 지니는 것이 규칙이다. 그래서 이 교체 목록에는 저주를 아예 표시하지
+  // 않는다(player.relics 자체는 저주도 함께 담고 있지만, 여기서는 필터링한다).
   function showRelicSwapPrompt(newId, altarOverlay, isMystery){
     const newR = RELICS[newId];
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
@@ -310,7 +314,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     panel.innerHTML = `<h3>유물 슬롯이 가득 찼다</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">[${nameForPrompt}]을(를) 담으려면, 지니고 있는 유물 하나를 내려놓아야 한다.</p>
       <div class="relic-grid">
-      ${player.relics.map(id=>{
+      ${player.relics.filter(id=>{ const r=RELICS[id]; return r && r.type!=='curse'; }).map(id=>{
         const r = RELICS[id];
         return `<button class="relic-card type-${r.type}" data-id="${id}">
           <div class="relic-type">${typeLabel[r.type]}</div>
