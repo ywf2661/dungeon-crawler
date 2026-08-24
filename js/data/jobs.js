@@ -137,7 +137,10 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       {id:'mage_curseweaver', name:'저주술사', icon:'☠',
         desc:'저주의 힘을 스스로의 힘으로 바꾸는 자. 저주 제단에서 저주를 받아들일 때마다 강해지며, 저주의 페널티도 절반만 받는다.',
         masteryName:'저주 계약', masteryDesc:'저주를 받아들일 때마다 마력이 영구히 오르고, 저주의 수치형 페널티는 절반만 적용됨.', masterySkillId:'mastery_curseweaver',
-        activeName:'저주 폭발', activeDesc:'짊어진 저주 개수만큼 강력해지는 마법 공격.', activeSkillId:'mageCurseNova'},
+        activeName:'저주 폭발', activeDesc:'짊어진 저주 개수만큼 강력해지는 마법 공격.', activeSkillId:'mageCurseNova',
+        // 레벨12/15 추가 스킬(혈맹의 검투사/일격의 구도자와 동일한 패턴 —
+        // combat/battle-end.js의 grantExp()가 이 맵을 읽어 레벨업 시 자동 지급한다).
+        skillLevels: {12:'mageCurseTransfer', 15:'mageThousandCurses'}},
     ],
     rogue: [
       {id:'rogue_phantom', name:'환영검사', icon:'👥',
