@@ -214,13 +214,34 @@ export(전역): SKILLDB
     warriorBloodpactUltimate: {name:'혈옥쇄', mp:14, desc:'자신의 생명력 절반을 제물로 바쳐 필멸의 일격을 꽂는다. 최대HP의 50%를 소모하는 대신(HP 1은 항상 남는다) 압도적인 피해를 입힌다',
       type:'phys', mult:4.5, defPierce:0.35, hpCostPct:0.5},
 
-    // 전사 - 인내의 파훼자(warrior_endurance)
-    // 마스터리 "인내": 실제로 HP 피해를 입을 때마다 battleFlags.enduranceStacks가
-    // 자동으로 쌓인다(combat/enemy-turn.js). 액티브(파훼일격)로 전부 소모한다.
+    // 전사 - 인내의 파훼자(warrior_endurance) — [삭제됨, 레거시 호환용으로만 유지]
+    // 이 분기는 JOB_SPECIALIZATIONS.warrior에서 제거되어 더 이상 새로 선택할 수 없다
+    // (일격의 구도자로 대체됨). 다만 이미 이 분기를 선택해 mastery_endurance/
+    // warriorEnduranceActive를 습득한 기존 캐릭터가 있을 수 있으므로, 해당 캐릭터가
+    // 계속 정상 동작하도록 SKILLDB 항목 자체는 그대로 남겨둔다(삭제 시 플레이어의
+    // 저장 데이터에 남은 스킬 키가 SKILLDB에서 사라져 오류가 날 수 있음).
     mastery_endurance: {name:'인내', mp:0, type:'passive',
       desc:'피격당할 때마다 자동으로 "인내" 스택을 얻는다(전투 중에만 유지).'},
     warriorEnduranceActive: {name:'파훼일격', mp:5, desc:'그동안 쌓아온 인내 스택을 모두 소모해, 쌓인 만큼 강력한 필살기를 꽂는다. 스택이 없으면 위력이 크게 줄어든다',
       type:'enduranceburst', baseMult:1.2, stackMult:0.35, defPierce:0.2},
+
+    // 전사 - 일격의 구도자(warrior_purist) — 인내의 파훼자를 대체하는 신규 분기.
+    // 액티브 스킬 없이 오직 패시브 3개(레벨10 마스터리 + 레벨12 + 레벨15)만으로
+    // 기본 공격(playerAttack) 하나를 극한까지 파고든다. 세 패시브 모두 combat/
+    // player-actions.js의 playerAttack() 안에서 직접 처리하며, 스킬 사용을 아예
+    // 요구하지 않으므로 "오직 기본 공격만 쓸 수 있는 직업"이라는 컨셉에 맞춰
+    // 셋 다 type:'passive'로 두었다(직접 선택해도 턴을 소모하지 않고 설명만 표시).
+    mastery_purestrike: {name:'순일격', mp:0, type:'passive',
+      desc:'기본 공격의 피해가 항상 25% 증가한다.'},
+    // 레벨12: 기본 공격 횟수를 세어(전투마다 초기화) 2번째·4번째·6번째… 짝수 번째
+    // 타격마다 추가로 강하게 들어간다(player-actions.js의 battleFlags.basicAtkCount).
+    warriorPuristEcho: {name:'메아리 타격', mp:0, type:'passive',
+      desc:'기본 공격을 두 번째 낼 때마다(2타/4타/6타…) 40% 더 강하게 꽂힌다.'},
+    // 레벨15: 기존에 이미 존재하는 "일정 확률로 기본 공격이 한 번 더 나가는" 시스템
+    // (희귀 장비의 doubleStrikeChance와 완전히 동일한 메커니즘)에 확률을 얹어서
+    // 재사용한다 — player-actions.js의 doubleChance 계산부에 그대로 합산.
+    warriorPuristDoubleStrike: {name:'쌍격의 파문', mp:0, type:'passive',
+      desc:'기본 공격 시 30% 확률로 한 번 더 공격한다(희귀 장비의 연속 공격과 동일한 방식으로 중첩).'},
 
     // 마법사 - 계약술사(mage_pact)
     // 마스터리 "원소 계약": 마법 스킬을 시전할 때마다 화염/빙결/번개 중 하나를 무작위로
