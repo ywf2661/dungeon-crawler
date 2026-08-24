@@ -140,7 +140,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         activeName:'저주 폭발', activeDesc:'짊어진 저주 개수만큼 강력해지는 마법 공격.', activeSkillId:'mageCurseNova',
         // 레벨12/15 추가 스킬(혈맹의 검투사/일격의 구도자와 동일한 패턴 —
         // combat/battle-end.js의 grantExp()가 이 맵을 읽어 레벨업 시 자동 지급한다).
-        skillLevels: {12:'mageCurseTransfer', 15:'mageThousandCurses'}},
+        skillLevels: {12:'mageCurseMark', 15:'mageCurseReap'}},
     ],
     rogue: [
       {id:'rogue_phantom', name:'환영검사', icon:'👥',
