@@ -149,9 +149,9 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
     showScreen('ending');
     // 기록(record) 저장 시(bootstrap.js) 무결 클리어 여부 판정에 쓰인다.
     player.trueEndingSeen = !!isTrueEnding;
-    const job = getJob(player);
-    const hybrid = getHybrid(player);
-    const jobLabel = hybrid ? `${hybrid.icon} ${hybrid.name}` : `${job.icon} ${job.name}`;
+    // 전직(세분화) 후에도 항상 기본 직업 이름("전사")으로만 표시되던 버그를
+    // getJobLabel()(data/jobs.js)로 교체해 고쳤다 — 전직했으면 분기 이름을 보여준다.
+    const jobLabel = getJobLabel(player);
     const titleEl = document.getElementById('ending-title');
     if(isTrueEnding){
       titleEl.textContent = '회랑, 마침내 안식에 들다';
@@ -225,6 +225,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
   function showLevelUpToast(lv){
     const job = getJob(player);
     const hybrid = getHybrid(player);
+    const specialization = getSpecialization(player);
     const t = document.createElement('div');
     t.className='toast';
     const names = [];
@@ -232,6 +233,12 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
     if(unlockKey) names.push(SKILLDB[unlockKey].name);
     const hybridKey = hybrid && hybrid.skills[lv];
     if(hybridKey) names.push(SKILLDB[hybridKey].name);
+    // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 추가 스킬(예: 혈맹의 검투사
+    // 12/15, 일격의 구도자 12/15)도 습득 알림에 포함한다. grantExp()는 이 스킬을
+    // 이미 정상적으로 지급하고 있었지만, 이 토스트 함수가 specialization.skillLevels를
+    // 확인하지 않아 알림만 안 뜨던 버그였다.
+    const specKey = specialization && specialization.skillLevels && specialization.skillLevels[lv];
+    if(specKey) names.push(SKILLDB[specKey].name);
     Sound.levelUp();
     t.innerHTML = `<h3>레벨 업! Lv.${lv}</h3><p>최대 HP/MP와 능력치가 상승했다.</p>${names.length?`<p>새로운 스킬 습득: <b>${names.join(', ')}</b></p>`:''}`;
     document.getElementById('app').appendChild(t);
