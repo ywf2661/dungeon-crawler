@@ -21,9 +21,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     const onHitMult = consumeOnHitBonuses();
     const edef = getEffectiveEnemyDef(enemy.def);
     let dmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef);
-    // 순일격(mastery_purestrike, 일격의 구도자 레벨10): 기본 공격 피해가 항상 25% 증가한다.
+    // 순일격(mastery_purestrike, 일격의 구도자 레벨10): 기본 공격 피해가 항상 15% 증가한다.
     if(player.skills && player.skills.includes('mastery_purestrike')){
-      dmg = Math.round(dmg*1.25);
+      dmg = Math.round(dmg*1.15);
     }
     // 메아리 타격(warriorPuristEcho, 레벨12): 기본 공격을 두 번째 낼 때마다(2타/4타/6타…,
     // 전투마다 battleFlags.basicAtkCount로 리셋되어 집계) 추가로 강하게 꽂힌다.
@@ -31,7 +31,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(player.skills && player.skills.includes('warriorPuristEcho') && battleFlags){
       battleFlags.basicAtkCount = (battleFlags.basicAtkCount||0) + 1;
       if(battleFlags.basicAtkCount % 2 === 0){
-        dmg = Math.round(dmg*1.4);
+        dmg = Math.round(dmg*1.25);
         echoMsg = ' 메아리치는 두 번째 타격이 더욱 강하게 꽂혔다!';
       }
     }
@@ -61,7 +61,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 그대로 확률을 얹어 재사용한다(사용자 요청 — 희귀 아이템과 같은 방식).
     let doubleChance = getSpecialSum('doubleStrikeChance');
     if(player.skills && player.skills.includes('warriorPuristDoubleStrike')){
-      doubleChance += 0.3;
+      doubleChance += 0.2;
     }
     if(enemy.hp>0 && doubleChance>0 && Math.random()<doubleChance){
       renderStatus();
