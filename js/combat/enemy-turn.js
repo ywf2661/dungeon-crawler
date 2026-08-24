@@ -62,11 +62,15 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     }
   }
   // 환영검사의 분신이 적의 턴이 열리기 직전 자동으로 한 번 더 공격한다.
+  // (사용자 요청으로 배율을 0.7 → 0.5로 낮췄다 — 확률 25%에서 확정 발동으로
+  // 바뀌면서 기대 피해량이 크게 늘었으므로 균형을 맞췄다: 0.25*0.7=0.175배 →
+  // 1.0*0.5=0.5배, 그래도 상당히 강화된 수치지만 "매번 확실히 발동"하는 것 자체가
+  // 이 마스터리의 정체성이라 사용자가 제시한 50%를 그대로 반영했다.)
   function triggerAfterimageStrike(){
     setTimeout(()=>{
       if(battleOver) return;
       const edef = getEffectiveEnemyDef(enemy.def);
-      const dmg = Math.max(1, Math.round(effectiveAtk()*0.7) - edef);
+      const dmg = Math.max(1, Math.round(effectiveAtk()*0.5) - edef);
       enemy.hp = Math.max(0, enemy.hp - dmg);
       updateEnemyHpBar(); popDamage('-'+dmg, 'crit');
       Sound.slash();
