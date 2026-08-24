@@ -5,6 +5,10 @@
 export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRareDropToast, showEpicDropToast
 의존성: state.js, storage.js, explore.js(renderExplore/showScreen), combat/battle-setup.js(triggerEnragePhase),
         data/jobs.js(getSpecialization)
+주의: grantExp()의 레벨업 루프에서 warrior_purist(일격의 구도자) 전용으로 maxmp 증가를
+     건너뛰는 예외 처리가 추가되어 있다(해당 분기는 스킬을 전혀 쓰지 않아 마나가 항상
+     0으로 유지되어야 함 — combat/job-advancement.js의 resolveJobAdvancement()에서
+     전직 시점 마나도 함께 0으로 초기화한다).
 */
 
   function checkBattleEnd(){
@@ -187,7 +191,13 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
       // 레벨업 노가다만으로 진보스/최종보스를 손쉽게 찍어누르는 것을 막기 위함이다.
       const growthRate = (player.difficulty!=='easy' && player.level>=20) ? 1.36 : 1.28;
       player.expNext = Math.round(player.expNext*growthRate + 6);
-      player.maxhp += 9; player.maxmp += 4;
+      player.maxhp += 9;
+      // 일격의 구도자(warrior_purist)는 스킬을 전혀 쓰지 않아 마나가 항상 0으로
+      // 유지되어야 한다(combat/job-advancement.js에서 전직 시점에도 0으로 초기화).
+      // 레벨업 때마다 관례적으로 붙는 maxmp 증가분만 이 분기에 한해 건너뛴다.
+      if(!(player.specialization === 'warrior_purist')){
+        player.maxmp += 4;
+      }
       player.atk += 2; player.def += 1; player.mag += 2; player.spd += 1;
       if(hasRelicFlag('noPostBattleHeal')){
         player.hp = Math.min(player.hp, player.maxhp);
@@ -252,4 +262,3 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
     document.getElementById('app').appendChild(t);
     setTimeout(()=>t.remove(), 3400);
   }
-
