@@ -95,6 +95,17 @@ export(전역): showJobAdvancement, resolveJobAdvancement
         }
       });
     }
+    // [디버그 전용] 캐릭터 이름이 정확히 "admin"(대소문자 무관)이면, 전직 직후
+    // 즉시 레벨 15까지 올려서 12/15레벨 스킬을 곧바로 테스트할 수 있게 한다.
+    // combat/battle-end.js의 applyLevelUpEffects()를 그대로 재사용하므로, 실제
+    // 정상 레벨업과 완전히 동일한 방식(스탯 증가 + 2차 전직 스킬 지급 포함)으로
+    // 처리된다 — exp/expNext 소모는 건드리지 않으므로 이후 정상적인 경험치
+    // 누적에도 영향이 없다. 이름이 "admin"이 아닌 캐릭터에는 전혀 영향 없다.
+    if(player.name && player.name.trim().toLowerCase()==='admin'){
+      while(player.level < 15){
+        applyLevelUpEffects();
+      }
+    }
     renderStatus();
     if(spec){
       // 일격의 구도자처럼 activeName이 없는(액티브 스킬 자체가 없는) 분기를 대비해,
