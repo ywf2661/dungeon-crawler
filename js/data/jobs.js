@@ -103,7 +103,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
   const JOB_SPECIALIZATIONS = {
     warrior: [
       {id:'warrior_bloodpact', name:'혈맹의 검투사', icon:'🩸',
-        desc:'스킬 사용 시 자신의 HP 일부를 태워 위력을 크게 증폭시키는 선택지가 상시 열려있다. HP가 낮을수록 회피율도 함께 오른다.',
+        desc:'피의 대가로 힘을 증폭시키는 광전사. 몸을 던질수록 위험해지지만, 그만큼 잔인해진다.',
         masteryName:'혈서', masteryDesc:'스킬 사용 시 HP를 태워 위력을 증폭시키는 선택지가 상시 열림. HP가 낮을수록 회피율 상승.', masterySkillId:'mastery_bloodpact',
         activeName:'저돌', activeDesc:'HP가 낮을수록 위력이 커지는 강타.', activeSkillId:'warriorBloodpactActive',
         // 2차 전직 후 레벨 12/15에 추가로 배우는 스킬(전직 컨셉을 이어감).
@@ -117,7 +117,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // 수정 없이도 안전하다(단, 각성 안내 로그 문구는 activeName이 없을 때를 대비해
       // 별도로 손봐야 한다 — HANDOFF 참고).
       {id:'warrior_purist', name:'일격의 구도자', icon:'🎯',
-        desc:'오직 기본 공격만을 갈고닦은 자. 액티브 스킬 없이, 세 개의 패시브만으로 기본 공격 하나를 극한까지 강화한다.',
+        desc:'화려한 스킬 따위 필요 없다. 오직 검 한 자루, 일격 하나만을 극한까지 갈고닦은 구도자.',
         masteryName:'순일격', masteryDesc:'기본 공격의 피해가 항상 15% 증가한다.', masterySkillId:'mastery_purestrike',
         activeName:null, activeDesc:null, activeSkillId:null,
         // 레벨12: 메아리 타격(짝수 번째 기본 공격 강화), 레벨15: 쌍격의 파문(확률로
@@ -127,7 +127,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
     ],
     mage: [
       {id:'mage_pact', name:'계약술사', icon:'🎴',
-        desc:'화염/빙결/번개 중 하나와 스스로 계약을 맺어(토글 방식), 전투가 끝날 때까지 그 원소에 특화된 스킬을 쓴다. 레벨10/12/15 액티브 모두 계약한 원소에 따라 완전히 다르게 작동한다.',
+        desc:'화염·빙결·번개, 셋 중 하나와 스스로 운명을 맺는 술사. 어떤 원소를 택하느냐에 따라 완전히 다른 마법사가 된다.',
         // 재설계: 기존엔 스킬 시전마다 화염/빙결/번개 중 하나가 "무작위"로 걸렸는데,
         // 사용자 요청으로 "스스로 선택하는 토글" 방식으로 바뀌었다. 마스터리 슬롯 하나가
         // 아니라 세 개의 토글 패시브(화염/빙결/번개계약)로 나뉘어, masterySkillId
@@ -139,11 +139,11 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         // 레벨12/15도 마찬가지로 계약 원소에 따라 분기한다.
         skillLevels: {12:'mageElementWave', 15:'mageElementStorm'}},
       {id:'mage_time', name:'시간술사', icon:'⏳',
-        desc:'매 턴 일정 확률로 자신의 턴이 한 번 더 오거나 적의 턴이 밀린다.',
+        desc:'시간의 흐름 그 자체를 다루어, 남들보다 한 발 먼저 움직이는 술사.',
         masteryName:'시간 왜곡', masteryDesc:'매 턴 일정 확률로 자신 턴이 한 번 더 오거나 적 턴이 밀림(자동 발동).', masterySkillId:'mastery_timewarp',
         activeName:'가속 주문', activeDesc:'마법 피해를 입히는 동시에 적의 턴을 건너뛰고 다시 행동(연속 사용 시 MP 소모 급증).', activeSkillId:'mageHaste'},
       {id:'mage_curseweaver', name:'저주술사', icon:'☠',
-        desc:'저주의 힘을 스스로의 힘으로 바꾸는 자. 저주 제단에서 저주를 받아들일 때마다 강해지며, 저주의 페널티도 절반만 받는다.',
+        desc:'저주받은 운명을 스스로 짊어지고, 그것을 오히려 힘으로 바꾸는 이단의 술사.',
         masteryName:'저주 계약', masteryDesc:'저주를 받아들일 때마다 마력이 영구히 오르고, 저주의 수치형 페널티는 절반만 적용됨.', masterySkillId:'mastery_curseweaver',
         activeName:'저주 폭발', activeDesc:'짊어진 저주 개수만큼 강력해지는 마법 공격.', activeSkillId:'mageCurseNova',
         // 레벨12/15 추가 스킬(혈맹의 검투사/일격의 구도자와 동일한 패턴 —
@@ -152,7 +152,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
     ],
     rogue: [
       {id:'rogue_phantom', name:'환영검사', icon:'👥',
-        desc:'공격 스킬을 쓸 때마다 분신이 나타나 다음 턴 자동으로 50% 위력의 추가 공격을 가한다. 결정적인 순간엔 분신과 함께 즉시 동시 타격을 꽂을 수도 있다.',
+        desc:'그림자 속에 분신을 두고 함께 싸우는 환영 검사. 눈에 보이는 칼날은 언제나 하나가 아니다.',
         masteryName:'잔영', masteryDesc:'공격형 스킬 사용 시 확정적으로 분신 생성, 적 턴 직전 자동으로 50% 위력의 추가 공격.', masterySkillId:'mastery_afterimage',
         activeName:'그림자 쇄도', activeDesc:'분신과 함께 즉시 2연격(급소 확정 적중). 이 스킬 자체도 잔영을 발동시켜 다음 턴 분신 공격까지 예약된다.', activeSkillId:'rogueShadowStrike'},
       {id:'rogue_alchemist', name:'맹독 연금술사', icon:'⚗',
