@@ -498,6 +498,39 @@ export(전역): SKILLDB
     paladinBlessedWall: {name:'축복의 벽', mp:8, desc:'몇 턴간 자신을 감싸는 보호막을 둘러 받는 피해를 크게 줄인다',
       type:'defbuff', turns:3, mult:0.55},
 
+    // ---------- 회랑의 기사(paladin_knight) — 계율의 파수꾼을 대체하는 신규 분기 ----------
+    // "성기사로 시작했지만, 전직과 함께 강제로 손에 넣은 전용무기 칼리버 X의 정체가
+    // 레벨이 오를 때마다 서서히 드러나는" 서사 중심 직업. 마스터리는 순수 서사/
+    // 자동장착 트리거 역할(직접 발동 로직 없음 — 실제 강제장착/재장비는
+    // combat/job-advancement.js와 combat/battle-end.js에서 처리). 무기(칼리버 X)
+    // 자체는 data/equipment.js의 CALIBERX_STAGES 3단계.
+    mastery_caliberx: {name:'칼리버 X', mp:0, type:'passive',
+      desc:'전직과 동시에 전용 무기 칼리버 X가 강제로 장착된다. 다른 무기로 교체하거나 해제할 수 없다. 레벨이 오를 때마다 검 자체가 다음 단계로 변해간다.'},
+    // 레벨10 "성휘참": 정석적인 성기사의 성검 기술처럼 보인다 — 신성한 빛, 방어
+    // 관통, 소량 흡혈. 기존 phys 타입의 mult/defPierce/lifesteal 필드를 그대로
+    // 쓰므로 신규 코드가 필요 없다.
+    paladinHolyRend: {name:'성휘참', mp:8, type:'phys', mult:1.8, defPierce:0.15, lifesteal:0.15,
+      desc:'칼리버 X에 신성한 빛을 모아 적을 강하게 베어낸다. 성스러운 힘으로 자신의 상처를 함께 치유한다.'},
+    // 레벨12 "검은 기도": HP를 대가로 바치고 검의 힘을 빌린다 — 2턴간 공격력이
+    // 크게 오르지만, 동시에 방어력도 함께 떨어진다("신성한 힘이라면 이런 대가가
+    // 있을 리 없는데?"라는 위화감을 메커니즘으로도 표현). 새 타입 'darkprayer'로
+    // 처리한다(combat/player-actions.js). 부여된 공/방 변동치는 정확히 저장해뒀다가
+    // combat/enemy-turn.js의 매 라운드 카운트다운에서 정확히 되돌린다(불확실성의
+    // 주사위 revertDiceDelta()와 동일한 원칙 — 얼마를 줬는지 반드시 기억해뒀다가
+    // 그대로 되돌린다).
+    paladinDarkPrayer: {name:'검은 기도', mp:9, type:'darkprayer', hpCostPct:0.12, atkBonus:0.5, defPenaltyPct:0.35, turns:2,
+      desc:'기도를 올렸다... 무언가가 응답했다. 자신의 생명력을 대가로 검의 힘을 끌어내 2턴간 공격력이 크게 오르지만, 그만큼 방어가 허술해진다.'},
+    // 레벨15 궁극기 "칼리버 X: 종언": 성검의 힘을 "빌리는" 게 아니라 칼리버 X
+    // 자체의 봉인을 해제한다는 컨셉. hpCostPct(자기 HP 30% 희생)+defPierce(방어
+    // 대폭 무시)+lifesteal(적의 생명력을 빼앗아 자신에게 돌려줌 — 레벨10의
+    // "성스러운 치유"와 정확히 대비되는 연출) 전부 기존 phys 타입의 범용 필드라
+    // 신규 코드가 필요 없다. 유일한 신규 동작은 사용 후 전투가 끝날 때까지 남는
+    // "회복 감소 저주"(battleFlags.knightHealCurse)뿐이며, 이건 player-actions.js
+    // 하단 범용 phys 분기에서 key==='paladinCaliberXFinale'로 특정해 건다(순교자의
+    // paladinJudgmentLight와 동일한 패턴) — 물약 회복량이 이후 절반으로 줄어든다.
+    paladinCaliberXFinale: {name:'칼리버 X: 종언', mp:20, type:'phys', mult:4.2, defPierce:0.5, hpCostPct:0.3, lifesteal:0.6,
+      desc:'억눌려 있던 칼리버 X의 봉인이 풀린다. 검이 적의 생명을 빼앗아 자신의 주인에게 돌려준다 — 그 대가로, 전투가 끝날 때까지 그 어떤 회복도 온전하지 못하게 된다.'},
+
     // 메카닉 - 로봇군단장(mechanic_legion)
     // 마스터리 "다중 전개": 이 마스터리를 보유하면 로봇(가동 장치)을 battleFlags.rig
     // 하나가 아니라 battleFlags.rig2까지 총 2기까지 동시에 유지할 수 있다(사용자
