@@ -442,7 +442,17 @@
    (예: 기존 .sub-item{...} 블록 바로 다음 줄) 추가하면 됩니다.
    ============================================================ */
 
-.toggle-row{display:flex; gap:6px; margin-bottom:8px; flex-shrink:0;}
+.toggle-sticky-wrap{
+  position:sticky; top:0; z-index:2;
+  background:linear-gradient(180deg,#1f170e,#1a130c);
+  padding:4px 2px 8px; margin:-4px -2px 4px;
+  border-bottom:1px solid #3a2c1c;
+}
+.toggle-row-label{
+  font-family:'Cinzel'; font-size:10px; color:var(--parchment-dim);
+  letter-spacing:.03em; margin-bottom:4px; padding-left:2px;
+}
+.toggle-row{display:flex; gap:6px;}
 .toggle-btn{
   flex:1; text-align:center; font-family:'Cinzel'; font-size:12px;
   background:#1a130c; border:1px solid #3a2c1c; border-radius:4px;
