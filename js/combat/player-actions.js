@@ -423,6 +423,66 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='cursebrand'){
+      // 저주 각인(mageCurseBrand, 레벨12, 저주술사 재설계판): 마법 피해 + 적에게
+      // 저주(포이즌 타입 도트) 부여. 직접 피해 배율과 도트 세기(ratio) 둘 다
+      // 내가 짊어진 저주 개수(getCurseCount(), relics.js)에 비례해 세진다 —
+      // "내 저주가 곧 힘의 원천"이라는 저주술사 정체성을 그대로 따른다. 기존
+      // applyDot()/enemy.dots 파이프라인을 그대로 재사용해 신규 애니메이션
+      // 코드가 필요 없다(맹독 연금술사의 독 중첩과 달리, 이건 일반 도트라
+      // 턴이 다 되면 자연히 사라진다 — 전투 끝까지 지속되는 게 아님).
+      const curses = (typeof getCurseCount === 'function') ? getCurseCount() : 0;
+      const edefBrand = getEffectiveEnemyDef(enemy.def);
+      const onHitMultBrand = consumeOnHitBonuses();
+      let brandDmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edefBrand*0.5));
+      if(curses>0) brandDmg = Math.round(brandDmg*(1+curses*s.curseCountBonus));
+      brandDmg = applyOutgoingDamageMods(brandDmg, {type:'magicskill', mpCost, onHitMult:onHitMultBrand});
+      enemy.hp = Math.max(0, enemy.hp-brandDmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+brandDmg, curses>0?'crit':undefined);
+      Sound.magic(); playStatusFx('poison');
+      const dotRatio = (s.dotBaseRatio||0.25) + curses*(s.dotRatioPerCurse||0.08);
+      applyDot({type:'poison', basis:'mag', ratio:dotRatio, turns:s.dotTurns||4, label:'저주 각인'});
+      renderStatus();
+      const brandMsg = curses>0
+        ? `짊어진 저주(${curses}개)의 힘으로 낙인이 짙게 새겨졌다! ${enemy.name}에게 ${brandDmg}의 피해를 입히고 강한 저주를 남겼다.`
+        : `${enemy.name}에게 ${brandDmg}의 피해를 입히고 저주를 남겼다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, brandMsg);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='cursebloom'){
+      // 저주 만개(mageCurseBloom, 레벨15 궁극기, 저주술사 재설계판): 내 저주
+      // 개수에 비례한 큰 피해 + 저주 각인이 남긴 포이즌 도트가 아직 있으면 그
+      // 잔여 피해량(dmgPerTurn×turns — 계약술사 원소 붕괴와 동일한 계산 방식
+      // 재사용)까지 한꺼번에 터뜨리고 제거한다. 각인 없이 바로 써도 저주 개수만
+      // 으로 준수한 위력이 나오지만, 먼저 각인을 심어두면 더 강해지는 콤보 구조.
+      const curses = (typeof getCurseCount === 'function') ? getCurseCount() : 0;
+      const edefBloom = getEffectiveEnemyDef(enemy.def);
+      const onHitMultBloom = consumeOnHitBonuses();
+      let bloomDmg = Math.max(1, Math.round(player.mag*s.baseMult) - edefBloom);
+      bloomDmg = Math.round(bloomDmg*(1+curses*s.curseCountBonus));
+      const curseDot = (enemy.dots||[]).find(d=>d.type==='poison' && d.turns>0);
+      let detonateMsg = '';
+      if(curseDot){
+        const detonateBonus = Math.max(1, curseDot.dmgPerTurn * curseDot.turns);
+        bloomDmg += detonateBonus;
+        enemy.dots = enemy.dots.filter(d=>d!==curseDot);
+        updateStatusBadges();
+        detonateMsg = ' 새겨져 있던 저주까지 한꺼번에 만개시켰다!';
+      }
+      bloomDmg = applyOutgoingDamageMods(bloomDmg, {type:'magicskill', mpCost, onHitMult:onHitMultBloom});
+      enemy.hp = Math.max(0, enemy.hp-bloomDmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+bloomDmg, 'crit');
+      Sound.magic(); playCastBurst();
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `짊어진 저주(${curses}개)가 한꺼번에 만개하며 ${enemy.name}에게 ${bloomDmg}의 압도적인 피해를 입혔다!${detonateMsg}`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='enduranceburst'){
       const stacks = (battleFlags && battleFlags.enduranceStacks) || 0;
       battleFlags.enduranceStacks = 0;
