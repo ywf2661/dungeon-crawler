@@ -38,14 +38,14 @@ export(전역): init, showMaintenanceModal, isAdminName
     document.addEventListener('pointerdown', wakeAudioOnce, {once:true});
 
     // 점검 중: 아이디(이름 입력)가 'admin'이 아니면 시작/이어하기 모두 점검중 모달만 띄운다.
-    /*document.getElementById('btn-start').addEventListener('click', ()=>{
-      if(!isAdminName()){ showMaintenanceModal(); return; }
+    document.getElementById('btn-start').addEventListener('click', ()=>{
+      //if(!isAdminName()){ showMaintenanceModal(); return; }
       startGame(false);
     });
     document.getElementById('btn-continue').addEventListener('click', ()=>{
-      if(!isAdminName()){ showMaintenanceModal(); return; }
+      //if(!isAdminName()){ showMaintenanceModal(); return; }
       startGame(true);
-    });*/
+    });
     document.getElementById('btn-delete-save').addEventListener('click', async ()=>{
       await deleteSave();
       document.getElementById('continue-info').style.display='none';
@@ -98,10 +98,10 @@ export(전역): init, showMaintenanceModal, isAdminName
     document.getElementById('cmd-run').addEventListener('click', ()=>{ Sound.click(); playerRun(); });
     document.getElementById('cmd-back').addEventListener('click', ()=>{ Sound.click(); closeSub(); });
     document.getElementById('name-input').addEventListener('keydown', e=>{
-      /*if(e.key==='Enter'){
-        if(!isAdminName()){ showMaintenanceModal(); return; }
+      if(e.key==='Enter'){
+        //if(!isAdminName()){ showMaintenanceModal(); return; }
         startGame(false);
-      }*/
+      }
     });
 
     loadGame().then(saved=>{
