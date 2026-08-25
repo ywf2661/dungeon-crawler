@@ -112,6 +112,18 @@ export(전역): showJobAdvancement, resolveJobAdvancement
           player.skills.push(skillKey);
         }
       });
+      // 회랑의 기사(paladin_knight): 전직 확정 즉시 전용 무기 칼리버 X 1단계를
+      // 강제로 장착한다. equipItem()을 거치지 않고 직접 처리한다 — equipItem()은
+      // "이미 칼리버 X를 장착 중이면 무기 슬롯을 못 바꾼다"는 잠금이 걸려 있어서,
+      // 최초 장착 자체가 막히는 문제가 없도록 여기서는 우회한다. 기존 무기가
+      // 있었다면 그 스탯을 정확히 빼고 칼리버 X 스탯을 더한다.
+      if(specId==='paladin_knight' && typeof CALIBERX_STAGES!=='undefined'){
+        const prevWeapon = player.equipment.weapon;
+        if(prevWeapon && getItemDef(prevWeapon)) unapplyEquipStats(getItemDef(prevWeapon).stats);
+        applyEquipStats(CALIBERX_STAGES.caliberx_1.stats);
+        player.equipment.weapon = 'caliberx_1';
+        if(!player.equipOwned.includes('caliberx_1')) player.equipOwned.push('caliberx_1');
+      }
     }
     // [디버그 전용] 캐릭터 이름이 정확히 "admin"(대소문자 무관)이면, 전직 직후
     // 즉시 레벨 15까지 올려서 12/15레벨 스킬을 곧바로 테스트할 수 있게 한다.
