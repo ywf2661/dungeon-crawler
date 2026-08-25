@@ -246,7 +246,17 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         const canUse = player.mp>=mpCost;
         const div = document.createElement('div');
         div.className = 'sub-item'+(canUse?'':' disabled');
-        div.innerHTML = `<div class="si-info"><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div></div><div class="si-cost">MP ${mpCost}</div>`;
+        // 베팅/올인(goldbet 타입): 실제로 쓰면 판돈이 얼마가 될지 현재 소지 골드
+        // 기준으로 미리 계산해 보여준다("전투 중 소지금액 확인" 요청에 맞춰,
+        // 그냥 골드 숫자만 보여주는 것보다 "이 스킬을 쓰면 얼마를 거는지"가 더
+        // 실질적인 정보라 판단해 이 형태로 구현했다 — 상단 상태바의 💰 표시와
+        // 함께 보면 현재 골드와 판돈을 한눈에 비교할 수 있다).
+        let extraInfo = '';
+        if(s.type==='goldbet'){
+          const stakePreview = Math.min(s.stakeCap||Infinity, Math.round((player.gold||0)*s.stakePct));
+          extraInfo = `<div class="si-desc" style="color:var(--gold-bright); margin-top:2px;">💰 지금 걸면 판돈 ${stakePreview}G (보유 ${player.gold||0}G)</div>`;
+        }
+        div.innerHTML = `<div class="si-info"><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div>${extraInfo}</div><div class="si-cost">MP ${mpCost}</div>`;
         if(canUse) div.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
         sub.appendChild(div);
       });
