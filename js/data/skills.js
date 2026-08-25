@@ -256,6 +256,57 @@ export(전역): SKILLDB
       desc:'마법 스킬을 시전할 때마다 화염/빙결/번개 중 하나와 무작위로 계약해, 그 자리에서 추가 효과가 실린다.'},
     mageChainExplosion: {name:'연쇄폭발', mp:10, desc:'압축한 마력을 폭발시킨다. 적에게 걸린 상태이상 종류가 많을수록 더 강력하다',
       type:'magic', mult:2.0, statusSynergyBonus:0.35},
+    // 레벨12 "삼원소 연격": 마스터리(원소 계약)는 화염/빙결/번개 중 하나만 무작위로
+    // 걸리는데, 이 스킬은 확률과 무관하게 세 원소 효과를 전부 동시에 발동시킨다
+    // (화염=도트는 s.dot으로 범용 처리, 빙결/번개는 combat/player-actions.js의
+    // key==='mageTripleElement' 전용 블록에서 확정 적용 — 순교자의
+    // paladinJudgmentLight와 동일한 "스킬 id로 특정해 훅을 건다" 패턴 재사용).
+    mageTripleElement: {name:'삼원소 연격', mp:11, desc:'화염·빙결·번개를 동시에 압축해 쏟아붓는다. 확률과 무관하게 세 원소 효과가 전부 함께 발동한다',
+      type:'magic', mult:1.7,
+      dot:{type:'burn', basis:'mag', ratio:0.32, turns:3, label:'삼원소: 화염'}},
+    // 레벨15 궁극기 "원소 붕괴": 연쇄폭발(상태이상 종류 수만큼 배율)과 달리, 이번엔
+    // 적에게 걸린 상태이상들을 실제로 "수확"해서 터뜨리고 전부 제거한다 — 출처가
+    // 무엇이든(원소 계약의 화상, 삼원소 연격의 화상, 다른 분기의 독/출혈 등) 상관없이
+    // enemy.dots에 남아있는 모든 상태이상의 잔여 피해량 합계에 비례해 폭딜이 나온다.
+    // 새 스킬 타입 'dotdetonate'로 처리한다(combat/player-actions.js 참고).
+    mageElementalCollapse: {name:'원소 붕괴', mp:15, desc:'적에게 걸린 모든 상태이상을 한꺼번에 붕괴시켜 터뜨린다. 상태이상이 많이 걸려있고 남은 지속시간이 길수록 훨씬 강력하며, 붕괴한 상태이상은 모두 사라진다',
+      type:'dotdetonate', baseMult:1.0, dotMult:1.8},
+
+    // ---------- [교체됨] 위 4개(mastery_elementpact/mageChainExplosion/
+    // mageTripleElement/mageElementalCollapse)는 계약술사(mage_pact)의 구버전
+    // 키트다. 사용자 요청으로 "무작위 계약"에서 "스스로 선택하는 토글 계약"으로
+    // 전면 재설계했다 — data/jobs.js의 mage_pact는 이제 아래 신규 키들을 가리킨다.
+    // 구버전 4개는 삭제하지 않고 그대로 남겨둔다(레거시 세이브 크래시 방지 원칙,
+    // 전사 인내의 파훼자 교체 때와 동일).
+    //
+    // 화염/빙결/번개계약(mastery_firepact/icepact/lightningpact): 서로 배타적인
+    // 토글 3개. battleFlags.elementPact('fire'|'ice'|'lightning'|null)에 저장되며,
+    // 하나를 켜면 다른 계약은 자동으로 꺼진다. 전투가 끝날 때까지(= battleFlags가
+    // 새로 생성될 때까지) 유지된다. 새 스킬 타입 'elementpact'로 처리한다
+    // (combat/player-actions.js 참고). combat/ui/battle-fx.js의 openSub()가 이
+    // 타입(과 기존 'arm' 타입)을 자동으로 가로 토글 버튼 줄로 그린다.
+    mastery_firepact: {name:'화염계약', mp:0, type:'elementpact', pactElement:'fire',
+      desc:'화염과 계약한다(전투가 끝날 때까지 유지, 다른 원소 계약과 배타적). 이후 원소 각인/원소 파동/원소 폭풍이 화염 전용 효과로 발동한다.'},
+    mastery_icepact: {name:'빙결계약', mp:0, type:'elementpact', pactElement:'ice',
+      desc:'빙결과 계약한다(전투가 끝날 때까지 유지, 다른 원소 계약과 배타적). 이후 원소 각인/원소 파동/원소 폭풍이 빙결 전용 효과로 발동한다.'},
+    mastery_lightningpact: {name:'번개계약', mp:0, type:'elementpact', pactElement:'lightning',
+      desc:'번개와 계약한다(전투가 끝날 때까지 유지, 다른 원소 계약과 배타적). 이후 원소 각인/원소 파동/원소 폭풍이 번개 전용 효과로 발동한다.'},
+    // 원소 각인(레벨10 액티브): 화염=강한 화상+중간 피해, 빙결=방어 무시 없는
+    // 고배율 단일 강타, 번개=2연속 타격(관통은 약함). 계약이 없으면 위력이
+    // 눈에 띄게 약하다(계약을 먼저 하도록 유도). 새 타입 'elementstrike'.
+    mageElementStrike: {name:'원소 각인', mp:9, type:'elementstrike',
+      desc:'계약한 원소를 무기에 아로새긴다. 화염은 짙은 화상, 빙결은 고배율 단일 강타, 번개는 2연속 타격. 계약이 없으면 위력이 크게 약하다.'},
+    // 원소 파동(레벨12 액티브): 화염=쌓인 화상의 잔여 피해량만큼 즉시 폭발(화상이
+    // 없으면 약한 대체 공격), 빙결=2턴간 자체 방어력 상승, 번개=다음 공격 확정
+    // 치명타 부여(player.lightningCritArmed, 기본 공격/범용 phys·magic 분기에서
+    // 소모됨). 새 타입 'elementwave'.
+    mageElementWave: {name:'원소 파동', mp:11, type:'elementwave',
+      desc:'계약한 원소의 힘을 파동으로 흘려보낸다. 화염은 쌓인 화상을 한꺼번에 터뜨리고, 빙결은 2턴간 방어력이 오르며, 번개는 다음 공격이 반드시 급소에 꽂히게 한다.'},
+    // 원소 폭풍(레벨15 궁극기): 화염=초강력 화상+큰 피해, 빙결=방어 완전 무시
+    // 초고배율 강타, 번개=3연속 타격(관통 있음). 계약 없으면 여전히 약함(궁극기까지
+    // 계약 없이 쓰는 것을 강하게 억제). 새 타입 'elementstorm'.
+    mageElementStorm: {name:'원소 폭풍', mp:16, type:'elementstorm',
+      desc:'계약한 원소의 힘을 폭풍처럼 몰아친다. 화염은 압도적인 화상과 피해, 빙결은 방어를 완전히 무시하는 필살의 일격, 번개는 방어를 꿰뚫는 3연속 타격. 계약이 없으면 궁극기라 하기 민망할 정도로 약하다.'},
 
     // 마법사 - 시간술사(mage_time)
     // 마스터리 "시간 왜곡": 기존 "마녀의 시계" 유물과 완전히 동일한 메커니즘(매 턴
