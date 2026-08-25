@@ -157,7 +157,10 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       {id:'rogue_phantom', name:'환영검사', icon:'👥',
         desc:'그림자 속에 분신을 두고 함께 싸우는 환영 검사. 눈에 보이는 칼날은 언제나 하나가 아니다.',
         masteryName:'잔영', masteryDesc:'공격형 스킬 사용 시 확정적으로 분신 생성, 적 턴 직전 자동으로 50% 위력의 추가 공격.', masterySkillId:'mastery_afterimage',
-        activeName:'그림자 쇄도', activeDesc:'분신과 함께 즉시 2연격(급소 확정 적중). 이 스킬 자체도 잔영을 발동시켜 다음 턴 분신 공격까지 예약된다.', activeSkillId:'rogueShadowStrike'},
+        activeName:'그림자 쇄도', activeDesc:'분신과 함께 즉시 2연격(급소 확정 적중). 이 스킬 자체도 잔영을 발동시켜 다음 턴 분신 공격까지 예약된다.', activeSkillId:'rogueShadowStrike',
+        // 레벨12/15 둘 다 액티브. 12는 잔영을 "증폭시키는 토글", 15는 이번 전투
+        // 누적 잔영 발동 횟수를 그대로 힘으로 바꾸는 궁극기.
+        skillLevels: {12:'rogueDoubleImage', 15:'rogueUndeadParade'}},
       {id:'rogue_alchemist', name:'맹독 연금술사', icon:'⚗',
         desc:'맹독을 짙게 짜 넣어, 서서히 그러나 확실하게 무너뜨리는 연금술사. 한번 스며든 독은 좀처럼 빠지지 않는다.',
         masteryName:'독 중첩', masteryDesc:'적에게 쌓인 맹독이 매 라운드 자동으로 피해를 입힌다(전투가 끝날 때까지 지속, 최대 10스택).', masterySkillId:'mastery_venomstacks',
