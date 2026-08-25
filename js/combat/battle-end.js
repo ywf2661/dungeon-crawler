@@ -2,10 +2,14 @@
 /*
 전투 종료 판정 및 결과 처리 — 승리/패배/광폭화 재판정, 엔딩 화면,
 경험치 지급, 레벨업/희귀드랍/에픽드랍 토스트.
-export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRareDropToast, showEpicDropToast
+export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showLevelUpToast,
+              showRareDropToast, showEpicDropToast
 의존성: state.js, storage.js, explore.js(renderExplore/showScreen), combat/battle-setup.js(triggerEnragePhase),
         data/jobs.js(getSpecialization)
-주의: grantExp()의 레벨업 루프에서 warrior_purist(일격의 구도자) 전용으로 maxmp 증가를
+주의: applyLevelUpEffects()는 grantExp()의 레벨업 1회분 로직(스탯 증가+스킬 지급)을 뽑아낸
+     것으로, combat/job-advancement.js의 admin 전용 "전직 즉시 15레벨" 디버그 로직도
+     이 함수를 그대로 재사용한다. grantExp()의 레벨업 루프에서 warrior_purist(일격의
+     구도자) 전용으로 maxmp 증가를
      건너뛰는 예외 처리가 추가되어 있다(해당 분기는 스킬을 전혀 쓰지 않아 마나가 항상
      0으로 유지되어야 함 — combat/job-advancement.js의 resolveJobAdvancement()에서
      전직 시점 마나도 함께 0으로 초기화한다).
@@ -179,47 +183,58 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
   }
 
   function grantExp(amount){
-    const job = getJob(player);
-    const hybrid = getHybrid(player);
-    const specialization = getSpecialization(player);
     player.exp += amount;
     const levelsGained = [];
     while(player.exp >= player.expNext){
       player.exp -= player.expNext;
-      player.level += 1;
-      // 20레벨 이후부터는(쉬움 제외) 레벨업에 필요한 경험치 성장률이 더 가팔라진다.
-      // 레벨업 노가다만으로 진보스/최종보스를 손쉽게 찍어누르는 것을 막기 위함이다.
-      const growthRate = (player.difficulty!=='easy' && player.level>=20) ? 1.36 : 1.28;
-      player.expNext = Math.round(player.expNext*growthRate + 6);
-      player.maxhp += 9;
-      // 일격의 구도자(warrior_purist)는 스킬을 전혀 쓰지 않아 마나가 항상 0으로
-      // 유지되어야 한다(combat/job-advancement.js에서 전직 시점에도 0으로 초기화).
-      // 레벨업 때마다 관례적으로 붙는 maxmp 증가분만 이 분기에 한해 건너뛴다.
-      if(!(player.specialization === 'warrior_purist')){
-        player.maxmp += 4;
-      }
-      player.atk += 2; player.def += 1; player.mag += 2; player.spd += 1;
-      // 저주술사(mastery_curseweaver)는 레벨업 시 무회복 저주도 저주 개수만큼의
-      // 확률로 뚫을 수 있다(레벨업이 한 번에 여러 번 처리될 수 있어, 매번 배너가
-      // 뜨면 스팸이 될 수 있으므로 여기서는 안내 문구 없이 조용히 판정만 한다).
-      if(isCurseSealActive('noPostBattleHeal')){
-        player.hp = Math.min(player.hp, player.maxhp);
-        player.mp = Math.min(player.mp, player.maxmp);
-      } else {
-        player.hp = player.maxhp; player.mp = player.maxmp;
-      }
-      const unlockKey = job.skillLevels[player.level];
-      if(unlockKey && !player.skills.includes(unlockKey)) player.skills.push(unlockKey);
-      const hybridKey = hybrid && hybrid.skills[player.level];
-      if(hybridKey && !player.skills.includes(hybridKey)) player.skills.push(hybridKey);
-      // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 추가 스킬(예: 혈맹의 검투사
-      // 12/15). specialization.skillLevels가 없는 분기는 이 줄이 그냥 undefined라
-      // 아무 영향이 없다(아직 skillLevels를 채우지 않은 다른 분기들도 안전).
-      const specKey = specialization && specialization.skillLevels && specialization.skillLevels[player.level];
-      if(specKey && !player.skills.includes(specKey)) player.skills.push(specKey);
+      applyLevelUpEffects();
       levelsGained.push(player.level);
     }
     return levelsGained;
+  }
+
+  // 레벨 1회 상승분의 스탯 증가/스킬 지급을 처리한다(경험치 소모는 여기서 하지
+  // 않는다 — grantExp()가 exp/expNext를 먼저 처리한 뒤 이 함수를 호출한다). 이렇게
+  // 분리해둔 이유는 combat/job-advancement.js의 admin 전용 "전직 즉시 15레벨"
+  // 디버그 로직도 정확히 같은 레벨업 효과(스탯 증가 + 2차 전직 스킬 지급 포함)를
+  // 그대로 재사용해야 하기 때문 — 로직을 중복 작성하면 나중에 둘 중 하나만 고치는
+  // 실수가 생기기 쉽다.
+  function applyLevelUpEffects(){
+    const job = getJob(player);
+    const hybrid = getHybrid(player);
+    const specialization = getSpecialization(player);
+    player.level += 1;
+    // 20레벨 이후부터는(쉬움 제외) 레벨업에 필요한 경험치 성장률이 더 가팔라진다.
+    // 레벨업 노가다만으로 진보스/최종보스를 손쉽게 찍어누르는 것을 막기 위함이다.
+    const growthRate = (player.difficulty!=='easy' && player.level>=20) ? 1.36 : 1.28;
+    player.expNext = Math.round(player.expNext*growthRate + 6);
+    player.maxhp += 9;
+    // 일격의 구도자(warrior_purist)는 스킬을 전혀 쓰지 않아 마나가 항상 0으로
+    // 유지되어야 한다(combat/job-advancement.js에서 전직 시점에도 0으로 초기화).
+    // 레벨업 때마다 관례적으로 붙는 maxmp 증가분만 이 분기에 한해 건너뛴다.
+    if(!(player.specialization === 'warrior_purist')){
+      player.maxmp += 4;
+    }
+    player.atk += 2; player.def += 1; player.mag += 2; player.spd += 1;
+    // 저주술사(mastery_curseweaver)는 레벨업 시 무회복 저주도 저주 개수만큼의
+    // 확률로 뚫을 수 있다(레벨업이 한 번에 여러 번 처리될 수 있어, 매번 배너가
+    // 뜨면 스팸이 될 수 있으므로 여기서는 안내 문구 없이 조용히 판정만 한다).
+    if(isCurseSealActive('noPostBattleHeal')){
+      player.hp = Math.min(player.hp, player.maxhp);
+      player.mp = Math.min(player.mp, player.maxmp);
+    } else {
+      player.hp = player.maxhp; player.mp = player.maxmp;
+    }
+    const unlockKey = job.skillLevels[player.level];
+    if(unlockKey && !player.skills.includes(unlockKey)) player.skills.push(unlockKey);
+    const hybridKey = hybrid && hybrid.skills[player.level];
+    if(hybridKey && !player.skills.includes(hybridKey)) player.skills.push(hybridKey);
+    // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 추가 스킬(예: 혈맹의 검투사
+    // 12/15). specialization.skillLevels가 없는 분기는 이 줄이 그냥 undefined라
+    // 아무 영향이 없다(아직 skillLevels를 채우지 않은 다른 분기들도 안전).
+    const specKey = specialization && specialization.skillLevels && specialization.skillLevels[player.level];
+    if(specKey && !player.skills.includes(specKey)) player.skills.push(specKey);
+    return player.level;
   }
 
   function showLevelUpToast(lv){
