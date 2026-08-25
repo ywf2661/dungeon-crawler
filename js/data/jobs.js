@@ -159,9 +159,11 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         masteryName:'잔영', masteryDesc:'공격형 스킬 사용 시 확정적으로 분신 생성, 적 턴 직전 자동으로 50% 위력의 추가 공격.', masterySkillId:'mastery_afterimage',
         activeName:'그림자 쇄도', activeDesc:'분신과 함께 즉시 2연격(급소 확정 적중). 이 스킬 자체도 잔영을 발동시켜 다음 턴 분신 공격까지 예약된다.', activeSkillId:'rogueShadowStrike'},
       {id:'rogue_alchemist', name:'맹독 연금술사', icon:'⚗',
-        desc:'맹독을 다루는 연금술사. 서서히 스며드는 독이 쌓이고 쌓이다, 어느 순간 걷잡을 수 없이 터진다.',
-        masteryName:'삼중 조제', masteryDesc:'공격할 때마다 독 3종 중 하나 자동 축적, 3종 완성 시 폭발 효과 발동 가능.', masterySkillId:'mastery_triplepoison',
-        activeName:'촉매 주입', activeDesc:'즉시 원하는 독 하나를 추가 축적.', activeSkillId:'rogueCatalyst'},
+        desc:'맹독을 짙게 짜 넣어, 서서히 그러나 확실하게 무너뜨리는 연금술사. 한번 스며든 독은 좀처럼 빠지지 않는다.',
+        masteryName:'독 중첩', masteryDesc:'적에게 쌓인 맹독이 매 라운드 자동으로 피해를 입힌다(전투가 끝날 때까지 지속, 최대 10스택).', masterySkillId:'mastery_venomstacks',
+        activeName:'맹독 주입', activeDesc:'피해와 함께 독 스택을 쌓는다.', activeSkillId:'rogueVenomInject',
+        // 레벨12/15는 독 중첩 시스템을 강화하는 패시브 2개.
+        skillLevels: {12:'rogueVenomRefine', 15:'rogueVenomTriple'}},
     ],
     paladin: [
       {id:'paladin_martyr', name:'순교자', icon:'✝',
