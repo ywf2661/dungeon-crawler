@@ -11,7 +11,8 @@
 export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, tickActiveRig,
               enemyTurnReal, processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
-              getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus, getLuckWaveBonus
+              getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus, getLuckWaveBonus,
+              getVenomDmgPerStack
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
 주의: applySkillModifiers()에 저주술사(mageCurseNova)의 s.curseCountBonus 처리가 추가되어
      있다 — 기존 statusSynergyBonus와 완전히 동일한 패턴(보유 개수만큼 곱연산 배율)이라
@@ -193,6 +194,17 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
     }
     const activeDots = (enemy.dots||[]).filter(d=>d.turns>0);
+    // 독 중첩(mastery_venomstacks, 맹독 연금술사): 일반 dot과 달리 턴이 지나도
+    // 사라지지 않고 전투가 끝날 때까지 유지되므로, enemy.dots에 영구 저장하지
+    // 않는다. 대신 매 라운드 이 시점에서 현재 스택 수 기준으로 즉석 계산한 임시
+    // dot 객체를 만들어 기존 processDotsSequentially()의 연출/피해 파이프라인에
+    // 그대로 얹는다(신규 애니메이션 코드 불필요). enemy.dots 배열 자체에는 들어가지
+    // 않으므로, 라운드가 끝날 때 enemy.dots를 정리하는 로직(processDotsSequentially
+    // 내부)의 영향을 받지 않고 다음 라운드에도 다시 새로 계산된다.
+    if(enemy && (enemy.venomStacks||0) > 0){
+      const venomTickDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack()));
+      activeDots.push({type:'poison', turns:1, dmgPerTurn:venomTickDmg, label:`맹독(${enemy.venomStacks}중첩)`});
+    }
     if(activeDots.length){
       processDotsSequentially(activeDots, 0);
     } else {
@@ -481,4 +493,18 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function getLuckWaveBonus(){
     if(!(player.skills && player.skills.includes('mastery_luckwave'))) return 0;
     return (battleFlags.luckGauge||0) * 0.07;
+  }
+  // 독 중첩(mastery_venomstacks, 맹독 연금술사): "스택 하나당" 매 라운드 피해량을
+  // 계산한다. 기본값은 마력의 12% — 여기에 레벨12 패시브(독성 정제, +50%)와
+  // 장비의 중독 강화 아이템(getDotBoostRatio('poison') — 도적의 단검 +40%,
+  // 영혼의 반지 +25% 등 기존 아이템과 자연스럽게 시너지)이 곱연산으로 붙는다.
+  // 최종 틱 피해 = 이 값 × 현재 스택 수(최대 10) — 풀스택+독성 정제만 있어도
+  // 마력의 약 1.8배가 매 라운드 들어가는 셈이라, 오래 끄는 전투일수록 강력해진다.
+  function getVenomDmgPerStack(){
+    if(!(player.skills && player.skills.includes('mastery_venomstacks'))) return 0;
+    let per = Math.max(0.01, player.mag * 0.12);
+    if(player.skills.includes('rogueVenomRefine')) per *= 1.5;
+    const boost = getDotBoostRatio('poison');
+    if(boost>0) per *= (1+boost);
+    return per;
   }
