@@ -200,8 +200,10 @@ export(전역): SKILLDB
     // 마스터리 "혈서": 액티브 스킬이 아니라 상시 켜고 끄는 토글(player-actions.js).
     // 켜두면 다음 스킬 사용 시 HP를 태워 위력을 증폭시키고, HP가 낮을수록 회피율도
     // 오른다(combat/enemy-turn.js의 getBloodPactDodgeBonus).
-    mastery_bloodpact: {name:'혈서', mp:0, type:'arm', armFlag:'bloodPactArmed',
-      desc:'다음 스킬 사용 시 HP 15%를 태워 위력을 크게 증폭시킬지 여부를 켜고 끈다. HP가 낮을수록 회피율도 오른다.'},
+    mastery_bloodpact: {name:'혈서', mp:0, type:'arm', armFlag:'bloodPactArmed', icon:'🩸',
+      armMsgOn:'혈서가 켜졌다. 전투가 끝나거나 직접 끌 때까지, 스킬을 쓸 때마다 HP를 태워 위력이 증폭된다.',
+      armMsgOff:'혈서가 꺼졌다.',
+      desc:'켜두면 전투가 끝나거나 직접 끌 때까지, 스킬을 쓸 때마다 HP 15%를 태워 위력을 크게 증폭시킨다. HP가 낮을수록 회피율도 오른다.'},
     warriorBloodpactActive: {name:'저돌', mp:6, desc:'앞뒤 재지 않고 돌진해 벤다. 체력이 낮을수록 위력이 크게 오른다',
       type:'phys', mult:1.6, selfHpBonusMax:0.9},
     // 레벨12 "혈인": 혈서처럼 선택적(토글)이 아니라, 쓸 때마다 확정으로 HP를 태우는
@@ -285,11 +287,11 @@ export(전역): SKILLDB
     // 새로 생성될 때까지) 유지된다. 새 스킬 타입 'elementpact'로 처리한다
     // (combat/player-actions.js 참고). combat/ui/battle-fx.js의 openSub()가 이
     // 타입(과 기존 'arm' 타입)을 자동으로 가로 토글 버튼 줄로 그린다.
-    mastery_firepact: {name:'화염계약', mp:0, type:'elementpact', pactElement:'fire',
+    mastery_firepact: {name:'화염계약', mp:0, type:'elementpact', pactElement:'fire', icon:'🔥',
       desc:'화염과 계약한다(전투가 끝날 때까지 유지, 다른 원소 계약과 배타적). 이후 원소 각인/원소 파동/원소 폭풍이 화염 전용 효과로 발동한다.'},
-    mastery_icepact: {name:'빙결계약', mp:0, type:'elementpact', pactElement:'ice',
+    mastery_icepact: {name:'빙결계약', mp:0, type:'elementpact', pactElement:'ice', icon:'❄',
       desc:'빙결과 계약한다(전투가 끝날 때까지 유지, 다른 원소 계약과 배타적). 이후 원소 각인/원소 파동/원소 폭풍이 빙결 전용 효과로 발동한다.'},
-    mastery_lightningpact: {name:'번개계약', mp:0, type:'elementpact', pactElement:'lightning',
+    mastery_lightningpact: {name:'번개계약', mp:0, type:'elementpact', pactElement:'lightning', icon:'⚡',
       desc:'번개와 계약한다(전투가 끝날 때까지 유지, 다른 원소 계약과 배타적). 이후 원소 각인/원소 파동/원소 폭풍이 번개 전용 효과로 발동한다.'},
     // 원소 각인(레벨10 액티브): 화염=강한 화상+중간 피해, 빙결=방어 무시 없는
     // 고배율 단일 강타, 번개=2연속 타격(관통은 약함). 계약이 없으면 위력이
@@ -409,7 +411,9 @@ export(전역): SKILLDB
     // 바꾸는 것뿐이라 별도 저장 로직 추가는 필요 없을 것으로 보임). 범위를 좁히기 위해
     // 액티브 스킬(심판의 빛)을 사용할 때만 발동하도록 한정했다(player-actions.js 하단
     // 범용 phys/magic 분기 참고 — 혈서처럼 모든 스킬에 걸리지 않고 이 스킬 하나에만 걸림).
-    mastery_martyrvow: {name:'희생의 맹세', mp:0, type:'arm', armFlag:'martyrVowArmed',
+    mastery_martyrvow: {name:'희생의 맹세', mp:0, type:'arm', armFlag:'martyrVowArmed', icon:'✝',
+      armMsgOn:'맹세가 켜졌다. 다음 심판의 빛 사용 시 최대HP를 영구히 깎는 대신 영구히 강해진다.',
+      armMsgOff:'맹세가 꺼졌다.',
       desc:'다음 심판의 빛 사용 시 최대HP 8%를 영구히 깎는 대신 공격력을 영구히 3 올릴지 여부를 켜고 끈다.'},
     paladinJudgmentLight: {name:'심판의 빛', mp:7, desc:'적을 강타하고 그 힘의 일부로 소량 회복한다. 희생의 맹세가 켜져 있다면 최대HP를 영구히 깎는 대신 영구히 강해진다',
       type:'phys', mult:1.6, lifesteal:0.2},
