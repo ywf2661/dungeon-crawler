@@ -174,14 +174,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.title = '시간 조각 — 시간 역행(3개 이상 필요, 소비 안 함)과 시간의 역설(전부 소비)의 재료';
       box.appendChild(b);
     }
-    // 분신 배가(rogueDoubleImage, 환영검사): 토글이면서 동시에 스택(0~2)도 갖는
-    // 특수 케이스라 위의 arm/elementpact 범용 루프로는 못 잡는다 — 따로 처리한다.
-    if(battleFlags && battleFlags.doubleImageArmed){
+    // 분신 배가(rogueDoubleImage, 환영검사): 다음 공격형 스킬 1회에만 적용되는
+    // 1회성 예약 상태다(스택 없음 — 재설계로 지속 토글에서 1회성으로 바뀜).
+    // player.doubleImageArmed에 저장되므로(lightningCritArmed/stealthDmgBonusArmed와
+    // 동일한 패턴 — 전투 중 계속 유지되다가 소모될 때 꺼짐) battleFlags가 아니라
+    // player를 확인한다.
+    if(player.doubleImageArmed){
       const b = document.createElement('div');
       b.className = 'status-badge player-badge';
-      const stacks = battleFlags.doubleImageStacks||0;
-      b.textContent = `👻 분신 배가 (${['40%','60%','80%'][Math.min(2,stacks)]})`;
-      b.title = '켜져 있는 동안 공격 적중마다 분신이 즉시 한 번 더 나타난다. 계속 켜둘수록 위력이 강해진다(최대 2단계).';
+      b.textContent = '👻 분신 배가 대기중';
+      b.title = '다음 공격형 스킬을 쓰면 잔영이 두 번, 더 강하게 나타난다. 한 번 쓰면 소모된다.';
       box.appendChild(b);
     }
     // 잔영 누적(mastery_afterimage): 백귀야행(레벨15)의 재료가 되는 이번 전투
@@ -207,7 +209,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       if(avail.length===0){ sub.innerHTML = '<div class="sub-item disabled">배운 스킬이 없다</div>'; return; }
       // 토글형 스킬(arm/elementpact)은 가로 한 줄로 묶어서 맨 위에 먼저 그린다 —
       // 화염/빙결/번개계약처럼 토글이 여러 개라도 세로 목록이 길어지지 않는다.
-      const toggleKeys = avail.filter(k => SKILLDB[k].type==='arm' || SKILLDB[k].type==='elementpact' || SKILLDB[k].type==='doubleimagepact');
+      const toggleKeys = avail.filter(k => SKILLDB[k].type==='arm' || SKILLDB[k].type==='elementpact');
       const normalKeys = avail.filter(k => !toggleKeys.includes(k));
       if(toggleKeys.length){
         // 사용자 요청: 목록을 스크롤해도 토글형 스킬(혈서, 원소계약 등)이 화면
@@ -227,7 +229,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
           const s = SKILLDB[k];
           const isActive = s.type==='elementpact'
             ? (battleFlags && battleFlags.elementPact === s.pactElement)
-            : (s.type==='doubleimagepact' ? !!(battleFlags && battleFlags.doubleImageArmed) : !!player[s.armFlag]);
+            : !!player[s.armFlag];
           const btn = document.createElement('div');
           btn.className = 'toggle-btn'+(isActive?' active':'');
           btn.innerHTML = `<div>${s.name}</div>`;
