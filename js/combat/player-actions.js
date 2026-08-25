@@ -192,22 +192,19 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
-    if(s.type==='doubleimagepact'){
-      // 분신 배가(환영검사, 레벨12): 토글형이지만 혈서/원소계약과 달리 MP를
-      // 환불하지 않는다 — 위쪽에서 이미 mpCost만큼 깎인 것을 그대로 둔다(사용자
-      // 요청: "켜고 끌 때마다 실제로 마나가 든다"). 턴은 소모하지 않아, 같은
-      // 턴에 이어서 다른 공격 스킬을 쓸 수 있다.
-      battleFlags.doubleImageArmed = !battleFlags.doubleImageArmed;
-      if(!battleFlags.doubleImageArmed){
-        // 껐을 때는 다음에 다시 켰을 때 0단계부터 다시 시작하도록 스택을 리셋한다.
-        battleFlags.doubleImageStacks = 0;
-      }
+    if(s.type==='doubleimagenext'){
+      // 분신 배가(환영검사, 레벨12, 재설계): 지속 토글이 아니라 "다음 공격형
+      // 스킬 1회"에만 적용되는 1회성 예약이다(사용자 확정). MP는 혈서/원소계약과
+      // 달리 환불하지 않는다(위쪽에서 이미 깎인 것을 그대로 둠). 턴은 소모하지
+      // 않아, 이어서 바로 공격형 스킬을 쓸 수 있다. 실제 배가 효과는 잔영이
+      // 재현될 때(combat/enemy-turn.js의 triggerAfterimageStrike()) 적용된다 —
+      // 여기서는 예약 플래그와 배율만 걸어둔다.
+      player.doubleImageArmed = true;
+      player.doubleImageBoostRatio = s.boostedRatio || 0.65;
       renderStatus();
       updatePlayerStatusBadges();
       Sound.buff();
-      setBattleMsg(`${player.name}의 ${s.name}!`, battleFlags.doubleImageArmed
-        ? '환영을 증폭하는 술식을 걸었다. 공격이 적중할 때마다 분신이 즉시 한 번 더 나타난다(계속 켜둘수록 위력이 강해진다).'
-        : '증폭 술식을 거두었다.');
+      setBattleMsg(`${player.name}의 ${s.name}!`, '그림자를 겹쳐 짰다. 다음 공격형 스킬을 쓰면 잔영이 두 번, 더 강하게 나타난다.');
       setCommandsEnabled(true);
       return;
     }
@@ -855,20 +852,20 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       let afterimageMsgMulti = '';
       if(player.skills && player.skills.includes('mastery_afterimage') && battleFlags && !battleFlags.afterimagePending){
         battleFlags.afterimagePending = true;
-        battleFlags.afterimageQueue = { name: s.name, magic: magicBased, multihit: true, hits: parts.length, totalDamage: total };
-        afterimageMsgMulti = ` 그림자 속에서 '${s.name}'의 잔영이 어른거린다…`;
-        battleFlags.afterimageTriggerCount = Math.min(8, (battleFlags.afterimageTriggerCount||0) + 1);
-      }
-      // 분신 배가(rogueDoubleImage): 연속 공격형 스킬도 즉시타 대상이다(범용
-      // phys/magic 분기와 동일한 조건 — 총 합산 피해 total 기준으로 계산).
-      let doubleImageMsgMulti = '';
-      let doubleImageDmgMulti = 0;
-      if(battleFlags.doubleImageArmed){
-        const diStacksM = battleFlags.doubleImageStacks||0;
-        const diPctM = [0.4,0.6,0.8][Math.min(2,diStacksM)];
-        doubleImageDmgMulti = Math.max(1, Math.round(total*diPctM));
-        doubleImageMsgMulti = ` 분신이 즉시 나타나 ${doubleImageDmgMulti}의 추가 피해를 입혔다!`;
-        battleFlags.doubleImageStacks = Math.min(2, diStacksM+1);
+        const doubledMulti = !!player.doubleImageArmed;
+        battleFlags.afterimageQueue = {
+          name: s.name, magic: magicBased, multihit: true, hits: parts.length, totalDamage: total,
+          ratio: doubledMulti ? (player.doubleImageBoostRatio||0.65) : 0.5,
+          repeats: doubledMulti ? 2 : 1,
+        };
+        afterimageMsgMulti = doubledMulti
+          ? ' 그림자 속에서 두 겹의 잔영이 어른거린다…'
+          : ` 그림자 속에서 '${s.name}'의 잔영이 어른거린다…`;
+        battleFlags.afterimageTriggerCount = Math.min(8, (battleFlags.afterimageTriggerCount||0) + (doubledMulti?2:1));
+        if(doubledMulti){
+          player.doubleImageArmed = false;
+          player.doubleImageBoostRatio = 0;
+        }
       }
       // 한 타씩 순차적으로 베어내는 연출
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, '연속 공격 중...');
@@ -881,12 +878,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         }, i*220);
       });
       setTimeout(()=>{
-        if(doubleImageDmgMulti>0){
-          enemy.hp = Math.max(0, enemy.hp-doubleImageDmgMulti);
-          updateEnemyHpBar(); popDamage('-'+doubleImageDmgMulti);
-          updatePlayerStatusBadges();
-        }
         renderStatus();
+        updatePlayerStatusBadges();
         playComboFinish(parts.length);
         let msg2 = `${parts.join(' + ')} = 총 ${total}의 피해!`;
         if(mod.triggered) msg2 = '급소를 꿰뚫었다! '+msg2;
@@ -894,7 +887,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(dotLabels1) msg2 += ` ${dotLabels1} 효과 부여!`;
         if(stealthDmgMsgMulti) msg2 += stealthDmgMsgMulti;
         if(afterimageMsgMulti) msg2 += afterimageMsgMulti;
-        if(doubleImageMsgMulti) msg2 += doubleImageMsgMulti;
         setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
         if(checkBattleEnd()) return;
         enemyTurn();
@@ -1543,28 +1535,28 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     let afterimageMsg2 = '';
     if(willQueueAfterimage){
       battleFlags.afterimagePending = true;
-      battleFlags.afterimageQueue = { name: s.name, magic: s.type==='magic', multihit: false, hits: 1, totalDamage: dmg };
-      afterimageMsg2 = ` 그림자 속에서 '${s.name}'의 잔영이 어른거린다…`;
+      // 분신 배가(rogueDoubleImage)가 예약되어 있으면, 잔영이 1번이 아니라
+      // 2번(repeats:2) 재현되고 배율도 평소 50%가 아니라 더 강한 값
+      // (player.doubleImageBoostRatio)으로 적용된다. 실제 재현 로직은
+      // combat/enemy-turn.js의 triggerAfterimageStrike()에서 처리한다.
+      const doubled = !!player.doubleImageArmed;
+      battleFlags.afterimageQueue = {
+        name: s.name, magic: s.type==='magic', multihit: false, hits: 1, totalDamage: dmg,
+        ratio: doubled ? (player.doubleImageBoostRatio||0.65) : 0.5,
+        repeats: doubled ? 2 : 1,
+      };
+      afterimageMsg2 = doubled
+        ? ' 그림자 속에서 두 겹의 잔영이 어른거린다…'
+        : ` 그림자 속에서 '${s.name}'의 잔영이 어른거린다…`;
       // 백귀야행(레벨15)이 소비할 "이번 전투 잔영 발동 누적 횟수"(최대 8 —
-      // 애니메이션/수치가 지나치게 길어지는 것을 막기 위한 상한).
-      battleFlags.afterimageTriggerCount = Math.min(8, (battleFlags.afterimageTriggerCount||0) + 1);
-    }
-    // 분신 배가(rogueDoubleImage, 레벨12)가 켜져 있으면, 이 공격이 적중한 직후
-    // 분신이 즉시 한 번 더 나타나 추가 타격을 가한다(잔영의 "적 턴 직전 예약타"와
-    // 별개로 그 자리에서 바로 터짐). 위력은 현재 스택(0~2)에 따라 40→60→80%.
-    // 스택 증가는 반드시 이 계산 "이후"에 한다(사용자 확정 — 이번 공격에는 아직
-    // 반영 안 됨, 다음 공격부터 반영).
-    let doubleImageMsg2 = '';
-    if(battleFlags.doubleImageArmed){
-      const diStacks = battleFlags.doubleImageStacks||0;
-      const diPct = [0.4,0.6,0.8][Math.min(2,diStacks)];
-      const diDmg = Math.max(1, Math.round(dmg*diPct));
-      enemy.hp = Math.max(0, enemy.hp-diDmg);
-      updateEnemyHpBar(); popDamage('-'+diDmg);
-      if(s.type==='magic') Sound.magic(); else Sound.slash();
-      doubleImageMsg2 = ` 분신이 즉시 나타나 ${diDmg}의 추가 피해를 입혔다!`;
-      battleFlags.doubleImageStacks = Math.min(2, diStacks+1);
-      updatePlayerStatusBadges();
+      // 애니메이션/수치가 지나치게 길어지는 것을 막기 위한 상한). 분신 배가가
+      // 걸린 공격은 잔영이 실제로 2번 나타나는 것이므로 2씩 누적한다.
+      battleFlags.afterimageTriggerCount = Math.min(8, (battleFlags.afterimageTriggerCount||0) + (doubled?2:1));
+      if(doubled){
+        player.doubleImageArmed = false;
+        player.doubleImageBoostRatio = 0;
+        updatePlayerStatusBadges();
+      }
     }
     let healed2 = 0;
     if(s.lifesteal){
@@ -1583,7 +1575,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(tripleElementMsg) msg2 += tripleElementMsg;
     if(hpSacMsg) msg2 += hpSacMsg;
     if(afterimageMsg2) msg2 += afterimageMsg2;
-    if(doubleImageMsg2) msg2 += doubleImageMsg2;
     const dotLabels3 = applySkillDots(s);
     if(dotLabels3) msg2 += ` ${dotLabels3} 효과 부여!`;
     if(healed2>0){ msg2 += ` HP ${healed2} 흡수.`; }
