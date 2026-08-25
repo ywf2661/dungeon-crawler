@@ -6,6 +6,11 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
               shakeEnemy, spawnSlashMark, playComboFinish, playStatusFx, playCastBurst, playBanner,
               updateStatusBadges, openSub, closeSub
 의존성: state.js(enemy/player), Sound(sound.js)
+주의: openSub('skill')이 토글형 스킬(SKILLDB의 type==='arm' 또는 'elementpact' — 예: 혈서,
+     화염/빙결/번개계약)을 세로 목록과 분리해 가로 한 줄(.toggle-row)로 먼저 그리도록
+     바뀌었다. 토글이 여러 개(3개 이상) 생겨도 세로 스크롤 목록이 길어지지 않게 하기
+     위함. 새 토글형 스킬을 추가할 때도 SKILLDB에 type만 'arm'/'elementpact'로 지정하면
+     자동으로 이 가로줄에 들어간다 — 별도 UI 코드 수정 불필요.
 */
 
   function updateEnemyHpBar(){
@@ -124,8 +129,29 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     sub.innerHTML='';
     if(mode==='skill'){
       const avail = player.skills.filter(k=>SKILLDB[k]);
-      if(avail.length===0){ sub.innerHTML = '<div class="sub-item disabled">배운 스킬이 없다</div>'; }
-      avail.forEach(k=>{
+      if(avail.length===0){ sub.innerHTML = '<div class="sub-item disabled">배운 스킬이 없다</div>'; return; }
+      // 토글형 스킬(arm/elementpact)은 가로 한 줄로 묶어서 맨 위에 먼저 그린다 —
+      // 화염/빙결/번개계약처럼 토글이 여러 개라도 세로 목록이 길어지지 않는다.
+      const toggleKeys = avail.filter(k => SKILLDB[k].type==='arm' || SKILLDB[k].type==='elementpact');
+      const normalKeys = avail.filter(k => !toggleKeys.includes(k));
+      if(toggleKeys.length){
+        const row = document.createElement('div');
+        row.className = 'toggle-row';
+        toggleKeys.forEach(k=>{
+          const s = SKILLDB[k];
+          const isActive = s.type==='elementpact'
+            ? (battleFlags && battleFlags.elementPact === s.pactElement)
+            : !!player[s.armFlag];
+          const btn = document.createElement('div');
+          btn.className = 'toggle-btn'+(isActive?' active':'');
+          btn.innerHTML = `<div>${s.name}</div>`;
+          btn.title = s.desc;
+          btn.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
+          row.appendChild(btn);
+        });
+        sub.appendChild(row);
+      }
+      normalKeys.forEach(k=>{
         const s = SKILLDB[k];
         const mpCost = s.mp;
         const canUse = player.mp>=mpCost;
@@ -152,4 +178,3 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     }
   }
   function closeSub(){ resetCommandUI(); }
-
