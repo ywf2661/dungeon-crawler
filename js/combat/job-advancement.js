@@ -12,6 +12,15 @@ export(전역): showJobAdvancement, resolveJobAdvancement
      자연스럽게 생략하도록 처리되어 있다.
 */
   /* ---------- 전직 선택 UI (레벨 10 / 레거시 하이브리드 재전직) ---------- */
+  // 분기 개수(N)를 "한 갈래"/"두 갈래"/"세 갈래" 같은 한국어 관형사 표현으로
+  // 바꾼다. 계약술사처럼 3분기, 앞으로 4분기 이상이 생겨도 안내 문구가 자동으로
+  // 맞는 개수로 나오게 하기 위함(예전엔 "두 갈래"가 하드코딩되어 있어 마법사가
+  // 3분기가 된 뒤에도 계속 "두 갈래"라고 잘못 표시되고 있었다).
+  function branchCountLabel(n){
+    const map = {1:'한', 2:'두', 3:'세', 4:'네', 5:'다섯', 6:'여섯', 7:'일곱', 8:'여덟'};
+    return (map[n] || n) + ' 갈래';
+  }
+
   function showJobAdvancement(){
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
@@ -20,13 +29,15 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     panel.className = 'shop-panel relic-panel-locked';
     const myJob = getJob(player);
     const isMigration = needsSpecializationMigration(player);
+    const branches = JOB_SPECIALIZATIONS[myJob.id] || [];
+    const branchLabel = branchCountLabel(branches.length);
     const introHtml = isMigration
       ? `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;line-height:1.6;margin-bottom:12px;">
           전직 체계가 새롭게 개편되었다. 이전에 택했던 길은 저물고,
-          <b style="color:var(--gold-bright);">${myJob.name}</b> 본연의 두 갈래 중 하나를 다시 선택해야 한다.
+          <b style="color:var(--gold-bright);">${myJob.name}</b> 본연의 ${branchLabel} 중 하나를 다시 선택해야 한다.
         </p>`
       : `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;line-height:1.6;margin-bottom:12px;">
-          레벨 10에 도달했다. <b style="color:var(--gold-bright);">${myJob.name}</b>의 두 갈래 중
+          레벨 10에 도달했다. <b style="color:var(--gold-bright);">${myJob.name}</b>의 ${branchLabel} 중
           하나를 선택해 각성하라.
         </p>`;
     panel.innerHTML = `<h3>전직의 때가 왔다!</h3>
@@ -40,7 +51,6 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     // 실수 선택되는 것을 방지한다(job-card는 <div>라 disabled 속성이 안 먹히므로
     // JS 플래그로 직접 막는다).
     let locked = true;
-    const branches = JOB_SPECIALIZATIONS[myJob.id] || [];
     branches.forEach(spec=>{
       const card = document.createElement('div');
       card.className = 'job-card';
