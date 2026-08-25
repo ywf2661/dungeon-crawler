@@ -54,6 +54,37 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       stats:{spd:2},                      minDepth:1,  rare:true, special:{rareDropBoost:0.5, goldBoost:0.2}},
   };
 
+  // ---------- 칼리버 X (회랑의 기사 전용 무기, 3단계) ----------
+  // 회랑의 기사(paladin_knight)로 전직하면 전직 즉시 caliberx_1이 강제 장착되고,
+  // 레벨12/15에 도달하면 combat/battle-end.js의 applyLevelUpEffects()가 자동으로
+  // caliberx_2 → caliberx_3으로 교체한다(플레이어가 직접 장착/교체하는 게 아님).
+  // 세 단계 모두 equipItem()/unequipItem()에서 "회랑의 기사는 무기 슬롯을 직접
+  // 조작할 수 없다"는 잠금이 걸려 있어, 상점이나 장비창에서 다른 무기로 바꾸거나
+  // 벗을 수 없다. 스탯은 단계가 오를수록 조금씩 강해지지만, 이 아이템의 핵심은
+  // 스탯보다 "설명이 성검→불길함→저주받은 검으로 변해가는" 서사 연출이다.
+  const CALIBERX_STAGES = {
+    caliberx_1: {name:'칼리버 X', slot:'weapon', storyWeapon:true, minDepth:0,
+      desc:'어둠의 회랑 가장 깊은 제단에서 발견된 성검. 손에 쥐는 순간 마치 처음부터 그대의 것이었던 것처럼 익숙하게 감겨온다. 휘두를 때마다 검신에 신성한 빛이 감돌아, 성기사들 사이에 전해지는 \'선택받은 자에게만 스스로 손잡이를 내어주는 검\'이라는 전설이 사실이었음을 증명하는 듯하다.',
+      stats:{atk:12, mag:6}},
+    caliberx_2: {name:'칼리버 X', slot:'weapon', storyWeapon:true, minDepth:0,
+      desc:'기도를 올리면 응답이 온다. 다만 그 응답이 신의 것인지는 이제 확신할 수 없다. 검신 깊숙한 곳에서 무언가가 꿈틀거리는 감각이 손끝을 타고 올라온다. 이 검은 처음부터 \'성기사를 위해\' 만들어진 게 아니었을지도 모른다.',
+      stats:{atk:18, mag:9}},
+    caliberx_3: {name:'칼리버 X', slot:'weapon', storyWeapon:true, minDepth:0,
+      desc:'이것은 성검이 아니다. 회랑 깊은 곳에 봉인되어 있던 무언가가, 봉인을 풀어줄 그릇을 기다리며 성검의 껍데기를 두르고 있었을 뿐. 그대는 검을 선택한 것이 아니라, 검에게 선택된 것이다.',
+      stats:{atk:26, mag:13}},
+  };
+  // 회랑의 기사가 caliberx_2/3로 자동 교체될 때, 이전 단계 스탯을 정확히 빼고
+  // 새 단계 스탯을 더하기 위한 헬퍼(combat/battle-end.js에서 사용).
+  function reforgeCaliberX(fromId, toId){
+    const from = CALIBERX_STAGES[fromId];
+    const to = CALIBERX_STAGES[toId];
+    if(!to) return;
+    if(from) unapplyEquipStats(from.stats);
+    applyEquipStats(to.stats);
+    player.equipment.weapon = toId;
+    if(!player.equipOwned.includes(toId)) player.equipOwned.push(toId);
+  }
+
   /* ---------- 에픽 세트 아이템 (어둠의 회랑) ---------- */
   const EPIC_EQUIPMENT = {
     // 전사 — 멸망한 거인의 유산
@@ -145,7 +176,7 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   };
 
   function getItemDef(id){
-    return EQUIPMENT[id] || RARE_EQUIPMENT[id] || EPIC_EQUIPMENT[id];
+    return EQUIPMENT[id] || RARE_EQUIPMENT[id] || EPIC_EQUIPMENT[id] || CALIBERX_STAGES[id];
   }
 
   function statsText(stats){
@@ -174,6 +205,14 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(!item) return;
     if(!player.equipOwned.includes(itemId)) return;
     const slot = item.slot;
+    // 회랑의 기사(paladin_knight): 칼리버 X가 장착된 무기 슬롯은 플레이어가 직접
+    // 건드릴 수 없다. 칼리버 X 자기 자신으로의 "교체"(예: 레벨업 재장착) 요청만
+    // 예외로 허용한다 — combat/battle-end.js는 이 함수를 거치지 않고
+    // reforgeCaliberX()를 직접 호출하므로, 사실상 이 슬롯은 플레이어 입력으로는
+    // 절대 안 걸린다.
+    if(slot==='weapon' && player.equipment.weapon && getItemDef(player.equipment.weapon) && getItemDef(player.equipment.weapon).storyWeapon){
+      return;
+    }
     const current = player.equipment[slot];
     if(current === itemId) return;
     const prevCounts = getEpicSetCounts();
@@ -187,8 +226,12 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   function unequipItem(slot){
     const current = player.equipment[slot];
     if(!current) return;
+    // 칼리버 X는 해제할 수 없다(회랑의 기사의 정체성 그 자체 — 서사상으로도
+    // "검이 손을 놓아주지 않는다"는 컨셉과 맞물린다).
+    const def = getItemDef(current);
+    if(def && def.storyWeapon) return;
     const prevCounts = getEpicSetCounts();
-    unapplyEquipStats(getItemDef(current).stats);
+    unapplyEquipStats(def.stats);
     player.equipment[slot] = null;
     renderStatus();
     checkEpicSetToast(prevCounts);
