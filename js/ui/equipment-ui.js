@@ -3,6 +3,12 @@
 장비 관리 화면 UI(에픽 세트 진행도 표시 포함).
 export(전역): renderSetProgressHTML, openEquipment
 의존성: player(state.js), data/equipment.js
+주의: 회랑의 기사(paladin_knight)의 전용무기 칼리버 X(storyWeapon:true, 3단계)는
+     교체/해제가 불가능하므로, 이 화면에서도 그에 맞게 손봤다 —
+     (1) 장착 중인 칼리버 X 옆엔 "해제" 버튼 대신 "벗을 수 없다"는 문구만 뜬다.
+     (2) 레벨업으로 교체된 이전 단계 칼리버 X는 equipOwned에 남아있어도 "보유 중인
+         무기" 목록에 별개 아이템처럼 뜨지 않는다(눌러봤자 equipItem()이 조용히
+         막아버리므로, 애초에 안 보이게 하는 쪽이 훨씬 자연스럽다).
 */
 
   /* ============ 장비 관리 ============ */
@@ -40,16 +46,24 @@ export(전역): renderSetProgressHTML, openEquipment
     const slots = ['weapon','armor','accessory'];
     panel.innerHTML = `<h3>장비 정비</h3>` + renderSetProgressHTML() + slots.map(slot=>{
       const equippedId = player.equipment[slot];
-      const owned = player.equipOwned.filter(id=>getItemDef(id).slot===slot && id!==equippedId);
+      const owned = player.equipOwned.filter(id=>{
+        const def = getItemDef(id);
+        // 칼리버 X(storyWeapon)의 이전 단계는 목록에서 아예 제외한다(위 파일
+        // 상단 주의 참고).
+        return def.slot===slot && id!==equippedId && !def.storyWeapon;
+      });
       const equippedDef = equippedId ? getItemDef(equippedId) : null;
+      const unequipBtn = (equippedDef && equippedDef.storyWeapon)
+        ? `<span style="color:var(--parchment-dim); font-size:11px; font-style:italic; padding:6px 4px;">벗을 수 없다</span>`
+        : `<button class="buy-btn" data-action="unequip" data-slot="${slot}">해제</button>`;
       const equippedRow = equippedId
         ? `<div class="shop-item">
             <div class="si-info">
-              <span class="si-name" style="font-family:Cinzel;color:${equippedDef.epic?'var(--epic-bright)':'var(--gold-bright)'};">★ ${equippedDef.epic?'✦✦ ':(equippedDef.rare?'✨ ':'')}${equippedDef.name}</span>
+              <span class="si-name" style="font-family:Cinzel;color:${equippedDef.epic?'var(--epic-bright)':(equippedDef.storyWeapon?'var(--rust-bright)':'var(--gold-bright)')};">★ ${equippedDef.epic?'✦✦ ':(equippedDef.rare?'✨ ':(equippedDef.storyWeapon?'☠ ':''))}${equippedDef.name}</span>
               <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">${statsText(equippedDef.stats)}</span>
               <div class="${equippedDef.epic?'item-desc-epic':(equippedDef.rare?'item-desc-rare':'item-desc')}">${equippedDef.desc}</div>
             </div>
-            <button class="buy-btn" data-action="unequip" data-slot="${slot}">해제</button>
+            ${unequipBtn}
           </div>`
         : `<div class="shop-item"><div class="si-info"><span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">장착한 ${SLOT_LABELS[slot]}이(가) 없다.</span></div></div>`;
       const ownedRows = owned.map(id=>{
@@ -76,4 +90,3 @@ export(전역): renderSetProgressHTML, openEquipment
     });
     panel.querySelector('#equip-close').addEventListener('click', ()=>overlay.remove());
   }
-
