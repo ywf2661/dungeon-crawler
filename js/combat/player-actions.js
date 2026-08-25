@@ -207,6 +207,30 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='venominject'){
+      // 맹독 주입(rogueVenomInject, 레벨10 액티브, 맹독 연금술사): 피해를 입히는
+      // 동시에 독 스택(enemy.venomStacks, 최대 10)을 쌓는 유일한 수단이다. 레벨15
+      // 패시브(rogueVenomTriple)를 배웠으면 1이 아니라 3씩 쌓인다. 실제 매 라운드
+      // 독 피해 처리는 combat/enemy-turn.js의 enemyTurnReal()에서 스택 수 기준으로
+      // 매번 새로 계산한다(이 스킬은 스택을 "쌓기"만 하고 직접 틱 피해를 주지 않음).
+      const edefVenom = getEffectiveEnemyDef(enemy.def);
+      const onHitMultVenom = consumeOnHitBonuses();
+      let venomDmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - Math.round(edefVenom*0.9));
+      venomDmg = applyOutgoingDamageMods(venomDmg, {type:'physkill', mpCost, onHitMult:onHitMultVenom});
+      enemy.hp = Math.max(0, enemy.hp-venomDmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+venomDmg);
+      Sound.slash(); playStatusFx('poison');
+      rogueRegisterHit(true);
+      const venomGain = (player.skills && player.skills.includes('rogueVenomTriple')) ? 3 : 1;
+      enemy.venomStacks = Math.min(10, (enemy.venomStacks||0)+venomGain);
+      updateStatusBadges();
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${enemy.name}에게 ${venomDmg}의 피해를 입히고 맹독을 주입했다! (독중첩 ${enemy.venomStacks}/10)`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='haste'){
       // 가속 주문(시간술사 액티브): 마법 피해를 입히는 동시에 적의 턴을 건너뛰고
       // 곧바로 다시 행동한다. 예전 버전은 피해가 전혀 없어서, 사실상 "적 공격
