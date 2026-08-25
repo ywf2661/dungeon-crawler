@@ -192,6 +192,26 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='doubleimagepact'){
+      // 분신 배가(환영검사, 레벨12): 토글형이지만 혈서/원소계약과 달리 MP를
+      // 환불하지 않는다 — 위쪽에서 이미 mpCost만큼 깎인 것을 그대로 둔다(사용자
+      // 요청: "켜고 끌 때마다 실제로 마나가 든다"). 턴은 소모하지 않아, 같은
+      // 턴에 이어서 다른 공격 스킬을 쓸 수 있다.
+      battleFlags.doubleImageArmed = !battleFlags.doubleImageArmed;
+      if(!battleFlags.doubleImageArmed){
+        // 껐을 때는 다음에 다시 켰을 때 0단계부터 다시 시작하도록 스택을 리셋한다.
+        battleFlags.doubleImageStacks = 0;
+      }
+      renderStatus();
+      updatePlayerStatusBadges();
+      Sound.buff();
+      setBattleMsg(`${player.name}의 ${s.name}!`, battleFlags.doubleImageArmed
+        ? '환영을 증폭하는 술식을 걸었다. 공격이 적중할 때마다 분신이 즉시 한 번 더 나타난다(계속 켜둘수록 위력이 강해진다).'
+        : '증폭 술식을 거두었다.');
+      setCommandsEnabled(true);
+      return;
+    }
+
     if(s.type==='passive'){
       // 상시 발동형 마스터리(예: 인내, 시간 왜곡) — 직접 사용해도 턴을 소모하지 않고
       // 효과는 자동으로만 발동한다(설명만 보여줌).
@@ -837,6 +857,18 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         battleFlags.afterimagePending = true;
         battleFlags.afterimageQueue = { name: s.name, magic: magicBased, multihit: true, hits: parts.length, totalDamage: total };
         afterimageMsgMulti = ` 그림자 속에서 '${s.name}'의 잔영이 어른거린다…`;
+        battleFlags.afterimageTriggerCount = Math.min(8, (battleFlags.afterimageTriggerCount||0) + 1);
+      }
+      // 분신 배가(rogueDoubleImage): 연속 공격형 스킬도 즉시타 대상이다(범용
+      // phys/magic 분기와 동일한 조건 — 총 합산 피해 total 기준으로 계산).
+      let doubleImageMsgMulti = '';
+      let doubleImageDmgMulti = 0;
+      if(battleFlags.doubleImageArmed){
+        const diStacksM = battleFlags.doubleImageStacks||0;
+        const diPctM = [0.4,0.6,0.8][Math.min(2,diStacksM)];
+        doubleImageDmgMulti = Math.max(1, Math.round(total*diPctM));
+        doubleImageMsgMulti = ` 분신이 즉시 나타나 ${doubleImageDmgMulti}의 추가 피해를 입혔다!`;
+        battleFlags.doubleImageStacks = Math.min(2, diStacksM+1);
       }
       // 한 타씩 순차적으로 베어내는 연출
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, '연속 공격 중...');
@@ -849,6 +881,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         }, i*220);
       });
       setTimeout(()=>{
+        if(doubleImageDmgMulti>0){
+          enemy.hp = Math.max(0, enemy.hp-doubleImageDmgMulti);
+          updateEnemyHpBar(); popDamage('-'+doubleImageDmgMulti);
+          updatePlayerStatusBadges();
+        }
         renderStatus();
         playComboFinish(parts.length);
         let msg2 = `${parts.join(' + ')} = 총 ${total}의 피해!`;
@@ -857,6 +894,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(dotLabels1) msg2 += ` ${dotLabels1} 효과 부여!`;
         if(stealthDmgMsgMulti) msg2 += stealthDmgMsgMulti;
         if(afterimageMsgMulti) msg2 += afterimageMsgMulti;
+        if(doubleImageMsgMulti) msg2 += doubleImageMsgMulti;
         setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
         if(checkBattleEnd()) return;
         enemyTurn();
@@ -1099,6 +1137,46 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
       enemyTurn();
+      return;
+    }
+
+    if(s.type==='nightparade'){
+      // 백귀야행(rogueUndeadParade, 레벨15 궁극기, 환영검사): 이번 전투에서 잔영
+      // (마스터리)이 발동했던 누적 횟수(battleFlags.afterimageTriggerCount)만큼
+      // 분신이 동시에 몰아친다. 기존 multihit 타입과 동일한 "타수 고정" 방식이
+      // 아니라 타수 자체가 매번 달라지므로, multihit의 순차 타격 연출 패턴을
+      // 그대로 손으로 재현했다(범용 multihit 분기는 s.hits가 고정값이라 여기엔
+      // 못 쓴다). 사용 후 카운트는 0으로 초기화된다.
+      const hits = Math.max(1, battleFlags.afterimageTriggerCount||0);
+      const hadCount = (battleFlags.afterimageTriggerCount||0) > 0;
+      battleFlags.afterimageTriggerCount = 0;
+      updatePlayerStatusBadges();
+      const edefParade = getEffectiveEnemyDef(enemy.def);
+      const onHitMultParade = consumeOnHitBonuses();
+      const perHitBase = Math.max(1, Math.round(effectiveAtk()*0.85) - Math.round(edefParade*0.5));
+      const rawParts = [];
+      for(let i=0;i<hits;i++) rawParts.push(perHitBase);
+      const baseRawTotal = rawParts.reduce((a,b)=>a+b,0);
+      const boostedTotal = applyOutgoingDamageMods(baseRawTotal, {type:'physkill', mpCost, onHitMult:onHitMultParade});
+      const scale = boostedTotal/baseRawTotal;
+      const parts = rawParts.map(d=>Math.max(1, Math.round(d*scale)));
+      const total = parts.reduce((a,b)=>a+b,0);
+      setBattleMsg(`${player.name}의 ${s.name}!`, hadCount ? `쌓아온 잔영(${hits}번)이 한꺼번에 몰아친다...` : '불러낼 잔영이 없어 홀로 몰아친다...');
+      parts.forEach((hitDmg,i)=>{
+        setTimeout(()=>{
+          enemy.hp = Math.max(0, enemy.hp-hitDmg);
+          updateEnemyHpBar(); shakeEnemy(); spawnSlashMark(i);
+          Sound.slash();
+          popDamage('-'+hitDmg, i===parts.length-1?'crit':undefined);
+        }, i*160);
+      });
+      setTimeout(()=>{
+        renderStatus();
+        playComboFinish(parts.length);
+        setBattleMsg(`${player.name}의 ${s.name}!`, `${hits}구의 분신 군단이 동시에 몰아쳐 ${enemy.name}에게 총 ${total}의 압도적인 피해를 입혔다!`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+      }, parts.length*160 + 250);
       return;
     }
 
@@ -1467,6 +1545,26 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.afterimagePending = true;
       battleFlags.afterimageQueue = { name: s.name, magic: s.type==='magic', multihit: false, hits: 1, totalDamage: dmg };
       afterimageMsg2 = ` 그림자 속에서 '${s.name}'의 잔영이 어른거린다…`;
+      // 백귀야행(레벨15)이 소비할 "이번 전투 잔영 발동 누적 횟수"(최대 8 —
+      // 애니메이션/수치가 지나치게 길어지는 것을 막기 위한 상한).
+      battleFlags.afterimageTriggerCount = Math.min(8, (battleFlags.afterimageTriggerCount||0) + 1);
+    }
+    // 분신 배가(rogueDoubleImage, 레벨12)가 켜져 있으면, 이 공격이 적중한 직후
+    // 분신이 즉시 한 번 더 나타나 추가 타격을 가한다(잔영의 "적 턴 직전 예약타"와
+    // 별개로 그 자리에서 바로 터짐). 위력은 현재 스택(0~2)에 따라 40→60→80%.
+    // 스택 증가는 반드시 이 계산 "이후"에 한다(사용자 확정 — 이번 공격에는 아직
+    // 반영 안 됨, 다음 공격부터 반영).
+    let doubleImageMsg2 = '';
+    if(battleFlags.doubleImageArmed){
+      const diStacks = battleFlags.doubleImageStacks||0;
+      const diPct = [0.4,0.6,0.8][Math.min(2,diStacks)];
+      const diDmg = Math.max(1, Math.round(dmg*diPct));
+      enemy.hp = Math.max(0, enemy.hp-diDmg);
+      updateEnemyHpBar(); popDamage('-'+diDmg);
+      if(s.type==='magic') Sound.magic(); else Sound.slash();
+      doubleImageMsg2 = ` 분신이 즉시 나타나 ${diDmg}의 추가 피해를 입혔다!`;
+      battleFlags.doubleImageStacks = Math.min(2, diStacks+1);
+      updatePlayerStatusBadges();
     }
     let healed2 = 0;
     if(s.lifesteal){
@@ -1485,6 +1583,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(tripleElementMsg) msg2 += tripleElementMsg;
     if(hpSacMsg) msg2 += hpSacMsg;
     if(afterimageMsg2) msg2 += afterimageMsg2;
+    if(doubleImageMsg2) msg2 += doubleImageMsg2;
     const dotLabels3 = applySkillDots(s);
     if(dotLabels3) msg2 += ` ${dotLabels3} 효과 부여!`;
     if(healed2>0){ msg2 += ` HP ${healed2} 흡수.`; }
