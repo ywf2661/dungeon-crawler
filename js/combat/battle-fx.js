@@ -17,6 +17,9 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
      바뀌었다. 토글이 여러 개(3개 이상) 생겨도 세로 스크롤 목록이 길어지지 않게 하기
      위함. 새 토글형 스킬을 추가할 때도 SKILLDB에 type만 'arm'/'elementpact'로 지정하면
      자동으로 이 가로줄에 들어간다 — 별도 UI 코드 수정 불필요.
+     이 토글 줄은 .toggle-sticky-wrap으로 감싸 스크롤해도 화면 위에 계속 고정(sticky)
+     되도록 index.html에서 CSS를 추가해야 한다(별도 안내 참고) — 스크롤해서 지나치면
+     사용자가 존재조차 모를 수 있다는 지적에 따른 개선.
 */
 
   function updateEnemyHpBar(){
@@ -177,6 +180,17 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       const toggleKeys = avail.filter(k => SKILLDB[k].type==='arm' || SKILLDB[k].type==='elementpact');
       const normalKeys = avail.filter(k => !toggleKeys.includes(k));
       if(toggleKeys.length){
+        // 사용자 요청: 목록을 스크롤해도 토글형 스킬(혈서, 원소계약 등)이 화면
+        // 밖으로 사라지지 않고 맨 위에 계속 붙어있게(sticky) 한다. 또한 "이게
+        // 뭘 하는 버튼인지" 첫눈에 알기 어려울 수 있어, 작은 안내 문구를
+        // 함께 붙였다. 라벨+버튼줄을 하나의 래퍼(.toggle-sticky-wrap)로
+        // 묶어야 둘이 함께 고정된다 — CSS는 index.html에 별도로 추가 필요.
+        const wrap = document.createElement('div');
+        wrap.className = 'toggle-sticky-wrap';
+        const label = document.createElement('div');
+        label.className = 'toggle-row-label';
+        label.textContent = '▼ 상시 발동 스킬 — 탭해서 켜고 끄기';
+        wrap.appendChild(label);
         const row = document.createElement('div');
         row.className = 'toggle-row';
         toggleKeys.forEach(k=>{
@@ -191,7 +205,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
           btn.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
           row.appendChild(btn);
         });
-        sub.appendChild(row);
+        wrap.appendChild(row);
+        sub.appendChild(wrap);
       }
       normalKeys.forEach(k=>{
         const s = SKILLDB[k];
