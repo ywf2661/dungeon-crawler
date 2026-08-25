@@ -35,6 +35,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         echoMsg = ' 메아리치는 두 번째 타격이 더욱 강하게 꽂혔다!';
       }
     }
+    // 번개계약 파동(mageElementWave)이 남긴 "다음 공격 확정 치명타"를 기본 공격에도
+    // 적용한다(원소 각인/원소 파동/원소 폭풍 자체는 각자 별도 계산식이라 이 플래그를
+    // 소모하지 않는다 — 설계상 범위를 기본 공격과 아래 범용 phys/magic 분기로 한정).
+    let lightningCritMsgAtk = '';
+    if(player.lightningCritArmed){
+      dmg = Math.round(dmg*1.6);
+      lightningCritMsgAtk = ' 벼려둔 번개의 기운이 급소를 정확히 꿰뚫었다!';
+      player.lightningCritArmed = false;
+    }
     dmg = applyOutgoingDamageMods(dmg, {type:'basic', onHitMult});
     consumeAtkBuff();
     enemy.hp = Math.max(0, enemy.hp-dmg);
@@ -46,6 +55,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(healed>0) msg2 += ` HP ${healed} 흡수.`;
     if(creedMsg) msg2 += creedMsg;
     if(echoMsg) msg2 += echoMsg;
+    if(lightningCritMsgAtk) msg2 += lightningCritMsgAtk;
 
     if(enemy.hp>0 && maybeWarriorExtraHit()){
       const edef3 = getEffectiveEnemyDef(enemy.def);
@@ -131,6 +141,24 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       setBattleMsg(`${player.name}의 ${s.name}!`, player[s.armFlag]
         ? `${s.name}이(가) 켜졌다. 다음 스킬 사용 시 HP를 태워 위력이 증폭된다.`
         : `${s.name}이(가) 꺼졌다.`);
+      setCommandsEnabled(true);
+      return;
+    }
+
+    if(s.type==='elementpact'){
+      // 화염/빙결/번개계약(계약술사) — 서로 배타적인 3방향 토글. 이미 이 원소로
+      // 계약 중이면 해제하고, 아니면 이 원소로 전환한다(다른 원소 계약은 자동
+      // 해제). battleFlags.elementPact는 전투마다 새로 생성되는 battleFlags에
+      // 저장되므로, "전투가 끝날 때까지 유지"가 자연히 보장된다.
+      const already = battleFlags.elementPact === s.pactElement;
+      battleFlags.elementPact = already ? null : s.pactElement;
+      player.mp += mpCost; // 토글은 MP를 쓰지 않는다
+      renderStatus();
+      Sound.buff();
+      const pactLabel = {fire:'화염', ice:'빙결', lightning:'번개'}[s.pactElement];
+      setBattleMsg(`${player.name}의 ${s.name}!`, already
+        ? `${pactLabel} 계약을 해제했다.`
+        : `${pactLabel}과(와) 계약을 맺었다. 전투가 끝날 때까지 유지되며, 다른 원소 계약은 자동으로 해제된다.`);
       setCommandsEnabled(true);
       return;
     }
@@ -668,6 +696,195 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='dotdetonate'){
+      // 원소 붕괴(mageElementalCollapse, 레벨15): 적에게 걸린 모든 상태이상(출처
+      // 무관 — 원소 계약의 화상, 삼원소 연격의 화상, 다른 분기의 독/출혈 등 전부
+      // 포함)을 한꺼번에 붕괴시킨다. 각 상태이상의 "남은 잠재 피해량"(턴당
+      // 피해 × 남은 턴 수)의 합계에 비례해 폭딜이 나오고, 터뜨린 상태이상은
+      // 전부 사라진다(연쇄폭발의 statusSynergyBonus처럼 단순히 "종류 수"만
+      // 세는 게 아니라, 실제로 상태이상을 소모하는 방식이라 텍스처가 다르다).
+      const activeDots = (enemy.dots||[]).filter(d=>d.turns>0);
+      let dotPotential = 0;
+      activeDots.forEach(d=>{ dotPotential += d.dmgPerTurn * d.turns; });
+      const edefCollapse = Math.round(getEffectiveEnemyDef(enemy.def)*0.5);
+      const onHitMultCollapse = consumeOnHitBonuses();
+      let collapseDmg = Math.max(1, Math.round(player.mag*s.baseMult) + Math.round(dotPotential*s.dotMult) - edefCollapse);
+      collapseDmg = applyOutgoingDamageMods(collapseDmg, {type:'magicskill', mpCost, onHitMult:onHitMultCollapse});
+      enemy.hp = Math.max(0, enemy.hp-collapseDmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+collapseDmg, activeDots.length>0?'crit':undefined);
+      Sound.magic();
+      const clearedLabels = [...new Set(activeDots.map(d=>d.label))].join(', ');
+      enemy.dots = (enemy.dots||[]).filter(d=>d.turns<=0);
+      updateStatusBadges();
+      renderStatus();
+      const msg2 = activeDots.length>0
+        ? `걸려있던 상태이상(${clearedLabels})을 한꺼번에 붕괴시켜 ${enemy.name}에게 ${collapseDmg}의 압도적인 피해를 입혔다!`
+        : `붕괴시킬 상태이상이 없어 기본 위력으로 ${enemy.name}에게 ${collapseDmg}의 피해를 입혔다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='elementstrike'){
+      // 원소 각인(mageElementStrike, 레벨10 액티브): 계약한 원소에 따라 완전히
+      // 다르게 동작한다. 화염=화상 부여+중간 피해, 빙결=방어 무시 없는 고배율
+      // 단일 강타, 번개=2연속 타격(관통은 약함). 미계약 시 위력이 눈에 띄게
+      // 약하다(먼저 계약하도록 유도).
+      const pact = battleFlags.elementPact;
+      const edef = getEffectiveEnemyDef(enemy.def);
+      const onHitMult = consumeOnHitBonuses();
+      let msg2 = '';
+      if(pact==='fire'){
+        let dmg = Math.max(1, Math.round(player.mag*1.5) - Math.round(edef*0.5));
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        Sound.magic(); playStatusFx('burn');
+        applyDot({type:'burn', basis:'mag', ratio:0.5, turns:3, label:'원소 각인: 화염'});
+        msg2 = `화염 각인이 ${enemy.name}에게 ${dmg}의 피해를 입히고 짙은 화상을 남겼다!`;
+      } else if(pact==='ice'){
+        let dmg = Math.max(1, Math.round(player.mag*2.6) - edef);
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+        Sound.magic(); playStatusFx('pact-ice');
+        msg2 = `빙결 각인이 ${enemy.name}에게 ${dmg}의 강력한 피해를 입혔다!`;
+      } else if(pact==='lightning'){
+        const per = Math.max(1, Math.round(player.mag*1.0) - Math.round(edef*0.85));
+        const totalRaw = per*2;
+        const total = applyOutgoingDamageMods(totalRaw, {type:'magicskill', mpCost, onHitMult});
+        const scale = total/totalRaw;
+        const parts = [Math.max(1,Math.round(per*scale)), Math.max(1,Math.round(per*scale))];
+        enemy.hp = Math.max(0, enemy.hp - parts[0] - parts[1]);
+        updateEnemyHpBar(); shakeEnemy();
+        Sound.magic(); playStatusFx('pact-lightning');
+        parts.forEach((d,i)=>{ setTimeout(()=>{ spawnSlashMark(i); popDamage('-'+d); }, i*180); });
+        msg2 = `번개 각인이 두 번 연속 꽂혀 ${parts.join(' + ')}의 피해를 입혔다!`;
+      } else {
+        let dmg = Math.max(1, Math.round(player.mag*1.1) - Math.round(edef*0.5));
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        Sound.magic();
+        msg2 = `계약 없이 평범한 마력탄을 날려 ${dmg}의 피해를 입혔다. (원소와 계약하면 훨씬 강력해진다)`;
+      }
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='elementwave'){
+      // 원소 파동(mageElementWave, 레벨12 액티브): 화염=쌓인 화상의 잔여 피해량만큼
+      // 즉시 폭발(화상이 없으면 약한 대체 공격), 빙결=2턴간 자체 방어력 상승,
+      // 번개=다음 공격 확정 치명타 부여(player.lightningCritArmed — 기본 공격과
+      // 범용 phys/magic 분기에서 소모된다. elementstrike/elementstorm 자체는
+      // 별도 계산식이라 이 플래그를 소모하지 않는다 — 설계상 범위 제한).
+      const pact = battleFlags.elementPact;
+      const edef = getEffectiveEnemyDef(enemy.def);
+      const onHitMult = consumeOnHitBonuses();
+      let msg2 = '';
+      if(pact==='fire'){
+        const burn = (enemy.dots||[]).find(d=>d.type==='burn' && d.turns>0);
+        if(burn){
+          const burst = Math.max(1, burn.dmgPerTurn * burn.turns);
+          const dmg = applyOutgoingDamageMods(burst, {type:'magicskill', mpCost, onHitMult});
+          enemy.hp = Math.max(0, enemy.hp-dmg);
+          updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+          enemy.dots = enemy.dots.filter(d=>d!==burn);
+          updateStatusBadges();
+          Sound.magic(); playStatusFx('burn');
+          msg2 = `타오르던 화상을 한꺼번에 터뜨려 ${enemy.name}에게 ${dmg}의 폭발적인 피해를 입혔다!`;
+        } else {
+          let dmg = Math.max(1, Math.round(player.mag*1.0) - Math.round(edef*0.5));
+          dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+          enemy.hp = Math.max(0, enemy.hp-dmg);
+          updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+          Sound.magic();
+          msg2 = `타오르는 화상이 없어 터뜨릴 것이 없다. 대신 ${dmg}의 피해를 입혔다.`;
+        }
+      } else if(pact==='ice'){
+        let dmg = Math.max(1, Math.round(player.mag*0.8) - Math.round(edef*0.5));
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        Sound.magic(); playStatusFx('pact-ice');
+        player.buffDefTurns = 2; player.buffDefMult = 0.7;
+        msg2 = `얼음 장벽을 두르며 ${dmg}의 피해를 입혔다. 2턴간 받는 피해가 줄어든다.`;
+      } else if(pact==='lightning'){
+        let dmg = Math.max(1, Math.round(player.mag*0.9) - Math.round(edef*0.6));
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        Sound.magic(); playStatusFx('pact-lightning');
+        player.lightningCritArmed = true;
+        msg2 = `번개의 기운을 벼려 ${dmg}의 피해를 입혔다. 다음 공격은 반드시 급소에 꽂힌다.`;
+      } else {
+        let dmg = Math.max(1, Math.round(player.mag*0.9) - Math.round(edef*0.5));
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        Sound.magic();
+        msg2 = `계약 없이 평범한 파동을 날려 ${dmg}의 피해를 입혔다.`;
+      }
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='elementstorm'){
+      // 원소 폭풍(mageElementStorm, 레벨15 궁극기): 화염=초강력 화상+큰 피해,
+      // 빙결=방어 완전 무시 초고배율 강타, 번개=3연속 타격(관통 있음). 미계약
+      // 시에도 여전히 약하다(궁극기까지 계약 없이 쓰는 것을 강하게 억제).
+      const pact = battleFlags.elementPact;
+      const edef = getEffectiveEnemyDef(enemy.def);
+      const onHitMult = consumeOnHitBonuses();
+      let msg2 = '';
+      if(pact==='fire'){
+        let dmg = Math.max(1, Math.round(player.mag*2.4) - Math.round(edef*0.5));
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+        Sound.magic(); playStatusFx('burn');
+        applyDot({type:'burn', basis:'mag', ratio:0.7, turns:4, label:'원소 폭풍: 화염'});
+        msg2 = `대화염이 ${enemy.name}을(를) 집어삼켜 ${dmg}의 피해를 입히고 격렬한 화상을 남겼다!`;
+      } else if(pact==='ice'){
+        let dmg = Math.max(1, Math.round(player.mag*3.2)); // 방어 완전 무시(edef 차감 없음)
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+        Sound.magic(); playStatusFx('pact-ice');
+        msg2 = `절대영도의 빙결이 방어를 완전히 무시하고 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`;
+      } else if(pact==='lightning'){
+        const per = Math.max(1, Math.round(player.mag*1.1) - Math.round(edef*0.65));
+        const totalRaw = per*3;
+        const total = applyOutgoingDamageMods(totalRaw, {type:'magicskill', mpCost, onHitMult});
+        const scale = total/totalRaw;
+        const parts = [0,1,2].map(()=>Math.max(1,Math.round(per*scale)));
+        enemy.hp = Math.max(0, enemy.hp - parts.reduce((a,b)=>a+b,0));
+        updateEnemyHpBar(); shakeEnemy();
+        Sound.magic(); playStatusFx('pact-lightning');
+        parts.forEach((d,i)=>{ setTimeout(()=>{ spawnSlashMark(i); popDamage('-'+d, 'crit'); }, i*180); });
+        msg2 = `벼락이 세 번 연속으로 방어를 꿰뚫으며 ${parts.join(' + ')}의 피해를 입혔다!`;
+      } else {
+        let dmg = Math.max(1, Math.round(player.mag*1.3) - Math.round(edef*0.5));
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        Sound.magic();
+        msg2 = `계약 없이 궁극의 파동을 날려 ${dmg}의 피해를 입혔다. (원소와 계약했다면 훨씬 강력했을 것이다)`;
+      }
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='drain'){
       const atkBased = s.basis==='atk';
       const basisVal = atkBased ? effectiveAtk() : player.mag;
@@ -921,7 +1138,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 이제 세 원소 모두 전용 배너 + 화면 플래시(status-fx)를 띄워, 매 시전마다
     // "이번엔 무슨 원소가 걸렸는지"가 한눈에 보이도록 했다.
     let elementMsg = '';
-    if(s.type==='magic' && player.skills && player.skills.includes('mastery_elementpact')){
+    if(s.type==='magic' && key!=='mageTripleElement' && player.skills && player.skills.includes('mastery_elementpact')){
       const roll = ['fire','ice','lightning'][Math.floor(Math.random()*3)];
       if(roll==='fire'){
         playBanner('🔥 화염 계약!', 'pact-fire');
@@ -948,6 +1165,20 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         elementMsg = ` 번개와 계약해 방어를 ${pierced}만큼 꿰뚫었다!`;
       }
     }
+    // 삼원소 연격(mageTripleElement, 레벨12): 마스터리의 무작위 롤과 무관하게,
+    // 이 스킬 자체는 빙결(+15%)과 번개(방어 관통) 효과를 확률 없이 항상 함께
+    // 발동시킨다(화염=화상은 s.dot 필드로 범용 파이프라인이 이미 자동 처리한다 —
+    // applySkillDots(s) 호출부 참고). 위에서 mastery_elementpact의 무작위 롤은
+    // 이 스킬에 한해 건너뛰도록 이미 막아뒀다(중복 발동 방지).
+    let tripleElementMsg = '';
+    if(key==='mageTripleElement'){
+      dmg = Math.round(dmg*1.15);
+      const pierced2 = Math.round(defMitigation*0.3);
+      dmg = dmg + pierced2;
+      playBanner('🔥❄⚡ 삼원소 연격!', 'pact-lightning');
+      playStatusFx('pact-ice');
+      tripleElementMsg = ` 빙결로 위력이 15% 오르고, 번개로 방어를 ${pierced2}만큼 꿰뚫었다!`;
+    }
     // 혈서(mastery_bloodpact)가 켜져 있으면, 이 스킬 한 번에 한해 HP를 태워 위력을 증폭시킨다.
     let bloodPactMsg = '';
     if(player.bloodPactArmed){
@@ -972,6 +1203,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         martyrVowMsg = ` 순교자의 맹세로 최대HP ${hpLoss}을(를) 영구히 바쳐 공격력이 영구히 3 올랐다!`;
       }
       player.martyrVowArmed = false;
+    }
+    // 번개계약 파동(mageElementWave)이 남긴 "다음 공격 확정 치명타" 소모(범용
+    // phys/magic 분기 전체에 적용 — 기본 공격은 위 playerAttack()에서 별도 처리).
+    let lightningCritMsg2 = '';
+    if(player.lightningCritArmed){
+      dmg = Math.round(dmg*1.6);
+      lightningCritMsg2 = ' 벼려둔 번개의 기운이 급소를 정확히 꿰뚫었다!';
+      player.lightningCritArmed = false;
     }
     // 잔영(mastery_afterimage, 환영검사): 공격형 스킬(이 범용 phys/magic 분기에
     // 도달하는 모든 스킬)을 사용하면 확정적으로 분신이 예약된다. 어떤 스킬을 얼마의
@@ -1005,7 +1244,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(mod.triggered) msg2 = '약점을 정확히 노렸다! '+msg2;
     if(bloodPactMsg) msg2 += bloodPactMsg;
     if(martyrVowMsg) msg2 += martyrVowMsg;
+    if(lightningCritMsg2) msg2 += lightningCritMsg2;
     if(elementMsg) msg2 += elementMsg;
+    if(tripleElementMsg) msg2 += tripleElementMsg;
     if(hpSacMsg) msg2 += hpSacMsg;
     if(afterimageMsg2) msg2 += afterimageMsg2;
     const dotLabels3 = applySkillDots(s);
