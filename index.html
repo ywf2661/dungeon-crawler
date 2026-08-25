@@ -424,6 +424,24 @@
   .sub-item .si-desc{color:var(--parchment-dim); font-size:12px; font-style:italic; display:block; margin-top:2px; white-space:normal; overflow-wrap:break-word; line-height:1.4;}
   .sub-item .si-cost{color:#8fb4e8; font-size:12px; flex-shrink:0; margin-left:8px; padding-top:1px;}
   .sub-item.disabled{opacity:.35; cursor:not-allowed;}
+  /* ============================================================
+   토글형 스킬(화염/빙결/번개계약, 혈서 등) 가로 배치용 CSS
+   붙여넣을 위치: index.html의 <style> 안, 아래 두 규칙 바로 아래 아무 데나
+   (예: 기존 .sub-item{...} 블록 바로 다음 줄) 추가하면 됩니다.
+   ============================================================ */
+
+.toggle-row{display:flex; gap:6px; margin-bottom:8px; flex-shrink:0;}
+.toggle-btn{
+  flex:1; text-align:center; font-family:'Cinzel'; font-size:12px;
+  background:#1a130c; border:1px solid #3a2c1c; border-radius:4px;
+  padding:8px 4px; cursor:pointer; color:var(--parchment-dim);
+  transition:all .12s;
+}
+.toggle-btn:hover{border-color:var(--gold);}
+.toggle-btn.active{
+  border-color:var(--gold-bright); color:var(--gold-bright);
+  background:#2c2013; box-shadow:0 0 10px #e6c34a44;
+}
   .back-row{display:flex; justify-content:flex-end; flex-shrink:0; padding-top:2px;}
   .link-btn{background:none; border:none; color:var(--parchment-dim); font-family:'Cinzel'; font-size:12.5px; cursor:pointer; text-decoration:underline; padding:4px;}
   .link-btn:hover{color:var(--gold-bright);}
