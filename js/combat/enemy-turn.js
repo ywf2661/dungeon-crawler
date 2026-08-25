@@ -193,6 +193,20 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         }
       }
     }
+    // 검은 기도(paladinDarkPrayer, 회랑의 기사)가 건 임시 공격력↑/방어력↓를 정확히
+    // 그 수치만큼만 되돌린다(다른 원인으로 공/방이 바뀌었어도 서로 간섭하지 않도록
+    // 델타를 직접 저장해뒀다가 그대로 복구 — 불확실성의 주사위 revertDiceDelta()와
+    // 동일한 설계 원칙).
+    if(player.knightVulnTurns>0){
+      player.knightVulnTurns -= 1;
+      if(player.knightVulnTurns<=0){
+        player.atk -= (player.knightVulnAtkBonus||0);
+        player.def += (player.knightVulnDefPenalty||0);
+        player.knightVulnAtkBonus = 0;
+        player.knightVulnDefPenalty = 0;
+        renderStatus();
+      }
+    }
     const activeDots = (enemy.dots||[]).filter(d=>d.turns>0);
     // 독 중첩(mastery_venomstacks, 맹독 연금술사): 일반 dot과 달리 턴이 지나도
     // 사라지지 않고 전투가 끝날 때까지 유지되므로, enemy.dots에 영구 저장하지
