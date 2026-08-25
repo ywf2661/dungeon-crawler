@@ -27,7 +27,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       document.getElementById('bt-stage').classList.add('dying');
       let g = enemy.gold[0]+Math.floor(Math.random()*(enemy.gold[1]-enemy.gold[0]+1));
       const curseRewardMult = getCurseRewardMult();
-      const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult;
+      // 물주의 감각(mastery_goldsense, 황금 도박사): 승리 골드 +20%. 기존 계산식에
+      // 항 하나만 추가하면 되므로 별도 함수 없이 여기서 직접 처리한다.
+      const goldSenseBonus = (player.skills && player.skills.includes('mastery_goldsense')) ? 0.2 : 0;
+      const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult + goldSenseBonus;
       if(goldBoost>0) g = Math.round(g*(1+goldBoost));
       player.gold += g;
       const killHealPct = getRelicSum('killHealPct');
