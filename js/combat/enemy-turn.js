@@ -91,56 +91,80 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 베어낸다) — 다만 총 피해량은 방금 그 스킬이 낸 실제 피해의 50%로 줄어든다.
   // battleFlags.afterimageQueue에 combat/player-actions.js가 미리 기록해둔
   // {name, magic, multihit, hits, totalDamage}를 읽어 재현 방식을 결정한다.
+  // 환영검사의 분신이 적의 턴이 열리기 직전 자동으로 한 번 더(또는 분신 배가가
+  // 걸려 있었다면 두 번) 공격한다. queue.repeats(기본 1, 분신 배가 시 2)만큼
+  // 재현 시퀀스 전체(단발이든 멀티히트든)를 반복한 뒤에야 enemyTurnReal()로
+  // 넘어간다 — 재현 도중에 checkBattleEnd()로 전투가 끝나면 그 자리에서 멈춘다.
+  // queue.ratio(기본 0.5, 분신 배가 시 더 높은 값)로 매 반복의 위력을 계산한다.
   function triggerAfterimageStrike(){
     const queue = battleFlags && battleFlags.afterimageQueue;
     const skillName = (queue && queue.name) || '환영검';
     const isMagic = !!(queue && queue.magic);
     const isMultihit = !!(queue && queue.multihit);
     const hits = Math.max(1, (queue && queue.hits) || 1);
+    const ratio = (queue && queue.ratio) || 0.5;
+    const repeats = Math.max(1, (queue && queue.repeats) || 1);
     const fallbackDmg = Math.max(1, Math.round(effectiveAtk()*1.0));
-    const halfTotal = Math.max(1, Math.round(((queue && queue.totalDamage) || fallbackDmg) * 0.5));
+    const perRepeatTotal = Math.max(1, Math.round(((queue && queue.totalDamage) || fallbackDmg) * ratio));
     battleFlags.afterimageQueue = null;
 
-    if(isMultihit && hits>1){
+    function playOneRepeat(repeatIdx, onDone){
+      const introLine = repeats>1
+        ? (repeatIdx===0 ? '그림자 속에서 첫 번째 잔영이 나타난다!' : '그림자 속에서 두 번째 잔영이 뒤이어 나타난다!')
+        : '그림자 속에서 잔영이 다시 나타난다!';
+      if(isMultihit && hits>1){
+        setTimeout(()=>{
+          if(battleOver) return;
+          setBattleMsg(introLine, `'${skillName}'의 잔영이 재현된다…`);
+          const per = Math.max(1, Math.round(perRepeatTotal/hits));
+          let dealt = 0;
+          let idx = 0;
+          const doHit = ()=>{
+            if(battleOver) return;
+            const isLast = idx===hits-1;
+            const hitDmg = isLast ? Math.max(1, perRepeatTotal-dealt) : per;
+            dealt += hitDmg;
+            enemy.hp = Math.max(0, enemy.hp - hitDmg);
+            updateEnemyHpBar(); popDamage('-'+hitDmg, 'crit'); spawnSlashMark(idx);
+            if(isMagic) Sound.magic(); else Sound.slash();
+            idx++;
+            if(idx<hits){
+              setTimeout(doHit, 220);
+            } else {
+              renderStatus();
+              if(checkBattleEnd()) return;
+              onDone();
+            }
+          };
+          doHit();
+        }, 450);
+        return;
+      }
       setTimeout(()=>{
         if(battleOver) return;
-        setBattleMsg('그림자 속에서 잔영이 다시 나타난다!', `'${skillName}'의 잔영이 재현된다…`);
-        const per = Math.max(1, Math.round(halfTotal/hits));
-        let dealt = 0;
-        let idx = 0;
-        const doHit = ()=>{
-          if(battleOver) return;
-          const isLast = idx===hits-1;
-          const hitDmg = isLast ? Math.max(1, halfTotal-dealt) : per;
-          dealt += hitDmg;
-          enemy.hp = Math.max(0, enemy.hp - hitDmg);
-          updateEnemyHpBar(); popDamage('-'+hitDmg, 'crit'); spawnSlashMark(idx);
-          if(isMagic) Sound.magic(); else Sound.slash();
-          idx++;
-          if(idx<hits){
-            setTimeout(doHit, 220);
-          } else {
-            renderStatus();
-            if(checkBattleEnd()) return;
-            setTimeout(()=> enemyTurnReal(), 400);
-          }
-        };
-        doHit();
+        const dmg = perRepeatTotal;
+        enemy.hp = Math.max(0, enemy.hp - dmg);
+        updateEnemyHpBar(); popDamage('-'+dmg, 'crit');
+        if(isMagic) Sound.magic(); else Sound.slash();
+        setBattleMsg(introLine, `'${skillName}'의 잔영이 ${dmg}의 추가 피해를 입혔다!`);
+        renderStatus();
+        if(checkBattleEnd()) return;
+        onDone();
       }, 450);
-      return;
     }
 
-    setTimeout(()=>{
-      if(battleOver) return;
-      const dmg = halfTotal;
-      enemy.hp = Math.max(0, enemy.hp - dmg);
-      updateEnemyHpBar(); popDamage('-'+dmg, 'crit');
-      if(isMagic) Sound.magic(); else Sound.slash();
-      setBattleMsg('그림자 속에서 분신이 튀어나온다!', `'${skillName}'의 잔영이 ${dmg}의 추가 피해를 입혔다!`);
-      renderStatus();
-      if(checkBattleEnd()) return;
-      setTimeout(()=> enemyTurnReal(), 400);
-    }, 450);
+    let repeatIdx = 0;
+    const runNext = ()=>{
+      if(repeatIdx>=repeats){
+        setTimeout(()=> enemyTurnReal(), 400);
+        return;
+      }
+      playOneRepeat(repeatIdx, ()=>{
+        repeatIdx++;
+        runNext();
+      });
+    };
+    runNext();
   }
   // 가동 중인 장치(포탑/드론/오메가 유닛/역할 로봇)가 있으면, 적의 턴이 시작되기
   // 직전에 자동으로 한 발 쏜다. slotKey는 'rig' 또는 'rig2'이며, 처리가 끝나면
