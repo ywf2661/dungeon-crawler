@@ -727,6 +727,35 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='darkprayer'){
+      // 검은 기도(paladinDarkPrayer, 레벨12, 회랑의 기사): HP를 대가로 검의 힘을
+      // 빌려 2턴간 공격력이 오르지만 방어력도 함께 떨어진다. 부여한 정확한 수치를
+      // player.knightVulnAtkBonus/DefPenalty에 저장해두고, combat/enemy-turn.js의
+      // 매 라운드 카운트다운에서 정확히 그 값만큼만 되돌린다(다른 원인으로 공/방이
+      // 바뀌어도 서로 간섭하지 않도록 델타를 직접 추적 — 불확실성의 주사위
+      // revertDiceDelta()와 동일한 설계 원칙).
+      const hpCost = Math.max(1, Math.round(player.maxhp*s.hpCostPct));
+      let costMsg = '';
+      if(player.hp > hpCost){
+        player.hp -= hpCost;
+        costMsg = ` 생명력 ${hpCost}을(를) 바쳤다.`;
+      }
+      const atkAdd = Math.max(1, Math.round(player.atk*s.atkBonus));
+      const defSub = Math.max(0, Math.round(player.def*s.defPenaltyPct));
+      player.atk += atkAdd;
+      player.def -= defSub;
+      player.knightVulnTurns = s.turns;
+      player.knightVulnAtkBonus = atkAdd;
+      player.knightVulnDefPenalty = defSub;
+      renderStatus();
+      playCastBurst();
+      Sound.buff();
+      setBattleMsg('"...기도를 올렸다."', `"...무언가가 응답했다."${costMsg} ${s.turns}턴간 공격력이 크게 오르지만, 방어가 허술해진다.`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='defbuff'){
       player.buffDefTurns = s.turns || 3;
       player.buffDefMult = s.mult || 0.6;
@@ -1395,6 +1424,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       player.martyrVowArmed = false;
     }
+    // 칼리버 X: 종언(paladinCaliberXFinale, 레벨15 궁극기, 회랑의 기사): 사용하는
+    // 순간 전투가 끝날 때까지 남는 회복 감소 저주를 건다(battleFlags.knightHealCurse
+    // — playerItem()의 물약 회복량 계산에서 확인해 절반으로 줄인다). "검이 대가를
+    // 요구한다"는 컨셉을 한 번의 자기 HP 소모로 끝내지 않고 이후 회복 전체에
+    // 그림자를 드리우는 방식으로 표현했다.
+    if(key==='paladinCaliberXFinale' && battleFlags){
+      battleFlags.knightHealCurse = true;
+    }
     // 번개계약 파동(mageElementWave)이 남긴 "다음 공격 확정 치명타" 소모(범용
     // phys/magic 분기 전체에 적용 — 기본 공격은 위 playerAttack()에서 별도 처리).
     let lightningCritMsg2 = '';
@@ -1484,7 +1521,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.creedStacks = Math.min(5, (battleFlags.creedStacks||0)+1);
     }
     player.inv[key]-=1;
-    const potBoost = Math.max(0.2, 1 + getRelicSum('potionEffMult'));
+    let potBoost = Math.max(0.2, 1 + getRelicSum('potionEffMult'));
+    // 칼리버 X: 종언(회랑의 기사)의 회복 감소 저주 — 사용 후 전투가 끝날 때까지
+    // 물약 회복 효율이 절반으로 줄어든다.
+    if(battleFlags && battleFlags.knightHealCurse) potBoost *= 0.5;
     let msg='';
     if(key==='potion'){ const h=Math.round(40*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`물약을 마셨다. HP ${h} 회복.`; }
     else if(key==='hipotion'){ const h=Math.round(110*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`상급 물약을 마셨다. HP ${h} 회복.`; }
