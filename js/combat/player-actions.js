@@ -133,14 +133,17 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='arm'){
-      // 상시 토글형 스킬(예: 혈서) — 턴을 소모하지 않고 즉시 켜고 끈다.
+      // 상시 토글형 스킬(예: 혈서, 희생의 맹세) — 턴을 소모하지 않고 즉시 켜고 끈다.
+      // 스킬마다 켜짐/꺼짐 안내 문구가 다를 수 있어(armMsgOn/armMsgOff), 없으면
+      // 기존 범용 문구로 대체한다.
       player[s.armFlag] = !player[s.armFlag];
       player.mp += mpCost; // 토글은 MP를 쓰지 않는다(위에서 미리 깎인 것을 되돌림)
       renderStatus();
+      updatePlayerStatusBadges();
       Sound.buff();
-      setBattleMsg(`${player.name}의 ${s.name}!`, player[s.armFlag]
-        ? `${s.name}이(가) 켜졌다. 다음 스킬 사용 시 HP를 태워 위력이 증폭된다.`
-        : `${s.name}이(가) 꺼졌다.`);
+      const onMsg = s.armMsgOn || `${s.name}이(가) 켜졌다. 다음 스킬 사용 시 효과가 발동한다.`;
+      const offMsg = s.armMsgOff || `${s.name}이(가) 꺼졌다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, player[s.armFlag] ? onMsg : offMsg);
       setCommandsEnabled(true);
       return;
     }
@@ -154,11 +157,20 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.elementPact = already ? null : s.pactElement;
       player.mp += mpCost; // 토글은 MP를 쓰지 않는다
       renderStatus();
+      updatePlayerStatusBadges();
       Sound.buff();
       const pactLabel = {fire:'화염', ice:'빙결', lightning:'번개'}[s.pactElement];
+      // 계약 효과 힌트: 예전엔 "계약을 맺었다"고만 나와서 뭐가 달라지는지
+      // 알기 어려웠다 — 이제 계약 시 그 원소가 이후 스킬을 어떻게 바꾸는지
+      // 한 줄로 함께 안내한다.
+      const pactHint = {
+        fire: '이후 원소 각인/파동/폭풍이 화상을 남기는 화력형으로 바뀐다.',
+        ice: '이후 원소 각인/파동/폭풍이 방어를 꿰뚫는 묵직한 일격형으로 바뀐다.',
+        lightning: '이후 원소 각인/파동/폭풍이 빠르고 예리한 연속 타격형으로 바뀐다.',
+      }[s.pactElement];
       setBattleMsg(`${player.name}의 ${s.name}!`, already
         ? `${pactLabel} 계약을 해제했다.`
-        : `${pactLabel}과(와) 계약을 맺었다. 전투가 끝날 때까지 유지되며, 다른 원소 계약은 자동으로 해제된다.`);
+        : `${pactLabel}과(와) 계약을 맺었다. ${pactHint} 전투가 끝날 때까지 유지되며, 다른 원소 계약은 자동으로 해제된다.`);
       setCommandsEnabled(true);
       return;
     }
@@ -1179,7 +1191,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       playStatusFx('pact-ice');
       tripleElementMsg = ` 빙결로 위력이 15% 오르고, 번개로 방어를 ${pierced2}만큼 꿰뚫었다!`;
     }
-    // 혈서(mastery_bloodpact)가 켜져 있으면, 이 스킬 한 번에 한해 HP를 태워 위력을 증폭시킨다.
+    // 혈서(mastery_bloodpact)가 켜져 있으면, 스킬을 쓸 때마다 HP를 태워 위력을
+    // 증폭시킨다. 사용자 요청으로 "한 번 쓰면 자동으로 꺼지는" 기존 방식에서
+    // "직접 끌 때까지(또는 전투가 끝날 때까지) 계속 유지"되는 방식으로 바뀌었다
+    // — 그래서 여기서 더 이상 player.bloodPactArmed를 false로 되돌리지 않는다.
+    // 켜둔 채로 스킬을 반복 사용하면 매번 HP가 깎이므로 체력 관리가 중요해진다.
     let bloodPactMsg = '';
     if(player.bloodPactArmed){
       const hpCost = Math.max(1, Math.round(player.hp*0.15));
@@ -1188,7 +1204,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         dmg = Math.round(dmg*1.5);
         bloodPactMsg = ` 혈서의 힘으로 HP ${hpCost}을(를) 태워 위력이 크게 증폭됐다!`;
       }
-      player.bloodPactArmed = false;
     }
     // 희생의 맹세(mastery_martyrvow): 성기사의 액티브 스킬(심판의 빛)을 사용할 때만
     // 발동한다(혈서와 달리 모든 스킬이 아니라 "특정 스킬"에 한정 — JOB_SPECIALIZATIONS
