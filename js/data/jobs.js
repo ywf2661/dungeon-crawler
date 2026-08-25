@@ -127,9 +127,17 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
     ],
     mage: [
       {id:'mage_pact', name:'계약술사', icon:'🎴',
-        desc:'매 턴 시작 시 무작위 원소와 자동으로 계약해, 보유 스킬들이 계약 원소에 따라 속성과 효과가 바뀐다.',
-        masteryName:'원소 계약', masteryDesc:'매 턴 시작 시 무작위 원소와 자동 계약, 스킬 속성/효과가 그에 따라 바뀜.', masterySkillId:'mastery_elementpact',
-        activeName:'연쇄폭발', activeDesc:'도트 걸린 적 처치 시 주변까지 피해.', activeSkillId:'mageChainExplosion'},
+        desc:'화염/빙결/번개 중 하나와 스스로 계약을 맺어(토글 방식), 전투가 끝날 때까지 그 원소에 특화된 스킬을 쓴다. 레벨10/12/15 액티브 모두 계약한 원소에 따라 완전히 다르게 작동한다.',
+        // 재설계: 기존엔 스킬 시전마다 화염/빙결/번개 중 하나가 "무작위"로 걸렸는데,
+        // 사용자 요청으로 "스스로 선택하는 토글" 방식으로 바뀌었다. 마스터리 슬롯 하나가
+        // 아니라 세 개의 토글 패시브(화염/빙결/번개계약)로 나뉘어, masterySkillId
+        // (단수) 대신 masterySkillIds(복수, 배열)를 쓴다 — combat/job-advancement.js의
+        // resolveJobAdvancement()가 이 필드를 확인해 셋 다 지급하도록 이미 고쳐져 있다.
+        masteryName:'원소 계약', masteryDesc:'화염/빙결/번개 계약 중 하나를 선택해 토글(전투가 끝날 때까지 유지, 서로 배타적). 계약한 원소에 따라 이후의 원소 각인/원소 파동/원소 폭풍의 효과가 완전히 달라진다.',
+        masterySkillIds:['mastery_firepact','mastery_icepact','mastery_lightningpact'],
+        activeName:'원소 각인', activeDesc:'계약한 원소에 따라 전혀 다르게 작동하는 마법 공격(미계약 시 위력이 약함).', activeSkillId:'mageElementStrike',
+        // 레벨12/15도 마찬가지로 계약 원소에 따라 분기한다.
+        skillLevels: {12:'mageElementWave', 15:'mageElementStorm'}},
       {id:'mage_time', name:'시간술사', icon:'⏳',
         desc:'매 턴 일정 확률로 자신의 턴이 한 번 더 오거나 적의 턴이 밀린다.',
         masteryName:'시간 왜곡', masteryDesc:'매 턴 일정 확률로 자신 턴이 한 번 더 오거나 적 턴이 밀림(자동 발동).', masterySkillId:'mastery_timewarp',
