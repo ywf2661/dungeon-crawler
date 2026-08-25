@@ -201,10 +201,19 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         activeName:'기폭', activeDesc:'설치된 폭발물을 한 번에 전부 터뜨림(범위 내 자신도 휘말릴 수 있음).', activeSkillId:'mechanicDetonate'},
     ],
     jester: [
-      {id:'jester_rebel', name:'운명의 반란자', icon:'🎰',
-        desc:'운명의 파도에 몸을 맡긴 반란자. 흐름을 거스르지 않고, 오히려 그 위에 올라탄다.',
-        masteryName:'행운의 파도', masteryDesc:'매 턴 "운" 게이지가 자동으로 오르내리며 전투 전체 배율에 실시간 반영.', masterySkillId:'mastery_luckwave',
-        activeName:'파도타기', activeDesc:'현재 운 게이지를 즉시 유리한 방향으로 크게 밀어붙임.', activeSkillId:'jesterRideWave'},
+      // [교체됨] 운명의 반란자(jester_rebel)는 사용자 요청으로 폐기되고 "황금
+      // 도박사"로 전면 교체되었다. mastery_luckwave/jesterRideWave 등 구버전
+      // SKILLDB 항목은 삭제하지 않고 남겨둔다(레거시 세이브 크래시 방지) — 단지
+      // JOB_SPECIALIZATIONS 목록에서만 빠져 새 캐릭터는 더 이상 선택할 수 없다.
+      //
+      // 황금 도박사(jester_goldbet): 소지 골드 자체를 실제로 걸고 싸우는 하이리스크
+      // 하이리턴 분기. 판돈=현재 골드의 일부, 성공하면 판돈의 2배를 돌려받으며
+      // 그 판돈에 비례한 추가 피해까지 들어간다. 실패하면 판돈은 그대로 날아간다.
+      {id:'jester_goldbet', name:'황금 도박사', icon:'💰',
+        desc:'가진 돈을 그대로 판돈 삼아 싸우는 도박사. 크게 걸고, 크게 얻거나, 크게 잃는다.',
+        masteryName:'물주의 감각', masteryDesc:'전투 승리 시 얻는 골드가 20% 증가한다.', masterySkillId:'mastery_goldsense',
+        activeName:'베팅', activeDesc:'소지 골드의 10%를 판돈으로 건다. 성공하면 판돈의 2배를 얻고 판돈에 비례한 추가 피해, 실패하면 판돈만 잃고 피해 없음.', activeSkillId:'jesterGoldBet',
+        skillLevels: {12:'jesterHunch', 15:'jesterAllIn'}},
       {id:'jester_cardmaster', name:'패의 마술사', icon:'🃏',
         desc:'패를 손에 쥔 마술사. 하나둘 모이는 카드가 어떤 조합을 이룰지는 아무도 모른다.',
         masteryName:'패 획득', masteryDesc:'스킬 사용마다 자동으로 카드 한 장 획득, 조합 완성 시 강력한 효과 발동 가능.', masterySkillId:'mastery_drawcard',
