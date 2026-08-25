@@ -9,6 +9,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   function playerAttack(){
     if(battleOver) return;
     setCommandsEnabled(false);
+    // 은신 연속 사용 방지: 기본 공격을 포함해 은신이 아닌 어떤 행동을 해도 쿨다운이
+    // 풀린다(다시 은신을 쓸 수 있게 된다).
+    if(battleFlags) battleFlags.stealthOnCooldown = false;
     // 계율(mastery_creed): '기본 공격 금지' 계율 중이면 기본 공격이 위반이다.
     // '물약 금지' 계율 중이면 기본 공격은 계율을 지킨 것이므로 스택이 오른다.
     let creedMsg = '';
@@ -21,6 +24,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     const onHitMult = consumeOnHitBonuses();
     const edef = getEffectiveEnemyDef(enemy.def);
     let dmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef);
+    // 은신(stealth)이 걸어둔 "다음 공격 피해 +30%"를 기본 공격에도 적용한다(예전엔
+    // 소비 코드 자체가 없어 죽어있던 효과였다).
+    let stealthDmgMsgAtk = '';
+    if(player.stealthDmgBonusArmed){
+      dmg = Math.round(dmg*1.3);
+      stealthDmgMsgAtk = ' 은신에서 벗어나며 가한 일격의 위력이 크게 올랐다!';
+      player.stealthDmgBonusArmed = false;
+    }
     // 순일격(mastery_purestrike, 일격의 구도자 레벨10): 기본 공격 피해가 항상 15% 증가한다.
     if(player.skills && player.skills.includes('mastery_purestrike')){
       dmg = Math.round(dmg*1.15);
@@ -56,6 +67,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(creedMsg) msg2 += creedMsg;
     if(echoMsg) msg2 += echoMsg;
     if(lightningCritMsgAtk) msg2 += lightningCritMsgAtk;
+    if(stealthDmgMsgAtk) msg2 += stealthDmgMsgAtk;
 
     if(enemy.hp>0 && maybeWarriorExtraHit()){
       const edef3 = getEffectiveEnemyDef(enemy.def);
@@ -116,6 +128,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     const mpCost = s.mp;
     if(player.mp < mpCost) return;
     setCommandsEnabled(false);
+
+    // 은신 연속 사용 방지: 은신이 아닌 스킬을 쓰면 쿨다운이 풀린다. 은신 자체는
+    // 아래 s.type==='stealth' 분기에서 쿨다운을 직접 검사/설정하므로 여기서는
+    // 건드리지 않는다.
+    if(s.type!=='stealth' && battleFlags) battleFlags.stealthOnCooldown = false;
 
     // 다중 전개(mastery_multideploy): 이 마스터리를 가진 캐릭터는 폭발 계열
     // (detonaterig 타입) 스킬을 아예 사용할 수 없다. MP를 깎기 전에 즉시 막는다.
@@ -285,16 +302,30 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='stealth'){
-      // 은신(도적 기본 스킬, 구 '흡수의 손길'을 대체): 이번에 오는 적의 공격을 전부
-      // 피하고, 다음 자신의 공격(기본 공격/스킬 모두)에 피해 +30%가 붙는다. 회피
-      // 소모는 combat/enemy-turn.js의 enemyAction()에서, 피해 보너스 소모는
+      // 은신(도적 기본 스킬, 구 '흡수의 손길'을 대체): 이번에 오는 적의 공격을 완전히
+      // 피하고, 다음 자신의 공격(기본 공격/스킬 모두)에 피해 +30%가 붙는다.
+      // 회피 소모는 combat/enemy-turn.js의 enemyAction()에서, 피해 보너스 소모는
       // playerAttack()과 이 함수 하단 범용 phys/magic 분기·multihit 분기에서 처리한다.
+      // (예전엔 두 플래그 모두 설정만 되고 어디서도 소비되지 않아 사실상 아무 효과가
+      // 없던 버그였다 — 이번에 실제 소비 코드까지 채워 넣었다.)
+      //
+      // 연속 사용 방지(사용자 요청): battleFlags.stealthOnCooldown이 true면 다시 쓸
+      // 수 없다. 은신이 아닌 다른 행동(공격/다른 스킬/아이템)을 한 번이라도 하면
+      // 자동으로 풀린다(각 행동 함수 상단에서 이 플래그를 false로 되돌림).
+      if(battleFlags.stealthOnCooldown){
+        player.mp += mpCost;
+        renderStatus();
+        setCommandsEnabled(true);
+        setBattleMsg('그림자가 아직 낯설다…', '은신은 연속으로 사용할 수 없다. 다른 행동을 한 번 거친 뒤 다시 시도하라.');
+        return;
+      }
       player.stealthEvadeArmed = true;
       player.stealthDmgBonusArmed = true;
+      battleFlags.stealthOnCooldown = true;
       renderStatus();
       playCastBurst('def');
       Sound.guard();
-      setBattleMsg(`${player.name}의 ${s.name}!`, '그림자 속으로 몸을 숨겼다. 이번에 오는 공격을 전부 피하고, 다음 공격의 위력이 크게 오른다.');
+      setBattleMsg(`${player.name}의 ${s.name}!`, '그림자 속으로 몸을 숨겼다. 이번에 오는 공격을 완전히 피하고, 다음 공격의 위력이 크게 오른다.');
       enemyTurn();
       return;
     }
@@ -694,7 +725,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       const baseRawTotal = rawParts.reduce((a,b)=>a+b,0);
       const onHitMult = consumeOnHitBonuses();
-      const boostedTotal = applyOutgoingDamageMods(baseRawTotal, {type: magicBased?'magicskill':'physkill', mpCost, onHitMult});
+      let boostedTotal = applyOutgoingDamageMods(baseRawTotal, {type: magicBased?'magicskill':'physkill', mpCost, onHitMult});
+      // 은신(stealth)이 걸어둔 "다음 공격 피해 +30%" 소모(연속 공격형 스킬에도 적용).
+      let stealthDmgMsgMulti = '';
+      if(player.stealthDmgBonusArmed){
+        boostedTotal = Math.round(boostedTotal*1.3);
+        stealthDmgMsgMulti = ' 은신에서 벗어나며 가한 연격의 위력이 크게 올랐다!';
+        player.stealthDmgBonusArmed = false;
+      }
       const mod = applySkillModifiers(boostedTotal, s);
       const scale = mod.value / baseRawTotal;
       const parts = rawParts.map(d=>Math.max(1, Math.round(d*scale)));
@@ -728,6 +766,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(mod.triggered) msg2 = '급소를 꿰뚫었다! '+msg2;
         const dotLabels1 = applySkillDots(s);
         if(dotLabels1) msg2 += ` ${dotLabels1} 효과 부여!`;
+        if(stealthDmgMsgMulti) msg2 += stealthDmgMsgMulti;
         if(afterimageMsgMulti) msg2 += afterimageMsgMulti;
         setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
         if(checkBattleEnd()) return;
@@ -1304,6 +1343,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       lightningCritMsg2 = ' 벼려둔 번개의 기운이 급소를 정확히 꿰뚫었다!';
       player.lightningCritArmed = false;
     }
+    // 은신(stealth)이 걸어둔 "다음 공격 피해 +30%" 소모(범용 phys/magic 분기).
+    let stealthDmgMsg2 = '';
+    if(player.stealthDmgBonusArmed){
+      dmg = Math.round(dmg*1.3);
+      stealthDmgMsg2 = ' 은신에서 벗어나며 가한 일격의 위력이 크게 올랐다!';
+      player.stealthDmgBonusArmed = false;
+    }
     // 잔영(mastery_afterimage, 환영검사): 공격형 스킬(이 범용 phys/magic 분기에
     // 도달하는 모든 스킬)을 사용하면 확정적으로 분신이 예약된다. 어떤 스킬을 얼마의
     // 피해로 재현할지는 최종 dmg가 확정된 뒤 battleFlags.afterimageQueue에 기록하고,
@@ -1337,6 +1383,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(bloodPactMsg) msg2 += bloodPactMsg;
     if(martyrVowMsg) msg2 += martyrVowMsg;
     if(lightningCritMsg2) msg2 += lightningCritMsg2;
+    if(stealthDmgMsg2) msg2 += stealthDmgMsg2;
     if(elementMsg) msg2 += elementMsg;
     if(tripleElementMsg) msg2 += tripleElementMsg;
     if(hpSacMsg) msg2 += hpSacMsg;
@@ -1365,6 +1412,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
     setCommandsEnabled(false);
+    // 은신 연속 사용 방지: 물약을 써도 쿨다운이 풀린다.
+    if(battleFlags) battleFlags.stealthOnCooldown = false;
     // 계율(mastery_creed): '물약 금지' 계율 중이면 물약 사용이 위반이다.
     // '기본 공격 금지' 계율 중이면 물약 사용은 계율을 지킨 것이므로 스택이 오른다.
     let creedMsg = '';
