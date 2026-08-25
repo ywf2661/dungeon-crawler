@@ -587,6 +587,29 @@ export(전역): SKILLDB
     jesterRideWave: {name:'파도타기', mp:6, desc:'운명의 파도를 강제로 밀어붙여 운 게이지를 즉시 최고조로 끌어올린다',
       type:'ridewave'},
 
+    // ---------- 황금 도박사(jester_goldbet) — 운명의 반란자를 대체하는 신규 분기 ----------
+    // 소지 골드 자체를 판돈 삼아 싸우는 하이리스크 하이리턴 컨셉. 마스터리는
+    // combat/battle-end.js의 승리 골드 계산식에 20% 항을 더하는 것뿐이라 별도
+    // 액티브 로직이 없다.
+    mastery_goldsense: {name:'물주의 감각', mp:0, type:'passive',
+      desc:'전투에서 승리할 때 얻는 골드가 20% 증가한다.'},
+    // 레벨10 "베팅": 소지 골드의 10%를 판돈으로 걸고, 성공(50%)하면 판돈의 2배를
+    // 돌려받으며 판돈에 비례한 추가 피해까지 들어간다. 실패하면 판돈만 잃고
+    // 피해는 0. 골드가 0이면(판돈 자체가 불가능) 확률 없이 평범한 일격만 나간다.
+    // 새 타입 'goldbet'로 처리한다(combat/player-actions.js).
+    jesterGoldBet: {name:'베팅', mp:10, type:'goldbet', stakePct:0.1, stakeCap:2000, successChance:0.5, baseMult:1.4, stakeBonusMult:0.5, payoutMult:2.0,
+      desc:'소지 골드의 10%(최대 2000G)를 판돈으로 건다. 성공하면 판돈의 2배를 얻고 판돈에 비례한 추가 피해가 들어가지만, 실패하면 판돈만 그대로 잃고 피해는 없다. 골드가 없으면 그냥 평범한 일격이 나간다.'},
+    // 레벨12 "촉": 기존 fateshift 타입을 그대로 재사용한다(운명 조작과 완전히
+    // 동일한 메커니즘 — player.fateBoostChance/fateBoostMult를 세워두면 다음
+    // 운 스킬(coinflip/goldbet 등)이 자동으로 소비한다). 신규 로직 불필요.
+    jesterHunch: {name:'촉', mp:7, type:'fateshift', chanceBonus:0.3, multBonus:0.5,
+      desc:'다음에 걸 승부의 흐름이 어렴풋이 보인다. 다음 베팅/올인의 성공 확률이 크게 오르고, 판돈 보너스 피해 배율도 함께 오른다.'},
+    // 레벨15 궁극기 "올인": 소지 골드 전액을 건다. 성공 확률은 베팅보다 낮지만
+    // (판돈이 훨씬 크므로) 기본 피해와 판돈 보너스 배율 모두 더 강하다. 베팅과
+    // 동일한 'goldbet' 타입을 재사용하되 수치만 다르게 잡았다.
+    jesterAllIn: {name:'올인', mp:16, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
+      desc:'소지 골드 전액(최대 10000G)을 건다. 성공하면 강력한 피해와 함께 판돈의 2배를 돌려받지만, 실패하면 판돈만큼 잃는다. 골드가 없으면 그냥 평범한 강타가 나간다.'},
+
     // 도박사 - 패의 마술사(jester_cardmaster)
     // 마스터리 "패 획득": 실제로 턴을 소모하는 스킬을 사용할 때마다(player-actions.js의
     // playerSkill(), arm/passive/catalyst/haste 조기 반환 다음 지점) 카드 한 장(1~7)을
