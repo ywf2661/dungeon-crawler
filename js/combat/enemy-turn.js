@@ -275,6 +275,19 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         return;
       }
 
+      // 은신(stealth): 이번에 오는 적 공격을 확정으로 회피한다. 원래 이 플래그
+      // (player.stealthEvadeArmed)가 여기서 전혀 소비되지 않는 버그가 있었다 —
+      // 은신을 써도 사실상 아무 효과가 없었다. 일반 회피율 판정보다 먼저 체크해
+      // 100% 회피를 보장한다.
+      if(player.stealthEvadeArmed){
+        player.stealthEvadeArmed = false;
+        playBanner('완전 회피!','dodge');
+        setBattleMsg(label, `${player.name}이(가) 그림자 속으로 완전히 몸을 숨겨 공격을 피했다!`);
+        if(checkBattleEnd()) return;
+        resetCommandUI();
+        return;
+      }
+
       const dodgeChance = getSpecialSum('dodgeChance') + getBloodPactDodgeBonus();
       if(dodgeChance>0 && Math.random()<dodgeChance){
         playBanner('회피!','dodge');
