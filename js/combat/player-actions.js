@@ -1201,6 +1201,65 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='goldbet'){
+      // 베팅/올인(황금 도박사): 소지 골드의 일부(stakePct)를 판돈으로 걸고
+      // 도박한다. 골드가 0이면 판돈 자체가 불가능하므로, 확률 없이 그냥 평범한
+      // 일격만 나간다(사용자 명세 그대로). 골드가 있으면: 판돈을 먼저 뗀 뒤
+      // (s.stakeCap으로 절대 상한이 걸려 있다 — 베팅 2000G/올인 10000G. 후반부에
+      // 골드가 많이 쌓여도 판돈 비례 피해가 무한정 커지지 않도록 하는 안전장치)
+      // 확률(성공 시 +촉의 fateBoostChance)을 굴려, 성공하면 판돈의 payoutMult배를
+      // 돌려주고 판돈에 비례한 추가 피해(stakeBonusMult, 성공 시 +촉의
+      // fateBoostMult)를 더한다. 실패하면 판돈은 그대로 사라지고 피해는 0.
+      // 레벨12 "촉"(fateshift 타입, 기존 운명 조작과 동일한 메커니즘)이 세워둔
+      // player.fateBoostChance/fateBoostMult를 coinflip과 동일한 방식으로 소비한다.
+      const fateChance = player.fateBoostChance||0, fateMult = player.fateBoostMult||0;
+      if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
+      const edefBet = getEffectiveEnemyDef(enemy.def);
+      const onHitMultBet = consumeOnHitBonuses();
+      const stake = Math.min(s.stakeCap||Infinity, Math.round((player.gold||0) * s.stakePct));
+
+      if(stake<=0){
+        // 골드가 없으면 판돈 없이 그냥 평범한 일격.
+        let dmg = Math.max(1, Math.round(effectiveAtk()*s.baseMult) - edefBet);
+        dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, onHitMult:onHitMultBet});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        Sound.slash();
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `걸 돈이 없어 맨몸으로 부딪혔다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+        return;
+      }
+
+      player.gold -= stake;
+      const chance = Math.min(0.95, s.successChance + fateChance);
+      const success = Math.random() < chance;
+      if(success){
+        const stakeBonusMult = s.stakeBonusMult + fateMult;
+        let dmg = Math.max(1, Math.round(effectiveAtk()*s.baseMult) - edefBet) + Math.round(stake*stakeBonusMult);
+        dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, luck:true, onHitMult:onHitMultBet});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+        rogueRegisterHit(true);
+        Sound.coin();
+        playBanner('대성공!');
+        const payout = Math.round(stake*s.payoutMult);
+        player.gold += payout;
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `승부에서 이겼다! ${enemy.name}에게 ${dmg}의 피해를 입혔다. 판돈 ${stake}G가 ${payout}G로 불어났다!`);
+      } else {
+        popDamage('빗나감!', 'miss');
+        Sound.fail();
+        playBanner('실패...', 'luckbad');
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `승부에서 졌다... 판돈 ${stake}G를 그대로 잃었다. 완전히 빗나갔다.`);
+      }
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='coinflip'){
       const fateChance = player.fateBoostChance||0, fateMult = player.fateBoostMult||0;
       if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
