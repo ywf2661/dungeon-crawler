@@ -128,6 +128,17 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.textContent = `🎯 급소 노출 ${enemy.exposedTurns}턴`;
       box.appendChild(b);
     }
+    // 독 중첩(맹독 연금술사): enemy.venomStacks는 일반 dot(enemy.dots)과 별개로
+    // 관리되는 영구 스택이라(턴이 지나도 안 사라짐) 위 dots 루프에는 안 걸린다 —
+    // 여기서 따로 표시한다. "적 왼쪽 위"에 두 달라는 요청이 있었지만, 그 자리는
+    // 이미 내 토글 상태 배지(#bt-player-status — 혈서/원소계약/시간조각)가 쓰고
+    // 있어서 겹치므로, 기존에 "적 상태"를 보여주던 이 자리(오른쪽)에 넣었다.
+    if(enemy && (enemy.venomStacks||0) > 0){
+      const b = document.createElement('div');
+      b.className = 'status-badge venom-stack';
+      b.textContent = `☠ 독중첩 ${enemy.venomStacks}/10`;
+      box.appendChild(b);
+    }
   }
 
   // 적 화면 왼쪽 위에 "현재 켜져 있는 내 토글 상태"를 작은 아이콘으로 표시한다
