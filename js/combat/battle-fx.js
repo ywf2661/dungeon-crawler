@@ -4,9 +4,15 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, playComboFinish, playStatusFx, playCastBurst, playBanner,
-              updateStatusBadges, openSub, closeSub
+              updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub
 의존성: state.js(enemy/player), Sound(sound.js)
-주의: openSub('skill')이 토글형 스킬(SKILLDB의 type==='arm' 또는 'elementpact' — 예: 혈서,
+주의: updatePlayerStatusBadges()는 적 화면 왼쪽 위(#bt-player-status)에 현재 켜져 있는
+     내 토글 상태(혈서=🩸, 화염/빙결/번개계약=🔥/❄/⚡)를 아이콘으로 표시한다. SKILLDB의
+     icon 필드를 읽으므로, 새 토글형 스킬을 추가할 때 icon만 지정하면 자동으로 표시된다.
+     resetCommandUI()와 각 토글 핸들러(player-actions.js) 양쪽에서 호출해 항상 최신
+     상태를 반영한다. index.html에 #bt-player-status 요소와 CSS를 추가해야 실제로
+     보인다(별도 안내 참고).
+     openSub('skill')이 토글형 스킬(SKILLDB의 type==='arm' 또는 'elementpact' — 예: 혈서,
      화염/빙결/번개계약)을 세로 목록과 분리해 가로 한 줄(.toggle-row)로 먼저 그리도록
      바뀌었다. 토글이 여러 개(3개 이상) 생겨도 세로 스크롤 목록이 길어지지 않게 하기
      위함. 새 토글형 스킬을 추가할 때도 SKILLDB에 type만 'arm'/'elementpact'로 지정하면
@@ -32,6 +38,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const runBtn = document.getElementById('cmd-run');
     const canFlee = !player || player.difficulty==='easy';
     runBtn.style.display = canFlee ? '' : 'none';
+    updatePlayerStatusBadges();
   }
   function setCommandsEnabled(en){
     ['cmd-attack','cmd-skill','cmd-item','cmd-run'].forEach(id=>document.getElementById(id).disabled=!en);
@@ -118,6 +125,31 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.textContent = `🎯 급소 노출 ${enemy.exposedTurns}턴`;
       box.appendChild(b);
     }
+  }
+
+  // 적 화면 왼쪽 위에 "현재 켜져 있는 내 토글 상태"를 작은 아이콘으로 표시한다
+  // (혈서=🩸, 화염/빙결/번개계약=🔥/❄/⚡ 등). SKILLDB에 type:'arm' 또는
+  // 'elementpact'로 정의된 스킬이면 자동으로 대상이 되므로, 앞으로 비슷한 토글형
+  // 스킬을 추가할 때도 SKILLDB에 icon 필드만 넣으면 별도 UI 코드 수정 없이
+  // 여기 표시된다. 토글을 켜고 끌 때(player-actions.js)와 매 턴 커맨드가 다시
+  // 열릴 때(resetCommandUI) 둘 다에서 호출해 항상 최신 상태를 반영한다.
+  function updatePlayerStatusBadges(){
+    const box = document.getElementById('bt-player-status');
+    if(!box || !player || !player.skills) return;
+    box.innerHTML = '';
+    player.skills.forEach(k=>{
+      const s = SKILLDB[k];
+      if(!s) return;
+      let active = false;
+      if(s.type==='arm') active = !!player[s.armFlag];
+      else if(s.type==='elementpact') active = !!(battleFlags && battleFlags.elementPact === s.pactElement);
+      if(!active) return;
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      b.textContent = `${s.icon||'●'} ${s.name}`;
+      b.title = s.desc || '';
+      box.appendChild(b);
+    });
   }
 
   function openSub(mode){
