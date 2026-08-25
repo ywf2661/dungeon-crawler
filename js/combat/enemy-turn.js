@@ -32,11 +32,26 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       const chance = getWitchClockExtraChance() + getTimeWarpExtraChance();
       if(chance>0 && Math.random()<chance){
         battleFlags.witchClockUsedThisTurn = true;
+        // 시간 조각(mastery_timewarp): 이 추가 행동이 발동할 때마다 시간술사는
+        // 시간 조각을 하나 얻는다(최대 5, 레벨12/15 스킬의 재료). 유물(마녀의 시계)
+        // 만으로 발동했을 때는 조각이 쌓이지 않는다 — 마스터리를 보유했을 때만.
+        if(player.skills && player.skills.includes('mastery_timewarp')){
+          battleFlags.timeStacks = Math.min(5, (battleFlags.timeStacks||0)+1);
+        }
         resetCommandUI();
         popDamage('추가 행동!', 'heal');
         playCastBurst();
         Sound.buff();
-        setBattleMsg(`${player.name}의 몸이 시간을 앞질러 움직인다!`, '마녀의 시계가 한 번 더 행동할 기회를 준다!');
+        // 예전엔 이 추가 행동을 항상 "마녀의 시계"가 준 것처럼 문구가 고정되어
+        // 있었다 — 시간술사 마스터리(시간 왜곡)만으로 발동해도 유물 이름이
+        // 잘못 뜨는 버그였다. 실제로 무엇을 갖고 있는지에 따라 문구를 고른다.
+        const hasTimeWarp = player.skills && player.skills.includes('mastery_timewarp');
+        const hasWitchClock = hasRelicFlag('extraActionBySpd');
+        let sourceLabel;
+        if(hasTimeWarp && hasWitchClock) sourceLabel = '시간 왜곡과 마녀의 시계가 함께';
+        else if(hasTimeWarp) sourceLabel = '시간 왜곡이';
+        else sourceLabel = '마녀의 시계가';
+        setBattleMsg(`${player.name}의 몸이 시간을 앞질러 움직인다!`, `${sourceLabel} 한 번 더 행동할 기회를 준다!`);
         return;
       }
     }
