@@ -245,10 +245,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-hasteDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+hasteDmg);
       Sound.magic();
+      // 시간 조각: 가속 주문을 성공적으로 시전할 때마다 하나씩 쌓인다(최대 5).
+      // 위쪽에서 MP 부족으로 취소된 경우엔 여기 도달하지 않으므로 자연히 제외된다.
+      battleFlags.timeStacks = Math.min(5, (battleFlags.timeStacks||0)+1);
+      updatePlayerStatusBadges();
       renderStatus();
       playCastBurst('def');
       Sound.buff();
-      let hasteMsg = `시간이 압축되어 ${enemy.name}에게 ${hasteDmg}의 피해를 입혔다! 그대로 시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다!`;
+      let hasteMsg = `시간이 압축되어 ${enemy.name}에게 ${hasteDmg}의 피해를 입혔다! 그대로 시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다! (시간 조각 ${battleFlags.timeStacks}/5)`;
       if(extraCost>0) hasteMsg += ` (연속 사용으로 MP ${extraCost} 추가 소모)`;
       setBattleMsg(`${player.name}의 ${s.name}!`, hasteMsg);
       if(checkBattleEnd()) return;
@@ -891,6 +895,55 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         msg2 = `계약 없이 궁극의 파동을 날려 ${dmg}의 피해를 입혔다. (원소와 계약했다면 훨씬 강력했을 것이다)`;
       }
       renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='timerewind'){
+      // 시간 역행(mageTimeRewind, 레벨12): 사용자 확정 — 스택을 소비하지 않고
+      // "조건"으로만 쓴다. 시간 조각이 stackRequirement(3) 이상 쌓여 있어야
+      // 쓸 수 있으며, 사용해도 조각 수는 그대로 유지된다. 조건 미달이면 MP를
+      // 그대로 환불하고 턴을 소모하지 않은 채 취소한다.
+      const stacks = battleFlags.timeStacks || 0;
+      if(stacks < (s.stackRequirement||3)){
+        player.mp += mpCost;
+        renderStatus();
+        setCommandsEnabled(true);
+        setBattleMsg('아직 때가 아니다…', `시간 조각이 부족하다! (현재 ${stacks}개, 최소 ${s.stackRequirement||3}개 필요 — 소비되지 않고 조건으로만 쓰인다)`);
+        return;
+      }
+      player.hp = player.maxhp;
+      player.mp = player.maxmp;
+      renderStatus();
+      playCastBurst('heal');
+      Sound.heal();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `쌓인 시간 조각(${stacks}개)의 힘으로 시간을 되돌려 HP와 MP를 가득 채웠다! (조각은 소모되지 않는다)`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='timeparadox'){
+      // 시간의 역설(mageTimeParadox, 레벨15 궁극기): 쌓인 시간 조각을 전부
+      // 소비해 조각 수에 비례한 폭딜을 넣는다. 인내의 파훼자/저주 회수와 동일한
+      // baseMult+stackMult*stacks 패턴 — 풀스택(5개)이면 마력 4.0배.
+      const stacks = battleFlags.timeStacks || 0;
+      battleFlags.timeStacks = 0;
+      updatePlayerStatusBadges();
+      const mult = (s.baseMult||1.0) + (s.stackMult||0.6)*stacks;
+      const edef = getEffectiveEnemyDef(enemy.def);
+      const onHitMult = consumeOnHitBonuses();
+      let dmg = Math.max(1, Math.round(player.mag*mult) - edef);
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
+      Sound.magic(); playCastBurst();
+      renderStatus();
+      const msg2 = stacks>0
+        ? `쌓아온 시간 조각(${stacks}개)이 한꺼번에 무너지며 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`
+        : `쌓인 시간 조각이 없어 기본 위력으로 ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
       enemyTurn();
