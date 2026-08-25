@@ -170,10 +170,22 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         desc:'자신의 생명력을 제물로 바쳐 영원한 힘을 얻는 순교자. 대가를 두려워하지 않는다.',
         masteryName:'희생의 맹세', masteryDesc:'특정 스킬 사용 시 최대HP를 영구히 깎는 대신 영구 스탯을 얻는 선택지가 상시 열림.', masterySkillId:'mastery_martyrvow',
         activeName:'심판의 빛', activeDesc:'공격 + 소량 자힐 복합기.', activeSkillId:'paladinJudgmentLight'},
-      {id:'paladin_creed', name:'계율의 파수꾼', icon:'📜',
-        desc:'스스로 세운 계율을 지키며 신념의 힘을 증명하는 파수꾼. 계율을 어기는 순간 모든 것이 무너진다.',
-        masteryName:'계율', masteryDesc:'전투 시작 시 스스로 계율(예: 물약 사용 금지)을 선택, 유지 시 버프 스택 증가·어기면 즉시 상실.', masterySkillId:'mastery_creed',
-        activeName:'축복의 벽', activeDesc:'몇 턴간 자신에게 피해 흡수 보호막.', activeSkillId:'paladinBlessedWall'},
+      // [교체됨] 계율의 파수꾼(paladin_creed)은 사용자 요청으로 폐기되고 "회랑의
+      // 기사"로 대체되었다. mastery_creed/paladinBlessedWall 등 구버전 SKILLDB
+      // 항목은 삭제하지 않고 남겨둔다(레거시 세이브 크래시 방지) — 단지
+      // JOB_SPECIALIZATIONS 목록에서만 빠져 새 캐릭터는 더 이상 선택할 수 없다.
+      //
+      // 회랑의 기사(paladin_knight): "성기사로 시작했지만 전직과 함께 강제로
+      // 손에 넣은 전용무기 칼리버 X의 정체가 서서히 드러나는" 서사 중심 분기.
+      // 전직 즉시 칼리버 X가 강제 장착되며(다른 무기로 교체/해제 불가), 레벨
+      // 10/12/15 스킬을 배울 때마다 칼리버 X 자체가 자동으로 다음 단계 아이템으로
+      // 교체되어 아이템 설명이 성검→불길함→저주받은 검으로 변해간다. desc는
+      // 일부러 이 반전을 미리 알려주지 않는다(발견의 재미를 위해 컨셉만 서술).
+      {id:'paladin_knight', name:'회랑의 기사', icon:'🗡',
+        desc:'회랑 깊은 곳에서 발견한 성검, 칼리버 X를 손에 넣고 각성한 기사. 검은 그 순간부터 다른 무기로 바꿀 수 없게 되었다.',
+        masteryName:'칼리버 X', masteryDesc:'전직과 동시에 전용 무기 칼리버 X가 강제 장착된다(교체/해제 불가). 레벨이 오를 때마다 검 자체가 변해간다.', masterySkillId:'mastery_caliberx',
+        activeName:'성휘참', activeDesc:'칼리버 X에 신성한 빛을 모아 적을 강하게 베어낸다.', activeSkillId:'paladinHolyRend',
+        skillLevels: {12:'paladinDarkPrayer', 15:'paladinCaliberXFinale'}},
     ],
     mechanic: [
       {id:'mechanic_legion', name:'로봇군단장', icon:'🤖',
