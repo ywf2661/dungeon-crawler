@@ -89,7 +89,15 @@ export(전역): showJobAdvancement, resolveJobAdvancement
       // 마스터리 패시브/액티브 스킬은 SKILLDB에 실제 정의가 있을 때만 지급한다.
       // 2단계에서 직업별로 SKILLDB 항목을 채워 넣으면, 이후 전직하는 캐릭터부터
       // 자동으로 지급되기 시작한다(이미 전직을 마친 캐릭터는 재전직 없이는 소급되지 않음).
-      [spec.masterySkillId, spec.activeSkillId].forEach(skillKey=>{
+      // masterySkillIds/activeSkillIds(복수, 배열)가 있으면 그쪽을 우선 사용한다 —
+      // 계약술사처럼 마스터리 슬롯 하나가 아니라 여러 개(화염/빙결/번개계약)를
+      // 동시에 지급해야 하는 분기를 위한 확장이다. 기존 단수형(masterySkillId/
+      // activeSkillId) 필드를 쓰는 다른 모든 분기는 그대로 동작한다.
+      const grantKeys = [
+        ...(spec.masterySkillIds || (spec.masterySkillId ? [spec.masterySkillId] : [])),
+        ...(spec.activeSkillIds || (spec.activeSkillId ? [spec.activeSkillId] : [])),
+      ];
+      grantKeys.forEach(skillKey=>{
         if(skillKey && typeof SKILLDB!=='undefined' && SKILLDB[skillKey] && !player.skills.includes(skillKey)){
           player.skills.push(skillKey);
         }
