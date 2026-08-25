@@ -234,6 +234,15 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 아무 영향이 없다(아직 skillLevels를 채우지 않은 다른 분기들도 안전).
     const specKey = specialization && specialization.skillLevels && specialization.skillLevels[player.level];
     if(specKey && !player.skills.includes(specKey)) player.skills.push(specKey);
+    // 회랑의 기사(paladin_knight): 레벨12/15에 도달하면 칼리버 X 자체가 다음
+    // 단계로 자동 교체된다(플레이어가 직접 장착하는 게 아님 — equipItem()은 이
+    // 무기를 교체 못 하게 막고 있으므로 data/equipment.js의 reforgeCaliberX()를
+    // 직접 호출해 우회한다). 아이템 설명이 이 시점에 성검→불길함→저주받은 검으로
+    // 바뀌면서 서사가 진행된다.
+    if(player.specialization==='paladin_knight' && typeof reforgeCaliberX==='function'){
+      if(player.level===12) reforgeCaliberX('caliberx_1', 'caliberx_2');
+      else if(player.level===15) reforgeCaliberX('caliberx_2', 'caliberx_3');
+    }
     return player.level;
   }
 
