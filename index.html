@@ -368,6 +368,18 @@
     display:flex; flex-direction:column; align-items:flex-end; gap:5px;
     max-width:104px; z-index:4; pointer-events:none;
   }
+  .player-status-badges{
+  position:absolute; top:34px; left:6px;
+  display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+  max-width:96px; z-index:4; pointer-events:none;
+}
+.player-status-badges .status-badge{
+  font-size:9.5px; padding:2px 5px;
+}
+.status-badge.player-badge{
+  color:var(--gold-bright); border-color:#e6c34a88;
+}
+ 
   .status-badge{
     font-family:'Cinzel'; font-size:10px; padding:2px 6px; border-radius:9px;
     background:#1a130cd0; border:1px solid #4a3a24; color:var(--parchment-dim);
@@ -665,6 +677,7 @@
       </div>
       <div class="enemy-stage" id="bt-stage"></div>
       <div class="enemy-status-badges" id="bt-status"></div>
+       <div class="player-status-badges" id="bt-player-status"></div>
     </div>
     <div class="battle-lower">
       <div class="msgbox" id="bt-msgbox">
