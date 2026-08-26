@@ -646,9 +646,53 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
       Sound.magic();
       renderStatus();
+      updateRigVisuals();
       let msg2 = `${role.label} 역할의 로봇을 배치했다! 첫 사격으로 ${dmg}의 피해를 입혔다. ${slotMsg}`;
       if(role.kind==='recon') msg2 += ' 적의 급소가 드러나 받는 피해가 늘어난다.';
       if(role.kind==='shield') msg2 += ` 가동 중엔 받는 피해의 ${Math.round((role.shieldPct||0)*100)}%를 대신 막아준다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='legionbarrage'){
+      // 집중포화(mechanicFocusFire, 레벨15 궁극기, 로봇군단장): 가동 중인 로봇
+      // (rig/rig2, 있는 만큼)의 역할을 그대로 활용해 함께 사격한다. 화력 로봇은
+      // 화력 보너스, 정찰 로봇은 방어 관통, 방벽 로봇은 사용자 자신에게 방어
+      // 버프를 준다. 로봇 자체는 파괴하지 않는다(turnsLeft 그대로 유지) —
+      // 데토네이터의 "기폭"과 정반대로, 이 분기는 로봇을 계속 살려서 굴리는
+      // 것이 정체성이기 때문(mastery_multideploy의 "폭발 계열 스킬 사용 불가"
+      // 규칙과도 자연히 맞아떨어진다).
+      const rigs = [];
+      if(battleFlags.rig && battleFlags.rig.turnsLeft>0) rigs.push('rig');
+      if(battleFlags.rig2 && battleFlags.rig2.turnsLeft>0) rigs.push('rig2');
+      let dmgBonusPct = 0, piercePct = 0, shieldTurns = 0, shieldMult = 1;
+      const roleMsgs = [];
+      rigs.forEach(key=>{
+        const r = battleFlags[key];
+        if(r.kind==='firepower'){ dmgBonusPct += 0.5; roleMsgs.push('화력 로봇이 포화에 가담했다'); }
+        else if(r.kind==='recon'){ piercePct += 0.3; roleMsgs.push('정찰 로봇이 급소를 짚어줬다'); }
+        else if(r.kind==='shield'){ shieldTurns = Math.max(shieldTurns, 2); shieldMult = Math.min(shieldMult, 0.7); roleMsgs.push('방벽 로봇이 보호막을 둘렀다'); }
+        else { dmgBonusPct += 0.25; roleMsgs.push(`${r.name}이(가) 사격에 가담했다`); }
+      });
+      const edefFF = Math.round(getEffectiveEnemyDef(enemy.def)*(1-piercePct));
+      const onHitMultFF = consumeOnHitBonuses();
+      let dmg = Math.max(1, Math.round(player.mag*(s.baseMult+dmgBonusPct)) - edefFF);
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult:onHitMultFF});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, rigs.length>0?'crit':undefined);
+      Sound.magic();
+      rigs.forEach(key=> flashRigSlot(key));
+      if(shieldTurns>0){
+        player.buffDefTurns = shieldTurns;
+        player.buffDefMult = shieldMult;
+      }
+      renderStatus();
+      updateRigVisuals();
+      const msg2 = rigs.length>0
+        ? `모든 로봇이 동시에 집중사격했다! ${enemy.name}에게 ${dmg}의 피해를 입혔다. ${roleMsgs.join(', ')}. 로봇들은 이후에도 계속 가동된다.`
+        : `가동 중인 로봇이 없어 위력이 크게 약하다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
       enemyTurn();
@@ -692,6 +736,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         player.hp = Math.min(player.maxhp, player.hp+healed);
       }
       renderStatus();
+      updateRigVisuals();
       let msg2 = `${s.rigName}을(를) 전개했다! 첫 사격으로 ${dmg}의 피해를 입혔다. 이후 ${turns}턴간 자동으로 사격한다.`;
       const dotLabelsDeploy = applySkillDots(s);
       if(dotLabelsDeploy) msg2 += ` ${dotLabelsDeploy} 효과 부여!`;
@@ -724,6 +769,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         battleFlags.rig.turnsLeft += s.extendTurns;
         battleFlags.rig.dmgPerTick = Math.max(1, Math.round(battleFlags.rig.dmgPerTick * s.boostMult));
         renderStatus();
+        updateRigVisuals();
         playCastBurst('def');
         Sound.buff();
         let msg2 = `${battleFlags.rig.name}을(를) 정비했다. 지속시간 +${s.extendTurns}턴, 사격 위력이 강화되었다!`;
@@ -736,6 +782,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         battleFlags.rig2.turnsLeft += s.extendTurns;
         battleFlags.rig2.dmgPerTick = Math.max(1, Math.round(battleFlags.rig2.dmgPerTick * s.boostMult));
         renderStatus();
+        updateRigVisuals();
         playCastBurst('def');
         Sound.buff();
         let msg2 = `${battleFlags.rig2.name}을(를) 정비했다. 지속시간 +${s.extendTurns}턴, 사격 위력이 강화되었다!`;
@@ -782,8 +829,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
           battleFlags.rig = {kind:'turret', name: s.redeployRigName||'자동 포탑', turnsLeft: s.redeployRigTurns||3, dmgPerTick: Math.max(1, Math.round(player.mag*(s.redeployRigMult||0.85)))};
           msg2 += ` ${battleFlags.rig.name}이(가) 즉시 재전개된다!`;
         } else if(epicSetTier('mechanic')>=3){
-          battleFlags.rig = {kind:'turret', name:'자동 포탑', turnsLeft:3, dmgPerTick: Math.max(1, Math.round(player.mag*0.85*1.2))};
-          msg2 += ' 종말기계의 힘으로 새로운 포탑이 즉시 재전개된다!';
+          // 종말기계 Mk.Ω(에픽 3세트) 재전개는 이제 평범한 '자동 포탑'이 아니라
+          // 세트 이름 그대로 '오메가 유닛'(kind:'omega')으로 나온다 — 좌우로
+          // 긴 이중 포신 비주얼이 전용으로 뜬다(combat/battle-fx.js의
+          // updateRigVisuals(), data/monster-visuals.js의 svgRig('omega') 참고).
+          battleFlags.rig = {kind:'omega', name:'오메가 유닛', turnsLeft:3, dmgPerTick: Math.max(1, Math.round(player.mag*0.85*1.2))};
+          msg2 += ' 종말기계의 힘으로 오메가 유닛이 즉시 재전개된다!';
         }
       } else {
         dmg = Math.max(1, Math.round(player.mag*s.noRigMult) - Math.round(edef*0.5));
@@ -804,6 +855,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         player.hp = Math.min(player.maxhp, player.hp+healed2);
       }
       renderStatus();
+      updateRigVisuals();
       const dotLabelsDet = applySkillDots(s);
       if(dotLabelsDet) msg2 += ` ${dotLabelsDet} 효과 부여!`;
       if(healed2>0) msg2 += ` HP ${healed2} 흡수.`;
