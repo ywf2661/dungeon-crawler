@@ -297,3 +297,53 @@ export(전역): heroBossSvg, svgMonster
       default: return `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
     }
   }
+
+  // ---------- 메카닉 로봇(가동 장치) 비주얼 ----------
+  // battleFlags.rig/rig2의 kind에 대응하는 작은 로봇 SVG. 적 화면 하단 좌우
+  // 슬롯에 그려진다(combat/battle-fx.js의 updateRigVisuals() 참고). 사용자
+  // 요청: "설치한 로봇들이 눈에 보여야 재미있다" — 이전엔 battleFlags 안의
+  // 순수 데이터였을 뿐 화면에 전혀 그려지지 않았다.
+  function svgRig(kind){
+    const glow = `<filter id="rg"><feGaussianBlur stdDeviation="1"/></filter>`;
+    switch(kind){
+      case 'recon': return `<svg viewBox="0 0 70 50">${glow}
+        <rect x="20" y="26" width="30" height="18" rx="4" fill="#1a3a3a"/>
+        <circle cx="35" cy="18" r="10" fill="#0f2626" stroke="#5adede" stroke-width="2"/>
+        <circle cx="35" cy="18" r="4" fill="#5adede" filter="url(#rg)"/>
+        <rect x="14" y="40" width="8" height="8" fill="#0f2626"/><rect x="48" y="40" width="8" height="8" fill="#0f2626"/>
+        <line x1="35" y1="8" x2="35" y2="2" stroke="#5adede" stroke-width="2"/>
+      </svg>`;
+      case 'firepower': return `<svg viewBox="0 0 70 50">${glow}
+        <rect x="18" y="22" width="34" height="22" rx="4" fill="#3a1a12"/>
+        <circle cx="35" cy="20" r="9" fill="#241008" stroke="#ff8a3a" stroke-width="2"/>
+        <rect x="35" y="14" width="26" height="7" rx="2" fill="#ff8a3a" filter="url(#rg)"/>
+        <rect x="14" y="40" width="8" height="8" fill="#241008"/><rect x="48" y="40" width="8" height="8" fill="#241008"/>
+      </svg>`;
+      case 'shield': return `<svg viewBox="0 0 70 50">${glow}
+        <rect x="18" y="24" width="34" height="20" rx="4" fill="#0f2a16"/>
+        <circle cx="35" cy="18" r="9" fill="#0a1c0e" stroke="#6fe08a" stroke-width="2"/>
+        <path d="M35 6 C28 6 24 12 24 18 C24 24 30 28 35 30 C40 28 46 24 46 18 C46 12 42 6 35 6 Z" fill="none" stroke="#6fe08a" stroke-width="2" opacity="0.85"/>
+        <rect x="14" y="40" width="8" height="8" fill="#0a1c0e"/><rect x="48" y="40" width="8" height="8" fill="#0a1c0e"/>
+      </svg>`;
+      case 'turret': return `<svg viewBox="0 0 70 50">${glow}
+        <rect x="20" y="28" width="30" height="16" rx="3" fill="#3a3a34"/>
+        <rect x="28" y="12" width="14" height="18" rx="3" fill="#4a4a44"/>
+        <rect x="34" y="6" width="22" height="6" rx="2" fill="#8fa0b8"/>
+      </svg>`;
+      // 오메가 유닛(메카닉 3세트 재전개 전용, kind:'omega'): 사용자 요청으로
+      // 좌우로 길게 뻗은 포신 두 개를 가진 형태로 그렸다 — 적 화면 하단을
+      // 가로지르는 폭 넓은 슬롯(#bt-rig-omega)에 단독으로 표시된다(일반 로봇
+      // 슬롯 2개와는 별개 — combat/battle-fx.js의 updateRigVisuals() 참고).
+      case 'omega': return `<svg viewBox="0 0 220 50">${glow}
+        <rect x="70" y="18" width="80" height="24" rx="6" fill="#241030"/>
+        <rect x="70" y="18" width="80" height="24" rx="6" fill="none" stroke="#c9a8ff" stroke-width="2"/>
+        <circle cx="110" cy="30" r="9" fill="#3a2050" stroke="#e6c34a" stroke-width="2"/>
+        <circle cx="110" cy="30" r="3.5" fill="#ffe08a" filter="url(#rg)"/>
+        <rect x="0" y="24" width="66" height="10" rx="3" fill="#3a2050"/>
+        <rect x="154" y="24" width="66" height="10" rx="3" fill="#3a2050"/>
+        <circle cx="6" cy="29" r="6" fill="#c9a8ff" filter="url(#rg)"/>
+        <circle cx="214" cy="29" r="6" fill="#c9a8ff" filter="url(#rg)"/>
+      </svg>`;
+      default: return `<svg viewBox="0 0 70 50"><rect x="20" y="20" width="30" height="20" rx="4" fill="#4a4a44"/></svg>`;
+    }
+  }
