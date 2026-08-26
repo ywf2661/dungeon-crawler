@@ -610,6 +610,32 @@ export(전역): SKILLDB
     jesterAllIn: {name:'올인', mp:16, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
       desc:'소지 골드 전액(최대 10000G)을 건다. 성공하면 강력한 피해와 함께 판돈의 2배를 돌려받지만, 실패하면 판돈만큼 잃는다. 골드가 없으면 그냥 평범한 강타가 나간다.'},
 
+    // ---------- 외상 도박사(jester_debtor) ----------
+    // 실제 대출/이자/상환/봉인 로직은 relics.js에 헬퍼 함수로 구현했다
+    // (DEBTOR_LOANS 데이터, applyDebtorLoan/clearDebtorLoans/getDebtRepaymentRatio
+    // 등 — getCurseCount류 기존 메타 자원 집계 함수와 동일한 위치·패턴).
+    mastery_debtcycle: {name:'복리의 굴레', mp:0, type:'passive',
+      desc:'남은 빚에 매 층 이자가 붙어 서서히 불어난다. 갚은 비율만큼 대출의 페널티가 즉시 완화되며, 완전히 갚으면 대출로 얻은 힘도 함께 회수된다.'},
+    // 레벨10 대출 3종. 새 타입 'loanborrow'로 처리하며, 실제 버프/빚 반영은
+    // relics.js의 applyDebtorLoan(loanKey)를 그대로 호출한다.
+    jesterLoanSmall: {name:'소액 대출', mp:5, type:'loanborrow', loanKey:'small',
+      desc:'500G의 빚을 지는 대신 공격력이 즉시 오른다(중복 대출 가능). 갚기 전까지 물약 회복 효율이 떨어진다.'},
+    jesterLoanMedium: {name:'중액 대출', mp:8, type:'loanborrow', loanKey:'medium',
+      desc:'1500G의 빚을 지는 대신 공격력과 마력이 함께 오른다(중복 대출 가능). 갚기 전까지 받는 피해가 늘어난다.'},
+    jesterLoanLarge: {name:'거액 대출', mp:12, type:'loanborrow', loanKey:'large',
+      desc:'4000G의 빚을 지는 대신 공격력과 마력이 크게 오른다(중복 대출 가능). 갚기 전까지 확률적으로 회복이 봉인된다.'},
+    // 레벨12 "만기 연장": 확률 강화형이 아니라 시간 관리형 스킬(사용자 명세) —
+    // 이자 계산을 몇 층 동안 멈춘다. 새 타입 'debtfreeze'로 처리한다.
+    jesterDebtFreeze: {name:'만기 연장', mp:9, type:'debtfreeze', freezeFloors:5,
+      desc:'빚쟁이와 협상해 이자 계산을 5층 동안 멈춘다. 그동안은 층을 이동해도 빚이 불어나지 않는다.'},
+    // 레벨15 궁극기 "올인 대출": 거액을 추가로 끌어와 그 돈을 그대로 화력으로
+    // 쏟아붓는다. 데미지는 "현재 빚 총액"에 비례하므로(대출 실행 후 값 기준),
+    // 빚을 많이 짊어지고 있을수록 강력하다. 사용 즉시 debtCollectorImminent를
+    // 세워, 다음 층에 황금고블린이 무조건 찾아오게 만든다(사용자 명세 —
+    // "쓰면 조만간 반드시 담판을 지어야 한다"). 새 타입 'allinloan'으로 처리한다.
+    jesterAllInLoan: {name:'올인 대출', mp:18, type:'allinloan', loanAmount:6000, baseMult:1.8, debtDmgRatio:0.025,
+      desc:'거액을 추가로 끌어와 그 돈을 그대로 화력으로 쏟아붓는다. 현재 빚이 많을수록 피해가 커지지만, 사용 즉시 다음 층에서 황금고블린이 확정적으로 찾아온다.'},
+
     // 도박사 - 패의 마술사(jester_cardmaster)
     // 마스터리 "패 획득": 실제로 턴을 소모하는 스킬을 사용할 때마다(player-actions.js의
     // playerSkill(), arm/passive/catalyst/haste 조기 반환 다음 지점) 카드 한 장(1~7)을
