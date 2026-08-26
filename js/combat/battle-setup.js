@@ -45,13 +45,30 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     name:'황금고블린', type:'goldgoblin', hp:120, atk:16, def:8, spd:9,
     exp:60, gold:[0,0], skills:['smash'],
   };
+  // 빚이 클수록 황금고블린도 더 무섭게 찾아온다(사용자 요청 — "단계적으로
+  // 강해짐"). 빚 액수 구간별로 4단계를 뒀다: 평범한 빚(0단계)부터, 아주 크게
+  // 불려놓은 빚(3단계, "왕초")까지. 이름 접두어도 함께 바뀌어 한눈에 위협도를
+  // 알 수 있게 했다.
+  const DEBT_COLLECTOR_TIERS = [
+    {minDebt:0,     label:'',       hp:1.0, atk:1.0, def:1.0},
+    {minDebt:2500,  label:'거물 ',  hp:1.4, atk:1.25, def:1.15},
+    {minDebt:6000,  label:'큰손 ',  hp:1.9, atk:1.5,  def:1.3},
+    {minDebt:12000, label:'왕초 ',  hp:2.6, atk:1.85, def:1.5},
+  ];
+  function getDebtCollectorTier(){
+    const d = player.debt||0;
+    let tier = DEBT_COLLECTOR_TIERS[0];
+    for(const t of DEBT_COLLECTOR_TIERS){ if(d>=t.minDebt) tier = t; }
+    return tier;
+  }
   function pickDebtCollector(){
     const scale = 1 + depth*0.05;
+    const tier = getDebtCollectorTier();
     return scaleEnemyForDifficulty({
-      type: GOLDEN_GOBLIN.type, name: GOLDEN_GOBLIN.name, isBoss:true, isDebtCollector:true,
-      maxhp: Math.round(GOLDEN_GOBLIN.hp*scale), hp: Math.round(GOLDEN_GOBLIN.hp*scale),
-      atk: Math.round(GOLDEN_GOBLIN.atk*scale*0.8),
-      def: Math.round(GOLDEN_GOBLIN.def + depth*0.1),
+      type: GOLDEN_GOBLIN.type, name: tier.label+GOLDEN_GOBLIN.name, isBoss:true, isDebtCollector:true,
+      maxhp: Math.round(GOLDEN_GOBLIN.hp*scale*tier.hp), hp: Math.round(GOLDEN_GOBLIN.hp*scale*tier.hp),
+      atk: Math.round(GOLDEN_GOBLIN.atk*scale*0.8*tier.atk),
+      def: Math.round((GOLDEN_GOBLIN.def + depth*0.1)*tier.def),
       spd: GOLDEN_GOBLIN.spd,
       exp: GOLDEN_GOBLIN.exp,
       gold: GOLDEN_GOBLIN.gold,
