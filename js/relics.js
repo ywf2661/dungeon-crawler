@@ -127,6 +127,156 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     return getCurseCount()>=3 ? 0.05 : 0;
   }
 
+  // ---------- 외상 도박사(jester_debtor) 빚 시스템 ----------
+  // getCurseCount류와 같은 위치에 둔 이유: 둘 다 "장기간 누적되는 메타 자원이
+  // 전투 파이프라인에 계속 영향을 주는" 같은 성격의 시스템이기 때문.
+  //
+  // 대출 3종: 여러 번 대출 가능(같은 종류 중복 포함), 빚과 원금이 함께 늘어난다.
+  // buff는 대출 시점의 "현재" 공/마력 기준 퍼센트로 즉시·영구 적용된다(relics.js의
+  // atkPct 계산과 동일한 방식 — 여러 번 빌리면 자연히 복리처럼 쌓인다). 전액
+  // 상환하면 clearDebtorLoans()가 이 buff를 정확히 회수한다.
+  const DEBTOR_LOANS = {
+    small:  {name:'소액 대출', amount:500,  buff:{atk:0.10}, penaltyLabel:'물약 회복 효율 저하'},
+    medium: {name:'중액 대출', amount:1500, buff:{atk:0.15, mag:0.15}, penaltyLabel:'받는 피해 증가'},
+    large:  {name:'거액 대출', amount:4000, buff:{atk:0.30, mag:0.30}, penaltyLabel:'회복 봉인'},
+  };
+  const DEBT_GRACE_FLOORS = 10; // 대출 후 이 층수 안에 못 갚으면 황금고블린이 강제로 찾아온다
+  const DEBT_INTEREST_RATE = 0.04; // 매 층 이동 시 남은 빚에 붙는 이자율
+
+  // 상환 비율(0=한 푼도 안 갚음 ~ 1=완전 상환). 대출 이력 자체가 없으면(원금 0)
+  // 페널티 계산상 "완전 상환"과 동일하게 취급해 0으로 나누기를 피한다.
+  function getDebtRepaymentRatio(){
+    if(!player.debtPrincipal || player.debtPrincipal<=0) return 1;
+    return Math.max(0, Math.min(1, 1 - (player.debt/player.debtPrincipal)));
+  }
+  // 심각도(0=완전 상환 ~ 1=한 푼도 안 갚음) — 페널티 강도에 직접 곱하는 값이라
+  // repaymentRatio의 반대 개념으로 따로 둔다(호출부 가독성 목적).
+  function getDebtSeverity(){ return 1 - getDebtRepaymentRatio(); }
+
+  // 소액 대출 페널티: 물약 회복 효율 저하. 대출 횟수만큼, 그리고 심각도만큼 심해진다.
+  function getDebtorPotionMult(){
+    const n = (player.loanCounts && player.loanCounts.small) || 0;
+    if(n<=0) return 1;
+    return Math.max(0.1, 1 - 0.2*n*getDebtSeverity());
+  }
+  // 중액 대출 페널티: 받는 피해 증가.
+  function getDebtorDmgTakenMult(){
+    const n = (player.loanCounts && player.loanCounts.medium) || 0;
+    if(n<=0) return 1;
+    return 1 + 0.15*n*getDebtSeverity();
+  }
+  // 거액 대출 페널티: 회복 봉인. 저주술사의 봉인 저항(isCurseSealActive, "심각도가
+  // 낮을수록 뚫을 확률이 높다")과 정반대 방향의 확률 계산이다 — 여기서는 "심각도가
+  // 높을수록(안 갚았을수록) 봉인이 실제로 발동할 확률이 높다." 대출 횟수는 확률에
+  // 반영하지 않는다(토글형 페널티라 몇 번 빌렸든 "발동 여부"만 문제이지, 강도가
+  // 배로 세지는 개념이 아니기 때문 — 온전히 상환율에만 의존).
+  function isDebtHealSealActive(){
+    const n = (player.loanCounts && player.loanCounts.large) || 0;
+    if(n<=0) return false;
+    return Math.random() < getDebtSeverity();
+  }
+
+  // 대출 실행: 즉시 공격력/마력을 올리고 빚·원금을 함께 늘린다. 이번이 이
+  // 빚 사이클의 첫 대출이면(debtBorrowedAtDepth가 비어있으면) 황금고블린
+  // 유예기간의 기준 깊이를 지금 깊이로 기록한다.
+  function applyDebtorLoan(loanKey){
+    const loan = DEBTOR_LOANS[loanKey];
+    if(!loan) return;
+    player.loanCounts = player.loanCounts || {small:0, medium:0, large:0};
+    player.loanCounts[loanKey] = (player.loanCounts[loanKey]||0) + 1;
+    if(player.debtBorrowedAtDepth==null) player.debtBorrowedAtDepth = depth;
+    player.debt = (player.debt||0) + loan.amount;
+    player.debtPrincipal = (player.debtPrincipal||0) + loan.amount;
+    player.debtAppliedDelta = player.debtAppliedDelta || {};
+    if(loan.buff.atk){
+      const d = Math.round(player.atk*loan.buff.atk);
+      player.atk += d;
+      player.debtAppliedDelta.atk = (player.debtAppliedDelta.atk||0) + d;
+    }
+    if(loan.buff.mag){
+      const d = Math.round(player.mag*loan.buff.mag);
+      player.mag += d;
+      player.debtAppliedDelta.mag = (player.debtAppliedDelta.mag||0) + d;
+    }
+  }
+  // 전액 상환(또는 황금고블린 승리/일시불 정산) 시, 대출로 얻은 스탯을 정확히
+  // 회수하고 모든 빚 관련 상태를 초기화한다.
+  function clearDebtorLoans(){
+    const d = player.debtAppliedDelta || {};
+    if(d.atk) player.atk = Math.max(1, player.atk - d.atk);
+    if(d.mag) player.mag = Math.max(0, player.mag - d.mag);
+    player.debtAppliedDelta = {};
+    player.loanCounts = {small:0, medium:0, large:0};
+    player.debt = 0;
+    player.debtPrincipal = 0;
+    player.debtBorrowedAtDepth = null;
+  }
+  // 상점 "빚 갚기"(shop.js)에서 쓰는 실제 상환 처리. amount만큼 갚고(빚보다 많이
+  // 내면 빚만큼만 차감 — 호출부에서 미리 min(보유 골드, 남은 빚)으로 제한해야
+  // 함), 다 갚으면 자동으로 clearDebtorLoans()까지 처리한다. 실제로 갚인 금액을
+  // 반환한다.
+  function repayDebt(amount){
+    const pay = Math.max(0, Math.min(amount, player.debt||0));
+    if(pay<=0) return 0;
+    player.debt -= pay;
+    if(player.debt<=0) clearDebtorLoans();
+    return pay;
+  }
+
+  // 황금고블린: 빚을 오래 방치하면(DEBT_GRACE_FLOORS 층 이내 미청산, 또는 올인
+  // 대출로 강제 예약) 마주치는 이벤트. 유물/저주 제단과 같은 트리거 패턴
+  // (explore.js의 proceedAdvance()에서 호출)이지만, "전투로 이어질 수 있다"는
+  // 점이 달라 오버레이에서 곧장 startBattle(..., true)를 호출한다(4번째 인자
+  // isDebtCollector — combat/battle-setup.js 참고).
+  function showDebtCollectorEvent(){
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'debtcollector-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel relic-panel relic-panel-locked';
+    const canPayoff = player.gold >= player.debt;
+    panel.innerHTML = `<h3 style="color:#ffd76a;">💰 황금고블린 💰</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
+        금색 정장을 빼입고 금니를 번뜩이는 고블린이 두꺼운 장부를 옆구리에 낀 채 앞을 가로막는다.<br>
+        "아아, 우리 단골손님이시군요. 슬슬... 정리를 좀 해야 하지 않겠어요?"
+      </p>
+      <p style="text-align:center;color:#ffd76a;font-size:13px;margin:0 0 10px;">남은 빚: ${player.debt}G</p>
+      <p class="relic-lock-msg" id="dc-lock-msg">내용을 살펴보는 중…</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button class="btn" id="dc-payoff" disabled>${canPayoff ? `일시불 정산 (${player.debt}G)` : `일시불 정산 (골드 부족)`}</button>
+        <button class="btn btn-danger" id="dc-fight" disabled>담판(전투)</button>
+      </div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+
+    const LOCK_MS = 1500;
+    setTimeout(()=>{
+      panel.classList.remove('relic-panel-locked');
+      const payoffBtn = panel.querySelector('#dc-payoff');
+      if(payoffBtn && canPayoff) payoffBtn.disabled = false;
+      panel.querySelector('#dc-fight').disabled = false;
+      const msg = panel.querySelector('#dc-lock-msg');
+      if(msg) msg.remove();
+    }, LOCK_MS);
+
+    panel.querySelector('#dc-payoff').addEventListener('click', ()=>{
+      if(panel.querySelector('#dc-payoff').disabled) return;
+      if(player.gold < player.debt) return;
+      player.gold -= player.debt;
+      const paidOff = player.debt;
+      clearDebtorLoans();
+      renderStatus();
+      saveGame();
+      overlay.remove();
+      addLog(`황금고블린에게 ${paidOff}G를 일시불로 정산했다. 고블린이 흡족한 미소를 지으며 물러난다.`, 'gold');
+    });
+    panel.querySelector('#dc-fight').addEventListener('click', ()=>{
+      if(panel.querySelector('#dc-fight').disabled) return;
+      overlay.remove();
+      startBattle(false, false, false, true);
+    });
+  }
+
   function getRelicDef(id){ return RELICS[id]; }
 
   // 저주술사(mastery_curseweaver) 전용: 온오프형 저주 봉인(스킬 봉인/물약 봉인/
