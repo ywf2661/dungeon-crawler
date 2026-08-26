@@ -604,7 +604,31 @@
 .fx-banner.pact-ice{color:#8fdcff; border-color:#7ad4ff; text-shadow:0 0 10px #7ad4ff88, 0 1px 3px #000;}
 .fx-banner.pact-lightning{color:#ffe98a; border-color:#ffe06a; text-shadow:0 0 10px #ffe06a99, 0 1px 3px #000;}
 
-
+.rig-slot{
+  position:absolute; bottom:6px; width:70px; height:50px;
+  z-index:3; display:none; pointer-events:none;
+  filter:drop-shadow(0 2px 3px #00000088);
+}
+.rig-slot svg{ width:100%; height:100%; }
+.rig-slot-left{ left:8px; }
+.rig-slot-right{ right:8px; }
+.rig-slot-omega{
+  position:absolute; bottom:6px; left:8px; right:8px; height:50px;
+  z-index:3; display:none; pointer-events:none;
+  filter:drop-shadow(0 2px 3px #00000088);
+}
+.rig-slot-omega svg{ width:100%; height:100%; }
+.rig-turns{
+  position:absolute; bottom:-2px; left:50%; transform:translateX(-50%);
+  font-family:'Cinzel'; font-size:9px; color:var(--parchment-dim);
+  background:#1a130cd0; padding:1px 5px; border-radius:6px; white-space:nowrap;
+}
+.rig-fire{ animation:rigfire .35s ease-out; }
+@keyframes rigfire{
+  0%{ filter:drop-shadow(0 0 0 #fff0) brightness(1); }
+  35%{ filter:drop-shadow(0 0 8px #ffe08acc) brightness(1.6); }
+  100%{ filter:drop-shadow(0 2px 3px #00000088) brightness(1); }
+}
   ::-webkit-scrollbar{width:7px;}
   ::-webkit-scrollbar-thumb{background:#4a3a24; border-radius:4px;}
   ::-webkit-scrollbar-track{background:#0f0b07;}
@@ -687,6 +711,9 @@
       </div>
       <div class="enemy-stage" id="bt-stage"></div>
       <div class="enemy-status-badges" id="bt-status"></div>
+      <div class="rig-slot rig-slot-left" id="bt-rig1"></div>
+    <div class="rig-slot rig-slot-right" id="bt-rig2"></div>
+    <div class="rig-slot-omega" id="bt-rig-omega"></div>
        <div class="player-status-badges" id="bt-player-status"></div>
     </div>
     <div class="battle-lower">
