@@ -196,13 +196,21 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       box.appendChild(b);
     }
     // 빚(외상 도박사): 전투 중에도 항상 남은 빚과 대략적인 상환율을 확인할 수
-    // 있게 한다. 빚이 없으면(player.debt<=0) 표시하지 않는다.
+    // 있게 한다. 빚이 없으면(player.debt<=0) 표시하지 않는다. 사용자 피드백
+    // "버프가 언제까지 적용되는지 모호하다"에 따라, 대출로 얻은 버프(영구
+    // 스탯 상승 — 갚을 때까지 모든 전투에 상시 적용됨. 전투마다 리셋되는 게
+    // 아니다)가 현재 얼마인지도 함께 보여준다.
     if((player.debt||0) > 0){
       const b = document.createElement('div');
       b.className = 'status-badge player-badge';
       const repayPct = Math.round(getDebtRepaymentRatio()*100);
-      b.textContent = `📒 빚 ${player.debt}G (상환 ${repayPct}%)`;
-      b.title = '갚은 비율만큼 대출 페널티가 완화된다. 대출 후 일정 층 안에 못 갚으면 황금고블린이 찾아온다.';
+      const d = player.debtAppliedDelta || {};
+      const buffParts = [];
+      if(d.atk) buffParts.push(`공+${d.atk}`);
+      if(d.mag) buffParts.push(`마+${d.mag}`);
+      const buffStr = buffParts.length ? ` · ${buffParts.join(' ')}` : '';
+      b.textContent = `📒 빚 ${player.debt}G (상환 ${repayPct}%)${buffStr}`;
+      b.title = '대출로 얻은 버프는 전투와 무관하게 상시 적용되며, 갚을 때까지 계속 유지된다. 갚은 비율만큼 페널티는 완화된다. 대출 후 일정 층 안에 못 갚으면 황금고블린이 찾아온다.';
       box.appendChild(b);
     }
   }
