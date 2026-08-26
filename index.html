@@ -612,12 +612,19 @@
 .rig-slot svg{ width:100%; height:100%; }
 .rig-slot-left{ left:8px; }
 .rig-slot-right{ right:8px; }
-.rig-slot-omega{
-  position:absolute; bottom:6px; left:8px; right:8px; height:50px;
+.rig-slot{
+  position:absolute; bottom:6px; width:70px; height:50px;
   z-index:3; display:none; pointer-events:none;
   filter:drop-shadow(0 2px 3px #00000088);
+  transition:width .2s ease;
 }
-.rig-slot-omega svg{ width:100%; height:100%; }
+.rig-slot svg{ width:100%; height:100%; }
+.rig-slot-left{ left:8px; }
+.rig-slot-right{ right:8px; }
+/* 오메가 유닛일 때만 자기 슬롯 안에서 폭이 넓어진다(왼쪽 슬롯은 오른쪽으로,
+   오른쪽 슬롯은 왼쪽으로 확장 — "가운데를 향해 길게 뻗는" 인상을 주면서도
+   반대편 슬롯의 다른 로봇은 가리지 않는다). */
+.rig-slot.rig-wide{ width:130px; }
 .rig-turns{
   position:absolute; bottom:-2px; left:50%; transform:translateX(-50%);
   font-family:'Cinzel'; font-size:9px; color:var(--parchment-dim);
@@ -629,6 +636,7 @@
   35%{ filter:drop-shadow(0 0 8px #ffe08acc) brightness(1.6); }
   100%{ filter:drop-shadow(0 2px 3px #00000088) brightness(1); }
 }
+ 
   ::-webkit-scrollbar{width:7px;}
   ::-webkit-scrollbar-thumb{background:#4a3a24; border-radius:4px;}
   ::-webkit-scrollbar-track{background:#0f0b07;}
@@ -713,7 +721,6 @@
       <div class="enemy-status-badges" id="bt-status"></div>
       <div class="rig-slot rig-slot-left" id="bt-rig1"></div>
     <div class="rig-slot rig-slot-right" id="bt-rig2"></div>
-    <div class="rig-slot-omega" id="bt-rig-omega"></div>
        <div class="player-status-badges" id="bt-player-status"></div>
     </div>
     <div class="battle-lower">
