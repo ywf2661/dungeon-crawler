@@ -4,8 +4,14 @@
 난이도별 몬스터 스탯 보정, 적 선택(pickEnemy), 전투 시작(startBattle).
 export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pickFinalBossJob,
               canEnrage, triggerEnragePhase, getDifficultyMonsterMult, scaleEnemyForDifficulty,
-              pickEnemy, startBattle
-의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS 등), Sound(sound.js), showToast(ui/difficulty.js)
+              pickEnemy, GOLDEN_GOBLIN, pickDebtCollector, startBattle
+의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS,
+       DEBTOR_LOANS 등), Sound(sound.js), showToast(ui/difficulty.js)
+주의: startBattle()에 4번째 인자 isDebtCollector가 추가되었다 — 외상 도박사(jester_debtor)의
+     빚을 오래 방치했을 때 강제로 마주치는 "황금고블린" 이벤트 전투를 최종보스와 동일한
+     패턴(일반 몬스터 풀을 쓰지 않고 직접 구성)으로 시작시킨다. 실제 승리/패배 시의 특수
+     보상·페널티 처리는 combat/battle-end.js의 checkBattleEnd()에서 enemy.isDebtCollector를
+     확인해 처리한다(정상적인 게임오버로 이어지지 않고 살아남는 것이 핵심 차이).
 */
 
   /* ============ 전투 ============ */
@@ -28,6 +34,29 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   function pickFinalBossJob(){
     const ids = JOBS.map(j=>j.id);
     return ids[Math.floor(Math.random()*ids.length)];
+  }
+
+  // 황금고블린 — 외상 도박사의 빚을 오래 방치하면 등장하는 강제 이벤트 전용
+  // 몬스터. 일반 몬스터 풀(MONSTERS/BOSSES)에는 넣지 않고, 최종보스와 동일한
+  // 패턴으로 필요할 때 직접 구성해서 등장시킨다. 골드 드랍은 0으로 뒀다 —
+  // 이 전투의 보상은 일반 처치 골드가 아니라 빚 탕감(승리) 자체이기 때문
+  // (combat/battle-end.js 참고).
+  const GOLDEN_GOBLIN = {
+    name:'황금고블린', type:'goldgoblin', hp:120, atk:16, def:8, spd:9,
+    exp:60, gold:[0,0], skills:['smash'],
+  };
+  function pickDebtCollector(){
+    const scale = 1 + depth*0.05;
+    return scaleEnemyForDifficulty({
+      type: GOLDEN_GOBLIN.type, name: GOLDEN_GOBLIN.name, isBoss:true, isDebtCollector:true,
+      maxhp: Math.round(GOLDEN_GOBLIN.hp*scale), hp: Math.round(GOLDEN_GOBLIN.hp*scale),
+      atk: Math.round(GOLDEN_GOBLIN.atk*scale*0.8),
+      def: Math.round(GOLDEN_GOBLIN.def + depth*0.1),
+      spd: GOLDEN_GOBLIN.spd,
+      exp: GOLDEN_GOBLIN.exp,
+      gold: GOLDEN_GOBLIN.gold,
+      skills: GOLDEN_GOBLIN.skills, guarding:false,
+    });
   }
 
   // ---------- 최종보스 / 진 최종보스 페이즈(광폭화) 시스템 ----------
@@ -137,9 +166,9 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     });
   }
 
-  function startBattle(isBoss, isFinal, isTrueFinal){
+  function startBattle(isBoss, isFinal, isTrueFinal, isDebtCollector){
     revertDiceDelta(); // 직전 전투의 불확실성의 주사위 효과가 남아있다면 먼저 되돌린다(안전망).
-    enemy = pickEnemy(isBoss, isFinal, isTrueFinal);
+    enemy = isDebtCollector ? pickDebtCollector() : pickEnemy(isBoss, isFinal, isTrueFinal);
     battleOver = false; subMode = null;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null};
     battleFlags.creed = null; battleFlags.creedStacks = 0;
@@ -166,13 +195,14 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     showScreen('battle');
     document.getElementById('bt-ename').innerHTML =
       (enemy.isElite ? '<span class="elite-tag">⚔ 정예</span>' : '')
-      + (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))
+      + (isDebtCollector ? '💰 ' : (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':''))))
       + enemy.name;
     document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
     document.getElementById('bt-stage').className='enemy-stage'+(enemy.isElite?' elite':'');
     updateEnemyHpBar();
     updateStatusBadges();
-    setBattleMsg(isTrueFinal ? `${enemy.name}이(가) 마침내 진정한 모습을 드러낸다!` : (isFinal ? `${enemy.name}이(가) 마침내 모습을 드러냈다!` : (isBoss ? `${enemy.name}이(가) 앞을 가로막는다!` : (enemy.isElite ? `심상치 않은 기운이 감돈다… ${enemy.name}이(가) 나타났다!` : `${enemy.name}이(가) 나타났다!`))), '');
+    setBattleMsg(isDebtCollector ? `${enemy.name}이(가) 장부를 펼치며 다가온다… "자, 슬슬 이야기 좀 할까요?"`
+      : (isTrueFinal ? `${enemy.name}이(가) 마침내 진정한 모습을 드러낸다!` : (isFinal ? `${enemy.name}이(가) 마침내 모습을 드러냈다!` : (isBoss ? `${enemy.name}이(가) 앞을 가로막는다!` : (enemy.isElite ? `심상치 않은 기운이 감돈다… ${enemy.name}이(가) 나타났다!` : `${enemy.name}이(가) 나타났다!`)))), '');
     resetCommandUI();
     renderStatus();
     // 불확실성의 주사위: 전투 시작 시 어떤 효과가 뽑혔는지 토스트로 알려준다.
