@@ -571,6 +571,15 @@ export(전역): SKILLDB
       desc:'로봇(가동 장치)을 최대 2기까지 동시에 배치할 수 있게 된다. 대신 폭발 계열 스킬은 일절 사용할 수 없다.'},
     mechanicRoleDeploy: {name:'역할 배치', mp:8, desc:'정찰/화력/방벽 중 하나의 역할을 무작위로 맡은 로봇 한 기를 즉시 배치한다. 이미 로봇이 2기 있다면 가장 먼저 배치된 로봇을 대신 교체한다',
       type:'legiondeploy', rigTurns:3},
+    // [교체됨] 위 mechanicRoleDeploy(무작위 배정)는 사용자 피드백으로 폐기되고
+    // 아래 3개(직접 선택형)로 대체되었다. 삭제하지 않고 남겨둔다(레거시 세이브
+    // 크래시 방지 — data/jobs.js에서 activeSkillIds로 아래 3개를 대신 지급한다).
+    mechanicDeployRecon: {name:'정찰 로봇 배치', mp:8, type:'legiondeploy', roleKind:'recon', rigTurns:3,
+      desc:'정찰 로봇을 배치한다. 적의 급소를 드러내 받는 피해가 늘어난다. 이미 로봇이 2기 있다면 가장 먼저 배치된 로봇을 대신 교체한다.'},
+    mechanicDeployFirepower: {name:'화력 로봇 배치', mp:8, type:'legiondeploy', roleKind:'firepower', rigTurns:3,
+      desc:'화력 로봇을 배치한다. 세 종류 중 가장 강한 화력으로 꾸준히 사격한다. 이미 로봇이 2기 있다면 가장 먼저 배치된 로봇을 대신 교체한다.'},
+    mechanicDeployShield: {name:'방벽 로봇 배치', mp:8, type:'legiondeploy', roleKind:'shield', rigTurns:3,
+      desc:'방벽 로봇을 배치한다. 가동 중엔 받는 피해의 일부를 대신 막아준다. 이미 로봇이 2기 있다면 가장 먼저 배치된 로봇을 대신 교체한다.'},
     // 레벨15 궁극기 "집중포화": 현재 가동 중인 로봇(들)의 역할을 그대로 활용해
     // 함께 집중사격한다. 데토네이터와 달리 로봇을 파괴하지 않는다 — 사격 후에도
     // battleFlags.rig/rig2는 그대로 살아남아 다음 라운드에도 정상적으로 계속
