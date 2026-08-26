@@ -331,9 +331,10 @@ export(전역): heroBossSvg, svgMonster
         <rect x="34" y="6" width="22" height="6" rx="2" fill="#8fa0b8"/>
       </svg>`;
       // 오메가 유닛(메카닉 3세트 재전개 전용, kind:'omega'): 사용자 요청으로
-      // 좌우로 길게 뻗은 포신 두 개를 가진 형태로 그렸다 — 적 화면 하단을
-      // 가로지르는 폭 넓은 슬롯(#bt-rig-omega)에 단독으로 표시된다(일반 로봇
-      // 슬롯 2개와는 별개 — combat/battle-fx.js의 updateRigVisuals() 참고).
+      // 좌우로 길게 뻗은 포신 두 개를 가진 형태로 그렸다 — 자기 슬롯(왼쪽 또는
+      // 오른쪽) 안에서 가운데 방향으로 폭이 넓어지는 방식으로 표시되어(.rig-wide
+      // CSS 클래스), 반대편 슬롯의 다른 로봇을 가리지 않는다(combat/battle-fx.js
+      // 의 updateRigVisuals() 참고).
       case 'omega': return `<svg viewBox="0 0 220 50">${glow}
         <rect x="70" y="18" width="80" height="24" rx="6" fill="#241030"/>
         <rect x="70" y="18" width="80" height="24" rx="6" fill="none" stroke="#c9a8ff" stroke-width="2"/>
