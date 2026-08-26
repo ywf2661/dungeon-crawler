@@ -42,6 +42,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const canFlee = !player || player.difficulty==='easy';
     runBtn.style.display = canFlee ? '' : 'none';
     updatePlayerStatusBadges();
+    updateRigVisuals();
   }
   function setCommandsEnabled(en){
     ['cmd-attack','cmd-skill','cmd-item','cmd-run'].forEach(id=>document.getElementById(id).disabled=!en);
@@ -105,6 +106,44 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.textContent = text;
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 1150);
+  }
+
+  // ---------- 메카닉 로봇 비주얼 ----------
+  // battleFlags.rig/rig2 상태를 화면 하단 좌우 슬롯(#bt-rig1/#bt-rig2)에 그린다.
+  // 오메가 유닛(kind:'omega')은 폭이 넓어 전용 슬롯(#bt-rig-omega)에 단독으로
+  // 그리고, 이때는 일반 슬롯 2개를 숨긴다. index.html에 이 세 요소와 CSS를
+  // 추가해야 실제로 보인다(별도 안내 참고). 로봇 상태가 바뀌는 모든 지점
+  // (배치/정비/기폭/매 라운드 소멸, player-actions.js·enemy-turn.js)에서
+  // 이 함수를 호출한다 — resetCommandUI()에서도 호출해 항상 최신 상태를
+  // 반영한다(다른 배지들과 동일한 안전망 패턴).
+  function updateRigVisuals(){
+    const slot1 = document.getElementById('bt-rig1');
+    const slot2 = document.getElementById('bt-rig2');
+    const slotOmega = document.getElementById('bt-rig-omega');
+    if(!slot1 || !slot2 || !slotOmega) return;
+    const r1 = (battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0) ? battleFlags.rig : null;
+    const r2 = (battleFlags && battleFlags.rig2 && battleFlags.rig2.turnsLeft>0) ? battleFlags.rig2 : null;
+    if(r1 && r1.kind==='omega'){
+      slotOmega.innerHTML = svgRig('omega') + `<div class="rig-turns">${r1.turnsLeft}턴</div>`;
+      slotOmega.style.display = 'block';
+      slot1.style.display = 'none'; slot1.innerHTML = '';
+      slot2.style.display = 'none'; slot2.innerHTML = '';
+      return;
+    }
+    slotOmega.style.display = 'none'; slotOmega.innerHTML = '';
+    if(r1){ slot1.innerHTML = svgRig(r1.kind) + `<div class="rig-turns">${r1.turnsLeft}턴</div>`; slot1.style.display = 'block'; }
+    else { slot1.style.display = 'none'; slot1.innerHTML = ''; }
+    if(r2){ slot2.innerHTML = svgRig(r2.kind) + `<div class="rig-turns">${r2.turnsLeft}턴</div>`; slot2.style.display = 'block'; }
+    else { slot2.style.display = 'none'; slot2.innerHTML = ''; }
+  }
+  // 로봇이 사격한 순간 해당 슬롯을 짧게 번쩍여, "지금 이 로봇이 쐈다"는 게
+  // 눈에 보이게 한다. slotKey는 battleFlags의 키('rig'|'rig2')를 그대로 받아
+  // DOM id로 매핑한다.
+  function flashRigSlot(slotKey){
+    const isOmega = battleFlags && battleFlags[slotKey] && battleFlags[slotKey].kind==='omega';
+    const el = document.getElementById(isOmega ? 'bt-rig-omega' : (slotKey==='rig' ? 'bt-rig1' : 'bt-rig2'));
+    if(!el) return;
+    el.classList.remove('rig-fire'); void el.offsetWidth; el.classList.add('rig-fire');
   }
 
   function updateStatusBadges(){
