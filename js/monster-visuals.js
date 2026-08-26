@@ -36,7 +36,7 @@ export(전역): heroBossSvg, svgMonster
   // 함수 하나만 고치면 끝. 새 몬스터 이미지를 추가할 때도 이 객체에 한 줄만
   // 추가하면 된다.
   const MONSTER_IMG = {
-    wolf: 'images/monsters/wolf.png',
+    /*wolf: 'images/monsters/wolf.png',
     skeleton: 'images/monsters/skeleton.png',
     slime: 'images/monsters/slime.png',
     bandit: 'images/monsters/bandit.png',
@@ -46,7 +46,7 @@ export(전역): heroBossSvg, svgMonster
     witch: 'images/monsters/witch.png',
     bat: 'images/monsters/bat.png',
     mimic: 'images/monsters/mimic.png',
-    dragon: 'images/monsters/dragon.png',
+    dragon: 'images/monsters/dragon.png',*/
   };
 
   function svgMonster(type){
