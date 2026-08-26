@@ -194,7 +194,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       {id:'mechanic_legion', name:'로봇군단장', icon:'🤖',
         desc:'로봇 군단을 이끄는 지휘관. 홀로 싸우지 않는다 — 여러 기의 로봇과 함께 전장을 장악한다.',
         masteryName:'다중 전개', masteryDesc:'로봇을 여러 기 동시에 배치 가능. 대신 폭발 계열 스킬은 일절 사용 불가.', masterySkillId:'mastery_multideploy',
-        activeName:'역할 배치', activeDesc:'정찰/화력/방벽 등 역할이 다른 로봇 한 기를 즉시 소환.', activeSkillId:'mechanicRoleDeploy',
+        activeName:'역할 배치', activeDesc:'정찰/화력/방벽 로봇 중 원하는 역할을 직접 선택해 즉시 배치.', activeSkillIds:['mechanicDeployRecon','mechanicDeployFirepower','mechanicDeployShield'],
         // 레벨15 궁극기 "집중포화": 사용자 확정 — 이 분기는 폭발(기폭) 계열을
         // 쓰지 않는다는 정체성을 그대로 지킨다. 로봇을 파괴하는 대신, 현재
         // 배치된 로봇들의 역할을 그대로 활용해 함께 집중사격한다(로봇은 이후에도
