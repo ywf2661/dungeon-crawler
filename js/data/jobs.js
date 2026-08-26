@@ -214,10 +214,11 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         masteryName:'물주의 감각', masteryDesc:'전투 승리 시 얻는 골드가 20% 증가한다.', masterySkillId:'mastery_goldsense',
         activeName:'베팅', activeDesc:'소지 골드의 10%를 판돈으로 건다. 성공하면 판돈의 2배를 얻고 판돈에 비례한 추가 피해, 실패하면 판돈만 잃고 피해 없음.', activeSkillId:'jesterGoldBet',
         skillLevels: {12:'jesterHunch', 15:'jesterAllIn'}},
-      {id:'jester_cardmaster', name:'패의 마술사', icon:'🃏',
-        desc:'패를 손에 쥔 마술사. 하나둘 모이는 카드가 어떤 조합을 이룰지는 아무도 모른다.',
-        masteryName:'패 획득', masteryDesc:'스킬 사용마다 자동으로 카드 한 장 획득, 조합 완성 시 강력한 효과 발동 가능.', masterySkillId:'mastery_drawcard',
-        activeName:'패 교환', activeDesc:'원치 않는 카드 한 장을 즉시 새 카드로 교체.', activeSkillId:'jesterExchange'},
+      // [교체됨] 패의 마술사(jester_cardmaster)는 사용자 요청으로 제거되었다.
+      // mastery_drawcard/jesterExchange 등 SKILLDB 항목은 삭제하지 않고 남겨둔다
+      // (레거시 세이브 크래시 방지) — 단지 JOB_SPECIALIZATIONS 목록에서만 빠져
+      // 새 캐릭터는 더 이상 선택할 수 없다. 이제 도박사(jester)는 황금 도박사/
+      // 외상 도박사 두 분기만 남는다.
       // 외상 도박사(jester_debtor): 빚을 내서 순간적으로 강해지는 하이리스크
       // 분기. 레벨10에 소액/중액/거액 대출 3개를 한꺼번에 지급한다(계약술사의
       // 원소계약처럼 activeSkillIds 복수형 사용). 대출 시스템의 실제 로직(이자,
