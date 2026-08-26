@@ -38,6 +38,11 @@ export(전역): heroBossSvg, svgMonster
   const MONSTER_IMG = {
     wolf: 'images/monsters/wolf.png',
     skeleton: 'images/monsters/skeleton.png',
+    slime: 'images/monsters/slime.png',
+    bandit: 'images/monsters/bandit.png',
+    goblin: 'images/monsters/goblin.png',
+    orc: 'images/monsters/orc.png',
+    spider: 'images/monsters/spider.png',
   };
 
   function svgMonster(type){
