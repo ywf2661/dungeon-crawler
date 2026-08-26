@@ -21,6 +21,32 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         triggerEnragePhase();
         return true;
       }
+      // 황금고블린(외상 도박사): 일반 승리 처리(처치 골드/경험치/레벨업/드랍)를
+      // 전부 건너뛰고, 빚 탕감이라는 이 전투만의 고유 보상을 준다. 빚을 완전히
+      // 갚지 못했더라도 남은 빚의 70%를 즉시 탕감해준다(전액 탕감이 아닌 이유:
+      // "담판으로 크게 깎았다"는 느낌을 주면서도, 완전히 공짜는 아니게 하기
+      // 위함 — 남은 30%는 여전히 갚아야 할 몫으로 남는다).
+      if(enemy.isDebtCollector){
+        battleOver = true;
+        setCommandsEnabled(false);
+        revertDiceDelta();
+        document.getElementById('bt-stage').classList.add('dying');
+        const forgiven = Math.round((player.debt||0)*0.7);
+        player.debt = Math.max(0, (player.debt||0) - forgiven);
+        if(player.debt<=0) clearDebtorLoans();
+        const bonusGold = 200 + depth*10;
+        player.gold += bonusGold;
+        renderStatus();
+        setTimeout(()=>{
+          setBattleMsg(`${enemy.name}이(가) 장부를 덮으며 물러난다!`, `빚 ${forgiven}G를 탕감받고, 골드 ${bonusGold}G를 챙겼다! (남은 빚: ${player.debt}G)`);
+          saveGame();
+        }, 500);
+        setTimeout(()=>{
+          showScreen('explore');
+          renderExplore(['황금고블린과의 담판을 끝내고 다시 길을 나섰다.']);
+        }, 1800);
+        return true;
+      }
       battleOver = true;
       setCommandsEnabled(false);
       revertDiceDelta();
@@ -106,6 +132,31 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       return true;
     }
     if(player.hp<=0){
+      // 황금고블린(외상 도박사) 상대로만 예외적으로 "패배해도 죽지 않는다."
+      // HP 1로 목숨만 부지한 채 물러나되, 빚이 절반만큼 더 늘고 다음 황금고블린이
+      // 훨씬 빨리(유예기간 10층 중 4층을 이미 써버린 것으로 취급) 다시 찾아온다 —
+      // "담판에서 지면 상황이 더 나빠진다"는 사용자 요구를 일반 게임오버(런 종료/
+      // 하드코어 초기화)와 완전히 분리해서 처리한다. 이 분기가 아래 일반
+      // player.hp<=0 처리보다 먼저 와야 한다.
+      if(enemy.isDebtCollector){
+        battleOver = true;
+        setCommandsEnabled(false);
+        revertDiceDelta();
+        player.hp = 1;
+        const penalty = Math.max(1, Math.round((player.debt||0)*0.5));
+        player.debt = (player.debt||0) + penalty;
+        // 유예기간 10층 중 4층을 이미 써버린 것으로 취급 — 다음 방문이 더 빨리 온다.
+        player.debtBorrowedAtDepth = depth - Math.max(0, DEBT_GRACE_FLOORS - 4);
+        player.debtCollectorImminent = false;
+        renderStatus();
+        setBattleMsg('황금고블린이 비웃으며 물러난다…', `담판에서 패배했다! 빚이 ${penalty}G 늘었고, 다음 방문이 더 빨라진다. (남은 빚: ${player.debt}G)`);
+        setTimeout(()=>{
+          showScreen('explore');
+          renderExplore(['가까스로 목숨만 부지한 채 황금고블린에게서 도망쳤다.']);
+          saveGame();
+        }, 1800);
+        return true;
+      }
       battleOver = true;
       setCommandsEnabled(false);
       revertDiceDelta();
@@ -222,7 +273,8 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 저주술사(mastery_curseweaver)는 레벨업 시 무회복 저주도 저주 개수만큼의
     // 확률로 뚫을 수 있다(레벨업이 한 번에 여러 번 처리될 수 있어, 매번 배너가
     // 뜨면 스팸이 될 수 있으므로 여기서는 안내 문구 없이 조용히 판정만 한다).
-    if(isCurseSealActive('noPostBattleHeal')){
+    // 외상 도박사(거액 대출)의 회복 봉인도 같은 자리에서 함께 확인한다.
+    if(isCurseSealActive('noPostBattleHeal') || isDebtHealSealActive()){
       player.hp = Math.min(player.hp, player.maxhp);
       player.mp = Math.min(player.mp, player.maxmp);
     } else {
