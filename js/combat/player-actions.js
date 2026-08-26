@@ -32,18 +32,24 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       stealthDmgMsgAtk = ' 은신에서 벗어나며 가한 일격의 위력이 크게 올랐다!';
       player.stealthDmgBonusArmed = false;
     }
-    // 순일격(mastery_purestrike, 일격의 구도자 레벨10): 기본 공격 피해가 항상 15% 증가한다.
+    // 순일격(mastery_purestrike, 일격의 구도자 레벨10): 기본 공격 피해가 항상
+    // 증가한다. (밸런스 조정: 15%→30% — 사용자 피드백 "너무 짜다"에 따라 상향.
+    // 이 직업은 액티브 스킬이 아예 없어 기본 공격 하나에 모든 정체성이 걸려
+    // 있으므로, 다른 직업의 마스터리보다 배율을 넉넉하게 잡는 게 맞다고 판단.)
+    const puristMult = 1.30;
     if(player.skills && player.skills.includes('mastery_purestrike')){
-      dmg = Math.round(dmg*1.15);
+      dmg = Math.round(dmg*puristMult);
     }
     // 메아리 타격(warriorPuristEcho, 레벨12): 기본 공격을 두 번째 낼 때마다(2타/4타/6타…,
     // 전투마다 battleFlags.basicAtkCount로 리셋되어 집계) 추가로 강하게 꽂힌다.
     let echoMsg = '';
+    let echoTriggeredThisAction = false;
     if(player.skills && player.skills.includes('warriorPuristEcho') && battleFlags){
       battleFlags.basicAtkCount = (battleFlags.basicAtkCount||0) + 1;
       if(battleFlags.basicAtkCount % 2 === 0){
         dmg = Math.round(dmg*1.25);
         echoMsg = ' 메아리치는 두 번째 타격이 더욱 강하게 꽂혔다!';
+        echoTriggeredThisAction = true;
       }
     }
     // 번개계약 파동(mageElementWave)이 남긴 "다음 공격 확정 치명타"를 기본 공격에도
@@ -101,6 +107,17 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       setTimeout(()=>{
         const edef2 = getEffectiveEnemyDef(enemy.def);
         let dmg2 = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef2);
+        // 밸런스 수정: 이전엔 이 두 번째 타격이 순일격(+30%)/메아리 타격 보너스를
+        // 전혀 상속받지 못하고 순수 raw 데미지에만 0.5배를 곱했다 — 일격의
+        // 구도자의 정체성인 패시브 3개가 정작 자기 시그니처 스킬(쌍격의 파문)
+        // 에는 하나도 안 실리는 설계 공백이었다. 이제 순일격/메아리 보너스를
+        // 먼저 적용한 뒤 0.5배를 곱한다.
+        if(player.skills && player.skills.includes('mastery_purestrike')){
+          dmg2 = Math.round(dmg2*puristMult);
+        }
+        if(echoTriggeredThisAction){
+          dmg2 = Math.round(dmg2*1.25);
+        }
         dmg2 = applyOutgoingDamageMods(dmg2, {type:'basic', onHitMult});
         if(guaranteedSecondHit) dmg2 = Math.max(1, Math.round(dmg2*0.5));
         enemy.hp = Math.max(0, enemy.hp-dmg2);
