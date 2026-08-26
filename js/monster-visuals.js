@@ -44,7 +44,8 @@ export(전역): heroBossSvg, svgMonster
     orc: 'images/monsters/orc.png',
     spider: 'images/monsters/spider.png',
     witch: 'images/monsters/witch.png',
-    bat: 'images/monsters/bat.png',   
+    bat: 'images/monsters/bat.png',
+    mimic: 'images/monsters/mimic.png',     
   };
 
   function svgMonster(type){
