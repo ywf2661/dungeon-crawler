@@ -118,7 +118,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // 별도로 손봐야 한다 — HANDOFF 참고).
       {id:'warrior_purist', name:'일격의 구도자', icon:'🎯',
         desc:'화려한 스킬 따위 필요 없다. 오직 검 한 자루, 일격 하나만을 극한까지 갈고닦은 구도자.',
-        masteryName:'순일격', masteryDesc:'기본 공격의 피해가 항상 15% 증가한다.', masterySkillId:'mastery_purestrike',
+        masteryName:'순일격', masteryDesc:'기본 공격의 피해가 항상 30% 증가한다.', masterySkillId:'mastery_purestrike',
         activeName:null, activeDesc:null, activeSkillId:null,
         // 레벨12: 메아리 타격(짝수 번째 기본 공격 강화), 레벨15: 쌍격의 파문(확률로
         // 기본 공격이 한 번 더 나감). 전부 combat/player-actions.js의 playerAttack()
@@ -161,10 +161,10 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         // 레벨12/15 둘 다 액티브. 12는 잔영을 "증폭시키는 토글", 15는 이번 전투
         // 누적 잔영 발동 횟수를 그대로 힘으로 바꾸는 궁극기.
         skillLevels: {12:'rogueDoubleImage', 15:'rogueUndeadParade'}},
-      {id:'rogue_alchemist', name:'맹독 연금술사', icon:'⚗',
-        desc:'맹독을 짙게 짜 넣어, 서서히 그러나 확실하게 무너뜨리는 연금술사. 한번 스며든 독은 좀처럼 빠지지 않는다.',
-        masteryName:'독 중첩', masteryDesc:'적에게 쌓인 맹독이 매 라운드 자동으로 피해를 입힌다(전투가 끝날 때까지 지속, 최대 10스택).', masterySkillId:'mastery_venomstacks',
-        activeName:'맹독 주입', activeDesc:'피해와 함께 독 스택을 쌓는다.', activeSkillId:'rogueVenomInject',
+      {id:'rogue_alchemist', name:'독사', icon:'🐍',
+        desc:'스치기만 해도 독이 스며든다. 무기든 맨손이든, 닿는 모든 것이 독으로 물든다.',
+        masteryName:'독 중첩', masteryDesc:'기본 공격과 모든 스킬이 적중할 때마다 적에게 독이 스며든다(+1스택). 쌓인 맹독은 매 라운드 자동으로 피해를 입힌다(전투가 끝날 때까지 지속, 최대 10스택).', masterySkillId:'mastery_venomstacks',
+        activeName:'맹독 주입', activeDesc:'피해와 함께 독 스택을 추가로 더 쌓는다.', activeSkillId:'rogueVenomInject',
         // 레벨12/15는 독 중첩 시스템을 강화하는 패시브 2개.
         skillLevels: {12:'rogueVenomRefine', 15:'rogueVenomTriple'}},
     ],
