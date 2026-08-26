@@ -362,6 +362,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
       reduceMult += getRelicSum('dmgTakenPctMult');
       if(battleFlags && battleFlags.diceEffect==='dmgtaken') reduceMult += 0.3;
+      // 중액 대출(외상 도박사)의 페널티 — 상환율만큼 완화되는 받는 피해 증가.
+      // getDebtorDmgTakenMult()는 대출이 없으면 1을 반환하므로 reduceMult에
+      // 곱해도 다른 직업에는 전혀 영향이 없다.
+      reduceMult *= getDebtorDmgTakenMult();
       reduceMult = Math.max(0.15, reduceMult);
       if(reduceMult!==1) mitigated = Math.max(1, Math.round(mitigated*reduceMult));
 
