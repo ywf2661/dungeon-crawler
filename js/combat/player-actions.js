@@ -206,13 +206,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 알기 어려웠다 — 이제 계약 시 그 원소가 이후 스킬을 어떻게 바꾸는지
       // 한 줄로 함께 안내한다.
       const pactHint = {
-        fire: '이후 원소 각인/파동/폭풍이 화상을 남기는 화력형으로 바뀐다.',
-        ice: '이후 원소 각인/파동/폭풍이 방어를 꿰뚫는 묵직한 일격형으로 바뀐다.',
-        lightning: '이후 원소 각인/파동/폭풍이 빠르고 예리한 연속 타격형으로 바뀐다.',
+        fire: '화상형 화력.',
+        ice: '방어 관통 일격형.',
+        lightning: '연속 타격형.',
       }[s.pactElement];
       setBattleMsg(`${player.name}의 ${s.name}!`, already
         ? `${pactLabel} 계약을 해제했다.`
-        : `${pactLabel}과(와) 계약을 맺었다. ${pactHint} 전투가 끝날 때까지 유지되며, 다른 원소 계약은 자동으로 해제된다.`);
+        : `${pactLabel}과(와) 계약을 맺었다 — ${pactHint}`);
       setCommandsEnabled(true);
       return;
     }
