@@ -614,17 +614,21 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='legiondeploy'){
-      // 역할 배치(로봇군단장 액티브): 정찰/화력/방벽 역할 중 하나를 무작위로 맡은
-      // 로봇 한 기를 즉시 배치한다(원 기획은 "역할 선택"이지만 선택 UI가 없어 다른
-      // 마스터리들과 동일한 방식으로 무작위 선택으로 단순화했다). battleFlags.rig가
-      // 비어있으면 그 자리에, 이미 차 있으면 battleFlags.rig2에 배치한다(다중 전개
-      // 마스터리로 상한 2기). 둘 다 차 있으면 rig(먼저 배치된 쪽)를 교체한다.
+      // 역할 배치(로봇군단장): 사용자 피드백으로 "무작위 배정"을 폐기하고
+      // 계약술사/외상 도박사와 같은 방식으로 재설계했다 — 정찰/화력/방벽을
+      // 각각 독립된 스킬 3개(mechanicDeployRecon/Firepower/Shield, jobs.js의
+      // activeSkillIds 복수형으로 한꺼번에 지급)로 분리해, 원할 때 원하는 역할을
+      // 직접 골라 배치한다. s.roleKind가 있으면 그 역할로 확정 배치하고, 없으면
+      // (구버전 mechanicRoleDeploy 레거시 세이브 호환용) 기존처럼 무작위로 뽑는다.
+      // battleFlags.rig가 비어있으면 그 자리에, 이미 차 있으면 battleFlags.rig2에
+      // 배치한다(다중 전개 마스터리로 상한 2기). 둘 다 차 있으면 rig(먼저 배치된
+      // 쪽)를 교체한다.
       const roles = [
         {kind:'recon', label:'정찰', rigMult:0.55, exposeTurns:3, exposePierce:0.25},
         {kind:'firepower', label:'화력', rigMult:0.95},
         {kind:'shield', label:'방벽', rigMult:0.45, shieldPct:0.2},
       ];
-      const role = roles[Math.floor(Math.random()*roles.length)];
+      const role = s.roleKind ? roles.find(r=>r.kind===s.roleKind) : roles[Math.floor(Math.random()*roles.length)];
       const dmgPerTick = Math.max(1, Math.round(player.mag*role.rigMult));
       const newRig = {kind:role.kind, name:`역할 로봇(${role.label})`, turnsLeft: s.rigTurns, dmgPerTick, shieldPct: role.shieldPct||0};
       let slotMsg;
@@ -658,44 +662,87 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
 
     if(s.type==='legionbarrage'){
       // 집중포화(mechanicFocusFire, 레벨15 궁극기, 로봇군단장): 가동 중인 로봇
-      // (rig/rig2, 있는 만큼)의 역할을 그대로 활용해 함께 사격한다. 화력 로봇은
-      // 화력 보너스, 정찰 로봇은 방어 관통, 방벽 로봇은 사용자 자신에게 방어
-      // 버프를 준다. 로봇 자체는 파괴하지 않는다(turnsLeft 그대로 유지) —
-      // 데토네이터의 "기폭"과 정반대로, 이 분기는 로봇을 계속 살려서 굴리는
-      // 것이 정체성이기 때문(mastery_multideploy의 "폭발 계열 스킬 사용 불가"
-      // 규칙과도 자연히 맞아떨어진다).
+      // (rig/rig2, 있는 만큼)의 역할을 그대로 활용해 함께 사격한다. 로봇 자체는
+      // 파괴하지 않는다(turnsLeft 그대로 유지) — 데토네이터의 "기폭"과 정반대로
+      // 이 분기는 로봇을 계속 살려서 굴리는 것이 정체성이기 때문.
+      //
+      // 연출 재설계(사용자 피드백 — "게이지 모으는 연출과 공격 애니메이션이
+      // 있으면 좋겠다, 텍스트가 너무 빨리 지나간다"): 즉시 한 방에 터지는 대신
+      // (1) 게이지 충전 메시지 → (2) 로봇들이 한 기씩 순차 발사(전체 데미지를
+      // 사격 주체 수만큼 나눠서, 각자 슬롯이 번쩍이며 데미지가 하나씩 뜸) →
+      // (3) 최종 합산 메시지 순서로 진행한다. 각 단계 사이 간격을 750~800ms로
+      // 넉넉히 잡아 실제로 읽을 수 있게 했다(기존 멀티히트류의 220ms는 이런
+      // "서사가 있는" 궁극기에는 너무 빨랐다).
       const rigs = [];
       if(battleFlags.rig && battleFlags.rig.turnsLeft>0) rigs.push('rig');
       if(battleFlags.rig2 && battleFlags.rig2.turnsLeft>0) rigs.push('rig2');
       let dmgBonusPct = 0, piercePct = 0, shieldTurns = 0, shieldMult = 1;
-      const roleMsgs = [];
+      const roleLabels = [];
       rigs.forEach(key=>{
         const r = battleFlags[key];
-        if(r.kind==='firepower'){ dmgBonusPct += 0.5; roleMsgs.push('화력 로봇이 포화에 가담했다'); }
-        else if(r.kind==='recon'){ piercePct += 0.3; roleMsgs.push('정찰 로봇이 급소를 짚어줬다'); }
-        else if(r.kind==='shield'){ shieldTurns = Math.max(shieldTurns, 2); shieldMult = Math.min(shieldMult, 0.7); roleMsgs.push('방벽 로봇이 보호막을 둘렀다'); }
-        else { dmgBonusPct += 0.25; roleMsgs.push(`${r.name}이(가) 사격에 가담했다`); }
+        if(r.kind==='firepower'){ dmgBonusPct += 0.5; roleLabels.push('화력'); }
+        else if(r.kind==='recon'){ piercePct += 0.3; roleLabels.push('정찰'); }
+        else if(r.kind==='shield'){ shieldTurns = Math.max(shieldTurns, 2); shieldMult = Math.min(shieldMult, 0.7); roleLabels.push('방벽'); }
+        else { dmgBonusPct += 0.25; roleLabels.push(r.name); }
       });
       const edefFF = Math.round(getEffectiveEnemyDef(enemy.def)*(1-piercePct));
       const onHitMultFF = consumeOnHitBonuses();
-      let dmg = Math.max(1, Math.round(player.mag*(s.baseMult+dmgBonusPct)) - edefFF);
-      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult:onHitMultFF});
-      enemy.hp = Math.max(0, enemy.hp-dmg);
-      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, rigs.length>0?'crit':undefined);
-      Sound.magic();
-      rigs.forEach(key=> flashRigSlot(key));
-      if(shieldTurns>0){
-        player.buffDefTurns = shieldTurns;
-        player.buffDefMult = shieldMult;
+      let totalDmg = Math.max(1, Math.round(player.mag*(s.baseMult+dmgBonusPct)) - edefFF);
+      totalDmg = applyOutgoingDamageMods(totalDmg, {type:'magicskill', mpCost, onHitMult:onHitMultFF});
+
+      // 사격 주체 = 가동 중인 로봇들 + 플레이어 자신(항상 마지막 한 발을 더한다).
+      const shooters = rigs.length + 1;
+      const per = Math.max(1, Math.round(totalDmg/shooters));
+      const parts = [];
+      let acc = 0;
+      for(let i=0;i<shooters;i++){
+        const isLast = i===shooters-1;
+        const p = isLast ? Math.max(1, totalDmg-acc) : per;
+        acc += p; parts.push(p);
       }
-      renderStatus();
-      updateRigVisuals();
-      const msg2 = rigs.length>0
-        ? `모든 로봇이 동시에 집중사격했다! ${enemy.name}에게 ${dmg}의 피해를 입혔다. ${roleMsgs.join(', ')}. 로봇들은 이후에도 계속 가동된다.`
-        : `가동 중인 로봇이 없어 위력이 크게 약하다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
-      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
-      if(checkBattleEnd()) return;
-      enemyTurn();
+
+      setCommandsEnabled(false);
+      setBattleMsg(`${player.name}의 ${s.name}!`,
+        rigs.length>0 ? '모든 로봇이 조준경을 겨눈다... 게이지가 차오른다!' : '홀로 조준을 마쳤다...');
+      rigs.forEach(key=> flashRigSlot(key));
+
+      let idx = 0;
+      const fireNext = ()=>{
+        if(battleOver) return;
+        const p = parts[idx];
+        enemy.hp = Math.max(0, enemy.hp-p);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+p, 'crit');
+        Sound.magic();
+        let who;
+        if(idx < rigs.length){
+          flashRigSlot(rigs[idx]);
+          who = battleFlags[rigs[idx]].name;
+        } else {
+          who = player.name;
+        }
+        setBattleMsg(`${who}이(가) 발사!`, `${p}의 피해를 입혔다!`);
+        idx++;
+        if(idx<shooters){
+          setTimeout(fireNext, 750);
+        } else {
+          setTimeout(()=>{
+            if(battleOver) return;
+            if(shieldTurns>0){
+              player.buffDefTurns = shieldTurns;
+              player.buffDefMult = shieldMult;
+            }
+            renderStatus();
+            updateRigVisuals();
+            const finalMsg = rigs.length>0
+              ? `집중포화 완료! 총 ${totalDmg}의 피해를 입혔다(${roleLabels.join('+')} 로봇 활약). 로봇들은 이후에도 계속 가동된다.`
+              : `가동 중인 로봇이 없어 위력이 크게 약했다. 총 ${totalDmg}의 피해.`;
+            setBattleMsg(`${player.name}의 ${s.name}!`, finalMsg);
+            if(checkBattleEnd()) return;
+            enemyTurn();
+          }, 800);
+        }
+      };
+      setTimeout(fireNext, 800);
       return;
     }
 
@@ -707,10 +754,31 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(mechTier>=2) tickMult *= 1.2;
       if(mechTier>=3) turns += 1;
       const dmgPerTick = Math.max(1, Math.round(player.mag*tickMult));
-      battleFlags.rig = {
+      const newRig = {
         kind: s.rigKind, name: s.rigName, turnsLeft: turns, dmgPerTick,
         shieldPct: s.shieldPct||0,
       };
+      // 버그 수정: 예전엔 이 분기가 항상 battleFlags.rig 하나만 무조건 덮어써서,
+      // 다중 전개(mastery_multideploy)로 2기까지 가능한 로봇군단장이 자동포탑을
+      // 설치한 뒤 오메가 유닛을 배치하면 자동포탑이 조용히 사라지고 오메가만
+      // 남았다(2기 동시 운용이 안 됐음). 이제 legiondeploy와 동일한 슬롯 배분
+      // 로직을 쓴다 — 단, 다중 전개 마스터리가 없으면 기존처럼 슬롯 1개만
+      // 쓴다(로봇군단장이 아닌 일반 메카닉의 기존 동작은 그대로 유지).
+      const canDual = !!(player.skills && player.skills.includes('mastery_multideploy'));
+      let slotMsgDeploy = '';
+      if(canDual){
+        if(!battleFlags.rig || battleFlags.rig.turnsLeft<=0){
+          battleFlags.rig = newRig;
+        } else if(!battleFlags.rig2 || battleFlags.rig2.turnsLeft<=0){
+          battleFlags.rig2 = newRig;
+          slotMsgDeploy = ' 두 번째 슬롯에 배치되어, 기존 로봇과 함께 가동된다.';
+        } else {
+          battleFlags.rig = newRig;
+          slotMsgDeploy = ' 이미 2기가 있어 가장 먼저 배치된 로봇을 대신했다.';
+        }
+      } else {
+        battleFlags.rig = newRig;
+      }
       // 연쇄 기폭(mastery_chaindetonate): 장치를 설치(전개)할 때마다 기폭 스택이
       // 자동으로 오른다(최대 5). 데토네이터가 아닌 캐릭터는 이 마스터리가 없으므로
       // 아무 영향이 없다.
@@ -737,7 +805,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       renderStatus();
       updateRigVisuals();
-      let msg2 = `${s.rigName}을(를) 전개했다! 첫 사격으로 ${dmg}의 피해를 입혔다. 이후 ${turns}턴간 자동으로 사격한다.`;
+      let msg2 = `${s.rigName}을(를) 전개했다! 첫 사격으로 ${dmg}의 피해를 입혔다. 이후 ${turns}턴간 자동으로 사격한다.${slotMsgDeploy}`;
       const dotLabelsDeploy = applySkillDots(s);
       if(dotLabelsDeploy) msg2 += ` ${dotLabelsDeploy} 효과 부여!`;
       if(s.exposeTurns) msg2 += ' 적의 급소가 드러나 받는 피해가 늘어난다.';
