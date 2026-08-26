@@ -406,16 +406,18 @@
 
   .battle-lower{padding:12px 14px 16px; display:flex; flex-direction:column; gap:10px; flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
   .msgbox{
-    background:linear-gradient(180deg,#e9dcc0,#dccba0);
-    color:var(--ink); border:2px solid #6b5230; border-radius:4px;
-    padding:10px 14px; font-size:15px; min-height:48px; line-height:1.5;
-    box-shadow:inset 0 0 0 1px #ffffff40, 0 4px 10px #00000066;
-    flex-shrink:0;
-  }
+  background:linear-gradient(180deg,#e9dcc0,#dccba0);
+  color:var(--ink); border:2px solid #6b5230; border-radius:4px;
+  padding:10px 14px; font-size:15px; min-height:48px; max-height:130px; line-height:1.5;
+  box-shadow:inset 0 0 0 1px #ffffff40, 0 4px 10px #00000066;
+  flex-shrink:0; overflow-y:auto;
+}
+
   .msgbox .m-line{margin:0;}
   .msgbox .m-line + .m-line{margin-top:2px; opacity:.65; font-size:13.5px;}
 
-  #bt-command-area{display:flex; flex-direction:column; flex:1; min-height:0;}
+ #bt-command-area{display:flex; flex-direction:column; flex:1; min-height:220px;}
+
   .cmd-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; flex-shrink:0;}
   .cmd-btn{
     font-family:'Cinzel'; font-size:14.5px; font-weight:600;
