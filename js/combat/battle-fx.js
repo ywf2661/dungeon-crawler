@@ -195,6 +195,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.title = '이번 전투에서 잔영이 발동한 누적 횟수 — 백귀야행이 이 횟수만큼 분신을 동시에 몰아친다.';
       box.appendChild(b);
     }
+    // 빚(외상 도박사): 전투 중에도 항상 남은 빚과 대략적인 상환율을 확인할 수
+    // 있게 한다. 빚이 없으면(player.debt<=0) 표시하지 않는다.
+    if((player.debt||0) > 0){
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      const repayPct = Math.round(getDebtRepaymentRatio()*100);
+      b.textContent = `📒 빚 ${player.debt}G (상환 ${repayPct}%)`;
+      b.title = '갚은 비율만큼 대출 페널티가 완화된다. 대출 후 일정 층 안에 못 갚으면 황금고블린이 찾아온다.';
+      box.appendChild(b);
+    }
   }
 
   function openSub(mode){
@@ -255,6 +265,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         if(s.type==='goldbet'){
           const stakePreview = Math.min(s.stakeCap||Infinity, Math.round((player.gold||0)*s.stakePct));
           extraInfo = `<div class="si-desc" style="color:var(--gold-bright); margin-top:2px;">💰 지금 걸면 판돈 ${stakePreview}G (보유 ${player.gold||0}G)</div>`;
+        }
+        // 대출(loanborrow 타입, 외상 도박사): 이 종류로 지금까지 몇 번 빌렸는지,
+        // 그리고 지금 빌리면 남은 빚이 얼마가 되는지 미리 보여준다.
+        if(s.type==='loanborrow'){
+          const loan = DEBTOR_LOANS[s.loanKey];
+          const count = (player.loanCounts && player.loanCounts[s.loanKey]) || 0;
+          extraInfo = `<div class="si-desc" style="color:var(--gold-bright); margin-top:2px;">📒 지금까지 ${count}회 대출 · 빌리면 빚 ${(player.debt||0)+loan.amount}G</div>`;
         }
         div.innerHTML = `<div class="si-info"><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div>${extraInfo}</div><div class="si-cost">MP ${mpCost}</div>`;
         if(canUse) div.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
