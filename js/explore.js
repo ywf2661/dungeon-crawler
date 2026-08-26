@@ -304,10 +304,35 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('ex-loc-desc').textContent = loc.desc;
     saveGame();
 
+    // 외상 도박사(jester_debtor): 층을 이동할 때마다 남은 빚에 이자가 붙는다.
+    // 만기 연장(jesterDebtFreeze)으로 얼려둔 층 수가 남아있으면 이번엔 건너뛰고
+    // 카운트만 줄인다. 다른 직업이면 player.debt가 항상 0이라 아무 일도 없다.
+    if(player.debt>0){
+      if(player.debtFreezeFloors>0){
+        player.debtFreezeFloors -= 1;
+        addLog(`만기가 연장되어 있다. 이자가 붙지 않는다. (연장 ${player.debtFreezeFloors}층 남음)`, 'gold');
+      } else {
+        const interest = Math.max(1, Math.round(player.debt*DEBT_INTEREST_RATE));
+        player.debt += interest;
+        addLog(`빚에 이자 ${interest}G가 붙었다. (남은 빚: ${player.debt}G)`, 'warn');
+      }
+      renderStatus();
+      saveGame();
+    }
+
     const isFinalFloor = depth === 50 && !player.endingSeen;
     const isBossFloor = depth>0 && depth % 5 === 0;
     const isRelicFloor = RELIC_ALTAR_FLOORS.includes(depth) && !(player.relicAltarsSeen||[]).includes(depth);
     const isCurseFloor = CURSE_ALTAR_FLOORS.includes(depth) && !(player.curseAltarsSeen||[]).includes(depth);
+    // 황금고블린: 대출 후 DEBT_GRACE_FLOORS 층 안에 못 갚았거나, 올인 대출로
+    // 강제 예약(debtCollectorImminent)되어 있으면 이번 층에 무조건 마주친다.
+    // 최종보스 층보다는 우선순위가 낮지만(그 순간만큼은 존중), 보스/유물/저주
+    // 제단 층보다는 높다 — "언젠가 반드시 청산해야 한다"는 컨셉의 핵심이라
+    // 미루는 게 불가능해야 하기 때문.
+    const isDebtOverdue = player.debt>0 && (
+      player.debtCollectorImminent ||
+      (player.debtBorrowedAtDepth!=null && (depth - player.debtBorrowedAtDepth) >= DEBT_GRACE_FLOORS)
+    );
     const roll = Math.random();
 
     if(isFinalFloor){
@@ -316,6 +341,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
         ? '한 번도 무릎 꿇지 않은 자에게만 열리는 문이, 조용히 그 모습을 드러낸다…'
         : '심장이 터질 듯 두근거린다… 이곳이 회랑의 끝이다.', 'warn');
       setTimeout(()=>startBattle(true, true, isTrueFinal), 400);
+      return;
+    }
+    if(isDebtOverdue){
+      player.debtCollectorImminent = false;
+      addLog('낯익은 발소리… 누군가 두꺼운 장부를 든 채 다가온다.', 'warn');
+      setTimeout(()=>showDebtCollectorEvent(), 500);
       return;
     }
     if(isBossFloor){
