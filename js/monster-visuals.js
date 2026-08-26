@@ -3,6 +3,11 @@
 몬스터/보스 SVG 생성 함수.
 순수 함수(전역 상태 미참조). 의존성 없음.
 export(전역): heroBossSvg, svgMonster
+주의: 'goldgoblin'(황금고블린 — 외상 도박사의 빚쟁이 이벤트 전용 몬스터,
+     combat/battle-setup.js의 GOLDEN_GOBLIN 참고) 케이스를 추가했다. 원래
+     default 폴백(빈 원)으로도 에러 없이 동작은 했지만, "화려한 금색 정장,
+     금니, 손에 장부"라는 컨셉에 맞는 전용 비주얼을 새로 그렸다 — 기존 goblin
+     실루엣을 베이스로 금색 정장 상의와 장부를 추가한 형태.
 */
 
   /* ============ 몬스터 SVG 생성 ============ */
@@ -45,6 +50,22 @@ export(전역): heroBossSvg, svgMonster
         <circle cx="48" cy="63" r="2.4" fill="#1a130c"/><circle cx="72" cy="63" r="2.4" fill="#1a130c"/>
         <path d="M46 82 Q60 92 74 82" stroke="#1a130c" stroke-width="3" fill="none"/>
         <rect x="86" y="55" width="8" height="42" rx="2" fill="#6b5230" transform="rotate(20 86 55)"/>
+      </svg>`;
+      case 'goldgoblin': return `<svg viewBox="0 0 120 120">${glow}
+        <ellipse cx="60" cy="106" rx="34" ry="8" fill="#000" opacity="0.3"/>
+        <path d="M60 26 C42 26 32 42 34 58 C28 62 28 76 38 82 L82 82 C92 76 92 62 86 58 C88 42 78 26 60 26 Z" fill="#5c7a3f"/>
+        <path d="M32 36 L20 16 L38 30 Z" fill="#5c7a3f"/><path d="M88 36 L100 16 L82 30 Z" fill="#5c7a3f"/>
+        <ellipse cx="48" cy="56" rx="6" ry="7" fill="#ffe08a" filter="url(#eg)"/><ellipse cx="72" cy="56" rx="6" ry="7" fill="#ffe08a" filter="url(#eg)"/>
+        <circle cx="48" cy="57" r="2.4" fill="#1a130c"/><circle cx="72" cy="57" r="2.4" fill="#1a130c"/>
+        <path d="M46 74 Q60 82 74 74" stroke="#1a130c" stroke-width="3" fill="none"/>
+        <path d="M50 76 L52 80 L54 76 Z" fill="#fff8e0"/><path d="M66 76 L68 80 L70 76 Z" fill="#fff8e0"/>
+        <path d="M40 84 Q60 74 80 84 L86 116 Q60 126 34 116 Z" fill="#c9a227"/>
+        <path d="M40 84 Q60 74 80 84 L76 96 Q60 88 44 96 Z" fill="#ffe08a" opacity="0.55"/>
+        <path d="M56 86 L59 118 M64 86 L64 120" stroke="#8a6f1a" stroke-width="2" opacity="0.6"/>
+        <rect x="84" y="88" width="18" height="24" rx="2" fill="#3a2c1c" transform="rotate(14 84 88)"/>
+        <rect x="86" y="91" width="14" height="18" rx="1" fill="#e9dcc0" transform="rotate(14 84 88)"/>
+        <line x1="88" y1="97" x2="98" y2="95" stroke="#3a2c1c" stroke-width="1" transform="rotate(14 84 88)"/>
+        <line x1="88" y1="101" x2="98" y2="99" stroke="#3a2c1c" stroke-width="1" transform="rotate(14 84 88)"/>
       </svg>`;
       case 'skeleton': return `<svg viewBox="0 0 120 120">${glow}
         <ellipse cx="60" cy="30" rx="20" ry="22" fill="#dccba0"/>
@@ -276,4 +297,3 @@ export(전역): heroBossSvg, svgMonster
       default: return `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
     }
   }
-
