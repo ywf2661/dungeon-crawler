@@ -29,7 +29,21 @@ export(전역): heroBossSvg, svgMonster
     </svg>`;
   }
 
+  // ---------- 실사(픽셀아트) PNG 몬스터 이미지 ----------
+  // 사용자가 직접 그린 픽셀아트 이미지를 SVG 대신 쓰고 싶은 몬스터를 여기 등록한다.
+  // 등록된 type이면 svgMonster()가 SVG 대신 <img> 태그를 반환한다 — 호출부
+  // (combat/battle-setup.js의 startBattle() 등)는 전혀 손댈 필요가 없다, 이
+  // 함수 하나만 고치면 끝. 새 몬스터 이미지를 추가할 때도 이 객체에 한 줄만
+  // 추가하면 된다.
+  const MONSTER_IMG = {
+    wolf: 'images/monsters/wolf.png',
+    skeleton: 'images/monsters/skeleton.png',
+  };
+
   function svgMonster(type){
+    if(MONSTER_IMG[type]){
+      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:100%; height:100%; object-fit:contain;">`;
+    }
     const glow = `<filter id="eg"><feGaussianBlur stdDeviation="1.4"/></filter>`;
     switch(type){
       case 'slime': return `<svg viewBox="0 0 120 120">${glow}
