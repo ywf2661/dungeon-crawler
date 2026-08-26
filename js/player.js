@@ -4,7 +4,6 @@
 export(전역): newPlayer
 의존성: JOBS(data/jobs.js)
 */
-
   function newPlayer(name, jobId, difficulty){
     const job = JOBS.find(j=>j.id===jobId) || JOBS[0];
     const m = job.statMods;
@@ -28,6 +27,18 @@ export(전역): newPlayer
       relics:[], relicSlots: diff==='hardcore'?4:(diff==='normal'?3:2), relicAltarsSeen:[], curseAltarsSeen:[], relicSkipsUsed:0, relicSkipsMax:2, ledgerStack:0, relicAppliedDeltas:{},
       candleUsed:false, diceDelta:null,
       endingSeen:false, deathCount:0,
+      // 외상 도박사(jester_debtor) 전용 — 다른 직업이면 전부 기본값 그대로 남아
+      // 아무 영향이 없다. debt=현재 남은 빚(이자로 증가, 상환으로 감소),
+      // debtPrincipal=지금까지 빌린 총액(대출 시에만 증가 — 상환 비율 계산의
+      // 분모), loanCounts=대출 종류별 누적 횟수(전액 상환 시 전부 0으로 리셋),
+      // debtAppliedDelta=대출로 실제 오른 공격력/마력 수치(전액 상환 시 정확히
+      // 회수하기 위한 기록 — relics.js의 relicAppliedDeltas와 동일한 설계
+      // 원칙), debtBorrowedAtDepth=이번 빚 사이클을 시작한 깊이(황금고블린
+      // 유예기간 계산 기준, 빚이 없으면 null), debtFreezeFloors=만기 연장 효과가
+      // 남은 층 수, debtCollectorImminent=올인 대출 사용 후 다음 층에 황금고블린을
+      // 강제로 불러오는 플래그.
+      debt:0, debtPrincipal:0, loanCounts:{small:0, medium:0, large:0},
+      debtAppliedDelta:{}, debtBorrowedAtDepth:null, debtFreezeFloors:0, debtCollectorImminent:false,
     };
     p.hp = p.maxhp; p.mp = p.maxmp;
     // 테스트용: 아이디(이름)가 'admin'이면 레벨 9부터 시작한다. combat/battle-end.js의
