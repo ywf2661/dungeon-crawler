@@ -241,6 +241,61 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='loanborrow'){
+      // 대출(외상 도박사 레벨10): 즉시 스탯이 오르고 빚을 진다. 실제 반영은
+      // relics.js의 applyDebtorLoan()에 그대로 위임한다(신규 로직 없음). 턴은
+      // 소모하지 않는다 — 계약술사의 원소계약처럼, 대출을 건 뒤 이어서 바로
+      // 다른 공격 스킬을 쓸 수 있어야 자연스럽기 때문.
+      const loan = DEBTOR_LOANS[s.loanKey];
+      applyDebtorLoan(s.loanKey);
+      renderStatus();
+      updatePlayerStatusBadges();
+      Sound.coin();
+      playCastBurst('def');
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${loan.name}(${loan.amount}G)을(를) 받았다. 그 대가로 [${loan.penaltyLabel}] 페널티가 붙는다. (남은 빚: ${player.debt}G)`);
+      setCommandsEnabled(true);
+      return;
+    }
+
+    if(s.type==='debtfreeze'){
+      // 만기 연장(레벨12): 이자 계산을 몇 층 동안 멈춘다(시간 관리형 — 사용자
+      // 명세). 실제 카운트다운/이자 스킵은 explore.js의 proceedAdvance()에서
+      // player.debtFreezeFloors를 확인해 처리한다.
+      player.debtFreezeFloors = (player.debtFreezeFloors||0) + s.freezeFloors;
+      renderStatus();
+      playCastBurst();
+      Sound.buff();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `빚쟁이와 협상했다. 앞으로 ${player.debtFreezeFloors}층 동안 이자가 붙지 않는다.`);
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='allinloan'){
+      // 올인 대출(레벨15 궁극기): 거액을 추가로 끌어와(고정 6000G, 대출 3종과
+      // 별개의 "메가 대출" — small/medium/large 카운트에는 포함하지 않아
+      // 페널티 종류가 늘어나지는 않는다) 그 돈 자체를 화력으로 바꾼다. 데미지는
+      // 대출 실행 "직후"의 총 빚(player.debt)에 비례한다 — 빚을 많이 짊어지고
+      // 있을수록 강력해지도록. 사용 즉시 다음 층 황금고블린을 확정 예약한다.
+      player.debt = (player.debt||0) + s.loanAmount;
+      player.debtPrincipal = (player.debtPrincipal||0) + s.loanAmount;
+      if(player.debtBorrowedAtDepth==null) player.debtBorrowedAtDepth = depth;
+      const edefAllIn = getEffectiveEnemyDef(enemy.def);
+      const onHitMultAllIn = consumeOnHitBonuses();
+      let dmg = Math.max(1, Math.round(effectiveAtk()*s.baseMult) - edefAllIn) + Math.round(player.debt*s.debtDmgRatio);
+      dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, onHitMult:onHitMultAllIn});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+      Sound.coin();
+      playBanner('올인!', 'enrage');
+      player.debtCollectorImminent = true;
+      renderStatus();
+      updatePlayerStatusBadges();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `빚 ${s.loanAmount}G를 추가로 끌어와 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다! (총 빚: ${player.debt}G) 다음 층에서 황금고블린이 반드시 찾아올 것이다…`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='venominject'){
       // 맹독 주입(rogueVenomInject, 레벨10 액티브, 맹독 연금술사): 피해를 입히는
       // 동시에 독 스택(enemy.venomStacks, 최대 10)을 쌓는 유일한 수단이다. 레벨15
@@ -1652,9 +1707,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(battleOver) return;
     if((player.inv[key]||0)<=0) return;
     // 저주술사(mastery_curseweaver)는 물약 봉인(굶주린 회랑)도 저주 개수만큼의
-    // 확률로 뚫고 나올 수 있다.
+    // 확률로 뚫고 나올 수 있다. 외상 도박사(거액 대출)의 회복 봉인도 여기서
+    // 함께 확인한다 — 서로 다른 시스템이지만 "물약을 못 마신다"는 결과는 같다.
     if(isCurseSealActive('potionLocked', '저주를 찢고 물약을 들이켰다!')){
       setBattleMsg('저주가 목을 조여온다…', '물약을 마실 수 없다!');
+      return;
+    }
+    if(isDebtHealSealActive()){
+      setBattleMsg('빚쟁이가 손목을 붙잡는다…', '빚 때문에 물약을 마실 수 없다!');
       return;
     }
     setCommandsEnabled(false);
@@ -1674,6 +1734,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 칼리버 X: 종언(회랑의 기사)의 회복 감소 저주 — 사용 후 전투가 끝날 때까지
     // 물약 회복 효율이 절반으로 줄어든다.
     if(battleFlags && battleFlags.knightHealCurse) potBoost *= 0.5;
+    // 소액 대출(외상 도박사)의 페널티 — 상환율만큼 완화되는 물약 효율 저하.
+    potBoost *= getDebtorPotionMult();
     let msg='';
     if(key==='potion'){ const h=Math.round(40*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`물약을 마셨다. HP ${h} 회복.`; }
     else if(key==='hipotion'){ const h=Math.round(110*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`상급 물약을 마셨다. HP ${h} 회복.`; }
