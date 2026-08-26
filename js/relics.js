@@ -235,12 +235,19 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     const panel = document.createElement('div');
     panel.className = 'shop-panel relic-panel relic-panel-locked';
     const canPayoff = player.gold >= player.debt;
+    // 빚 액수가 클수록 고블린도 더 위협적인 모습으로 찾아온다(combat/battle-setup.js
+    // 의 DEBT_COLLECTOR_TIERS와 동일한 구간). 담판을 고르기 전에 미리 경고해준다.
+    const tier = getDebtCollectorTier();
+    const tierWarnHtml = tier.label
+      ? `<p style="text-align:center;color:#ff9a7a;font-size:12px;margin:0 0 8px;">빚이 크게 불어나 있다 — 이번엔 <b>${tier.label}황금고블린</b>이 찾아왔다. 평소보다 훨씬 강하다!</p>`
+      : '';
     panel.innerHTML = `<h3 style="color:#ffd76a;">💰 황금고블린 💰</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
         금색 정장을 빼입고 금니를 번뜩이는 고블린이 두꺼운 장부를 옆구리에 낀 채 앞을 가로막는다.<br>
         "아아, 우리 단골손님이시군요. 슬슬... 정리를 좀 해야 하지 않겠어요?"
       </p>
       <p style="text-align:center;color:#ffd76a;font-size:13px;margin:0 0 10px;">남은 빚: ${player.debt}G</p>
+      ${tierWarnHtml}
       <p class="relic-lock-msg" id="dc-lock-msg">내용을 살펴보는 중…</p>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
         <button class="btn" id="dc-payoff" disabled>${canPayoff ? `일시불 정산 (${player.debt}G)` : `일시불 정산 (골드 부족)`}</button>
