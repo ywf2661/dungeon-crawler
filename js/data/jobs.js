@@ -218,6 +218,17 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         desc:'패를 손에 쥔 마술사. 하나둘 모이는 카드가 어떤 조합을 이룰지는 아무도 모른다.',
         masteryName:'패 획득', masteryDesc:'스킬 사용마다 자동으로 카드 한 장 획득, 조합 완성 시 강력한 효과 발동 가능.', masterySkillId:'mastery_drawcard',
         activeName:'패 교환', activeDesc:'원치 않는 카드 한 장을 즉시 새 카드로 교체.', activeSkillId:'jesterExchange'},
+      // 외상 도박사(jester_debtor): 빚을 내서 순간적으로 강해지는 하이리스크
+      // 분기. 레벨10에 소액/중액/거액 대출 3개를 한꺼번에 지급한다(계약술사의
+      // 원소계약처럼 activeSkillIds 복수형 사용). 대출 시스템의 실제 로직(이자,
+      // 상환 비율, 페널티 완화, 황금고블린 이벤트)은 relics.js에 헬퍼 함수로
+      // 구현했다 — getCurseCount/getCurseRewardMult 같은 기존 "메타 자원 집계"
+      // 함수들과 같은 위치·같은 패턴이라 자연스럽게 어울린다.
+      {id:'jester_debtor', name:'외상 도박사', icon:'📒',
+        desc:'빚을 내서 순간적으로 강해지는 도박사. 당장 세지는 대신, 언젠가 반드시 청산해야 한다 — 너무 오래 미루면 빚쟁이가 직접 찾아온다.',
+        masteryName:'복리의 굴레', masteryDesc:'남은 빚에 매 층 이자가 붙어 서서히 불어난다. 갚은 비율만큼 대출의 페널티가 즉시 완화되며, 완전히 갚으면 대출로 얻은 힘도 함께 회수된다.', masterySkillId:'mastery_debtcycle',
+        activeName:'대출', activeDesc:'소액/중액/거액 대출 중 하나를 걸어 즉시 강해지는 대신 빚을 진다(중복 대출로 스택 가능).', activeSkillIds:['jesterLoanSmall','jesterLoanMedium','jesterLoanLarge'],
+        skillLevels: {12:'jesterDebtFreeze', 15:'jesterAllInLoan'}},
     ],
   };
   function getSpecialization(p){
