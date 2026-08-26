@@ -245,10 +245,14 @@
   /* ---------- battle screen ---------- */
   #screen-battle{flex:1; min-height:0;}
   .archway{
-    position:relative; margin:14px 16px 0; height:210px;
-    background:
-      radial-gradient(ellipse at 50% 30%, #3a2c1c66 0%, transparent 65%),
-      linear-gradient(180deg,#0c0906,#171009);
+  position:relative; margin:14px 16px 0; height:210px;
+  background:
+    radial-gradient(ellipse at 50% 30%, #3a2c1c66 0%, transparent 65%),
+    linear-gradient(180deg, #00000000 55%, #171009cc 100%),
+    url('images/backgrounds/dungeon1.png');
+  background-size: cover, cover, cover;
+  background-position: center, center, center;
+  ...
     border:10px solid transparent;
     border-image:linear-gradient(180deg,#5a4527,#2c2013) 1;
     border-radius:110px 110px 8px 8px / 90px 90px 8px 8px;
@@ -261,9 +265,9 @@
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     padding-top:10px;
   }
-  .enemy-stage svg{width:150px; height:150px; filter:drop-shadow(0 8px 14px #00000099);}
-  .enemy-stage.hit svg{animation:hitshake .32s;}
-  .enemy-stage.dying svg{animation:diefade .6s forwards;}
+  .enemy-stage svg, .enemy-stage img{width:150px; height:150px; filter:drop-shadow(0 8px 14px #00000099);}
+   .enemy-stage.hit svg, .enemy-stage.hit img{animation:hitshake .32s;}
+   .enemy-stage.dying svg, .enemy-stage.dying img{animation:diefade .6s forwards;}
   @keyframes hitshake{
     0%,100%{transform:translate(0,0);} 20%{transform:translate(-6px,2px) rotate(-2deg);}
     40%{transform:translate(5px,-2px) rotate(2deg);} 60%{transform:translate(-4px,1px);} 80%{transform:translate(3px,0);}
