@@ -557,8 +557,15 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 마력의 약 1.8배가 매 라운드 들어가는 셈이라, 오래 끄는 전투일수록 강력해진다.
   function getVenomDmgPerStack(){
     if(!(player.skills && player.skills.includes('mastery_venomstacks'))) return 0;
-    let per = Math.max(0.01, player.mag * 0.12);
-    if(player.skills.includes('rogueVenomRefine')) per *= 1.5;
+    // 2차 조정(더 근본적인 수정): 원래 마력(player.mag) 기준으로 계산하고
+    // 있었는데, 도적은 JOBS의 statMods에서 mag:-2로 오히려 페널티를 받는
+    // 직업이라(공격력/속도에 투자하는 게 정상) 비율을 아무리 올려도 기준
+    // 스탯 자체가 작아 체감이 약할 수밖에 없었다. 실제 도적이 투자하는
+    // 스탯인 effectiveAtk() 기준으로 바꾸고, 그에 맞춰 비율도 재조정했다
+    // (atk가 mag보다 값 자체가 크므로 0.22보다 낮은 0.18로 설정).
+    // 독성 정제 배율은 그대로 +90% 유지.
+    let per = Math.max(0.01, effectiveAtk() * 0.18);
+    if(player.skills.includes('rogueVenomRefine')) per *= 1.9;
     const boost = getDotBoostRatio('poison');
     if(boost>0) per *= (1+boost);
     return per;
