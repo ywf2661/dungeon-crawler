@@ -60,6 +60,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
     Sound.slash();
+    // 독 중첩(mastery_venomstacks, 독사): 기본 공격도 독을 남긴다(사용자 요청 —
+    // "도적의 기본공격, 기본스킬에도 독이 묻었으면"). 맹독 주입 자신의 전용
+    // 보너스(+1 또는 +3)와는 별개로, 이 범용 훅은 모든 공격 행동에 공통으로
+    // +1만 준다.
+    if(player.skills && player.skills.includes('mastery_venomstacks')){
+      enemy.venomStacks = Math.min(10, (enemy.venomStacks||0)+1);
+      updateStatusBadges();
+    }
     const healed = applyPassiveLifesteal(dmg);
     rogueRegisterHit(true);
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
@@ -900,6 +908,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const total = parts.reduce((a,b)=>a+b,0);
       if(!magicBased) consumeAtkBuff();
       rogueRegisterHit(!magicBased);
+      // 독 중첩(mastery_venomstacks, 독사): 연속 공격형 스킬(두번베기/그림자
+      // 쇄도 등)도 독을 남긴다. 여러 타를 때려도 이 스킬 사용 1회당 +1만
+      // 준다(개별 타격마다 주면 스택이 지나치게 빨리 차오르기 때문).
+      if(player.skills && player.skills.includes('mastery_venomstacks')){
+        enemy.venomStacks = Math.min(10, (enemy.venomStacks||0)+1);
+      }
       // 잔영(mastery_afterimage): 연속 공격형 스킬도 확정 발동 대상이다(범용
       // phys/magic 분기와 동일한 조건). 몇 타짜리 스킬이었는지·최종 합산 피해가
       // 얼마였는지를 기록해둬, 적 턴 직전 재현 시 같은 타수·같은 연출로
@@ -1646,6 +1660,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
     if(s.type==='magic') Sound.magic(); else Sound.slash();
+    // 독 중첩(mastery_venomstacks, 독사): 기본 공격뿐 아니라 이 범용 phys/magic
+    // 분기를 타는 모든 스킬(백스탭/암살 등)도 독을 남긴다. 맹독 주입 자신은
+    // 별도의 전용 타입('venominject')이라 이 훅을 타지 않는다 — 중복 없음.
+    if(player.skills && player.skills.includes('mastery_venomstacks')){
+      enemy.venomStacks = Math.min(10, (enemy.venomStacks||0)+1);
+      updateStatusBadges();
+    }
     let afterimageMsg2 = '';
     if(willQueueAfterimage){
       battleFlags.afterimagePending = true;
