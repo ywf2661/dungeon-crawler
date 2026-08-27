@@ -108,6 +108,13 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
             }
             return;
           }
+          // 노드맵 시스템: 이번 승리가 구간의 보스(노드맵 마지막 행)였다면
+          // 다음 구간으로 넘어가도록 타이어를 올리고 지도를 비운다("나아가다"를
+          // 다시 누르면 새 지도가 생성된다). 일반 전투/정예 승리는 해당 없음.
+          if(enemy.isBoss && player.nodeMap && player.nodeRow === player.nodeMap.length-1){
+            player.tierIndex += 1;
+            player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
+          }
           showScreen('explore');
           const lines = [{text:`${enemy.name}을(를) 물리쳤다. (EXP +${enemy.exp}, 골드 +${g})`, cls:'gold'}];
           if(rareDropId){
