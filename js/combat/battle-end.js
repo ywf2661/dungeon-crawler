@@ -202,7 +202,12 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           player.gold = Math.floor(player.gold*0.5);
           player.hp = player.maxhp; player.mp = player.maxmp;
         }
-        depth = 0; town = true; inBossDen = false; bossDenFloor = 0;
+        // 노드맵 시스템: 사망 후 마을 귀환도 onReturnTown()과 동일하게 지도를
+        // 지운다(사용자 피드백 — "죽은 노드에서 다시 시작하는 게 이상하다").
+        // tierIndex(어느 보스를 잡아야 하는지)는 그대로 유지 — 다음에 나갈 때
+        // 같은 구간의 "새" 지도가 생성된다.
+        depth = player.tierIndex*5; town = true; inBossDen = false; bossDenFloor = 0;
+        player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
         saveGame();
       }, 900);
       return true;
