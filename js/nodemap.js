@@ -239,7 +239,7 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
       progressLabel.innerHTML =
         `<span style="display:flex; justify-content:space-between; align-items:center;">`
         + `<span>구간 진행 ${stepNow}/${totalSteps-1}</span>`
-        + `<button id="node-map-toggle" class="btn" style="padding:3px 10px; font-size:11px; width:auto;">${nodeMapCollapsed?'지도 펼치기 ▼':'지도 접기 ▲'}</button>`
+        + `<button id="node-map-toggle" class="btn" style="padding:3px 10px; font-size:11px; width:auto; pointer-events:auto;">${nodeMapCollapsed?'지도 펼치기 ▼':'지도 접기 ▲'}</button>`
         + `</span>`;
       const toggleBtn = document.getElementById('node-map-toggle');
       if(toggleBtn) toggleBtn.addEventListener('click', ()=>{
