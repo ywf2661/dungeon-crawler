@@ -46,6 +46,15 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.fateBoostMult===undefined) player.fateBoostMult = 0;
       if(player.endingSeen===undefined) player.endingSeen = false;
       if(player.deathCount===undefined) player.deathCount = 0;
+      // 노드맵 시스템(신규) — 예전 세이브에는 이 필드들이 없으므로 안전하게
+      // 채워 넣는다. tierIndex는 기존에 저장된 depth로부터 역산한다(예:
+      // depth=7이었다면 5층 보스를 이미 넘긴 뒤였을 테니 tierIndex=1로 복구,
+      // 정확히 안 맞아도 다음 "나아가다"에서 새 지도를 뽑으므로 큰 문제 없음).
+      if(player.tierIndex===undefined) player.tierIndex = Math.floor(Math.max(0,depth-1)/5);
+      if(player.nodeMap===undefined) player.nodeMap = null;
+      if(player.nodeRow===undefined) player.nodeRow = -1;
+      if(player.nodeCurrentId===undefined) player.nodeCurrentId = null;
+      if(player.nodeVisited===undefined) player.nodeVisited = [];
       if(player.level>=10 && !player.jobChosenAt10) player.jobAdvancePending = true;
       if(needsSpecializationMigration(player)) player.jobAdvancePending = true; // 레거시 하이브리드 → 재전직 필요
       document.getElementById('statusbar').style.display='flex';
@@ -138,6 +147,9 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('btn-town').style.display = town ? 'none' : 'block';
     const bossDenBtn = document.getElementById('btn-bossden');
     if(bossDenBtn) bossDenBtn.style.display = (!inBossDen && player && (player.level||1) >= 15) ? 'block' : 'none';
+    // 노드맵 영역 갱신 — 마을/보스소굴이 아니고 진행 중인 지도가 있으면 이
+    // 함수가 알아서 '나아가다'/'휴식'/'상점' 버튼을 감추고 지도를 보여준다.
+    renderNodeMapArea();
     const logEl = document.getElementById('ex-log');
     if(newLines){
       newLines.forEach(l=>{
@@ -179,7 +191,13 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   }
 
   function onReturnTown(){
-    town = true; depth = 0;
+    town = true;
+    // 노드맵 시스템: 마을로 돌아가면 진행 중이던 지도는 버려진다(다음에 나갈 때
+    // 새 지도가 생성됨). 다만 tierIndex(어느 보스를 잡아야 하는지)는 그대로
+    // 유지되므로, depth 표시는 "마지막으로 클리어한 보스 층수"로 맞춘다
+    // (예: 5층 보스를 잡은 뒤 마을에 왔다면 depth=5로 표시).
+    depth = player.tierIndex*5;
+    player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
     inBossDen = false; bossDenFloor = 0;
     player.hp = player.maxhp; player.mp = player.maxmp;
     renderStatus();
@@ -258,15 +276,23 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     }
     if(town){
       town = false;
-      renderExplore(['다시 어둠 속 회랑으로 발을 들였다.']);
+      // 노드맵 시스템: 마을을 나설 때 지도가 없으면(처음이거나, 방금 보스를
+      // 잡고 돌아왔거나, 지난번에 마을로 도망쳐서 지도를 버렸거나) 새로
+      // 생성한다. tierIndex는 그대로라 "어느 보스를 잡아야 하는지"는 안 바뀐다.
+      if(!player.nodeMap){
+        enterNodeMapTier();
+      } else {
+        renderExplore(['다시 어둠 속 회랑으로 발을 들였다.']);
+      }
       saveGame();
       return;
     }
-    if(depth === 49 && !player.endingSeen){
-      showFinalFloorConfirm();
-      return;
+    // 마을도 보스소굴도 아닌데 이 버튼이 보인다는 건 지도가 없다는 뜻이다
+    // (지도가 있으면 renderNodeMapArea()가 이 버튼을 숨기고 지도를 보여준다) —
+    // 즉 방금 이 구간의 보스를 잡고 다음 구간으로 넘어가려는 상황.
+    if(!player.nodeMap){
+      enterNodeMapTier();
     }
-    proceedAdvance();
   }
 
   function showFinalFloorConfirm(){
@@ -292,10 +318,25 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     panel.querySelector('#final-confirm-cancel').addEventListener('click', ()=>overlay.remove());
     panel.querySelector('#final-confirm-go').addEventListener('click', ()=>{
       overlay.remove();
-      proceedAdvance();
+      // 노드맵 시스템 도입 후: depth는 이미 resolveNode()의 보스 분기에서
+      // 50으로 확정되어 있으므로, 여기서는 곧장 최종보스 전투만 시작한다
+      // (예전의 proceedAdvance() 재호출 — depth+=1 등 — 은 더 이상 맞지 않음).
+      const isTrueFinal = (player.deathCount||0) === 0;
+      addLog(isTrueFinal
+        ? '한 번도 무릎 꿇지 않은 자에게만 열리는 문이, 조용히 그 모습을 드러낸다…'
+        : '심장이 터질 듯 두근거린다… 이곳이 회랑의 끝이다.', 'warn');
+      setTimeout(()=>startBattle(true, true, isTrueFinal), 400);
     });
   }
 
+  // [레거시/보류] 노드맵 도입 전, "나아가다"를 누를 때마다 직접 depth를 올리고
+  // 그 자리에서 보스/유물/저주/일반 조우를 확률로 굴리던 예전 로직. 지금은
+  // onAdvance()가 더 이상 이 함수를 호출하지 않는다(대신 nodemap.js의
+  // resolveNode()가 이 역할을 전부 대체함 — 보스는 노드맵의 보스 행, 유물/저주는
+  // 노드 타입으로 흡수됨). 삭제하지 않고 남겨두는 이유: 외상 도박사(jester_debtor,
+  // 현재 admin 전용 잠금 + 리뉴얼 보류 상태)의 "황금고블린 유예기간" 강제 발동
+  // 로직이 이 함수 안에 있는데, 그 직업을 다시 다듬을 때 이 로직을 노드맵 쪽으로
+  // 옮겨와야 하므로 참고용으로 보존한다.
   function proceedAdvance(){
     depth += 1;
     const loc = currentLocation();
