@@ -139,8 +139,36 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         skills: base.skills, guarding:false,
       });
     }
+    // 몬스터 선택: 예전엔 조건(depth>=minDepth)만 맞으면 전부 동일 확률로
+    // 뽑혀서, 고층에서도 1층 몬스터(박쥐 등)가 26층 몬스터(악마 등)랑 똑같이
+    // 나올 수 있었다. 특히 "정예 박쥐 떼"처럼 저층 잡몹이 고층에서 정예로
+    // 등장하면 스탯만 세졌지 위협감은 그대로 없어서 긴장감이 떨어진다는
+    // 피드백을 받았다. 이제 몬스터의 minDepth와 현재 depth 사이의 "격차"가
+    // 클수록 뽑힐 확률을 부드럽게 낮춘다(하드 컷오프는 아님 — 아주 가끔은
+    // 여전히 나올 수 있어 완전히 안 보이진 않는다). 보스 풀(BOSSES)은 원래도
+    // 몬스터 수가 적고 이미 구간별로 어느 정도 안배돼 있어 그대로 균등 추첨을
+    // 유지한다.
+    function pickWeightedMonster(pool, atDepth){
+      // 지수 감쇠(k=0.13): 단순 반비례(1/(1+gap))보다 훨씬 빠르게 떨어진다 —
+      // 고층에선 자격 있는 몬스터 수 자체가 많아져서 반비례 방식으론 "나눠먹기"
+      // 때문에 저층 몬스터가 여전히 몇 %씩 나왔다(예: 40층에서도 박쥐 4%).
+      // 지수 감쇠로 바꾸니 같은 상황에서 박쥐가 1% 수준까지 확실히 낮아진다.
+      const weights = pool.map(m=>{
+        const gap = Math.max(0, atDepth - m.minDepth);
+        return Math.exp(-gap*0.13);
+      });
+      const total = weights.reduce((a,b)=>a+b, 0);
+      let r = Math.random()*total;
+      for(let i=0;i<pool.length;i++){
+        r -= weights[i];
+        if(r<=0) return pool[i];
+      }
+      return pool[pool.length-1];
+    }
     const pool = (isBoss?BOSSES:MONSTERS).filter(m=>depth>=m.minDepth);
-    const base = pool[Math.floor(Math.random()*pool.length)] || (isBoss?BOSSES[0]:MONSTERS[0]);
+    const base = isBoss
+      ? (pool[Math.floor(Math.random()*pool.length)] || BOSSES[0])
+      : (pickWeightedMonster(pool, depth) || MONSTERS[0]);
     const scale = 1 + depth*0.06;
     // 엘리트: 보스가 아닌 일반 몬스터 중 낮은 확률로 강화판이 등장한다. 처치 시 유물이 확정으로 주어진다.
     // 정예: 노드맵의 '정예 전투' 노드를 골랐으면(nodeForcedElite) 확정으로
