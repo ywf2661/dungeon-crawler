@@ -4,14 +4,8 @@
 난이도별 몬스터 스탯 보정, 적 선택(pickEnemy), 전투 시작(startBattle).
 export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pickFinalBossJob,
               canEnrage, triggerEnragePhase, getDifficultyMonsterMult, scaleEnemyForDifficulty,
-              pickEnemy, GOLDEN_GOBLIN, pickDebtCollector, startBattle
-의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS,
-       DEBTOR_LOANS 등), Sound(sound.js), showToast(ui/difficulty.js)
-주의: startBattle()에 4번째 인자 isDebtCollector가 추가되었다 — 외상 도박사(jester_debtor)의
-     빚을 오래 방치했을 때 강제로 마주치는 "황금고블린" 이벤트 전투를 최종보스와 동일한
-     패턴(일반 몬스터 풀을 쓰지 않고 직접 구성)으로 시작시킨다. 실제 승리/패배 시의 특수
-     보상·페널티 처리는 combat/battle-end.js의 checkBattleEnd()에서 enemy.isDebtCollector를
-     확인해 처리한다(정상적인 게임오버로 이어지지 않고 살아남는 것이 핵심 차이).
+              pickEnemy, startBattle
+의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS 등), Sound(sound.js), showToast(ui/difficulty.js)
 */
 
   /* ============ 전투 ============ */
@@ -34,46 +28,6 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   function pickFinalBossJob(){
     const ids = JOBS.map(j=>j.id);
     return ids[Math.floor(Math.random()*ids.length)];
-  }
-
-  // 황금고블린 — 외상 도박사의 빚을 오래 방치하면 등장하는 강제 이벤트 전용
-  // 몬스터. 일반 몬스터 풀(MONSTERS/BOSSES)에는 넣지 않고, 최종보스와 동일한
-  // 패턴으로 필요할 때 직접 구성해서 등장시킨다. 골드 드랍은 0으로 뒀다 —
-  // 이 전투의 보상은 일반 처치 골드가 아니라 빚 탕감(승리) 자체이기 때문
-  // (combat/battle-end.js 참고).
-  const GOLDEN_GOBLIN = {
-    name:'황금고블린', type:'goldgoblin', hp:120, atk:16, def:8, spd:9,
-    exp:60, gold:[0,0], skills:['smash'],
-  };
-  // 빚이 클수록 황금고블린도 더 무섭게 찾아온다(사용자 요청 — "단계적으로
-  // 강해짐"). 빚 액수 구간별로 4단계를 뒀다: 평범한 빚(0단계)부터, 아주 크게
-  // 불려놓은 빚(3단계, "왕초")까지. 이름 접두어도 함께 바뀌어 한눈에 위협도를
-  // 알 수 있게 했다.
-  const DEBT_COLLECTOR_TIERS = [
-    {minDebt:0,     label:'',       hp:1.0, atk:1.0, def:1.0},
-    {minDebt:2500,  label:'거물 ',  hp:1.4, atk:1.25, def:1.15},
-    {minDebt:6000,  label:'큰손 ',  hp:1.9, atk:1.5,  def:1.3},
-    {minDebt:12000, label:'왕초 ',  hp:2.6, atk:1.85, def:1.5},
-  ];
-  function getDebtCollectorTier(){
-    const d = player.debt||0;
-    let tier = DEBT_COLLECTOR_TIERS[0];
-    for(const t of DEBT_COLLECTOR_TIERS){ if(d>=t.minDebt) tier = t; }
-    return tier;
-  }
-  function pickDebtCollector(){
-    const scale = 1 + depth*0.05;
-    const tier = getDebtCollectorTier();
-    return scaleEnemyForDifficulty({
-      type: GOLDEN_GOBLIN.type, name: tier.label+GOLDEN_GOBLIN.name, isBoss:true, isDebtCollector:true,
-      maxhp: Math.round(GOLDEN_GOBLIN.hp*scale*tier.hp), hp: Math.round(GOLDEN_GOBLIN.hp*scale*tier.hp),
-      atk: Math.round(GOLDEN_GOBLIN.atk*scale*0.8*tier.atk),
-      def: Math.round((GOLDEN_GOBLIN.def + depth*0.1)*tier.def),
-      spd: GOLDEN_GOBLIN.spd,
-      exp: GOLDEN_GOBLIN.exp,
-      gold: GOLDEN_GOBLIN.gold,
-      skills: GOLDEN_GOBLIN.skills, guarding:false,
-    });
   }
 
   // ---------- 최종보스 / 진 최종보스 페이즈(광폭화) 시스템 ----------
@@ -165,7 +119,12 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     const base = pool[Math.floor(Math.random()*pool.length)] || (isBoss?BOSSES[0]:MONSTERS[0]);
     const scale = 1 + depth*0.06;
     // 엘리트: 보스가 아닌 일반 몬스터 중 낮은 확률로 강화판이 등장한다. 처치 시 유물이 확정으로 주어진다.
-    const isElite = !isBoss && depth>=3 && Math.random()<0.10;
+    // 정예: 노드맵의 '정예 전투' 노드를 골랐으면(nodeForcedElite) 확정으로
+    // 정예가 나온다 — 이 경우 nodemap.js의 resolveNode()가 플래그를 세워둔다.
+    // 그 외엔 예전처럼 낮은 확률로 무작위 등장한다(구간 없이 시작하는 보스소굴
+    // 등 레거시 경로용으로 남겨둠).
+    const isElite = !isBoss && (nodeForcedElite || (depth>=3 && Math.random()<0.10));
+    nodeForcedElite = false;
     const eliteMult = isElite ? {hp:1.8, atk:1.35, def:1.3, reward:2.2} : {hp:1, atk:1, def:1, reward:1};
     // 보스소굴은 에픽/희귀 파밍을 위한 공간이므로, 여기서 잡는 보스는 골드/경험치 보상이 크게 줄어든다
     // (드랍 확률 자체는 그대로 유지되어, 장비 파밍 목적은 그대로 살아있다).
@@ -183,9 +142,9 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     });
   }
 
-  function startBattle(isBoss, isFinal, isTrueFinal, isDebtCollector){
+  function startBattle(isBoss, isFinal, isTrueFinal){
     revertDiceDelta(); // 직전 전투의 불확실성의 주사위 효과가 남아있다면 먼저 되돌린다(안전망).
-    enemy = isDebtCollector ? pickDebtCollector() : pickEnemy(isBoss, isFinal, isTrueFinal);
+    enemy = pickEnemy(isBoss, isFinal, isTrueFinal);
     battleOver = false; subMode = null;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null};
     battleFlags.creed = null; battleFlags.creedStacks = 0;
@@ -210,30 +169,15 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       player.hp = Math.max(1, Math.round(player.maxhp*hpLockPct));
     }
     showScreen('battle');
-    // 던전 배경(구역별): 층이 깊어질수록 dungeon1.png→dungeon6.png로 점점 더
-    // 불길한 배경으로 바뀐다(monster-visuals.js의 getDungeonBgForDepth 참고).
-    // .archway의 CSS 배경(그라데이션 2겹 + 이미지)을 인라인 스타일로 통째로
-    // 덮어써야 한다 — background-image는 레이어 단위로 부분 교체가 안 되고
-    // 전체가 한 번에 지정되기 때문. index.html의 .archway CSS는 그대로 둬도
-    // 되며(인라인 스타일이 항상 우선), 혹시 이 코드가 실행되기 전 잠깐 보이는
-    // 초기 화면의 안전한 기본값 역할을 한다.
-    const archwayEl = document.querySelector('.archway');
-    if(archwayEl){
-      archwayEl.style.backgroundImage =
-        `radial-gradient(ellipse at 50% 30%, #3a2c1c66 0%, transparent 65%), `+
-        `linear-gradient(180deg, #00000000 55%, #171009cc 100%), `+
-        `url('${getDungeonBgForDepth(depth)}')`;
-    }
     document.getElementById('bt-ename').innerHTML =
       (enemy.isElite ? '<span class="elite-tag">⚔ 정예</span>' : '')
-      + (isDebtCollector ? '💰 ' : (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':''))))
+      + (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))
       + enemy.name;
     document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
     document.getElementById('bt-stage').className='enemy-stage'+(enemy.isElite?' elite':'');
     updateEnemyHpBar();
     updateStatusBadges();
-    setBattleMsg(isDebtCollector ? `${enemy.name}이(가) 장부를 펼치며 다가온다… "자, 슬슬 이야기 좀 할까요?"`
-      : (isTrueFinal ? `${enemy.name}이(가) 마침내 진정한 모습을 드러낸다!` : (isFinal ? `${enemy.name}이(가) 마침내 모습을 드러냈다!` : (isBoss ? `${enemy.name}이(가) 앞을 가로막는다!` : (enemy.isElite ? `심상치 않은 기운이 감돈다… ${enemy.name}이(가) 나타났다!` : `${enemy.name}이(가) 나타났다!`)))), '');
+    setBattleMsg(isTrueFinal ? `${enemy.name}이(가) 마침내 진정한 모습을 드러낸다!` : (isFinal ? `${enemy.name}이(가) 마침내 모습을 드러냈다!` : (isBoss ? `${enemy.name}이(가) 앞을 가로막는다!` : (enemy.isElite ? `심상치 않은 기운이 감돈다… ${enemy.name}이(가) 나타났다!` : `${enemy.name}이(가) 나타났다!`))), '');
     resetCommandUI();
     renderStatus();
     // 불확실성의 주사위: 전투 시작 시 어떤 효과가 뽑혔는지 토스트로 알려준다.
