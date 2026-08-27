@@ -75,10 +75,25 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       }
       let rareDropId = null;
       if(!isFinalKill){
-        let rareChance = enemy.isBoss ? 0.12 : 0.035;
+        // 정예 처치 보상 재설계(사용자 요청): 예전엔 정예를 잡으면 유물 제단이
+        // 확정으로 떴는데, 노드맵 도입 후 유물 제단이 구간당 1개 노드로 이미
+        // 따로 있어서 두 개를 합치면 유물 선택이 너무 자주 뜨는 문제가 있었다.
+        // 이제 유물은 "제단 노드를 통해서만" 얻고, 정예는 대신 확정으로 희귀
+        // 장비를 준다 — 일반전투(낮은 확률) < 정예(확정 희귀템) < 보스(높은
+        // 확률+에픽) < 유물/저주 제단(빌드 선택)으로 보상 사다리가 분리된다.
+        let rareChance = enemy.isBoss ? 0.12 : (enemy.isElite ? 1.0 : 0.035);
         rareChance *= (1 + getSpecialSum('rareDropBoost') + getRelicSum('rareDropPctBonus') + curseRewardMult);
         if(Math.random() < rareChance) rareDropId = findRareDropForDepth();
         if(rareDropId) player.equipOwned.push(rareDropId);
+      }
+      // 정예인데 확정 희귀 드랍이 안 나온 경우(findRareDropForDepth()가 null —
+      // 이미 이 깊이에서 나올 수 있는 희귀템을 전부 모았을 때) 대비 안전장치.
+      // "확정 보상"이라고 해놓고 정말 아무것도 안 주면 안 되므로, 대신 이번
+      // 처치 골드의 절반만큼을 보너스로 추가한다.
+      let eliteBonusGold = 0;
+      if(enemy.isElite && !isFinalKill && !rareDropId){
+        eliteBonusGold = Math.max(1, Math.round(g*0.5));
+        player.gold += eliteBonusGold;
       }
       // 에픽 드랍은 rareDropBoost의 영향을 받지 않는 별도 확률 판정이지만,
       // 네잎클로버처럼 rareDropBoost 특성을 가진 장비를 착용 중이면 별도로 크게 상승하고,
@@ -126,13 +141,18 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
             lines.push({text:`✦✦ 에픽 아이템 [${eitem.name}]을(를) 손에 넣었다! (${statsText(eitem.stats)})`, cls:'gold'});
           }
           if(enemy.isElite){
-            lines.push({text:`⚔ 정예를 쓰러뜨린 대가로, 유물의 힘이 그대를 부른다…`, cls:'gold'});
+            // rareDropId가 위에서 확정(100%)으로 채워지거나, 풀이 소진됐으면
+            // eliteBonusGold로 대신 보상된다(둘 중 하나는 항상 발생) — 예전의
+            // "유물의 힘이 그대를 부른다" + 유물 제단 자동 소환은 삭제됐다(유물은
+            // 이제 노드맵의 유물 제단 노드에서만 얻는다).
+            lines.push({text: rareDropId
+              ? `⚔ 정예를 쓰러뜨린 대가로 희귀한 장비를 확실히 손에 넣었다.`
+              : `⚔ 정예를 쓰러뜨렸지만 새로 얻을 희귀 장비가 남아있지 않아, 대신 골드 ${eliteBonusGold}G를 더 챙겼다.`, cls:'gold'});
           }
           renderExplore(lines);
           if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
           if(rareDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[rareDropId]), 150*leveled.length + 200);
           if(epicDropId) setTimeout(()=>showEpicDropToast(EPIC_EQUIPMENT[epicDropId]), 150*leveled.length + (rareDropId?500:200));
-          if(enemy.isElite) setTimeout(()=>showRelicAltar(), 150*leveled.length + (rareDropId?500:200) + (epicDropId?500:200) + 500);
           saveGame();
         }, 1300);
       }, 500);
