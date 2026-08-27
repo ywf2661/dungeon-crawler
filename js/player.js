@@ -51,6 +51,10 @@ export(전역): newPlayer
       // 교환"하는 방식으로 재설계). 정예 몬스터를 처치할 때마다 쌓이고,
       // 마을의 교환소(exchange.js)에서 에픽 장비와 교환해 소비한다.
       eliteSeals:0,
+      // 오프닝 심리테스트(origin.js) — 실제 값은 퀴즈 완료 시 채워진다. 여기서는
+      // 안전한 빈 기본값만 둔다(전투 스케일링 등 다른 계산식이 undefined를 0으로
+      // 처리하므로 없어도 안전하지만, 명시적으로 두는 편이 읽기 좋다).
+      originBonuses:{}, originTraits:[], originGrowthRemainder:{hp:0, mp:0, atk:0, spd:0},
     };
     p.hp = p.maxhp; p.mp = p.maxmp;
     // 테스트용: 아이디(이름)가 'admin'이면 레벨 9부터 시작한다. combat/battle-end.js의
