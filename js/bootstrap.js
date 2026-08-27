@@ -90,6 +90,7 @@ export(전역): init, showMaintenanceModal, isAdminName
     document.getElementById('btn-shop').addEventListener('click', openShop);
     document.getElementById('btn-equip').addEventListener('click', openEquipment);
     document.getElementById('btn-relics').addEventListener('click', showMyRelics);
+    document.getElementById('btn-exchange').addEventListener('click', openExchange);
     document.getElementById('btn-town').addEventListener('click', onReturnTown);
     document.getElementById('btn-bossden').addEventListener('click', enterBossDen);
     document.getElementById('cmd-attack').addEventListener('click', ()=>{ Sound.click(); playerAttack(); });
