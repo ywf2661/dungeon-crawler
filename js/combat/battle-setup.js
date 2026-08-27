@@ -210,6 +210,20 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       player.hp = Math.max(1, Math.round(player.maxhp*hpLockPct));
     }
     showScreen('battle');
+    // 던전 배경(구역별): 층이 깊어질수록 dungeon1.png→dungeon6.png로 점점 더
+    // 불길한 배경으로 바뀐다(monster-visuals.js의 getDungeonBgForDepth 참고).
+    // .archway의 CSS 배경(그라데이션 2겹 + 이미지)을 인라인 스타일로 통째로
+    // 덮어써야 한다 — background-image는 레이어 단위로 부분 교체가 안 되고
+    // 전체가 한 번에 지정되기 때문. index.html의 .archway CSS는 그대로 둬도
+    // 되며(인라인 스타일이 항상 우선), 혹시 이 코드가 실행되기 전 잠깐 보이는
+    // 초기 화면의 안전한 기본값 역할을 한다.
+    const archwayEl = document.querySelector('.archway');
+    if(archwayEl){
+      archwayEl.style.backgroundImage =
+        `radial-gradient(ellipse at 50% 30%, #3a2c1c66 0%, transparent 65%), `+
+        `linear-gradient(180deg, #00000000 55%, #171009cc 100%), `+
+        `url('${getDungeonBgForDepth(depth)}')`;
+    }
     document.getElementById('bt-ename').innerHTML =
       (enemy.isElite ? '<span class="elite-tag">⚔ 정예</span>' : '')
       + (isDebtCollector ? '💰 ' : (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':''))))
