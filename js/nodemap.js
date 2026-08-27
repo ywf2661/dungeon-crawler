@@ -194,10 +194,8 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
         renderExplore([]);
         break;
       case 'event':
-        // TODO: 미지의 사건 실제 내용(황금고블린 대출/에픽 선택/버려진 제단 등)은
-        // 다음 작업에서 채운다. 지금은 안전한 임시 처리(작은 골드 보상)로 막아둔다.
-        addLog('무언가 심상치 않은 기운이 느껴졌지만, 별다른 일은 일어나지 않았다. (미지의 사건 — 추후 구현 예정)', 'gold');
-        renderExplore([]);
+        addLog('무언가 심상치 않은 기운이 느껴진다…', 'gold');
+        setTimeout(()=>showMysteryEvent(), 400);
         break;
       default:
         addLog('그림자 속에서 무언가 튀어나왔다!', 'warn');
