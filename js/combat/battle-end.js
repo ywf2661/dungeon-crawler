@@ -186,6 +186,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
           if(rareDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[rareDropId]), 150*leveled.length + 200);
           if(epicDropId) setTimeout(()=>showEpicDropToast(EPIC_EQUIPMENT[epicDropId]), 150*leveled.length + (rareDropId?500:200));
+          if(enemy.isElite) setTimeout(()=>showEliteSealToast(), 150*leveled.length + (rareDropId?500:200) + (epicDropId?500:200));
           saveGame();
         }, 1300);
       }, 500);
@@ -405,6 +406,19 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     if(specKey) names.push(SKILLDB[specKey].name);
     Sound.levelUp();
     t.innerHTML = `<h3>레벨 업! Lv.${lv}</h3><p>최대 HP/MP와 능력치가 상승했다.</p>${names.length?`<p>새로운 스킬 습득: <b>${names.join(', ')}</b></p>`:''}`;
+    document.getElementById('app').appendChild(t);
+    setTimeout(()=>t.remove(), 2200);
+  }
+
+  // 정예의 인장 토스트(사용자 요청) — 예전엔 탐험 로그 한 줄로만 알려줘서
+  // 눈에 잘 안 띄었다. showRareDropToast류와 동일한 패턴의 프롬프트 팝업으로
+  // 확실히 보이게 한다.
+  function showEliteSealToast(){
+    const t = document.createElement('div');
+    t.className='toast';
+    t.style.borderColor = '#ffd76a';
+    Sound.coin();
+    t.innerHTML = `<h3 style="color:#ffd76a;">🔱 정예의 인장 획득!</h3><p>보유 ${player.eliteSeals}개</p><p style="opacity:.75;">마을 교환소에서 원하는 에픽 장비와 교환할 수 있다.</p>`;
     document.getElementById('app').appendChild(t);
     setTimeout(()=>t.remove(), 2200);
   }
