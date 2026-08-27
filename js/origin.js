@@ -62,6 +62,9 @@ export(전역): showOriginQuiz
     ],
   };
 
+  // 실제 화면에는 표시하지 않는다(사용자 요청 — "이게 뭔가 싶어야 한다", 정확한
+  // 수치를 알려주면 신비로움이 깨짐). combat/battle-end.js에서 실제 수치를 어떻게
+  // 적용하는지 찾아볼 때 참고하는 개발자용 문서 역할만 한다.
   const ORIGIN_BONUS_LABEL = {
     gold: '전투 승리 시 골드 획득 +8%',
     truth: '경험치 획득 +8%',
@@ -102,9 +105,6 @@ export(전역): showOriginQuiz
         <div style="color:var(--parchment); font-size:14.5px; line-height:2; font-style:italic; margin-bottom:22px;">
           ${lines.map(l=>`<p style="margin:0 0 4px;">${l}</p>`).join('')}
         </div>
-        <p style="text-align:center; color:var(--gold-bright); font-size:11.5px; margin-bottom:18px;">
-          ${ORIGIN_BONUS_LABEL[originAnswers.q1]} · ${ORIGIN_BONUS_LABEL[originAnswers.q2]}
-        </p>
         <div style="text-align:center;">
           <button class="btn btn-primary" id="origin-confirm">확인</button>
         </div>`;
