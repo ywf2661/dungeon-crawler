@@ -252,13 +252,18 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     if(!rowsEl) return;
     rowsEl.style.display = nodeMapCollapsed ? 'none' : 'flex';
     if(nodeMapCollapsed) return; // 접혀 있으면 행 자체를 안 그린다(다른 버튼 누를 공간 확보)
+    // 유물 "hideDepth"(깊이를 알 수 없게 만드는 유물): 아직 안 가본 노드는
+    // 종류를 미리 보여주면 안 되는 게 컨셉이라, 지나온/현재 노드를 제외한 전부를
+    // 물음표로 가린다(보스 행 포함 — "여기가 보스"라는 정보 자체도 숨긴다).
+    const hideAll = (typeof hasRelicFlag==='function') && hasRelicFlag('hideDepth');
     const curNode = player.nodeRow>=0 ? player.nodeMap[player.nodeRow].find(n=>n.id===player.nodeCurrentId) : null;
     rowsEl.innerHTML = player.nodeMap.map((row, rIdx)=>{
       const isPast = rIdx <= player.nodeRow;
       const isNext = rIdx === player.nodeRow+1;
       const nodesHtml = row.map(n=>{
-        const def = NODE_TYPES[n.type] || NODE_TYPES.combat;
         const isChosenHere = n.id === player.nodeCurrentId && isPast;
+        const mustHide = hideAll && !isPast;
+        const def = mustHide ? {icon:'❓', label:'???'} : (NODE_TYPES[n.type] || NODE_TYPES.combat);
         let cls = 'node-btn';
         let clickable = false;
         if(isPast){
