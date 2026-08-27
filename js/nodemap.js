@@ -48,6 +48,9 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
   // 대신 확정으로 정예를 내주도록 하는 1회용 플래그. resolveNode()에서 세우고,
   // pickEnemy() 안에서 소비 즉시 꺼진다.
   let nodeForcedElite = false;
+  // 지도 접기/펼치기 상태(사용자 요청 — 지도가 항상 펼쳐져 있으면 장비/유물
+  // 같은 다른 메뉴 버튼을 누를 공간이 없어짐). 저장하지 않는 순수 화면 상태다.
+  let nodeMapCollapsed = false;
 
   // 절차적 생성: rowCount개의 "일반 행" + 마지막에 보스 행 1개를 덧붙인다.
   // 각 행은 2~3개 노드, 인접한 행끼리 1~2개씩 연결선을 잇되, 다음 행의 모든
@@ -229,11 +232,25 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     const progressLabel = document.getElementById('node-map-progress');
     if(progressLabel){
       const stepNow = Math.min(player.nodeRow+1, totalSteps-1);
-      progressLabel.textContent = `구간 진행 ${stepNow}/${totalSteps-1}`;
+      // 접기/펼치기 토글(사용자 요청 — 지도가 펼쳐져 있으면 장비/유물 등 다른
+      // 메뉴 버튼을 누를 공간이 없어졌었다). nodeMapCollapsed는 저장하지 않는
+      // 순전한 화면 상태다 — 새로고침하면 다시 펼쳐진 채로 시작해도 무방하다.
+      progressLabel.innerHTML =
+        `<span style="display:flex; justify-content:space-between; align-items:center;">`
+        + `<span>구간 진행 ${stepNow}/${totalSteps-1}</span>`
+        + `<button id="node-map-toggle" class="btn" style="padding:3px 10px; font-size:11px; width:auto;">${nodeMapCollapsed?'지도 펼치기 ▼':'지도 접기 ▲'}</button>`
+        + `</span>`;
+      const toggleBtn = document.getElementById('node-map-toggle');
+      if(toggleBtn) toggleBtn.addEventListener('click', ()=>{
+        nodeMapCollapsed = !nodeMapCollapsed;
+        renderNodeMapArea();
+      });
     }
 
     const rowsEl = document.getElementById('node-map-rows');
     if(!rowsEl) return;
+    rowsEl.style.display = nodeMapCollapsed ? 'none' : 'flex';
+    if(nodeMapCollapsed) return; // 접혀 있으면 행 자체를 안 그린다(다른 버튼 누를 공간 확보)
     const curNode = player.nodeRow>=0 ? player.nodeMap[player.nodeRow].find(n=>n.id===player.nodeCurrentId) : null;
     rowsEl.innerHTML = player.nodeMap.map((row, rIdx)=>{
       const isPast = rIdx <= player.nodeRow;
@@ -252,7 +269,10 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
         } else {
           cls += ' node-locked';
         }
-        return `<button class="${cls}" ${clickable?`data-node="${n.id}"`:'disabled'}>`
+        // data-nodeid는 클릭 가능 여부와 무관하게 항상 붙인다 — 연결선을 그릴 때
+        // 모든 노드(잠긴 것 포함)의 화면 위치를 찾아야 하기 때문. 클릭 핸들러는
+        // data-node(클릭 가능한 것에만 붙는 별도 속성)로만 건다.
+        return `<button class="${cls}" data-nodeid="${n.id}" ${clickable?`data-node="${n.id}"`:'disabled'}>`
           + `<span class="node-icon">${def.icon}</span><span class="node-label">${def.label}</span>`
           + `</button>`;
       }).join('');
@@ -260,5 +280,52 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     }).join('');
     rowsEl.querySelectorAll('[data-node]').forEach(btn=>{
       btn.addEventListener('click', ()=>{ Sound.click(); pickNode(btn.dataset.node); });
+    });
+    // 연결선(사용자 요청 — "어디로 갈 수 있는지 보이면 좋겠다"): 버튼이 실제로
+    // 배치된 뒤에야 정확한 좌표를 잴 수 있으므로 다음 프레임에 그린다.
+    requestAnimationFrame(renderNodeMapConnections);
+  }
+
+  // 노드 사이 연결선을 SVG로 그린다. 매번 새로 그리는 이유는 지도가 재렌더될
+  // 때마다(다음 노드 선택, 탭 전환 등) 버튼 위치가 바뀔 수 있기 때문이다.
+  function renderNodeMapConnections(){
+    const container = document.getElementById('node-map-rows');
+    if(!container || nodeMapCollapsed) return;
+    let svg = document.getElementById('node-map-svg');
+    if(!svg){
+      svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.id = 'node-map-svg';
+      svg.style.position = 'absolute';
+      svg.style.left = '0'; svg.style.top = '0';
+      svg.style.width = '100%'; svg.style.height = '100%';
+      svg.style.pointerEvents = 'none';
+      container.style.position = 'relative';
+      container.insertBefore(svg, container.firstChild);
+    }
+    svg.innerHTML = '';
+    const containerRect = container.getBoundingClientRect();
+    svg.setAttribute('viewBox', `0 0 ${containerRect.width} ${containerRect.height}`);
+    if(!player.nodeMap) return;
+    player.nodeMap.forEach(row=>{
+      row.forEach(n=>{
+        const fromEl = container.querySelector(`[data-nodeid="${n.id}"]`);
+        if(!fromEl) return;
+        const fromRect = fromEl.getBoundingClientRect();
+        const fx = fromRect.left - containerRect.left + fromRect.width/2;
+        const fy = fromRect.top - containerRect.top + fromRect.height;
+        n.connections.forEach(toId=>{
+          const toEl = container.querySelector(`[data-nodeid="${toId}"]`);
+          if(!toEl) return;
+          const toRect = toEl.getBoundingClientRect();
+          const tx = toRect.left - containerRect.left + toRect.width/2;
+          const ty = toRect.top - containerRect.top;
+          const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          line.setAttribute('x1', fx); line.setAttribute('y1', fy);
+          line.setAttribute('x2', tx); line.setAttribute('y2', ty);
+          line.setAttribute('stroke', '#5a4a30');
+          line.setAttribute('stroke-width', '2');
+          svg.appendChild(line);
+        });
+      });
     });
   }
