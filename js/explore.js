@@ -55,6 +55,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.nodeRow===undefined) player.nodeRow = -1;
       if(player.nodeCurrentId===undefined) player.nodeCurrentId = null;
       if(player.nodeVisited===undefined) player.nodeVisited = [];
+      // 오프닝 심리테스트(신규) — 이 기능이 생기기 전에 시작한 캐릭터는
+      // 보너스가 아예 없는 게 맞다(모든 계산식이 undefined를 0으로 처리하므로
+      // 굳이 채워 넣지 않아도 안전하지만, 명시적으로 빈 객체를 둬 헷갈리지
+      // 않게 한다).
+      if(player.originBonuses===undefined) player.originBonuses = {};
+      if(player.originGrowthRemainder===undefined) player.originGrowthRemainder = {hp:0, mp:0, atk:0, spd:0};
       if(player.level>=10 && !player.jobChosenAt10) player.jobAdvancePending = true;
       if(needsSpecializationMigration(player)) player.jobAdvancePending = true; // 레거시 하이브리드 → 재전직 필요
       document.getElementById('statusbar').style.display='flex';
@@ -68,6 +74,16 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     depth = 0; town = true; enemy = null; battleOver = false; subMode = null;
     inBossDen = false; bossDenFloor = 0;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, rig:null};
+    // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
+    // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
+    // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
+    showOriginQuiz();
+  }
+
+  // 오프닝 심리테스트(origin.js) 완료 후 실제로 마을 화면을 여는 마무리 처리.
+  // 예전엔 startGame()의 새 게임 분기 맨 끝에 그대로 있던 코드를, 퀴즈를 먼저
+  // 보여줘야 해서 별도 함수로 뺐다.
+  function finishNewGameStart(){
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
