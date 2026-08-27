@@ -36,17 +36,12 @@ export(전역): heroBossSvg, svgMonster
   // 함수 하나만 고치면 끝. 새 몬스터 이미지를 추가할 때도 이 객체에 한 줄만
   // 추가하면 된다.
   const MONSTER_IMG = {
-    /*wolf: 'images/monsters/wolf.png',
+    wolf: 'images/monsters/wolf.png',
     skeleton: 'images/monsters/skeleton.png',
     slime: 'images/monsters/slime.png',
     bandit: 'images/monsters/bandit.png',
-    goblin: 'images/monsters/goblin.png',
-    orc: 'images/monsters/orc.png',
-    spider: 'images/monsters/spider.png',
-    witch: 'images/monsters/witch.png',
     bat: 'images/monsters/bat.png',
-    mimic: 'images/monsters/mimic.png',
-    dragon: 'images/monsters/dragon.png',*/
+    goblin: 'images/monsters/goblin.png',
   };
 
   function svgMonster(type){
@@ -371,3 +366,44 @@ export(전역): heroBossSvg, svgMonster
       default: return `<svg viewBox="0 0 70 50"><rect x="20" y="20" width="30" height="20" rx="4" fill="#4a4a44"/></svg>`;
     }
   }
+
+  // 몬스터 PNG를 게임 로드 시점에 미리 받아둔다(사용자 피드백 — "몬스터 이미지가
+  // 몇 초씩 늦게 나온다"). 예전엔 startBattle()에서 <img> 태그가 생성되는
+  // 그 순간에야 브라우저가 다운로드를 시작했는데, 픽셀아트 원본 해상도가 커서
+  // 그때부터 받으면 몇 초씩 지연됐다. 이 파일이 로드되는 즉시(=타이틀 화면이
+  // 뜨는 시점부터) 미리 fetch해 브라우저 캐시에 담아두면, 실제 전투에서는
+  // 캐시된 이미지를 즉시 보여줄 수 있다. new Image()만 만들고 화면에 붙이지는
+  // 않으므로 레이아웃에는 전혀 영향 없다.
+  (function preloadMonsterImages(){
+    Object.values(MONSTER_IMG).forEach(src=>{
+      const img = new Image();
+      img.src = src;
+    });
+  })();
+
+  // ---------- 던전 배경(구역별) ----------
+  // data/monsters.js의 LOCATIONS와 정확히 동일한 depth 경계(9/19/29/39/49)를
+  // 쓴다 — 층이 깊어질수록 dungeon1.png→dungeon6.png로 점점 더 불길한 배경으로
+  // 바뀐다. combat/battle-setup.js의 startBattle()에서 getDungeonBgForDepth(depth)
+  // 로 매 전투 시작 시 .archway의 배경을 이 값으로 갈아끼운다.
+  const DUNGEON_BG_ZONES = [
+    {maxDepth:9,   file:'images/backgrounds/dungeon1.png'},
+    {maxDepth:19,  file:'images/backgrounds/dungeon2.png'},
+    {maxDepth:29,  file:'images/backgrounds/dungeon3.png'},
+    {maxDepth:39,  file:'images/backgrounds/dungeon4.png'},
+    {maxDepth:49,  file:'images/backgrounds/dungeon5.png'},
+    {maxDepth:9999,file:'images/backgrounds/dungeon6.png'},
+  ];
+  function getDungeonBgForDepth(d){
+    for(const z of DUNGEON_BG_ZONES){ if(d<=z.maxDepth) return z.file; }
+    return DUNGEON_BG_ZONES[DUNGEON_BG_ZONES.length-1].file;
+  }
+  // 몬스터 이미지와 동일한 이유로, 던전 배경 6장도 게임을 켜는 시점부터 전부
+  // 미리 받아둔다 — 나중에 깊은 층에 처음 도달했을 때도 배경이 몇 초씩 늦게
+  // 뜨는 일이 없게 하기 위함이다.
+  (function preloadDungeonBackgrounds(){
+    DUNGEON_BG_ZONES.forEach(z=>{
+      const img = new Image();
+      img.src = z.file;
+    });
+  })();
