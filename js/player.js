@@ -47,6 +47,10 @@ export(전역): newPlayer
       // 다시 볼 때 발자국 표시용). nodeMap이 null이면 "구간 시작 전/보스 방금
       // 클리어함" 상태 — 이때 나아가다를 누르면 새 지도가 생성된다.
       tierIndex:0, nodeMap:null, nodeRow:-1, nodeCurrentId:null, nodeVisited:[],
+      // 정예의 인장(사용자 요청 — 확정 희귀템 대신 "모아서 원하는 에픽과
+      // 교환"하는 방식으로 재설계). 정예 몬스터를 처치할 때마다 쌓이고,
+      // 마을의 교환소(exchange.js)에서 에픽 장비와 교환해 소비한다.
+      eliteSeals:0,
     };
     p.hp = p.maxhp; p.mp = p.maxmp;
     // 테스트용: 아이디(이름)가 'admin'이면 레벨 9부터 시작한다. combat/battle-end.js의
