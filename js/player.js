@@ -39,6 +39,14 @@ export(전역): newPlayer
       // 강제로 불러오는 플래그.
       debt:0, debtPrincipal:0, loanCounts:{small:0, medium:0, large:0},
       debtAppliedDelta:{}, debtBorrowedAtDepth:null, debtFreezeFloors:0, debtCollectorImminent:false,
+      // 노드맵 시스템(사용자 요청 — 슬레이 더 스파이어식 절차적 경로 선택) 전용.
+      // tierIndex=현재 몇 번째 5층 구간을 도는 중인지(0-based, 0이면 1~5층 구간),
+      // nodeMap=현재 구간의 노드 배치(행 배열, 마지막 행이 항상 보스),
+      // nodeRow=지금 서 있는 행 인덱스(-1=아직 첫 노드도 안 고름),
+      // nodeCurrentId=지금 서 있는 노드 id, nodeVisited=지나온 노드 id 목록(지도
+      // 다시 볼 때 발자국 표시용). nodeMap이 null이면 "구간 시작 전/보스 방금
+      // 클리어함" 상태 — 이때 나아가다를 누르면 새 지도가 생성된다.
+      tierIndex:0, nodeMap:null, nodeRow:-1, nodeCurrentId:null, nodeVisited:[],
     };
     p.hp = p.maxhp; p.mp = p.maxmp;
     // 테스트용: 아이디(이름)가 'admin'이면 레벨 9부터 시작한다. combat/battle-end.js의
