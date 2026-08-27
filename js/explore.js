@@ -142,6 +142,15 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('sb-mp-bar').style.width = Math.max(0,(player.mp/player.maxmp*100))+'%';
     document.getElementById('sb-mp-val').textContent = `${Math.max(0,player.mp)}/${player.maxmp}`;
     document.getElementById('gold-display').textContent = '💰 '+player.gold;
+    // 정예의 인장(사용자 요청 — 골드 위에 인장 개수도 표시). 인장이 하나도
+    // 없으면(대부분의 직업 초반, 또는 애초에 인장을 못 쓰는 상황) 굳이 "0개"를
+    // 상시 노출할 필요는 없어 숨겨둔다 — 처음 하나라도 얻는 순간부터 나타난다.
+    const sealEl = document.getElementById('seal-display');
+    if(sealEl){
+      const seals = player.eliteSeals||0;
+      sealEl.style.display = seals>0 ? 'block' : 'none';
+      sealEl.textContent = '🔱 '+seals;
+    }
   }
 
   function currentLocation(){
@@ -313,36 +322,120 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     }
   }
 
+  // 최종 층 진입 서사(사용자 요청 — 오프닝 심리테스트처럼 1인칭 상호응답형).
+  // 1단계는 오프닝 문답 1번(황금/진실/생존)에 따라 다른 서술로 목표를 찾아
+  // 헤매다가, 2단계에서 회랑 바닥에서 손길이 솟아나 붙잡는 걸로 끝난다 —
+  // 여기서부터는 되돌릴 수 없이 실제 최종보스 전투가 시작된다. 1단계에는
+  // "물러난다" 선택지를 남겨 아직은 발을 뺄 수 있게 했고, 2단계(손길에
+  // 붙잡힌 순간)부터는 선택지가 "저항한다" 하나뿐이다.
+  const FINAL_FLOOR_SEEK_LINES = {
+    gold: [
+      '"여기가... 마지막 층인가."',
+      '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
+      '황금. 그 하나만을 좇아 이 어둠 속을 헤매왔다.',
+      '벽을 더듬고, 바닥을 살피고, 그림자 하나하나까지 뒤져본다.',
+      '그러나 아무리 둘러봐도, 이곳엔 그 흔한 동전 한 닢조차 보이지 않는다.',
+      '"...설마, 처음부터 그런 건 없었던 걸까."',
+    ],
+    truth: [
+      '"여기가... 마지막 층인가."',
+      '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
+      '진실. 그 하나만을 좇아 이 어둠 속을 헤매왔다.',
+      '벽에 새겨진 글귀를 다시 읽고, 부서진 석판의 조각들을 맞춰본다.',
+      '그러나 아무리 파고들어도, 답은커녕 더 많은 질문만 쌓여간다.',
+      '"...어쩌면, 이 회랑 자체가 답 없는 질문이었는지도."',
+    ],
+    survival: [
+      '"여기가... 마지막 층인가."',
+      '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
+      '살아남는 것. 그 하나만을 붙들고 이 어둠 속을 버텨왔다.',
+      '출구가 있을까 사방을 둘러보지만, 보이는 건 똑같은 어둠뿐이다.',
+      '여기까지 왔으니, 이제 정말 끝이 보이는 걸까.',
+      '"...아니면, 애초에 끝 같은 건 없었던 걸까."',
+    ],
+    // 오프닝 심리테스트가 생기기 전에 시작한 캐릭터(또는 기록이 없는 경우) 폴백.
+    unknown: [
+      '"여기가... 마지막 층인가."',
+      '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
+      '왜 이곳까지 왔는지, 이제는 스스로도 명확히 기억나지 않는다.',
+      '그저 몸에 새겨진 걸음이 이끄는 대로, 여기까지 온 것일지도 모른다.',
+      '주위를 둘러봐도, 찾고 있던 것이 무엇이었는지조차 흐릿하다.',
+      '"...내가 여기서 무엇을 찾고 있었더라."',
+    ],
+  };
+  const FINAL_FLOOR_SEEK_LINES_TRUE = [
+    '"여기가... 마지막 층인가."',
+    '단 한 번도 무릎 꿇지 않았다. 그 사실 하나가 지금 이 순간을 지탱한다.',
+    '숱한 회랑을 지나오며 스러져간 이름 없는 그림자들이 떠오른다.',
+    '그들은 닿지 못했던 곳에, 지금 그대가 서 있다.',
+    '공기가 다르다. 다른 이들이 느꼈던 절망 대신, 옅은 온기가 감돈다.',
+    '"...어쩌면, 이곳의 끝은 다를지도 모른다."',
+  ];
+
   function showFinalFloorConfirm(){
     const flawless = (player.deathCount||0) === 0;
-    const overlay = document.createElement('div');
-    overlay.className = 'shop-overlay';
-    overlay.id = 'final-confirm-overlay';
+    renderFinalFloorStep('seek', flawless);
+  }
+
+  function renderFinalFloorStep(step, flawless){
+    const existing = document.getElementById('final-confirm-overlay');
+    const overlay = existing || document.createElement('div');
+    if(!existing){
+      overlay.className = 'shop-overlay';
+      overlay.id = 'final-confirm-overlay';
+      document.getElementById('app').appendChild(overlay);
+    }
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
+
+    if(step==='seek'){
+      const traitKey = (player.originTraits && player.originTraits[0]) || 'unknown';
+      const lines = flawless ? FINAL_FLOOR_SEEK_LINES_TRUE : (FINAL_FLOOR_SEEK_LINES[traitKey] || FINAL_FLOOR_SEEK_LINES.unknown);
+      panel.innerHTML = `
+        <h3 style="color:var(--rust-bright);">회랑의 끝</h3>
+        <div style="color:var(--parchment); font-size:13.5px; line-height:1.9; font-style:italic; margin-bottom:18px;">
+          ${lines.map(l=>`<p style="margin:0 0 4px;">${l}</p>`).join('')}
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <button class="btn" id="final-step-back">물러난다</button>
+          <button class="btn btn-danger" id="final-step-next">계속 나아간다</button>
+        </div>`;
+      overlay.innerHTML = '';
+      overlay.appendChild(panel);
+      panel.querySelector('#final-step-back').addEventListener('click', ()=> overlay.remove());
+      panel.querySelector('#final-step-next').addEventListener('click', ()=> renderFinalFloorStep('grasp', flawless));
+      return;
+    }
+
+    // step === 'grasp' — 되돌릴 수 없는 순간. 선택지가 하나뿐이다.
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">회랑의 끝</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:13px;line-height:1.7;margin-bottom:14px;">
-        문 너머에서 압도적인 기운이 느껴진다. 이곳을 지나면 되돌아올 수 없다.<br>
-        ${flawless ? '<b style="color:var(--gold-bright);">단 한 번도 무릎 꿇지 않은 그대에게만, 문 너머의 기운이 어딘가 다르게 느껴진다.</b><br>' : ''}
-        <b style="color:var(--gold-bright);">정말로 이 회랑의 끝으로 들어가겠는가?</b>
-      </p>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <button class="btn" id="final-confirm-cancel">돌아간다</button>
-        <button class="btn btn-danger" id="final-confirm-go">들어간다</button>
+      <div style="color:var(--parchment); font-size:13.5px; line-height:1.9; font-style:italic; margin-bottom:18px;">
+        <p style="margin:0 0 4px;">그 순간, 발밑의 돌바닥이 무너지듯 갈라진다.</p>
+        <p style="margin:0 0 4px;">차갑고 앙상한 손길이 어둠 속에서 솟아올라, ${player.name}의 발목을 움켜쥔다.</p>
+        <p style="margin:0;"><b style="color:var(--gold-bright);">더는 물러설 곳이 없다.</b></p>
+      </div>
+      <div style="text-align:center;">
+        <button class="btn btn-danger" id="final-step-fight">저항한다!</button>
       </div>`;
+    overlay.innerHTML = '';
     overlay.appendChild(panel);
-    document.getElementById('app').appendChild(overlay);
-    panel.querySelector('#final-confirm-cancel').addEventListener('click', ()=>overlay.remove());
-    panel.querySelector('#final-confirm-go').addEventListener('click', ()=>{
+    panel.querySelector('#final-step-fight').addEventListener('click', async ()=>{
       overlay.remove();
-      // 노드맵 시스템 도입 후: depth는 이미 resolveNode()의 보스 분기에서
-      // 50으로 확정되어 있으므로, 여기서는 곧장 최종보스 전투만 시작한다
-      // (예전의 proceedAdvance() 재호출 — depth+=1 등 — 은 더 이상 맞지 않음).
-      const isTrueFinal = (player.deathCount||0) === 0;
+      const isTrueFinal = flawless;
       addLog(isTrueFinal
         ? '한 번도 무릎 꿇지 않은 자에게만 열리는 문이, 조용히 그 모습을 드러낸다…'
         : '심장이 터질 듯 두근거린다… 이곳이 회랑의 끝이다.', 'warn');
+      // 일반 최종보스("잠식된 OO 용사")가 최근 클리어 기록의 이름/직업을
+      // 따르도록, 전투 시작 직전에 기록을 미리 읽어 combat/battle-setup.js의
+      // recentRunRecord에 채워둔다(pickEnemy()는 동기 함수라 여기서 미리
+      // await해서 넘겨준다). 진 최종보스(isTrueFinal)는 이 기록과 무관하다.
+      if(!isTrueFinal){
+        try{
+          const records = await loadRecords();
+          recentRunRecord = records.length ? records[records.length-1] : null;
+        }catch(e){ recentRunRecord = null; }
+      }
       setTimeout(()=>startBattle(true, true, isTrueFinal), 400);
     });
   }
