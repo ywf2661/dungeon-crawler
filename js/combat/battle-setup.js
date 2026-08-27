@@ -83,6 +83,12 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     if(m.hp!==1){ e.maxhp = Math.max(1, Math.round(e.maxhp*m.hp)); e.hp = e.maxhp; }
     if(m.atk!==1) e.atk = Math.max(1, Math.round(e.atk*m.atk));
     if(m.def!==1) e.def = Math.max(0, Math.round(e.def*m.def));
+    // 저주 "그림자의 포효": 이 저주를 짊어진 동안 마주치는 모든 적의 공격력이
+    // 오른다. getRelicSum('enemyAtkPct')가 저주가 없으면 0을 반환하므로 다른
+    // 캐릭터에는 전혀 영향 없다. 모든 적 생성 경로(일반/정예/보스/최종보스/
+    // 황금고블린)가 이 함수를 거치므로 여기 한 곳만 고치면 전부 적용된다.
+    const curseAtkPct = getRelicSum('enemyAtkPct');
+    if(curseAtkPct>0) e.atk = Math.max(1, Math.round(e.atk*(1+curseAtkPct)));
     return e;
   }
   function pickEnemy(isBoss, isFinal, isTrueFinal){

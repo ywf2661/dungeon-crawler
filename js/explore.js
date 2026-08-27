@@ -61,6 +61,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 않게 한다).
       if(player.originBonuses===undefined) player.originBonuses = {};
       if(player.originGrowthRemainder===undefined) player.originGrowthRemainder = {hp:0, mp:0, atk:0, spd:0};
+      if(player.tempCurses===undefined) player.tempCurses = {};
+      if(player.hasMapFragment===undefined) player.hasMapFragment = false;
       if(player.level>=10 && !player.jobChosenAt10) player.jobAdvancePending = true;
       if(needsSpecializationMigration(player)) player.jobAdvancePending = true; // 레거시 하이브리드 → 재전직 필요
       document.getElementById('statusbar').style.display='flex';

@@ -132,12 +132,43 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           // 노드맵 시스템: 이번 승리가 구간의 보스(노드맵 마지막 행)였다면
           // 다음 구간으로 넘어가도록 타이어를 올리고 지도를 비운다("나아가다"를
           // 다시 누르면 새 지도가 생성된다). 일반 전투/정예 승리는 해당 없음.
+          let purifiedCurseNames = [];
           if(enemy.isBoss && player.nodeMap && player.nodeRow === player.nodeMap.length-1){
+            const clearedTier = player.tierIndex;
+            // 임시 저주 정화(사용자 요청 — 저주술사가 아니면 저주가 "이 구간
+            // 한정"): 이번에 클리어한 구간에서 받은 저주를 전부 해제하고,
+            // 견뎌낸 대가로 전스탯 영구 +4%를 지급한다. 저주술사가 받은 저주는
+            // relics.js의 showCurseAltar()에서 애초에 tempCurses에 기록하지
+            // 않으므로 여기서 걸리지 않는다(계속 영구 저주로 남음).
+            Object.keys(player.tempCurses||{}).forEach(curseId=>{
+              if(player.tempCurses[curseId] === clearedTier){
+                const r = RELICS[curseId];
+                if(removeRelic(curseId)) purifiedCurseNames.push(r ? r.name : curseId);
+                delete player.tempCurses[curseId];
+              }
+            });
+            if(purifiedCurseNames.length){
+              player.atk = Math.round(player.atk*1.04);
+              player.def = Math.round(player.def*1.04);
+              player.mag = Math.round(player.mag*1.04);
+              player.spd = Math.round(player.spd*1.04);
+            }
             player.tierIndex += 1;
             player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
           }
           showScreen('explore');
           const lines = [{text:`${enemy.name}을(를) 물리쳤다. (EXP +${enemy.exp}, 골드 +${g})`, cls:'gold'}];
+          if(purifiedCurseNames.length){
+            lines.push({text:`✨ ${purifiedCurseNames.join(', ')}의 저주가 풀렸다! 견뎌낸 대가로 몸이 단단해졌다(전 능력치 영구 +4%).`, cls:'gold'});
+          }
+          // 미지의 사건 "그림자와의 결투"(events.js): 정예의 인장을 정예 사냥이
+          // 아닌 다른 방법으로도 얻을 수 있게 한 이벤트 전투. 이 전투를 이겼을
+          // 때만 켜지는 1회용 플래그를 events.js가 세워두고, 여기서 소비한다.
+          if(typeof pendingDuelSealReward!=='undefined' && pendingDuelSealReward){
+            pendingDuelSealReward = false;
+            player.eliteSeals = (player.eliteSeals||0) + 1;
+            lines.push({text:`🔱 결투에서 승리해 정예의 인장을 얻었다! (보유 ${player.eliteSeals}개)`, cls:'gold'});
+          }
           if(rareDropId){
             const item = RARE_EQUIPMENT[rareDropId];
             lines.push({text:`✨ 희귀 아이템 [${item.name}]을(를) 손에 넣었다! (${statsText(item.stats)})`, cls:'gold'});

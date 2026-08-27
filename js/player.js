@@ -55,6 +55,18 @@ export(전역): newPlayer
       // 안전한 빈 기본값만 둔다(전투 스케일링 등 다른 계산식이 undefined를 0으로
       // 처리하므로 없어도 안전하지만, 명시적으로 두는 편이 읽기 좋다).
       originBonuses:{}, originTraits:[], originGrowthRemainder:{hp:0, mp:0, atk:0, spd:0},
+      // 임시 저주 시스템(사용자 요청 — 저주술사가 아니면 저주가 "이 구간 한정"이
+      // 되도록 재설계). {저주id: 받아들인 시점의 tierIndex} 형태로 기록해두고,
+      // 그 구간의 보스를 잡는 순간 combat/battle-end.js가 이 목록을 확인해
+      // 해당 저주를 해제(removeRelic)하고 정화 보상을 지급한다. 저주술사
+      // (mastery_curseweaver)는 이 목록에 아예 안 들어가고 기존처럼 영구 저주로
+      // 남는다(relics.js의 showCurseAltar 참고).
+      tempCurses:{},
+      // 미지의 사건 "수상한 지도 조각"(events.js) 전용 — 아주 가벼운 연쇄
+      // 이벤트 하나만 허용한다(지속 상태 추적은 최소화한다는 원칙 유지). 이
+      // 플래그가 있으면 나중에 "봉인된 관" 이벤트가 자동으로 좋은 결과로
+      // 확정된다.
+      hasMapFragment:false,
     };
     p.hp = p.maxhp; p.mp = p.maxmp;
     // 테스트용: 아이디(이름)가 'admin'이면 레벨 9부터 시작한다. combat/battle-end.js의

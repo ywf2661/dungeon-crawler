@@ -75,9 +75,25 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     relic_brokencompass:{type:'contract', name:'깨진 나침반',   desc:'<span class="relic-neg">현재 깊이를 알 수 없게 된다.</span> <span class="relic-pos">대신 골드와 희귀 아이템 획득 확률이 오른다.</span>', effect:{hideDepth:true, goldPctMult:0.25, rareDropPctBonus:0.03, epicDropBonus:0.25}},
 
     relic_heartlessdoll:{type:'curse', name:'심장 없는 인형', desc:'최대 HP가 절반으로 줄어든다.', effect:{maxhpPct:-0.5}},
-    relic_leadfeet:     {type:'curse', name:'납으로 된 발',   desc:'속도가 크게 감소한다.', effect:{spdFlat:-8}},
+    // [제거됨] 아래 2개는 사용자 요청으로 저주 제단 목록에서 뺐다 — "납으로 된
+    // 발"은 속도 감소가 체감이 거의 없어 의미 없는 저주였고, "침묵의 서약"은
+    // 스킬을 아예 못 쓰게 만들어 일부 스킬 의존형 빌드는 진행 자체가 막히는
+    // 문제가 있었다. deprecated:true만 붙이고 삭제하지 않는다 — 이미 이 저주를
+    // 갖고 있는 저장된 캐릭터가 있을 수 있어 데이터 자체를 지우면 크래시난다.
+    // CURSE_ALTAR_POOL이 deprecated를 걸러내므로 새로 뽑히지는 않는다.
+    relic_leadfeet:     {type:'curse', deprecated:true, name:'납으로 된 발',   desc:'속도가 크게 감소한다.', effect:{spdFlat:-8}},
     relic_hungrycorridor:{type:'curse', name:'굶주린 회랑',   desc:'포션을 쓸 수 없고, 레벨업으로도 체력·마나가 가득 차지 않는다.', effect:{noPostBattleHeal:true, potionLocked:true}},
-    relic_silentoath:   {type:'curse', name:'침묵의 서약',   desc:'스킬을 사용할 수 없게 된다.', effect:{skillLocked:true}},
+    relic_silentoath:   {type:'curse', deprecated:true, name:'침묵의 서약',   desc:'스킬을 사용할 수 없게 된다.', effect:{skillLocked:true}},
+    // 신규 저주 3종(사용자 요청 — 위 2개를 빼고 대신 채움). 전부 "불편하지만
+    // 진행은 가능한" 수준으로 잡았다 — 스킬 봉인처럼 진행 자체를 막지 않는다.
+    // enemyAtkPct는 새 effect 키다 — combat/battle-setup.js의
+    // scaleEnemyForDifficulty()에서 getRelicSum('enemyAtkPct')로 확인해 적용한다
+    // (새 저주를 더 추가할 때도 이 키만 재사용하면 코드 수정 없이 동작).
+    // dmgTakenPctMult/maxmpPct는 이미 다른 시스템에서 쓰던 기존 effect 키를
+    // 그대로 재사용한 것이라 별도 코드가 필요 없다.
+    relic_ragingshadow: {type:'curse', name:'그림자의 포효', desc:'이 구간에서 마주치는 모든 적의 공격력이 30% 오른다.', effect:{enemyAtkPct:0.30}},
+    relic_flayedhide:   {type:'curse', name:'벗겨진 가죽',   desc:'받는 피해가 20% 늘어난다.', effect:{dmgTakenPctMult:0.20}},
+    relic_driedwell:    {type:'curse', name:'말라버린 샘',   desc:'최대 마나가 절반으로 줄어든다.', effect:{maxmpPct:-0.5}},
 
     relic_witchclock:   {type:'wild', name:'마녀의 시계',   desc:'속도가 15 이상이면 매 턴 확률적으로(15↑10%, 20↑20%, 25↑30%) 적에게 턴을 넘기지 않고 한 번 더 행동한다.', effect:{extraActionBySpd:true}},
     relic_reversecrown: {type:'wild', name:'거꾸로 된 왕관', desc:'체력이 75% 이상이면 피해가 줄고, 낮을수록 가한 피해가 가속도로 커진다.', effect:{lowHpScalingDmg:true}},
@@ -101,7 +117,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
   const RELIC_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type!=='curse');
   const RELIC_ALTAR_FLOORS = [6,12,18,24,36,42,48];
-  const CURSE_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type==='curse');
+  const CURSE_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type==='curse' && !RELICS[id].deprecated);
   const CURSE_ALTAR_FLOORS = [9,21,33,44];
 
   // 유물 제단에서 "고르지 않는다"를 선택할 때 소모되는 골드. 횟수 제한 대신 골드 비용으로 대체.
@@ -581,17 +597,26 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     if(!pool.length) return; // 이미 모든 저주를 갖고 있다
     const id = pool[Math.floor(Math.random()*pool.length)];
     const r = RELICS[id];
+    // 저주술사(mastery_curseweaver)는 예전처럼 영구 저주 — 저주가 계속 쌓여야
+    // 의미 있는 직업이라 해제되면 오히려 손해다. 그 외 직업은 "이 구간 한정"
+    // 임시 저주로 바뀐다 — 구간 보스를 잡으면 자동 해제되고 정화 보상을 받는다
+    // (재설계 이유: 예전엔 영구 페널티 대비 보상이 너무 약해서 저주술사 외엔
+    // 아무도 저주 제단을 고를 이유가 없었다).
+    const isCurseweaver = !!(player.skills && player.skills.includes('mastery_curseweaver'));
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'curse-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel relic-panel relic-panel-locked';
+    const introText = isCurseweaver
+      ? '이 제단에서 저주를 가져가면, 그것은 두 번 다시 떼어낼 수 없다.<br>대신 저주를 짊어질수록 이후의 보상이 커진다.'
+      : '이 제단에서 저주를 가져가면, 그것은 이 구간이 끝날 때까지 그대를 옭아맨다.<br>구간의 보스를 넘어서면 저주는 풀리고, 견뎌낸 대가로 몸이 단단해진다.';
     panel.innerHTML = `<h3 style="color:#d99fff;">☠ 피로 물든 제단 ☠</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">이 제단에서 저주를 가져가면, 그것은 두 번 다시 떼어낼 수 없다.<br>대신 저주를 짊어질수록 이후의 보상이 커진다.</p>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">${introText}</p>
       <p class="relic-lock-msg" id="curse-lock-msg">내용을 살펴보는 중…</p>
       <div class="relic-grid">
         <button class="relic-card type-curse" id="curse-card" disabled>
-          <div class="relic-type">저주</div>
+          <div class="relic-type">저주${isCurseweaver?'':' (이 구간 한정)'}</div>
           <div class="relic-name">${r.name}</div>
           <div class="relic-desc">${r.desc}</div>
         </button>
@@ -619,6 +644,10 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     panel.querySelector('#curse-accept').addEventListener('click', ()=>{
       if(panel.querySelector('#curse-accept').disabled) return;
       finalizeRelicPick(id);
+      if(!isCurseweaver){
+        player.tempCurses = player.tempCurses || {};
+        player.tempCurses[id] = player.tierIndex;
+      }
       overlay.remove();
     });
   }
