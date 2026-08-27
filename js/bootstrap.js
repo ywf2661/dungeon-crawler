@@ -69,6 +69,10 @@ export(전역): init, showMaintenanceModal, isAdminName
         name: player.name, jobLabel, level: player.level,
         deathCount: player.deathCount||0, ts: Date.now(),
         difficulty: player.difficulty||'easy',
+        // 일반 최종보스("잠식된 OO 용사")가 이 기록의 이름/직업을 따르게
+        // 하려면 원문 job id가 필요하다(jobLabel은 이미 아이콘까지 붙은
+        // 표시용 문자열이라 역으로 파싱하기엔 부적합).
+        job: player.job,
       };
       await addRecord(record);
       await deleteSave();
