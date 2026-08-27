@@ -56,7 +56,9 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       // 물주의 감각(mastery_goldsense, 황금 도박사): 승리 골드 +20%. 기존 계산식에
       // 항 하나만 추가하면 되므로 별도 함수 없이 여기서 직접 처리한다.
       const goldSenseBonus = (player.skills && player.skills.includes('mastery_goldsense')) ? 0.2 : 0;
-      const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult + goldSenseBonus;
+      // 오프닝 심리테스트(origin.js) "황금" 기질 — 승리 골드 +8%.
+      const originGoldBonus = (player.originBonuses && player.originBonuses.gold) || 0;
+      const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult + goldSenseBonus + originGoldBonus;
       if(goldBoost>0) g = Math.round(g*(1+goldBoost));
       player.gold += g;
       const killHealPct = getRelicSum('killHealPct');
@@ -269,6 +271,9 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
   }
 
   function grantExp(amount){
+    // 오프닝 심리테스트(origin.js) "진실" 기질 — 경험치 획득 +8%.
+    const expBonus = (player.originBonuses && player.originBonuses.truth) || 0;
+    if(expBonus>0) amount = Math.round(amount*(1+expBonus));
     player.exp += amount;
     const levelsGained = [];
     while(player.exp >= player.expNext){
@@ -294,14 +299,31 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 레벨업 노가다만으로 진보스/최종보스를 손쉽게 찍어누르는 것을 막기 위함이다.
     const growthRate = (player.difficulty!=='easy' && player.level>=20) ? 1.36 : 1.28;
     player.expNext = Math.round(player.expNext*growthRate + 6);
-    player.maxhp += 9;
+    // 오프닝 심리테스트(origin.js)의 기질 보너스 — 레벨업 시 스탯 상승량에
+    // 조용히 +8%를 더한다. 다만 공격력(+2)/속도(+1)처럼 원래 증가량이 작은
+    // 스탯은 8%를 곱해도(2.16, 1.08) 반올림하면 그냥 사라져버려서, 소수점
+    // 잔여분을 player.originGrowthRemainder에 누적해뒀다가 정확히 1 이상
+    // 쌓이는 시점에만 +1을 터뜨리는 방식으로 처리한다 — 매 레벨 눈에 보이진
+    // 않아도, 여러 레벨에 걸쳐 정확히 8%만큼 실제로 더 성장한다.
+    player.originGrowthRemainder = player.originGrowthRemainder || {hp:0, mp:0, atk:0, spd:0};
+    const ob = player.originBonuses || {};
+    function applyOriginGrowth(base, bonusKey, remainderKey){
+      const exact = base*(1+(ob[bonusKey]||0)) + player.originGrowthRemainder[remainderKey];
+      const whole = Math.floor(exact);
+      player.originGrowthRemainder[remainderKey] = exact - whole;
+      return whole;
+    }
+    player.maxhp += applyOriginGrowth(9, 'survival', 'hp');
     // 일격의 구도자(warrior_purist)는 스킬을 전혀 쓰지 않아 마나가 항상 0으로
     // 유지되어야 한다(combat/job-advancement.js에서 전직 시점에도 0으로 초기화).
     // 레벨업 때마다 관례적으로 붙는 maxmp 증가분만 이 분기에 한해 건너뛴다.
     if(!(player.specialization === 'warrior_purist')){
-      player.maxmp += 4;
+      player.maxmp += applyOriginGrowth(4, 'spirit', 'mp');
     }
-    player.atk += 2; player.def += 1; player.mag += 2; player.spd += 1;
+    player.atk += applyOriginGrowth(2, 'strength', 'atk');
+    player.def += 1;
+    player.mag += 2;
+    player.spd += applyOriginGrowth(1, 'swiftness', 'spd');
     // 저주술사(mastery_curseweaver)는 레벨업 시 무회복 저주도 저주 개수만큼의
     // 확률로 뚫을 수 있다(레벨업이 한 번에 여러 번 처리될 수 있어, 매번 배너가
     // 뜨면 스팸이 될 수 있으므로 여기서는 안내 문구 없이 조용히 판정만 한다).
