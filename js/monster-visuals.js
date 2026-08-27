@@ -42,7 +42,7 @@ export(전역): heroBossSvg, svgMonster
     bandit: 'images/monsters/bandit.png',
     bat: 'images/monsters/bat.png',
     goblin: 'images/monsters/goblin.png',*/
-    spider: 'images/monsters/spider.png'
+    spider: 'images/monsters/spider.png',
   };
 
   function svgMonster(type){
