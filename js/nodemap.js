@@ -122,6 +122,16 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     player.nodeVisited = [];
     saveGame();
     renderExplore(['새로운 구간에 들어섰다. 나아갈 길을 고를 수 있다.']);
+    // 사용자 요청: 새 구간에 들어서면 지도가 출발 지점(맨 위, row 0)부터
+    // 보이도록 스크롤을 초기화한다. #node-map-area는 구간이 바뀌어도 DOM
+    // 요소 자체는 그대로 재사용되고 안쪽 내용만 다시 그려지므로, 이전 구간
+    // 끝(보스 근처)에서 스크롤해둔 위치가 새 지도에도 그대로 남아있었다.
+    // renderExplore()가 이미 지도를 다 그린 뒤이므로, 레이아웃이 확정되는
+    // 다음 프레임에 스크롤을 되돌린다.
+    requestAnimationFrame(()=>{
+      const area = document.getElementById('node-map-area');
+      if(area) area.scrollTop = 0;
+    });
   }
 
   // 지금 구간에서 "가상 층수" — 실제 depth는 보스를 잡아야만 오르지만, 전투
