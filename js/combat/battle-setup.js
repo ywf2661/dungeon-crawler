@@ -11,6 +11,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   /* ============ 전투 ============ */
   // 회랑의 최종보스는 고정된 몬스터가 아니라, 플레이어가 고를 수 있는 6개 직업 중
   // 하나의 모습을 한 "타락한 용사"로 매번 랜덤하게 등장한다.
+  // 최근 클리어 기록(explore.js의 showFinalFloorConfirm()이 최종보스 전투 시작
+  // 직전에 loadRecords()로 채워둔다) — 일반 최종보스의 이름/직업을 여기서
+  // 따온다. 기록이 없으면 null로 남아 예전처럼 무작위 직업 폴백이 동작한다.
+  let recentRunRecord = null;
+
   const FINAL_BOSS_BY_JOB = {
     warrior:  {name:'잠식된 전사 용사',   type:'herowarrior',  hp:320, atk:32, def:14, spd:7,  exp:600, gold:[350,450], skills:['heroWarriorSmite']},
     mage:     {name:'잠식된 마법사 용사', type:'heromage',     hp:280, atk:38, def:9,  spd:8,  exp:600, gold:[350,450], skills:['heroMageBurst']},
@@ -107,11 +112,24 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       });
     }
     if(isFinal){
-      const jobId = pickFinalBossJob();
+      // 일반 최종보스("잠식된 OO 용사")는 최근 클리어 기록이 있으면 그 기록의
+      // 이름과 직업을 따른다(사용자 요청) — 과거의 자신(또는 다른 기록)과
+      // 다시 마주하는 서사적 장치. explore.js의 showFinalFloorConfirm()이
+      // 전투 시작 직전 recentRunRecord를 미리 채워둔다(pickEnemy는 동기
+      // 함수라 비동기 loadRecords()를 직접 못 씀). 기록이 없거나(첫 플레이)
+      // job 필드가 없는 옛 기록이면 예전처럼 무작위 직업으로 폴백한다.
+      let jobId, bossName;
+      if(recentRunRecord && recentRunRecord.job && FINAL_BOSS_BY_JOB[recentRunRecord.job]){
+        jobId = recentRunRecord.job;
+        bossName = `잠식된 ${recentRunRecord.name}`;
+      } else {
+        jobId = pickFinalBossJob();
+        bossName = FINAL_BOSS_BY_JOB[jobId].name;
+      }
       const base = FINAL_BOSS_BY_JOB[jobId];
       const scale = 1 + depth*0.05;
       return scaleEnemyForDifficulty({
-        type: base.type, name: base.name, isBoss:true, isFinal:true, finalJobId: jobId,
+        type: base.type, name: bossName, isBoss:true, isFinal:true, finalJobId: jobId,
         maxhp: Math.round(base.hp*scale), hp: Math.round(base.hp*scale),
         atk: Math.round(base.atk*scale*0.8),
         def: Math.round(base.def + depth*0.12),
