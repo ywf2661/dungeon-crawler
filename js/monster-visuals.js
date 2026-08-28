@@ -47,7 +47,7 @@ export(전역): heroBossSvg, svgMonster
 
   function svgMonster(type){
     if(MONSTER_IMG[type]){
-      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:100%; height:100%; object-fit:contain;">`;
+      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:80%; height:80%; object-fit:contain;">`;
     }
     const glow = `<filter id="eg"><feGaussianBlur stdDeviation="1.4"/></filter>`;
     switch(type){
