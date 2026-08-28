@@ -93,7 +93,13 @@ export(전역): heroBossSvg, svgMonster
           const displayedHeight = imgEl.clientHeight || imgEl.offsetHeight || 0;
           if(displayedHeight > 0){
             const pxShift = Math.round(displayedHeight*padRatio);
-            imgEl.style.transform = `translateY(${pxShift}px)`;
+            // 인라인 transform 대신 CSS 변수(--ground-offset)로 넘긴다 — hit/dying
+            // 애니메이션(hitshake/diefade)이 transform을 직접 덮어써버려서, 예전엔
+            // 공격당할 때마다 보정이 풀렸다가 애니메이션이 끝나야 다시 적용되는
+            // 문제가 있었다(사용자 피드백 — "맞을 때마다 중간으로 갔다가 다시
+            // 내려온다"). index.html의 키프레임들이 이 변수를 같이 포함하도록
+            // 고쳐야 실제로 해결된다(별도 안내 참고).
+            imgEl.style.setProperty('--ground-offset', pxShift+'px');
           }
         }
       }catch(e){ /* 픽셀 분석 실패 시 조용히 무시(원래 위치 그대로 유지) */ }
