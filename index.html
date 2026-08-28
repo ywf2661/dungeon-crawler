@@ -302,14 +302,24 @@
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     padding-top:10px;
   }
-  .enemy-stage svg, .enemy-stage img{width:120px; height:150px; filter:drop-shadow(0 8px 14px #00000099);}
+  .enemy-stage svg{width:120px; height:150px; filter:drop-shadow(0 8px 14px #00000099);}
+  .enemy-stage img{
+    width:120px; height:150px; filter:drop-shadow(0 8px 14px #00000099);
+    /* PNG 그림 하단 투명 여백 자동 보정용(monster-visuals.js의
+       fixMonsterImageGrounding()가 --ground-offset을 채워 넣는다). 기본값 0px라
+       보정이 필요 없는 그림은 아무 영향 없다. */
+    transform:translateY(var(--ground-offset, 0px));
+  }
    .enemy-stage.hit svg, .enemy-stage.hit img{animation:hitshake .32s;}
    .enemy-stage.dying svg, .enemy-stage.dying img{animation:diefade .6s forwards;}
   @keyframes hitshake{
-    0%,100%{transform:translate(0,0);} 20%{transform:translate(-6px,2px) rotate(-2deg);}
-    40%{transform:translate(5px,-2px) rotate(2deg);} 60%{transform:translate(-4px,1px);} 80%{transform:translate(3px,0);}
+    0%,100%{transform:translate(0,var(--ground-offset,0px));}
+    20%{transform:translate(-6px, calc(var(--ground-offset,0px) + 2px)) rotate(-2deg);}
+    40%{transform:translate(5px, calc(var(--ground-offset,0px) - 2px)) rotate(2deg);}
+    60%{transform:translate(-4px, calc(var(--ground-offset,0px) + 1px));}
+    80%{transform:translate(3px, var(--ground-offset,0px));}
   }
-  @keyframes diefade{ to{ transform:translateY(30px) scale(0.7); opacity:0; filter:brightness(0.2);} }
+  @keyframes diefade{ to{ transform:translateY(calc(var(--ground-offset,0px) + 30px)) scale(0.7); opacity:0; filter:brightness(0.2);} }
   .dmg-pop{
     position:absolute; left:50%; top:38%; transform:translate(-50%,0);
     font-family:'Cinzel'; font-weight:700; font-size:26px; color:var(--rust-bright);
