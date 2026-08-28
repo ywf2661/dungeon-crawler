@@ -242,20 +242,23 @@
      버튼은 nodemap.js의 renderNodeMapArea()가 자동으로 숨긴다(상점/휴식은
      이제 노드로만 이용 가능 — 사용자 확정 A안). */
   #node-map-area{
-    flex-shrink:0; max-height:280px; overflow-y:auto;
+    flex-shrink:0; max-height:340px; overflow-y:auto;
     background:#0f0b07aa; border:1px solid #3a2c1c; border-radius:4px;
     padding:12px 10px;
   }
-  #node-map-rows{display:flex; flex-direction:column; gap:14px;}
+  /* 사용자 피드백 — "행 간격이 좁아서 연결선이 짧고 어디로 이어지는지
+     안 보인다"에 따라 14px→46px로 대폭 넓혔다. 선이 확실히 대각선으로
+     퍼지면서 이어지는 게 보이게 하는 게 목적. */
+  #node-map-rows{display:flex; flex-direction:column; gap:46px;}
   #node-map-svg{z-index:0;}
-  .node-row{position:relative; z-index:1; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;}
+  .node-row{position:relative; z-index:1; display:flex; justify-content:center; gap:18px; flex-wrap:wrap;}
   .node-btn{
     display:flex; flex-direction:column; align-items:center; gap:3px;
-    width:72px; padding:8px 4px; border-radius:8px; cursor:pointer;
+    width:76px; padding:9px 4px; border-radius:8px; cursor:pointer;
     background:#1a130c; border:1px solid #3a2c1c; font-family:'Cinzel';
     color:var(--parchment-dim); transition:transform .12s;
   }
-  .node-btn .node-icon{font-size:20px; line-height:1;}
+  .node-btn .node-icon{font-size:22px; line-height:1;}
   .node-btn .node-label{font-size:10px; letter-spacing:.02em;}
   .node-btn.node-available{
     background:#241a0e; border-color:var(--gold); color:var(--parchment);
