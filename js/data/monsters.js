@@ -38,6 +38,17 @@ export(전역): MONSTERS, BOSSES, LOCATIONS
     {type:'golem',   name:'태고의 파수꾼',   minDepth:25, hp:210, atk:26, def:18, spd:3, exp:260, gold:[160,220], skills:['smash']},
      {type:'ironjudge', name:'폭주 강철 처형자', minDepth:30, hp:235, atk:27, def:20, spd:4, exp:300, gold:[170,230], skills:['ironCrush','smash']},
     {type:'demon',   name:'심연의 악마 군주', minDepth:35, hp:260, atk:32, def:16, spd:9, exp:380, gold:[220,300], skills:['smash','curse','heal']},
+    // ---------- 신규 4종 — "흔한 판타지 몬스터"가 아니라, 사물/개념 자체가
+    // 생명을 얻은 형태로 설계했다(사용자 요청 — 슬레이 더 스파이어식 독특한
+    // 보스 디자인). 각자 전용 스킬 2개 + 스킬마다 다른 시각 효과(playBanner
+    // 클래스, index.html에 CSS 추가 필요)를 갖는다. 실제 그림은 아직 없어서
+    // monster-visuals.js에 간단한 추상 실루엣 SVG를 임시로 넣어뒀고,
+    // MONSTER_IMG에도 경로를 등록해뒀다 — 아래 프롬프트로 그림을 만들어
+    // 해당 경로에 넣으면 자동으로 그림으로 바뀐다.
+    {type:'hollowprophet', name:'빈 옷의 예언자', minDepth:8,  hp:110, atk:17, def:7,  spd:8, exp:95,  gold:[65,95],   skills:['lockedVoices','prophecyFlame']},
+    {type:'hornedwarden',  name:'뿔 두른 파수인', minDepth:12, hp:140, atk:20, def:9,  spd:10, exp:145, gold:[100,140], skills:['judgmentKey','whisperingHorn']},
+    {type:'bladedbloom',   name:'넝쿨진 칼날꽃', minDepth:16, hp:165, atk:22, def:8,  spd:9, exp:180, gold:[125,165], skills:['petalBloodletting','bladeStemSweep']},
+    {type:'clockheart',    name:'잠들지 않는 태엽 심장', minDepth:20, hp:200, atk:25, def:14, spd:5, exp:250, gold:[150,200], skills:['pulseShockwave','rustedChainBind']},
   ];
 
 
