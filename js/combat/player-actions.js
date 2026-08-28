@@ -1918,21 +1918,28 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(Math.random() < chance){
       battleOver = true;
       revertDiceDelta();
-      const fledFrom = depth;
-      depth = Math.max(1, depth-1);
+      // 버그 수정: 노드맵 도입 이전의 낡은 로직(depth를 직접 1 깎는 방식)이
+      // 그대로 남아있었다. 특히 보스 노드(지도의 마지막 행)에서 도망치면
+      // player.nodeRow는 마지막 행에 그대로 머무는데 "다음 행"이 아예 없어서,
+      // 지도에서 클릭 가능한 노드가 하나도 안 남는 버그가 있었다(쉬움 난이도
+      // 보스 도망 시 100% 재현). depth를 건드리는 대신, 노드맵 진행 상태를
+      // "이 노드를 고르기 전"으로 되돌린다 — 방금 도망친 노드(보스든 일반
+      // 전투든)가 다시 선택 가능하게 나타난다.
       let ledgerMsg = '';
       if(hasRelicFlag('killAtkStack') && player.ledgerStack>0){
         player.atk = Math.max(1, player.atk - player.ledgerStack);
         player.ledgerStack = 0;
         ledgerMsg = ' 망자의 장부에 쌓인 힘이 모래처럼 흩어졌다.';
       }
+      if(player.nodeMap && player.nodeRow >= 0){
+        player.nodeRow -= 1;
+        if(player.nodeVisited && player.nodeVisited.length) player.nodeVisited.pop();
+        player.nodeCurrentId = player.nodeRow>=0 ? (player.nodeVisited[player.nodeVisited.length-1] || null) : null;
+      }
       setBattleMsg('도망쳤다!', '');
       setTimeout(()=>{
         showScreen('explore');
-        const retreatMsg = (depth < fledFrom
-          ? '황급히 뒤로 물러나 한 층 위로 몸을 피했다.'
-          : '황급히 뒤로 물러나 어둠 속으로 몸을 숨겼다.') + ledgerMsg;
-        renderExplore([{text:retreatMsg, cls:'warn'}]);
+        renderExplore([{text:'황급히 뒤로 물러나 몸을 피했다.'+ledgerMsg, cls:'warn'}]);
         renderStatus();
         saveGame();
       }, 700);
