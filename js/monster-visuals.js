@@ -36,18 +36,32 @@ export(전역): heroBossSvg, svgMonster
   // 함수 하나만 고치면 끝. 새 몬스터 이미지를 추가할 때도 이 객체에 한 줄만
   // 추가하면 된다.
   const MONSTER_IMG = {
-    /*wolf: 'images/monsters/wolf.png',
-    bat: 'images/monsters/bat.png',*/
+    wolf: 'images/monsters/wolf.png',
     skeleton: 'images/monsters/skeleton.png',
     slime: 'images/monsters/slime.png',
-    goblin: 'images/monsters/goblin.png',
-    spider: 'images/monsters/spider.png',
     bandit: 'images/monsters/bandit.png',
+    bat: 'images/monsters/bat.png',
+    goblin: 'images/monsters/goblin.png',
+    slime: 'images/monsters/slime.png',
+    // 신규 4종 보스(슬레이 더 스파이어식 독특한 디자인) — 아직 실제 그림은
+    // 없고 경로만 미리 등록해뒀다. 아래 SVG 폴백이 default:가 아니라 각자
+    // 전용 추상 실루엣으로 보이도록 svgMonster()에도 케이스를 추가했다 —
+    // 이 경로에 그림을 넣으면 자동으로 그림으로 바뀐다.
+    hollowprophet: 'images/monsters/hollowprophet.png',
+    hornedwarden: 'images/monsters/hornedwarden.png',
+    bladedbloom: 'images/monsters/bladedbloom.png',
+    clockheart: 'images/monsters/clockheart.png',
   };
 
   function svgMonster(type){
     if(MONSTER_IMG[type]){
-      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:80%; height:80%; object-fit:contain;">`;
+      // onerror 폴백: 그림 파일이 아직 없거나 경로가 틀렸을 때 깨진 이미지
+      // 아이콘 대신 전용 추상 실루엣(svgMonsterPlaceholder, 없으면 기본 원)
+      // 으로 자동 전환한다. 나중에 올바른 경로에 그림을 넣으면 정상적으로
+      // 그림이 뜬다(이 폴백은 그때는 아예 발동하지 않음).
+      const fallbackSvg = svgMonsterPlaceholder(type) || `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
+      const escaped = fallbackSvg.replace(/"/g, '&quot;').replace(/\n/g, '');
+      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:80%; height:80%; object-fit:contain;" onerror="this.outerHTML='${escaped}'">`;
     }
     const glow = `<filter id="eg"><feGaussianBlur stdDeviation="1.4"/></filter>`;
     switch(type){
@@ -314,6 +328,50 @@ export(전역): heroBossSvg, svgMonster
         <path d="M50 92 Q70 102 90 92" stroke="#1a0f22" stroke-width="3" fill="none"/>
       </svg>`;
       default: return `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
+    }
+  }
+
+  // ---------- 신규 4종 보스 임시 실루엣(추상 디자인) ----------
+  // 실제 그림이 준비되기 전까지 default(밋밋한 원)로 떨어지지 않도록 각자
+  // 컨셉을 대충이라도 드러내는 형태를 잡아뒀다. MONSTER_IMG에 그림 경로를
+  // 넣으면 이 SVG 대신 그림이 우선 표시된다.
+  function svgMonsterPlaceholder(type){
+    const glow = `<filter id="pg"><feGaussianBlur stdDeviation="1.6"/></filter>`;
+    switch(type){
+      case 'hollowprophet': return `<svg viewBox="0 0 140 160">${glow}
+        <ellipse cx="70" cy="150" rx="40" ry="8" fill="#000" opacity="0.3"/>
+        <path d="M70 20 C40 20 30 55 40 80 C20 90 24 130 46 148 L94 148 C116 130 120 90 100 80 C110 55 100 20 70 20 Z" fill="#1c3a3a"/>
+        <path d="M52 70 Q70 62 88 70" stroke="#0a1818" stroke-width="10" fill="none"/>
+        <ellipse cx="58" cy="76" rx="6" ry="8" fill="#5adea0" filter="url(#pg)"/>
+        <ellipse cx="82" cy="76" rx="6" ry="8" fill="#5adea0" filter="url(#pg)"/>
+        <rect x="18" y="70" width="6" height="60" rx="2" fill="#3a2c1c" transform="rotate(-12 18 70)"/>
+        <circle cx="14" cy="66" r="10" fill="#5adea0" filter="url(#pg)" opacity="0.85"/>
+      </svg>`;
+      case 'hornedwarden': return `<svg viewBox="0 0 120 130">${glow}
+        <ellipse cx="60" cy="120" rx="34" ry="7" fill="#000" opacity="0.3"/>
+        <path d="M40 30 L28 6 L46 24 Z" fill="#e6dcc0"/><path d="M80 30 L92 6 L74 24 Z" fill="#e6dcc0"/>
+        <path d="M60 24 C40 24 30 40 34 58 C24 62 26 84 44 96 L76 96 C94 84 96 62 86 58 C90 40 80 24 60 24 Z" fill="#8a3a2c"/>
+        <ellipse cx="60" cy="66" rx="26" ry="14" fill="#5c2018"/>
+        <circle cx="52" cy="64" r="3.4" fill="#e6c34a" filter="url(#pg)"/><circle cx="68" cy="64" r="3.4" fill="#e6c34a" filter="url(#pg)"/>
+        <rect x="16" y="70" width="6" height="30" rx="2" fill="#c9c9d4" transform="rotate(-20 16 70)"/>
+      </svg>`;
+      case 'bladedbloom': return `<svg viewBox="0 0 140 140">${glow}
+        <ellipse cx="70" cy="128" rx="30" ry="7" fill="#000" opacity="0.3"/>
+        <path d="M70 100 C50 70 30 60 34 96 C10 90 20 116 50 118 Z" fill="#5ac9c0"/>
+        <path d="M70 90 L60 20 C50 10 46 30 54 46 C40 40 44 58 58 62 C48 62 50 78 66 82 Z" fill="#c98fe0"/>
+        <path d="M70 90 L80 22 C90 12 92 32 84 48 C98 42 94 60 80 64 C90 64 88 80 72 84 Z" fill="#a85ac9"/>
+        <ellipse cx="70" cy="18" rx="8" ry="14" fill="#8fd66a"/>
+      </svg>`;
+      case 'clockheart': return `<svg viewBox="0 0 140 150">${glow}
+        <ellipse cx="70" cy="140" rx="36" ry="8" fill="#000" opacity="0.3"/>
+        <circle cx="30" cy="60" r="16" fill="none" stroke="#5a4a30" stroke-width="6"/>
+        <circle cx="112" cy="50" r="12" fill="none" stroke="#5a4a30" stroke-width="5"/>
+        <circle cx="106" cy="100" r="14" fill="none" stroke="#5a4a30" stroke-width="5"/>
+        <path d="M70 30 C40 30 30 55 45 75 C30 90 45 110 70 128 C95 110 110 90 95 75 C110 55 100 30 70 30 Z" fill="#8a2a24"/>
+        <path d="M70 40 C50 40 44 58 55 72 C44 84 55 98 70 112 C85 98 96 84 85 72 C96 58 90 40 70 40 Z" fill="#c93a2c" filter="url(#pg)"/>
+        <line x1="20" y1="76" x2="120" y2="72" stroke="#3a2c1c" stroke-width="3" opacity="0.6"/>
+      </svg>`;
+      default: return null;
     }
   }
 
