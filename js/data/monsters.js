@@ -49,6 +49,14 @@ export(전역): MONSTERS, BOSSES, LOCATIONS
     {type:'hornedwarden',  name:'뿔 두른 파수인', minDepth:12, hp:140, atk:20, def:9,  spd:10, exp:145, gold:[100,140], skills:['judgmentKey','whisperingHorn']},
     {type:'bladedbloom',   name:'넝쿨진 칼날꽃', minDepth:16, hp:165, atk:22, def:8,  spd:9, exp:180, gold:[125,165], skills:['petalBloodletting','bladeStemSweep']},
     {type:'clockheart',    name:'잠들지 않는 태엽 심장', minDepth:20, hp:200, atk:25, def:14, spd:5, exp:250, gold:[150,200], skills:['pulseShockwave','rustedChainBind']},
+    // ---------- 2차 신규 4종 — 1차(빈 옷의 예언자/뿔 두른 파수인/넝쿨진
+    // 칼날꽃/잠들지 않는 태엽 심장)가 사용자가 준 참고 이미지랑 너무 닮았다는
+    // 피드백을 받아, 이번엔 로브/가면/꽃-칼날 조합을 전부 피하고 완전히 다른
+    // 발상(석판, 재봉인형, 등롱 무리, 모래시계)으로 새로 설계했다.
+    {type:'watchertablet',  name:'감시자의 석판',     minDepth:6,  hp:100, atk:16, def:8,  spd:4, exp:88,  gold:[60,88],   skills:['carvedBrand','unblinkingGaze']},
+    {type:'threadmannequin',name:'붉은 실의 재봉인형', minDepth:14, hp:150, atk:21, def:9,  spd:11, exp:155, gold:[110,150], skills:['threadWinds','scissorGreeting']},
+    {type:'sinlantern',     name:'죄의 등롱',         minDepth:18, hp:170, atk:22, def:10, spd:8, exp:190, gold:[130,170], skills:['burningSin','lanternChorus']},
+    {type:'unstoppingsand', name:'멈추지 않는 모래',   minDepth:28, hp:220, atk:28, def:13, spd:7, exp:290, gold:[190,240], skills:['crumblingSand','timeTurningBack']},
   ];
 
 
