@@ -116,7 +116,7 @@ export(전역): heroBossSvg, svgMonster
       // 그림이 뜬다(이 폴백은 그때는 아예 발동하지 않음).
       const fallbackSvg = svgMonsterPlaceholder(type) || svgMonsterPlaceholder2(type) || `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
       const escaped = fallbackSvg.replace(/"/g, '&quot;').replace(/\n/g, '');
-      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:80%; height:80%; object-fit:contain;" onerror="this.outerHTML='${escaped}'">`;
+      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:100%; height:100%; object-fit:contain;" onerror="this.outerHTML='${escaped}'">`;
     }
     const glow = `<filter id="eg"><feGaussianBlur stdDeviation="1.4"/></filter>`;
     switch(type){
