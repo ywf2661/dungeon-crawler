@@ -309,6 +309,18 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       else if(skillKey==='ironCrush'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
       else if(skillKey==='wraithWail'){ dmg = Math.round(enemy.atk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
       else if(skillKey==='eliteFerocity'){ dmg = Math.round(enemy.atk*2.1); label = `${enemy.name}이(가) 정예의 위압적인 기세로 짓쳐든다!`; }
+      // ---------- 신규 4종 보스 전용 스킬 ----------
+      // 각 스킬마다 playBanner()로 서로 다른 시각 효과를 준다(사용자 요청 —
+      // "유물 발동처럼 스킬마다 이펙트가 달랐으면"). 배너 클래스별 색상/글로우는
+      // index.html에 CSS로 추가해야 실제로 보인다(별도 안내 참고).
+      else if(skillKey==='lockedVoices'){ dmg = Math.round(enemy.atk*1.5); label = `${enemy.name}의 두건 속에서 수십 개의 목소리가 동시에 흘러나온다!`; playBanner('잠긴 목소리들','fx-voices'); }
+      else if(skillKey==='prophecyFlame'){ dmg = Math.round(enemy.atk*2.0); label = `지팡이에 갇힌 유령불이 폭발하듯 타오른다!`; playBanner('예언의 불꽃','fx-prophecy'); }
+      else if(skillKey==='judgmentKey'){ dmg = Math.round(enemy.atk*1.6); label = `${enemy.name}이(가) 굽은 단검으로 급소를 찌른다 — 짤그랑, 열쇠 부딪는 소리가 울린다.`; playBanner('심판의 열쇠','fx-key'); }
+      else if(skillKey==='whisperingHorn'){ dmg = Math.round(enemy.atk*1.85); label = `낮은 뿔피리 소리와 함께 그림자 사슬이 뻗어온다!`; playBanner('속삭이는 뿔피리','fx-horn'); }
+      else if(skillKey==='petalBloodletting'){ dmg = Math.round(enemy.atk*1.4); label = `칼날꽃이 만개하며 가시 섞인 꽃잎을 흩뿌린다!`; playBanner('꽃잎의 선혈','fx-petal'); }
+      else if(skillKey==='bladeStemSweep'){ dmg = Math.round(enemy.atk*2.1); label = `굽은 칼날 줄기가 그대로 휩쓸어 벤다!`; playBanner('칼날 줄기의 휩쓸기','fx-bladestem'); }
+      else if(skillKey==='pulseShockwave'){ dmg = Math.round(enemy.atk*1.7); label = `녹슨 톱니 우리 안, 거대한 심장이 크게 박동한다!`; playBanner('박동의 충격파','fx-pulse'); }
+      else if(skillKey==='rustedChainBind'){ dmg = Math.round(enemy.atk*1.5); label = `사방에서 녹슨 사슬이 튀어나와 온몸을 옭아맨다!`; playBanner('녹슨 사슬의 포박','fx-chain'); }
       else { dmg = enemy.atk + Math.floor(Math.random()*3)-1; }
 
       if(dmg<=0){
