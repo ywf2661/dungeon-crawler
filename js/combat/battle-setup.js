@@ -70,9 +70,15 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     playBanner(step.label, 'enrage');
     Sound.gameOver();
     setBattleMsg(`${enemy.name}이(가) 쓰러지지 않는다…!`, `${step.label} — 체력을 되찾고 더욱 강력해졌다!`);
+    // 버그 수정: 예전엔 여기서 enemyTurn()을 호출해 광폭화 직후 적이 곧바로
+    // 한 번 더 공격했다 — "공격→보스 HP0→광폭화→내 턴"이어야 할 흐름이
+    // "...→광폭화→적 턴(피격)→내 턴"이 되어버려, 사용자 입장에선 광폭화
+    // 메시지가 뜨자마자 이유 없이 체력이 깎이는 것처럼 보였다. 이 광폭화는
+    // 플레이어가 이미 자기 턴(공격)을 다 써서 발생한 것이므로, 적에게 추가
+    // 턴을 줄 이유가 없다 — 연출이 끝나면 그대로 플레이어에게 턴을 돌려준다.
     setTimeout(()=>{
       if(battleOver) return;
-      enemyTurn();
+      resetCommandUI();
     }, 1400);
   }
 
@@ -227,6 +233,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       + enemy.name;
     document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
     document.getElementById('bt-stage').className='enemy-stage'+(enemy.isElite?' elite':'');
+    // PNG 몬스터 그림이 캔버스 안 투명 여백 때문에 "붕 떠 보이는" 문제를
+    // 자동으로 보정한다(monster-visuals.js의 fixMonsterImageGrounding 참고).
+    // SVG 몬스터일 땐 <img> 자체가 없으니 querySelector가 null을 반환해
+    // 자연히 아무 일도 안 일어난다.
+    fixMonsterImageGrounding(document.getElementById('bt-stage').querySelector('img'));
     updateEnemyHpBar();
     updateStatusBadges();
     setBattleMsg(isTrueFinal ? `${enemy.name}이(가) 마침내 진정한 모습을 드러낸다!` : (isFinal ? `${enemy.name}이(가) 마침내 모습을 드러냈다!` : (isBoss ? `${enemy.name}이(가) 앞을 가로막는다!` : (enemy.isElite ? `심상치 않은 기운이 감돈다… ${enemy.name}이(가) 나타났다!` : `${enemy.name}이(가) 나타났다!`))), '');
