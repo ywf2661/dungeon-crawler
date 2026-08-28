@@ -34,34 +34,24 @@ export(전역): MONSTERS, BOSSES, LOCATIONS
     {type:'demon',   name:'하급 악마',     minDepth:26, hp:80, atk:22, def:10, spd:8,  exp:90, gold:[45,65], skills:['smash','curse']},
   ];
   const BOSSES = [
-    {type:'dragon',  name:'붉은 유해룡',     minDepth:5,  hp:90,  atk:16, def:6,  spd:7, exp:80,  gold:[60,90],   skills:['bite','smash']},
-    {type:'wraithqueen', name:'심연의 망령여왕', minDepth:12, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['wraithWail','curse','heal']},
-    {type:'lich',    name:'회랑의 리치',     minDepth:10, hp:130, atk:20, def:10, spd:9, exp:140, gold:[100,150], skills:['curse','heal','smash']},
-    {type:'ogre',    name:'오우거 대족장',   minDepth:15, hp:150, atk:24, def:10, spd:5, exp:160, gold:[110,150], skills:['smash']},
-      {type:'kraken',  name:'심해의 크라켄',   minDepth:20, hp:180, atk:23, def:12, spd:6, exp:200, gold:[130,170], skills:['krakenGrip','bite']},
-    {type:'lich',    name:'회랑의 리치',     minDepth:10, hp:130, atk:20, def:10, spd:9, exp:140, gold:[100,150], skills:['curse','heal','smash']},
-    {type:'golem',   name:'태고의 파수꾼',   minDepth:25, hp:210, atk:26, def:18, spd:3, exp:260, gold:[160,220], skills:['smash']},
-     {type:'ironjudge', name:'폭주 강철 처형자', minDepth:30, hp:235, atk:27, def:20, spd:4, exp:300, gold:[170,230], skills:['ironCrush','smash']},
-    {type:'demon',   name:'심연의 악마 군주', minDepth:35, hp:260, atk:32, def:16, spd:9, exp:380, gold:[220,300], skills:['smash','curse','heal']},
-    // ---------- 신규 4종 — "흔한 판타지 몬스터"가 아니라, 사물/개념 자체가
-    // 생명을 얻은 형태로 설계했다(사용자 요청 — 슬레이 더 스파이어식 독특한
-    // 보스 디자인). 각자 전용 스킬 2개 + 스킬마다 다른 시각 효과(playBanner
-    // 클래스, index.html에 CSS 추가 필요)를 갖는다. 실제 그림은 아직 없어서
-    // monster-visuals.js에 간단한 추상 실루엣 SVG를 임시로 넣어뒀고,
-    // MONSTER_IMG에도 경로를 등록해뒀다 — 아래 프롬프트로 그림을 만들어
-    // 해당 경로에 넣으면 자동으로 그림으로 바뀐다.
-    {type:'hollowprophet', name:'빈 옷의 예언자', minDepth:8,  hp:110, atk:17, def:7,  spd:8, exp:95,  gold:[65,95],   skills:['lockedVoices','prophecyFlame']},
-    {type:'hornedwarden',  name:'뿔 두른 파수인', minDepth:12, hp:140, atk:20, def:9,  spd:10, exp:145, gold:[100,140], skills:['judgmentKey','whisperingHorn']},
-    {type:'bladedbloom',   name:'넝쿨진 칼날꽃', minDepth:16, hp:165, atk:22, def:8,  spd:9, exp:180, gold:[125,165], skills:['petalBloodletting','bladeStemSweep']},
-    {type:'clockheart',    name:'잠들지 않는 태엽 심장', minDepth:20, hp:200, atk:25, def:14, spd:5, exp:250, gold:[150,200], skills:['pulseShockwave','rustedChainBind']},
-    // ---------- 2차 신규 4종 — 1차(빈 옷의 예언자/뿔 두른 파수인/넝쿨진
-    // 칼날꽃/잠들지 않는 태엽 심장)가 사용자가 준 참고 이미지랑 너무 닮았다는
-    // 피드백을 받아, 이번엔 로브/가면/꽃-칼날 조합을 전부 피하고 완전히 다른
-    // 발상(석판, 재봉인형, 등롱 무리, 모래시계)으로 새로 설계했다.
-    {type:'watchertablet',  name:'감시자의 석판',     minDepth:6,  hp:100, atk:16, def:8,  spd:4, exp:88,  gold:[60,88],   skills:['carvedBrand','unblinkingGaze']},
-    {type:'threadmannequin',name:'붉은 실의 재봉인형', minDepth:14, hp:150, atk:21, def:9,  spd:11, exp:155, gold:[110,150], skills:['threadWinds','scissorGreeting']},
-    {type:'sinlantern',     name:'죄의 등롱',         minDepth:18, hp:170, atk:22, def:10, spd:8, exp:190, gold:[130,170], skills:['burningSin','lanternChorus']},
-    {type:'unstoppingsand', name:'멈추지 않는 모래',   minDepth:28, hp:220, atk:28, def:13, spd:7, exp:290, gold:[190,240], skills:['crumblingSand','timeTurningBack']},
+    // ---------- 신규 8종 보스로 전면 교체(사용자 요청) ----------
+    // 기존 8마리(붉은 유해룡/회랑의 리치/심연의 망령여왕/오우거 대족장/심해의
+    // 크라켄/태고의 파수꾼/폭주 강철 처형자/심연의 악마 군주)는 더 이상 뽑히지
+    // 않도록 이 배열에서 뺐다 — 대신 새로 만든 8마리 슬레이 더 스파이어식
+    // 보스에게 "능력치만"(hp/atk/def/spd/exp/gold) 깊이 순서대로 그대로
+    // 이관했다. 스킬은 각 신규 보스 고유의 것을 그대로 쓴다(이관 안 함).
+    // 매칭 순서: 유해룡→감시자의 석판, 리치→빈 옷의 예언자, 망령여왕→뿔 두른
+    // 파수인, 오우거→재봉인형, 크라켄→칼날꽃, 파수꾼→등롱, 처형자→태엽 심장,
+    // 악마 군주→모래. (참고: 기존 데이터에 '회랑의 리치'가 실수로 두 번 중복
+    // 등록되어 있었는데, 이번에 함께 정리했다.)
+    {type:'watchertablet',  name:'감시자의 석판',     minDepth:6,  hp:90,  atk:16, def:6,  spd:7,  exp:80,  gold:[60,90],   skills:['carvedBrand','unblinkingGaze']},
+    {type:'hollowprophet',  name:'빈 옷의 예언자',    minDepth:8,  hp:130, atk:20, def:10, spd:9,  exp:140, gold:[100,150], skills:['lockedVoices','prophecyFlame']},
+    {type:'hornedwarden',   name:'뿔 두른 파수인',    minDepth:12, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['judgmentKey','whisperingHorn']},
+    {type:'threadmannequin',name:'붉은 실의 재봉인형', minDepth:14, hp:150, atk:24, def:10, spd:5,  exp:160, gold:[110,150], skills:['threadWinds','scissorGreeting']},
+    {type:'bladedbloom',    name:'넝쿨진 칼날꽃',     minDepth:16, hp:180, atk:23, def:12, spd:6,  exp:200, gold:[130,170], skills:['petalBloodletting','bladeStemSweep']},
+    {type:'sinlantern',     name:'죄의 등롱',         minDepth:18, hp:210, atk:26, def:18, spd:3,  exp:260, gold:[160,220], skills:['burningSin','lanternChorus']},
+    {type:'clockheart',     name:'잠들지 않는 태엽 심장', minDepth:20, hp:235, atk:27, def:20, spd:4, exp:300, gold:[170,230], skills:['pulseShockwave','rustedChainBind']},
+    {type:'unstoppingsand', name:'멈추지 않는 모래',   minDepth:28, hp:260, atk:32, def:16, spd:9,  exp:380, gold:[220,300], skills:['crumblingSand','timeTurningBack']},
   ];
 
 
