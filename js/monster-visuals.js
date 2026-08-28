@@ -40,8 +40,8 @@ export(전역): heroBossSvg, svgMonster
     skeleton: 'images/monsters/skeleton.png',
     slime: 'images/monsters/slime.png',
     bandit: 'images/monsters/bandit.png',
-    bat: 'images/monsters/bat.png',
-    goblin: 'images/monsters/goblin.png',*/
+    bat: 'images/monsters/bat.png',*/
+    goblin: 'images/monsters/goblin.png',
     spider: 'images/monsters/spider.png',
   };
 
