@@ -37,9 +37,9 @@ export(전역): heroBossSvg, svgMonster
   // 추가하면 된다.
   const MONSTER_IMG = {
     /*wolf: 'images/monsters/wolf.png',
+    bat: 'images/monsters/bat.png',*/
     skeleton: 'images/monsters/skeleton.png',
     slime: 'images/monsters/slime.png',
-    bat: 'images/monsters/bat.png',*/
     goblin: 'images/monsters/goblin.png',
     spider: 'images/monsters/spider.png',
     bandit: 'images/monsters/bandit.png',
