@@ -38,12 +38,18 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   // ---------- 최종보스 / 진 최종보스 페이즈(광폭화) 시스템 ----------
   // 체력이 0이 되어도 곧바로 쓰러지지 않고, 남은 페이즈가 있으면 체력을 가득 채우며
   // 더욱 강력해진 모습으로 다시 일어선다. 쉬움 난이도에서는 적용되지 않는다.
+  // 밸런스 조정(사용자 피드백 — "광폭화 후 한 대만 맞아도 죽는다"): 광폭화의
+  // atkMult는 이미 깊이 스케일링(50층 기준 ×3.5)과 난이도 보정(보통 ×1.10,
+  // 하드코어 ×1.22)까지 다 반영된 공격력 위에 또 곱해지는 구조라, 예전 수치
+  // (1.35, 진 최종보스는 1.3→1.5)로는 한 방에 즉사시킬 정도로 과도했다.
+  // 배율을 전체적으로 낮췄다 — "부활해서 더 강해졌다"는 느낌은 유지하되
+  // 즉사기가 되지 않는 선으로.
   const ENRAGE_STEPS_FINAL = [
-    {atkMult:1.35, defMult:1.15, hpMult:1.15, skillChance:0.55, label:'광폭화! 잠식된 힘이 폭주한다'},
+    {atkMult:1.15, defMult:1.1, hpMult:1.1, skillChance:0.45, label:'광폭화! 잠식된 힘이 폭주한다'},
   ];
   const ENRAGE_STEPS_TRUE = [
-    {atkMult:1.3, defMult:1.12, hpMult:1.15, skillChance:0.55, label:'1차 각성 — 태초의 분노가 깨어난다'},
-    {atkMult:1.5, defMult:1.2,  hpMult:1.25, skillChance:0.75, label:'2차 각성 — 회랑 그 자체가 몸부림친다'},
+    {atkMult:1.12, defMult:1.08, hpMult:1.1,  skillChance:0.45, label:'1차 각성 — 태초의 분노가 깨어난다'},
+    {atkMult:1.25, defMult:1.12, hpMult:1.15, skillChance:0.6,  label:'2차 각성 — 회랑 그 자체가 몸부림친다'},
   ];
   function canEnrage(e){
     if(!e || !(e.isFinal || e.isTrueFinal)) return false;
