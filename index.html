@@ -302,8 +302,7 @@
     position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     padding-top:10px;
   }
-  .enemy-stage svg{width:120px; height:150px; filter:drop-shadow(0 8px 14px #00000099);}
-.enemy-stage img{width:120px; height:120px; filter:drop-shadow(0 8px 14px #00000099); align-self:flex-end; margin-bottom:8px;}
+  .enemy-stage svg, .enemy-stage img{width:120px; height:150px; filter:drop-shadow(0 8px 14px #00000099);}
    .enemy-stage.hit svg, .enemy-stage.hit img{animation:hitshake .32s;}
    .enemy-stage.dying svg, .enemy-stage.dying img{animation:diefade .6s forwards;}
   @keyframes hitshake{
@@ -398,6 +397,15 @@
   .fx-banner.dodge{color:var(--parchment-dim); border-color:var(--parchment-dim);}
   .fx-banner.luckbad{color:#ff6a5a; border-color:#ff6a5a;}
   .fx-banner.enrage{color:#ff4a3a; border-color:#ff4a3a; font-size:18px; text-shadow:0 0 12px #ff4a3aaa, 0 1px 3px #000;}
+  /* 신규 4종 보스 전용 스킬 배너 색상(사용자 요청 — 스킬마다 다른 이펙트) */
+  .fx-banner.fx-voices{color:#8fe0a8; border-color:#7ad6a0; text-shadow:0 0 10px #7ad6a088, 0 1px 3px #000;}
+  .fx-banner.fx-prophecy{color:#6fffb0; border-color:#5affa0; font-size:18px; text-shadow:0 0 14px #5affa0cc, 0 1px 3px #000;}
+  .fx-banner.fx-key{color:#d9b36a; border-color:#c9a34a; text-shadow:0 0 8px #c9a34a77, 0 1px 3px #000;}
+  .fx-banner.fx-horn{color:#c97a4a; border-color:#b96a3a; text-shadow:0 0 10px #b96a3a88, 0 1px 3px #000;}
+  .fx-banner.fx-petal{color:#e08fd6; border-color:#d67ac9; text-shadow:0 0 10px #d67ac988, 0 1px 3px #000;}
+  .fx-banner.fx-bladestem{color:#7ad6d0; border-color:#5ac9c0; font-size:18px; text-shadow:0 0 12px #5ac9c0aa, 0 1px 3px #000;}
+  .fx-banner.fx-pulse{color:#ff8a7a; border-color:#ff6a5a; text-shadow:0 0 12px #ff6a5aaa, 0 1px 3px #000;}
+  .fx-banner.fx-chain{color:#a08060; border-color:#8a6a4a; text-shadow:0 0 8px #8a6a4a77, 0 1px 3px #000;}
   @keyframes bannerpop{
     0%{opacity:0; transform:translate(-50%,8px) scale(0.8);}
     20%{opacity:1; transform:translate(-50%,0) scale(1.05);}
