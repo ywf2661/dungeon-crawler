@@ -338,8 +338,22 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
           const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
           line.setAttribute('x1', fx); line.setAttribute('y1', fy);
           line.setAttribute('x2', tx); line.setAttribute('y2', ty);
-          line.setAttribute('stroke', '#5a4a30');
-          line.setAttribute('stroke-width', '2');
+          // 지나온 경로 하이라이트(사용자 피드백 — "어느 길로 왔는지 한눈에
+          // 안 보인다"): player.nodeVisited의 연속된 두 id가 정확히 이 선의
+          // from→to와 일치하면 "내가 실제로 걸어온 길"이므로 굵고 밝은 금색으로,
+          // 그 외(안 밟은 갈림길)는 예전처럼 얇고 흐리게 그린다.
+          const visited = player.nodeVisited || [];
+          const fromIdx = visited.indexOf(n.id);
+          const isWalked = fromIdx>=0 && visited[fromIdx+1]===toId;
+          if(isWalked){
+            line.setAttribute('stroke', '#e6c34a');
+            line.setAttribute('stroke-width', '3.5');
+            line.setAttribute('opacity', '0.95');
+          } else {
+            line.setAttribute('stroke', '#5a4a30');
+            line.setAttribute('stroke-width', '1.5');
+            line.setAttribute('opacity', '0.55');
+          }
           svg.appendChild(line);
         });
       });
