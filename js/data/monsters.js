@@ -7,11 +7,16 @@ export(전역): MONSTERS, BOSSES, LOCATIONS
 
   /* ============ 몬스터 도감 ============ */
   const MONSTERS = [
-    {type:'slime',   name:'끈적 슬라임',   minDepth:0,  hp:16, atk:4,  def:1,  spd:3,  exp:8,  gold:[4,9],   skills:[]},
-    {type:'goblin',  name:'숲 고블린',     minDepth:0,  hp:22, atk:6,  def:2,  spd:6,  exp:12, gold:[6,14],  skills:[]},
-    {type:'bat',     name:'박쥐 떼',       minDepth:1,  hp:14, atk:5,  def:1,  spd:12, exp:10, gold:[5,10],  skills:['bite']},
-    {type:'bandit',  name:'떠돌이 도적',   minDepth:1,  hp:24, atk:7,  def:2,  spd:8,  exp:14, gold:[10,20], skills:['steal']},
-    {type:'wolf',    name:'검은 늑대',     minDepth:2,  hp:26, atk:8,  def:2,  spd:10, exp:16, gold:[5,12],  skills:['bite']},
+    // ---------- 초반 5종 컨셉 재설계(사용자 요청 — 슬스처럼 독창적이고
+    // 신비로운 느낌이되, 초반 몬스터 특유의 "약해 보이는" 인상은 유지). type과
+    // 이미지 경로(monster-visuals.js의 MONSTER_IMG)는 그대로 둬서 기존에
+    // 넣어두신 파일 구조를 안 건드린다 — 새로 만드실 그림을 같은 경로/파일명에
+    // 덮어쓰기만 하면 된다. 이름만 새 컨셉으로 교체했다.
+    {type:'slime',   name:'번진 잉크방울', minDepth:0,  hp:16, atk:4,  def:1,  spd:3,  exp:8,  gold:[4,9],   skills:[]},
+    {type:'goblin',  name:'이끼 진 잔가지꾼', minDepth:0,  hp:22, atk:6,  def:2,  spd:6,  exp:12, gold:[6,14],  skills:[]},
+    {type:'bat',     name:'찢긴 속삭임들', minDepth:1,  hp:14, atk:5,  def:1,  spd:12, exp:10, gold:[5,10],  skills:['bite']},
+    {type:'bandit',  name:'누더기 좀도둑', minDepth:1,  hp:24, atk:7,  def:2,  spd:8,  exp:14, gold:[10,20], skills:['steal']},
+    {type:'wolf',    name:'떠도는 발자국', minDepth:2,  hp:26, atk:8,  def:2,  spd:10, exp:16, gold:[5,12],  skills:['bite']},
     {type:'spider',  name:'독거미',        minDepth:3,  hp:28, atk:9,  def:3,  spd:7,  exp:18, gold:[9,16],  skills:['bite']},
     {type:'skeleton',name:'해골 전사',     minDepth:3,  hp:32, atk:9,  def:4,  spd:5,  exp:20, gold:[8,18],  skills:[]},
     {type:'ghost',   name:'원혼',          minDepth:5,  hp:30, atk:10, def:2,  spd:11, exp:24, gold:[12,20], skills:['curse']},
