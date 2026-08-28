@@ -57,6 +57,51 @@ export(전역): heroBossSvg, svgMonster
     unstoppingsand: 'images/monsters/unstoppingsand.png',
   };
 
+  // PNG 몬스터 그림 하단의 투명 여백을 자동으로 감지해 보정한다(사용자 피드백
+  // — 일부 그림은 캐릭터가 캔버스 맨 아래까지 안 닿아서 "붕 떠 보인다". CSS의
+  // align-self:flex-end는 이미지 박스 자체를 바닥에 붙일 뿐이라, 박스 안의
+  // 투명 여백까지는 못 잡아낸다). 이미지가 실제로 로드된 뒤 캔버스에 그려
+  // 픽셀 알파값을 맨 아래부터 훑어, 투명 여백만큼 translateY로 끌어내린다.
+  // 같은 오리진(GitHub Pages)에서 서빙되는 이미지라 CORS로 인한 캔버스 오염
+  // 문제는 없다. 여백이 거의 없는 그림(호른드워든/할로우프로펫 등)은 보정값이
+  // 0에 가까워 사실상 아무 변화도 없다 — 안전하게 모든 몬스터 이미지에 걸어도
+  // 된다.
+  function fixMonsterImageGrounding(imgEl){
+    if(!imgEl) return;
+    const run = ()=>{
+      const iw = imgEl.naturalWidth, ih = imgEl.naturalHeight;
+      if(!iw || !ih) return;
+      try{
+        const canvas = document.createElement('canvas');
+        canvas.width = iw; canvas.height = ih;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imgEl, 0, 0);
+        const data = ctx.getImageData(0, 0, iw, ih).data;
+        let bottomPad = 0;
+        outer:
+        for(let y=ih-1; y>=0; y--){
+          for(let x=0; x<iw; x+=2){ // 2픽셀씩 건너뛰어 분석 속도 확보
+            if(data[(y*iw+x)*4+3] > 10){ break outer; }
+          }
+          bottomPad++;
+        }
+        const padRatio = bottomPad/ih;
+        // 2%~50% 범위에서만 보정한다 — 2% 미만은 오차 범위로 무시하고,
+        // 50% 이상은 분석이 잘못됐을 가능성이 높아(예: 완전히 빈 이미지)
+        // 안전하게 건너뛴다.
+        if(padRatio > 0.02 && padRatio < 0.5){
+          const displayedHeight = imgEl.clientHeight || imgEl.offsetHeight || 0;
+          if(displayedHeight > 0){
+            const pxShift = Math.round(displayedHeight*padRatio);
+            imgEl.style.transform = `translateY(${pxShift}px)`;
+          }
+        }
+      }catch(e){ /* 픽셀 분석 실패 시 조용히 무시(원래 위치 그대로 유지) */ }
+    };
+    if(imgEl.complete && imgEl.naturalWidth>0) run();
+    else imgEl.addEventListener('load', run, {once:true});
+  }
+
   function svgMonster(type){
     if(MONSTER_IMG[type]){
       // onerror 폴백: 그림 파일이 아직 없거나 경로가 틀렸을 때 깨진 이미지
@@ -65,7 +110,7 @@ export(전역): heroBossSvg, svgMonster
       // 그림이 뜬다(이 폴백은 그때는 아예 발동하지 않음).
       const fallbackSvg = svgMonsterPlaceholder(type) || svgMonsterPlaceholder2(type) || `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
       const escaped = fallbackSvg.replace(/"/g, '&quot;').replace(/\n/g, '');
-      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:100%; height:100%; object-fit:contain;" onerror="this.outerHTML='${escaped}'">`;
+      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:80%; height:80%; object-fit:contain;" onerror="this.outerHTML='${escaped}'">`;
     }
     const glow = `<filter id="eg"><feGaussianBlur stdDeviation="1.4"/></filter>`;
     switch(type){
