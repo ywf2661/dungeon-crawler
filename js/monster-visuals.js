@@ -42,7 +42,6 @@ export(전역): heroBossSvg, svgMonster
     bandit: 'images/monsters/bandit.png',
     bat: 'images/monsters/bat.png',
     goblin: 'images/monsters/goblin.png',
-    slime: 'images/monsters/slime.png',
     // 신규 4종 보스(슬레이 더 스파이어식 독특한 디자인) — 아직 실제 그림은
     // 없고 경로만 미리 등록해뒀다. 아래 SVG 폴백이 default:가 아니라 각자
     // 전용 추상 실루엣으로 보이도록 svgMonster()에도 케이스를 추가했다 —
@@ -51,6 +50,11 @@ export(전역): heroBossSvg, svgMonster
     hornedwarden: 'images/monsters/hornedwarden.png',
     bladedbloom: 'images/monsters/bladedbloom.png',
     clockheart: 'images/monsters/clockheart.png',
+    // 2차 신규 4종 — 참고 이미지랑 겹치지 않는 새 컨셉(석판/재봉인형/등롱/모래시계)
+    watchertablet: 'images/monsters/watchertablet.png',
+    threadmannequin: 'images/monsters/threadmannequin.png',
+    sinlantern: 'images/monsters/sinlantern.png',
+    unstoppingsand: 'images/monsters/unstoppingsand.png',
   };
 
   function svgMonster(type){
@@ -59,7 +63,7 @@ export(전역): heroBossSvg, svgMonster
       // 아이콘 대신 전용 추상 실루엣(svgMonsterPlaceholder, 없으면 기본 원)
       // 으로 자동 전환한다. 나중에 올바른 경로에 그림을 넣으면 정상적으로
       // 그림이 뜬다(이 폴백은 그때는 아예 발동하지 않음).
-      const fallbackSvg = svgMonsterPlaceholder(type) || `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
+      const fallbackSvg = svgMonsterPlaceholder(type) || svgMonsterPlaceholder2(type) || `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
       const escaped = fallbackSvg.replace(/"/g, '&quot;').replace(/\n/g, '');
       return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:80%; height:80%; object-fit:contain;" onerror="this.outerHTML='${escaped}'">`;
     }
@@ -370,6 +374,53 @@ export(전역): heroBossSvg, svgMonster
         <path d="M70 30 C40 30 30 55 45 75 C30 90 45 110 70 128 C95 110 110 90 95 75 C110 55 100 30 70 30 Z" fill="#8a2a24"/>
         <path d="M70 40 C50 40 44 58 55 72 C44 84 55 98 70 112 C85 98 96 84 85 72 C96 58 90 40 70 40 Z" fill="#c93a2c" filter="url(#pg)"/>
         <line x1="20" y1="76" x2="120" y2="72" stroke="#3a2c1c" stroke-width="3" opacity="0.6"/>
+      </svg>`;
+      default: return null;
+    }
+  }
+
+  // ---------- 2차 신규 4종 보스 임시 실루엣 ----------
+  function svgMonsterPlaceholder2(type){
+    const glow = `<filter id="pg2"><feGaussianBlur stdDeviation="1.6"/></filter>`;
+    switch(type){
+      case 'watchertablet': return `<svg viewBox="0 0 130 150">${glow}
+        <ellipse cx="65" cy="142" rx="34" ry="7" fill="#000" opacity="0.3"/>
+        <rect x="20" y="16" width="90" height="118" rx="6" fill="#4a4038"/>
+        <rect x="20" y="16" width="90" height="118" rx="6" fill="none" stroke="#2c261e" stroke-width="4"/>
+        <path d="M32 34 L98 34 M32 50 L80 50 M32 100 L98 100 M32 116 L70 116" stroke="#6b5f52" stroke-width="3" opacity="0.7"/>
+        <ellipse cx="65" cy="76" rx="22" ry="22" fill="#1a1510"/>
+        <circle cx="65" cy="76" r="13" fill="#e0503a" filter="url(#pg2)"/>
+        <circle cx="65" cy="76" r="5" fill="#1a1510"/>
+      </svg>`;
+      case 'threadmannequin': return `<svg viewBox="0 0 120 150">${glow}
+        <ellipse cx="60" cy="142" rx="30" ry="7" fill="#000" opacity="0.3"/>
+        <ellipse cx="60" cy="30" rx="18" ry="20" fill="#e9dcc0"/>
+        <path d="M42 50 C34 50 30 70 34 90 L86 90 C90 70 86 50 78 50 Z" fill="#c9c9d4"/>
+        <path d="M34 30 Q60 20 86 30 M30 50 Q60 60 90 50 M36 70 Q60 78 84 70" stroke="#c9283a" stroke-width="2.5" fill="none" opacity="0.85"/>
+        <path d="M20 96 L30 130" stroke="#c9c9d4" stroke-width="8" stroke-linecap="round"/>
+        <path d="M100 96 L90 130" stroke="#c9c9d4" stroke-width="8" stroke-linecap="round"/>
+        <path d="M22 132 L34 124 L30 138 Z" fill="#8fa0b8"/>
+        <path d="M98 132 L86 124 L90 138 Z" fill="#8fa0b8"/>
+      </svg>`;
+      case 'sinlantern': return `<svg viewBox="0 0 140 140">${glow}
+        <ellipse cx="70" cy="130" rx="36" ry="7" fill="#000" opacity="0.3"/>
+        <rect x="34" y="40" width="26" height="34" rx="4" fill="#3a2c1c"/>
+        <rect x="66" y="26" width="26" height="34" rx="4" fill="#2c3a4a"/>
+        <rect x="50" y="70" width="26" height="34" rx="4" fill="#3a1c2c"/>
+        <ellipse cx="47" cy="57" rx="8" ry="10" fill="#8fa8ff" filter="url(#pg2)"/>
+        <ellipse cx="79" cy="43" rx="8" ry="10" fill="#ffcf6a" filter="url(#pg2)"/>
+        <ellipse cx="63" cy="87" rx="8" ry="10" fill="#e0503a" filter="url(#pg2)"/>
+        <path d="M30 74 Q60 90 96 60" stroke="#c9a34a" stroke-width="3" fill="none" opacity="0.7"/>
+      </svg>`;
+      case 'unstoppingsand': return `<svg viewBox="0 0 120 150">${glow}
+        <ellipse cx="60" cy="142" rx="30" ry="7" fill="#000" opacity="0.3"/>
+        <path d="M30 20 L90 20 L60 66 Z" fill="#d9c07a" opacity="0.9"/>
+        <path d="M30 118 L90 118 L60 72 Z" fill="#d9c07a" opacity="0.9"/>
+        <rect x="26" y="14" width="68" height="8" rx="3" fill="#4a4030"/>
+        <rect x="26" y="114" width="68" height="8" rx="3" fill="#4a4030"/>
+        <circle cx="60" cy="69" r="4" fill="#fff2c0" filter="url(#pg2)"/>
+        <path d="M46 40 Q60 60 74 40" stroke="#8a7020" stroke-width="2" fill="none" opacity="0.6"/>
+        <path d="M46 100 Q60 80 74 100" stroke="#8a7020" stroke-width="2" fill="none" opacity="0.6"/>
       </svg>`;
       default: return null;
     }
