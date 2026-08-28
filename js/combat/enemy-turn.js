@@ -321,6 +321,15 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       else if(skillKey==='bladeStemSweep'){ dmg = Math.round(enemy.atk*2.1); label = `굽은 칼날 줄기가 그대로 휩쓸어 벤다!`; playBanner('칼날 줄기의 휩쓸기','fx-bladestem'); }
       else if(skillKey==='pulseShockwave'){ dmg = Math.round(enemy.atk*1.7); label = `녹슨 톱니 우리 안, 거대한 심장이 크게 박동한다!`; playBanner('박동의 충격파','fx-pulse'); }
       else if(skillKey==='rustedChainBind'){ dmg = Math.round(enemy.atk*1.5); label = `사방에서 녹슨 사슬이 튀어나와 온몸을 옭아맨다!`; playBanner('녹슨 사슬의 포박','fx-chain'); }
+      // ---------- 2차 신규 4종 보스 전용 스킬 ----------
+      else if(skillKey==='carvedBrand'){ dmg = Math.round(enemy.atk*1.55); label = `석판 표면의 룬이 붉게 달아오르며 살갗에 새겨진다!`; playBanner('새겨지는 낙인','fx-brand'); }
+      else if(skillKey==='unblinkingGaze'){ dmg = Math.round(enemy.atk*2.05); label = `석판 중앙의 거대한 눈이 한 번도 깜빡이지 않은 채 옭아맨다!`; playBanner('깜빡이지 않는 시선','fx-gaze'); }
+      else if(skillKey==='threadWinds'){ dmg = Math.round(enemy.atk*1.5); label = `진홍빛 실이 사지를 타고 스멀스멀 감겨온다!`; playBanner('실이 감긴다','fx-thread'); }
+      else if(skillKey==='scissorGreeting'){ dmg = Math.round(enemy.atk*1.9); label = `가위날 두 손이 인사하듯 빠르게 두 번 엇갈린다!`; playBanner('가위의 인사','fx-scissor'); }
+      else if(skillKey==='burningSin'){ dmg = Math.round(enemy.atk*1.45); label = `등롱 하나가 유독 짙은 색으로 타오르며 열기를 뿜는다!`; playBanner('타오르는 죄','fx-sin'); }
+      else if(skillKey==='lanternChorus'){ dmg = Math.round(enemy.atk*2.0); label = `엉겨붙은 등롱 전부가 한꺼번에 타오른다!`; playBanner('등롱의 합창','fx-chorus'); }
+      else if(skillKey==='crumblingSand'){ dmg = Math.round(enemy.atk*1.6); label = `허물어진 모래가 파도처럼 밀려든다!`; playBanner('무너지는 모래','fx-sand'); }
+      else if(skillKey==='timeTurningBack'){ dmg = Math.round(enemy.atk*2.15); label = `쏟아지던 모래가 순간 거꾸로 흐르며 시간을 되감는다!`; playBanner('되돌아오는 시간','fx-timeturn'); }
       else { dmg = enemy.atk + Math.floor(Math.random()*3)-1; }
 
       if(dmg<=0){
