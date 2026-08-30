@@ -46,7 +46,7 @@ export(전역): heroBossSvg, svgMonster
     demon:  'images/monsters/demon.png',
     jack:   'images/monsters/jack.png', 
     egg:   'images/monsters/egg.png',    
-    orge:   'images/monsters/ogre.png',   
+    ogre:   'images/monsters/ogre.png',   
     
     herowarrior:  'images/monsters/herowarrior.png',
     heromage:  'images/monsters/heromage.png',
