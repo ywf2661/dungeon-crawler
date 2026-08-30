@@ -42,7 +42,8 @@ export(전역): heroBossSvg, svgMonster
     bandit: 'images/monsters/bandit.png',
     bat: 'images/monsters/bat.png',
     goblin: 'images/monsters/goblin.png',
-    golem:  'images/monsters/golem.png', 
+    golem:  'images/monsters/golem.png',
+    demon:  'images/monsters/demon.png',
     
     herowarrior:  'images/monsters/herowarrior.png',
     heromage:  'images/monsters/heromage.png',
