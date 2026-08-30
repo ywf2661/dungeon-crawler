@@ -24,14 +24,14 @@ export(전역): MONSTERS, BOSSES, LOCATIONS
     {type:'mimic',   name:'미믹',          minDepth:6,  hp:26, atk:15, def:3,  spd:4,  exp:30, gold:[25,40], skills:['smash']},
     {type:'witch',   name:'숲의 마녀',     minDepth:6,  hp:34, atk:6,  def:3,  spd:9,  exp:26, gold:[16,28], skills:['curse','heal']},
     {type:'knight',  name:'언데드 기사',   minDepth:8,  hp:52, atk:13, def:8,  spd:5,  exp:36, gold:[20,34], skills:['smash']},
-    {type:'ogre',    name:'오우거',        minDepth:9,  hp:58, atk:14, def:6,  spd:3,  exp:40, gold:[18,30], skills:['smash']},
+    {type:'ogre',    name:'회랑의 정령',        minDepth:9,  hp:58, atk:14, def:6,  spd:3,  exp:40, gold:[18,30], skills:['smash']},
     {type:'harpy',   name:'하피',          minDepth:11, hp:38, atk:12, def:3,  spd:14, exp:34, gold:[16,26], skills:['bite']},
     {type:'wraith',  name:'레이스',        minDepth:13, hp:48, atk:13, def:6,  spd:8,  exp:42, gold:[20,32], skills:['curse','heal']},
     {type:'cultist', name:'광신도',        minDepth:14, hp:40, atk:11, def:4,  spd:7,  exp:40, gold:[22,34], skills:['curse','heal']},
     {type:'minotaur',name:'미노타우로스',  minDepth:17, hp:66, atk:18, def:8,  spd:6,  exp:56, gold:[28,42], skills:['smash']},
-    {type:'golem',   name:'돌 골렘',       minDepth:20, hp:90, atk:16, def:14, spd:2,  exp:68, gold:[30,48], skills:['smash']},
+    {type:'golem',   name:'회랑의 굴착꾼',       minDepth:20, hp:90, atk:16, def:14, spd:2,  exp:68, gold:[30,48], skills:['smash']},
     {type:'treant',  name:'고목 정령',     minDepth:22, hp:95, atk:15, def:10, spd:3,  exp:70, gold:[32,50], skills:['heal']},
-    {type:'demon',   name:'하급 악마',     minDepth:26, hp:80, atk:22, def:10, spd:8,  exp:90, gold:[45,65], skills:['smash','curse']},
+    {type:'demon',   name:'회랑의 어릿광대',     minDepth:26, hp:80, atk:22, def:10, spd:8,  exp:90, gold:[45,65], skills:['smash','curse']},
   ];
   const BOSSES = [
     // ---------- 신규 8종 보스로 전면 교체(사용자 요청) ----------
