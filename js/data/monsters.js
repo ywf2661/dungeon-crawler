@@ -28,9 +28,9 @@ export(전역): MONSTERS, BOSSES, LOCATIONS
     {type:'harpy',   name:'하피',          minDepth:11, hp:38, atk:12, def:3,  spd:14, exp:34, gold:[16,26], skills:['bite']},
     {type:'wraith',  name:'레이스',        minDepth:13, hp:48, atk:13, def:6,  spd:8,  exp:42, gold:[20,32], skills:['curse','heal']},
     {type:'cultist', name:'광신도',        minDepth:14, hp:40, atk:11, def:4,  spd:7,  exp:40, gold:[22,34], skills:['curse','heal']},
-    {type:'minotaur',name:'미노타우로스',  minDepth:17, hp:66, atk:18, def:8,  spd:6,  exp:56, gold:[28,42], skills:['smash']},
+    {type:'egg',name:'회랑의 껍질',  minDepth:17, hp:66, atk:18, def:8,  spd:6,  exp:56, gold:[28,42], skills:['smash']},
     {type:'golem',   name:'회랑의 굴착꾼',       minDepth:20, hp:90, atk:16, def:14, spd:2,  exp:68, gold:[30,48], skills:['smash']},
-    {type:'treant',  name:'고목 정령',     minDepth:22, hp:95, atk:15, def:10, spd:3,  exp:70, gold:[32,50], skills:['heal']},
+    {type:'jack',  name:'회랑의 인형수집가 잭',     minDepth:22, hp:95, atk:15, def:10, spd:3,  exp:70, gold:[32,50], skills:['heal']},
     {type:'demon',   name:'회랑의 어릿광대',     minDepth:26, hp:80, atk:22, def:10, spd:8,  exp:90, gold:[45,65], skills:['smash','curse']},
   ];
   const BOSSES = [
