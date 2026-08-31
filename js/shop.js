@@ -1,7 +1,7 @@
 "use strict";
 /*
 상점 데이터 및 UI + 정예의 교환소.
-export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, openExchange
+export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHANGE_REFRESH_COST, openExchange, generateExchangeStock
 의존성: player(state.js), Sound(sound.js), applyMerchantSealPurchase(relics.js), repayDebt(relics.js)
 주의: 외상 도박사(jester_debtor)의 빚이 있을 때만 "빚 갚기" 섹션이 나타난다(절반/전액
      두 버튼 — 자동 상환은 넣지 않았다, 사용자 확정: 다른 골드 소비와 충돌하지 않도록
@@ -158,19 +158,38 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, openE
   // 교환한다(사용자 요청 — 확정 드랍/확률 대신 "모아서 목표를 직접 고르는"
   // 자원으로 설계). 마을에서만 이용 가능(#btn-exchange, town일 때만 노출 —
   // index.html/bootstrap.js 참고).
+  // 리뉴얼(사용자 요청): 조건에 맞는 에픽 전부를 보여주는 대신 5개만 무작위로
+  // 노출한다. player.exchangeStock에 목록을 저장해 재방문해도 동일하게
+  // 유지되고, 다음 마을(타이어 보스 클리어 후 체크포인트 갱신 — battle-end.js의
+  // showBossRewardChoice)에 도착해야 자동으로 새로 뽑힌다. 인장 1개를 내고
+  // 수동으로 새로고침할 수도 있다. 개당 교환 비용(EXCHANGE_EPIC_COST)은 그대로.
   const EXCHANGE_EPIC_COST = 5;
+  const EXCHANGE_REFRESH_COST = 1;
+  function generateExchangeStock(){
+    const pool = Object.keys(EPIC_EQUIPMENT).filter(id=>EPIC_EQUIPMENT[id].minDepth<=Math.max(depth, player.tierIndex*10) && !player.equipOwned.includes(id));
+    return pool.slice().sort(()=>Math.random()-0.5).slice(0, 5);
+  }
   function openExchange(){
+    // 이미 구매/장착 등으로 보유하게 된 항목은 목록에서 걸러낸다(목록 자체를
+    // 다시 뽑지는 않는다 — 자연 감소만 반영).
+    if(!player.exchangeStock){
+      player.exchangeStock = generateExchangeStock();
+      saveGame();
+    } else {
+      player.exchangeStock = player.exchangeStock.filter(id=>!player.equipOwned.includes(id));
+    }
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'exchange-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
     const seals = player.eliteSeals||0;
-    const pool = Object.keys(EPIC_EQUIPMENT).filter(id=>EPIC_EQUIPMENT[id].minDepth<=Math.max(depth, player.tierIndex*10) && !player.equipOwned.includes(id));
+    const stock = player.exchangeStock;
+    const canRefresh = seals >= EXCHANGE_REFRESH_COST;
     panel.innerHTML = `<h3>정예의 교환소</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 12px;">정예 몬스터를 처치하면 얻는 정예의 인장을 모아, 원하는 에픽 장비와 직접 교환할 수 있다.</p>
       <p style="text-align:center;color:#ffd76a;font-size:14px;margin:0 0 14px;">🔱 보유 인장: ${seals}개</p>
-      ${pool.length ? pool.map(id=>{
+      ${stock.length ? stock.map(id=>{
         const it = EPIC_EQUIPMENT[id];
         const afford = seals >= EXCHANGE_EPIC_COST;
         return `
@@ -182,7 +201,9 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, openE
         <button class="buy-btn" data-key="${id}" ${afford?'':'disabled'}>${EXCHANGE_EPIC_COST}개 교환</button>
       </div>`;
       }).join('') : `<div style="color:var(--parchment-dim); font-size:13px; font-style:italic; text-align:center; padding:8px;">지금 교환할 수 있는 에픽 장비가 없다(이미 다 모았거나, 아직 이 깊이에서 안 풀렸다).</div>`}
-      <div style="text-align:center; margin-top:10px;"><button class="btn" id="exchange-close">떠나기</button></div>`;
+      <div style="text-align:center; margin:10px 0;"><button class="btn" id="exchange-refresh" ${canRefresh?'':'disabled'}>🔄 목록 새로고침 (인장 ${EXCHANGE_REFRESH_COST}개)</button></div>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:11px;font-style:italic;margin:-6px 0 10px;">다음 마을에 도착하면 목록이 자연히 새로 뽑힌다.</p>
+      <div style="text-align:center;"><button class="btn" id="exchange-close">떠나기</button></div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
     panel.querySelectorAll('.buy-btn').forEach(b=>{
@@ -191,11 +212,21 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, openE
         if((player.eliteSeals||0) < EXCHANGE_EPIC_COST) return;
         player.eliteSeals -= EXCHANGE_EPIC_COST;
         player.equipOwned.push(key);
+        player.exchangeStock = (player.exchangeStock||[]).filter(id=>id!==key);
         renderStatus();
         addLog(`정예의 인장 ${EXCHANGE_EPIC_COST}개로 [${EPIC_EQUIPMENT[key].name}]을(를) 교환했다.`, 'gold');
         saveGame();
         overlay.remove(); openExchange();
       });
+    });
+    panel.querySelector('#exchange-refresh').addEventListener('click', ()=>{
+      if((player.eliteSeals||0) < EXCHANGE_REFRESH_COST) return;
+      player.eliteSeals -= EXCHANGE_REFRESH_COST;
+      player.exchangeStock = generateExchangeStock();
+      renderStatus();
+      addLog(`정예의 인장 ${EXCHANGE_REFRESH_COST}개로 교환소 목록을 새로고침했다.`, 'gold');
+      saveGame();
+      overlay.remove(); openExchange();
     });
     panel.querySelector('#exchange-close').addEventListener('click', ()=>overlay.remove());
   }
