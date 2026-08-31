@@ -3,9 +3,14 @@
 전투 종료 판정 및 결과 처리 — 승리/패배/광폭화 재판정, 엔딩 화면,
 경험치 지급, 레벨업/희귀드랍/에픽드랍 토스트.
 export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showLevelUpToast,
-              showRareDropToast, showEpicDropToast
-의존성: state.js, storage.js, explore.js(renderExplore/showScreen), combat/battle-setup.js(triggerEnragePhase),
-        data/jobs.js(getSpecialization)
+              showRareDropToast, showEpicDropToast, showBossRewardChoice
+의존성: state.js, storage.js, explore.js(renderExplore/showScreen/makeTownCheckpoint/applyTownCheckpoint),
+        combat/battle-setup.js(triggerEnragePhase), data/jobs.js(getSpecialization)
+주의(신규): 사용자 요청으로 타이어 보스를 잡으면 무조건 마을로 이동한다.
+     showBossRewardChoice()에서 보상을 고른 뒤 실제로 town=true 전환과 마을
+     체크포인트(player.townCheckpoint) 저장이 이뤄진다. 사망 시(쉬움/보통
+     난이도만) 이 체크포인트로 완전히 롤백한다 — 하드코어는 기존 레벨1
+     초기화 로직을 그대로 유지한다.
 주의: applyLevelUpEffects()는 grantExp()의 레벨업 1회분 로직(스탯 증가+스킬 지급)을 뽑아낸
      것으로, combat/job-advancement.js의 admin 전용 "전직 즉시 15레벨" 디버그 로직도
      이 함수를 그대로 재사용한다. grantExp()의 레벨업 루프에서 warrior_purist(일격의
@@ -133,7 +138,12 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           // 다음 구간으로 넘어가도록 타이어를 올리고 지도를 비운다("나아가다"를
           // 다시 누르면 새 지도가 생성된다). 일반 전투/정예 승리는 해당 없음.
           let purifiedCurseNames = [];
+          // 사용자 요청: 타이어 보스를 잡으면 무조건 마을로 돌아간다. 실제
+          // town 전환/체크포인트 저장은 보상 선택(showBossRewardChoice) 이후에
+          // 하므로, 이 시점엔 "이번이 타이어 보스였는지" 플래그만 세워둔다.
+          let isTierBossClear = false;
           if(enemy.isBoss && player.nodeMap && player.nodeRow === player.nodeMap.length-1){
+            isTierBossClear = true;
             const clearedTier = player.tierIndex;
             // 임시 저주 정화(사용자 요청 — 저주술사가 아니면 저주가 "이 구간
             // 한정"): 이번에 클리어한 구간에서 받은 저주를 전부 해제하고,
@@ -186,7 +196,18 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
           if(rareDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[rareDropId]), 150*leveled.length + 200);
           if(epicDropId) setTimeout(()=>showEpicDropToast(EPIC_EQUIPMENT[epicDropId]), 150*leveled.length + (rareDropId?500:200));
-          if(enemy.isElite) setTimeout(()=>showEliteSealToast(), 150*leveled.length + (rareDropId?500:200) + (epicDropId?500:200));
+          // 정예의 인장 팝업(사용자 요청): 캐릭터 생애 최초 1회만 큰 토스트를
+          // 띄운다. 탐험 로그 텍스트(위 lines.push)는 매번 그대로 남는다.
+          const toastDelay = 150*leveled.length + (rareDropId?500:200) + (epicDropId?500:200);
+          if(enemy.isElite && !player.eliteSealFirstSeen){
+            player.eliteSealFirstSeen = true;
+            setTimeout(()=>showEliteSealToast(), toastDelay);
+          }
+          // 사용자 요청: 타이어 보스를 잡으면 무조건 마을로 — 보상을 하나
+          // 고른 뒤에 실제로 마을에 도착한다(그 시점에 체크포인트 저장).
+          if(isTierBossClear){
+            setTimeout(()=>showBossRewardChoice(), toastDelay + (enemy.isElite?500:0) + 400);
+          }
           saveGame();
         }, 1300);
       }, 500);
@@ -251,16 +272,26 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           oldRelics.forEach(id=> applyRelicEffect(id));
           player.relics = oldRelics.slice();
         } else {
+          // 쉬움/보통 난이도(사용자 요청): 마지막 마을 체크포인트로 완전히
+          // 되돌린다 — 이번 구간(타이어)에서 얻은 골드/경험치/레벨업/장비/
+          // 유물 등이 전부 소멸하고, 마지막으로 보스를 잡고 마을에 도착했던
+          // 그 상태 그대로 돌아간다. 체크포인트가 없으면(이론상 없을 수
+          // 없지만 안전장치) 기존처럼 절반 골드+완전회복으로 폴백한다.
+          const cp = player.townCheckpoint;
           document.getElementById('go-summary').textContent =
-            `깊이 ${depth}까지 도달했다. 레벨 ${player.level}, 소지금 ${player.gold}G. 마을 사람들이 그대를 구해내어 마을로 옮겼다.`;
-          player.gold = Math.floor(player.gold*0.5);
-          player.hp = player.maxhp; player.mp = player.maxmp;
+            `깊이 ${depth}까지 도달했다. 마을 사람들이 그대를 구해내어, 마지막으로 안식했던 상태로 마을에 돌려놓았다.`;
+          if(cp){
+            applyTownCheckpoint(cp);
+          } else {
+            player.gold = Math.floor(player.gold*0.5);
+            player.hp = player.maxhp; player.mp = player.maxmp;
+          }
         }
-        // 노드맵 시스템: 사망 후 마을 귀환도 onReturnTown()과 동일하게 지도를
-        // 지운다(사용자 피드백 — "죽은 노드에서 다시 시작하는 게 이상하다").
-        // tierIndex(어느 보스를 잡아야 하는지)는 그대로 유지 — 다음에 나갈 때
-        // 같은 구간의 "새" 지도가 생성된다.
-        depth = player.tierIndex*5; town = true; inBossDen = false; bossDenFloor = 0;
+        // 노드맵 시스템: 사망 후엔 항상 지도를 지운다(사용자 피드백 —
+        // "죽은 노드에서 다시 시작하는 게 이상하다"). tierIndex(어느 보스를
+        // 잡아야 하는지)는 유지 — 다음에 나갈 때 같은 구간의 "새" 지도가
+        // 생성된다. depth는 10층 단위 경계로 재계산한다.
+        depth = player.tierIndex*10; town = true; inBossDen = false; bossDenFloor = 0;
         player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
         saveGame();
       }, 900);
@@ -300,6 +331,65 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         + `레벨 ${player.level}, 소지금 ${player.gold}G. 탑의 문은 다시, 조용히 닫혔다.`;
     }
     saveGame();
+  }
+
+  // 보스 클리어 보상 선택(신규, 사용자 요청) — 5가지 중 하나를 골라 얻고,
+  // 선택이 끝나야 실제로 마을에 도착한다(town=true + 마을 체크포인트 저장은
+  // 여기서 보상까지 반영한 뒤에 한다).
+  function showBossRewardChoice(){
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'boss-reward-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    const goldReward = 100 + player.tierIndex*60;
+    const expReward = Math.round(player.expNext*0.25);
+    panel.innerHTML = `
+      <h3 style="color:var(--rust-bright);">보스를 물리쳤다!</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">마을로 향하기 전, 마지막으로 얻어갈 것을 하나 고른다.</p>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="reward-heal">💗 깊은 회복 — HP/MP 50% 회복</button>
+        <button class="btn" id="reward-gold">💰 두둑한 보상 — 골드 +${goldReward}</button>
+        <button class="btn" id="reward-exp">📖 정진 — 경험치 +${expReward}</button>
+        <button class="btn" id="reward-seal">🔱 정예의 증표 — 정예의 인장 +1</button>
+        <button class="btn" id="reward-awaken">⚡ 각성 — 다음 전투 공격력 +20%</button>
+      </div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    function finish(logText){
+      overlay.remove();
+      // 노드맵 시스템: 마을 도착 시 depth를 이번 구간의 보스 층수(10층 단위
+      // 경계)로 맞춘다.
+      depth = player.tierIndex*10;
+      town = true;
+      player.townCheckpoint = makeTownCheckpoint();
+      renderStatus();
+      renderExplore([{text:logText, cls:'gold'}]);
+      saveGame();
+    }
+    panel.querySelector('#reward-heal').addEventListener('click', ()=>{
+      const healHp = Math.round(player.maxhp*0.5), healMp = Math.round(player.maxmp*0.5);
+      player.hp = Math.min(player.maxhp, player.hp+healHp);
+      player.mp = Math.min(player.maxmp, player.mp+healMp);
+      finish('깊은 회복을 선택했다. HP/MP가 크게 회복되었다.');
+    });
+    panel.querySelector('#reward-gold').addEventListener('click', ()=>{
+      player.gold += goldReward;
+      finish(`두둑한 보상을 선택했다. 골드 +${goldReward}G를 얻었다.`);
+    });
+    panel.querySelector('#reward-exp').addEventListener('click', ()=>{
+      const leveled = grantExp(expReward);
+      if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+      finish(`정진을 선택했다. 경험치 +${expReward}를 얻었다.`);
+    });
+    panel.querySelector('#reward-seal').addEventListener('click', ()=>{
+      player.eliteSeals = (player.eliteSeals||0)+1;
+      finish(`정예의 증표를 선택했다. 정예의 인장 +1개를 얻었다. (보유 ${player.eliteSeals}개)`);
+    });
+    panel.querySelector('#reward-awaken').addEventListener('click', ()=>{
+      player.buffAtkTurns = 99; player.buffAtkMult = 1.2;
+      finish('각성을 선택했다. 다음 전투에서 공격력이 20% 상승한다.');
+    });
   }
 
   function grantExp(amount){
