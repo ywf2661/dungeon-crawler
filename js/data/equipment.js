@@ -279,6 +279,11 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       if(typeof sp.dotBoost === 'number') total += sp.dotBoost;
       else if(sp.dotBoost[type]) total += sp.dotBoost[type];
     });
+    // 보스 약점(사용자 요청 — 정예/보스 리뉴얼 1차): weakness:'dot'인 보스는
+    // 지속피해에 특히 취약해 피해량이 2배(+100%)가 된다. data/monsters.js의
+    // BOSSES 데이터에 시범 적용된 3개 보스 한정(잠들지 않는 태엽 심장/멈추지
+    // 않는 모래/빈 옷의 예언자).
+    if(typeof enemy!=='undefined' && enemy && enemy.weakness==='dot') total += 1.0;
     return total;
   }
   function getReviveRatio(){
