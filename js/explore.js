@@ -69,6 +69,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.originGrowthRemainder===undefined) player.originGrowthRemainder = {hp:0, mp:0, atk:0, spd:0};
       if(player.tempCurses===undefined) player.tempCurses = {};
       if(player.hasMapFragment===undefined) player.hasMapFragment = false;
+      if(player.eliteSealFragments===undefined) player.eliteSealFragments = 0;
+      if(player.nextBattleEnemyAtkMult===undefined) player.nextBattleEnemyAtkMult = null;
+      if(player.multiBattleBuff===undefined) player.multiBattleBuff = null;
+      if(player.contractBuff===undefined) player.contractBuff = null;
+      if(player.helpedInjuredAdventurer===undefined) player.helpedInjuredAdventurer = false;
       // 마을 체크포인트 시스템(신규) — 예전 세이브엔 없으므로 지금 상태를
       // 기준으로 하나 만들어둔다(다음 보스 클리어 때 정상적으로 갱신됨).
       if(player.townCheckpoint===undefined) player.townCheckpoint = town ? makeTownCheckpoint() : null;
