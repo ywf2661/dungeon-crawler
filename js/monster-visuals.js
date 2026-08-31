@@ -38,6 +38,7 @@ export(전역): heroBossSvg, svgMonster
   const MONSTER_IMG = {
     wolf: 'images/monsters/wolf.png',
     skeleton: 'images/monsters/skeleton.png',
+    spider: 'images/monsters/spider.png',
     slime: 'images/monsters/slime.png',
     bandit: 'images/monsters/bandit.png',
     bat: 'images/monsters/bat.png',
