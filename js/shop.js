@@ -114,7 +114,7 @@ export(전역): SHOP_ITEMS, openShop, EXCHANGE_EPIC_COST, openExchange
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
     const seals = player.eliteSeals||0;
-    const pool = Object.keys(EPIC_EQUIPMENT).filter(id=>EPIC_EQUIPMENT[id].minDepth<=Math.max(depth, player.tierIndex*5) && !player.equipOwned.includes(id));
+    const pool = Object.keys(EPIC_EQUIPMENT).filter(id=>EPIC_EQUIPMENT[id].minDepth<=Math.max(depth, player.tierIndex*10) && !player.equipOwned.includes(id));
     panel.innerHTML = `<h3>정예의 교환소</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 12px;">정예 몬스터를 처치하면 얻는 정예의 인장을 모아, 원하는 에픽 장비와 직접 교환할 수 있다.</p>
       <p style="text-align:center;color:#ffd76a;font-size:14px;margin:0 0 14px;">🔱 보유 인장: ${seals}개</p>
