@@ -1,15 +1,17 @@
 "use strict";
 /*
 노드맵 시스템 — 슬레이 더 스파이어식 절차적 경로 선택.
-5층 단위 보스 사이클(depth 넘버링 체계는 기존 그대로 — 보스 5/10/15층,
-배경 구역 10층 단위 등 전부 무사) 안에서, 그 사이 구간을 "몇 개의 노드를 지날지"
-자유롭게 늘릴 수 있는 서브맵으로 대체한다. 노드를 많이 배치해도(예: 1구간 9개)
-depth 자체는 노드 하나당 오르지 않는다 — 대신 getVirtualDepth()가 "지금 이
-구간에서 몇 번째 노드에 있는지"를 기준으로 5층 사이를 부드럽게 보간한 값을
-계산해서, 그 값만 전투 스케일링(combat/battle-setup.js의 pickEnemy 등, 전부
-전역 depth를 그대로 읽으므로 이 값을 depth에 대입하는 것만으로 자연히 반영됨)에
-쓴다. 실제 depth가 정확히 5/10/15...가 되는 시점은 오직 "그 구간의 보스를
-잡았을 때"뿐이다.
+10층 단위 보스 사이클(보스 10/20/30/40/50층 — 배경 구역/LOCATIONS도 정확히
+동일한 10층 단위 경계를 쓴다. 예전엔 여기가 5층 단위였는데 배경/구역만
+10층 단위라 서로 어긋나 있었다 — 이번에 10층 단위로 통일해 수정함) 안에서,
+그 사이 구간을 "몇 개의 노드를 지날지" 자유롭게 늘릴 수 있는 서브맵으로
+대체한다. 노드를 많이 배치해도(예: 1구간 9개) depth 자체는 노드 하나당
+오르지 않는다 — 대신 getVirtualDepth()가 "지금 이 구간에서 몇 번째 노드에
+있는지"를 기준으로 10층 사이를 부드럽게 보간한 값을 계산해서, 그 값만 전투
+스케일링(combat/battle-setup.js의 pickEnemy 등, 전부 전역 depth를 그대로
+읽으므로 이 값을 depth에 대입하는 것만으로 자연히 반영됨)에 쓴다. 실제
+depth가 정확히 10/20/30...이 되는 시점은 오직 "그 구간의 보스를 잡았을
+때"뿐이다.
 
 export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
               enterNodeMapTier, getVirtualDepth, pickNode, resolveNode,
@@ -135,12 +137,12 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
   }
 
   // 지금 구간에서 "가상 층수" — 실제 depth는 보스를 잡아야만 오르지만, 전투
-  // 스케일링은 이 값으로 부드럽게 이어지게 한다. tierIndex*5(구간 시작, 이전
-  // 보스 층수)에서 (tierIndex+1)*5(이번 보스 층수)까지, 지금 몇 번째 노드에
+  // 스케일링은 이 값으로 부드럽게 이어지게 한다. tierIndex*10(구간 시작, 이전
+  // 보스 층수)에서 (tierIndex+1)*10(이번 보스 층수)까지, 지금 몇 번째 노드에
   // 있는지 비율로 보간한다.
   function getVirtualDepth(){
-    const tierStart = player.tierIndex*5;
-    const tierEnd = tierStart+5;
+    const tierStart = player.tierIndex*10;
+    const tierEnd = tierStart+10;
     const totalSteps = player.nodeMap.length; // 보스 행 포함
     const progress = (player.nodeRow+1)/totalSteps;
     return Math.max(tierStart+1, Math.round(tierStart + (tierEnd-tierStart)*progress));
@@ -170,7 +172,7 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     depth = getVirtualDepth();
     renderNodeMapArea();
     if(node.type==='boss'){
-      const bossDepth = player.tierIndex*5 + 5;
+      const bossDepth = player.tierIndex*10 + 10;
       depth = bossDepth;
       if(bossDepth===50 && !player.endingSeen){
         showFinalFloorConfirm();
