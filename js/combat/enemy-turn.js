@@ -12,8 +12,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
               enemyTurnReal, processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
               getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus, getLuckWaveBonus,
-              getVenomDmgPerStack
+              getVenomDmgPerStack, hasEliteTrait, getEffectiveEnemyAtk, handleEliteOnHitTraits
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
+주의(신규 — 정예 특성): hasEliteTrait/getEffectiveEnemyAtk/handleEliteOnHitTraits가
+     combat/battle-setup.js가 배정한 enemy.eliteTraits를 읽어 전투 중 효과를
+     발동시킨다. handleEliteOnHitTraits는 combat/battle-fx.js의 updateEnemyHpBar()가
+     enemy.hp 감소를 감지할 때마다 호출한다(철갑 환불/반사/복수 예약) —
+     player-actions.js에 흩어진 개별 피해 적용 지점을 손대지 않기 위한 설계.
 주의: applySkillModifiers()에 저주술사(mageCurseNova)의 s.curseCountBonus 처리가 추가되어
      있다 — 기존 statusSynergyBonus와 완전히 동일한 패턴(보유 개수만큼 곱연산 배율)이라
      별도 신규 헬퍼 없이 relics.js의 getCurseCount()를 직접 호출한다.
@@ -26,6 +31,58 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
      (현재 환영검사의 스킬 구성상 실제로는 항상 queue가 채워져 있지만, 안전장치로
      남겨둔다).
 */
+
+  /* ============ 정예 특성(사용자 요청) 헬퍼 ============ */
+  // 데이터/배정은 combat/battle-setup.js의 ELITE_TRAITS·rollEliteTraits()가 담당하고,
+  // 실제 전투 중 효과 발동은 대부분 이 파일에 모아뒀다.
+  function hasEliteTrait(key){
+    return !!(enemy && enemy.eliteTraits && enemy.eliteTraits.includes(key));
+  }
+  // 광폭(HP50%↓ 공격력+30%)/사냥꾼(플레이어HP30%↓ 피해+40%)/복수(피격 후 1회
+  // 다음 공격+30%, handleEliteOnHitTraits가 예약)/광기(3턴마다 그 턴 공격력
+  // 크게 상승 — "추가 행동"을 문자대로 구현하면 enemyAction()의 여러 종료
+  // 지점을 전부 손대야 해서, 대신 주기적으로 강화된 한 방을 주는 방식으로
+  // 단순화했다)를 전부 반영한 최종 공격력.
+  function getEffectiveEnemyAtk(){
+    let a = enemy.atk;
+    if(hasEliteTrait('berserk') && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5){
+      a = Math.round(a*1.3);
+    }
+    if(hasEliteTrait('hunter') && player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
+      a = Math.round(a*1.4);
+    }
+    if(hasEliteTrait('revenge') && enemy.revengeArmed){
+      a = Math.round(a*1.3);
+      enemy.revengeArmed = false;
+    }
+    if(hasEliteTrait('madness')){
+      enemy.madnessTurn = (enemy.madnessTurn||0) + 1;
+      if(enemy.madnessTurn % 3 === 0) a = Math.round(a*1.6);
+    }
+    return a;
+  }
+  // combat/battle-fx.js의 updateEnemyHpBar()가 enemy.hp 감소를 감지할 때마다
+  // 호출한다(dealt = 방금 줄어든 양). 철갑/반사/복수 예약을 처리한다.
+  function handleEliteOnHitTraits(dealt){
+    if(!enemy || battleOver || dealt<=0) return;
+    if(!enemy.eliteTraits || !enemy.eliteTraits.length) return;
+    // 철갑: 첫 2턴 동안 방금 들어온 피해의 40%를 즉시 되돌려준다(피해를
+    // "사전에" 줄이려면 player-actions.js의 40여 곳을 전부 고쳐야 해서,
+    // 대신 사후 환불 방식으로 동일한 최종 효과를 낸다).
+    if(hasEliteTrait('ironskin') && (enemy.ironskinTurns||0)>0){
+      const refund = Math.round(dealt*0.4);
+      if(refund>0) enemy.hp = Math.min(enemy.maxhp, enemy.hp+refund);
+    }
+    // 반사: 받은 피해의 15%를 플레이어에게 반사.
+    if(hasEliteTrait('reflect')){
+      const reflectDmg = Math.max(1, Math.round(dealt*0.15));
+      player.hp = Math.max(0, player.hp - reflectDmg);
+      popDamage('-'+reflectDmg, 'bleed');
+      renderStatus();
+    }
+    // 복수: 다음 적 공격이 강화되도록 예약(getEffectiveEnemyAtk에서 소비).
+    if(hasEliteTrait('revenge')) enemy.revengeArmed = true;
+  }
 
   function enemyTurn(){
     if(battleOver) return;
@@ -236,6 +293,29 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         renderStatus();
       }
     }
+    // 정예 특성 — 재생(매 턴 최대HP 4% 회복), 철갑 지속시간 카운트다운,
+    // 독성(플레이어 중독) 틱. 전부 적의 실제 턴이 열릴 때마다 한 번씩 처리한다.
+    if(enemy && enemy.eliteTraits && enemy.eliteTraits.length){
+      if(hasEliteTrait('regen') && enemy.hp>0 && enemy.hp<enemy.maxhp){
+        const heal = Math.max(1, Math.round(enemy.maxhp*0.04));
+        enemy.hp = Math.min(enemy.maxhp, enemy.hp+heal);
+        updateEnemyHpBar();
+      }
+      if(hasEliteTrait('ironskin') && enemy.ironskinTurns>0){
+        enemy.ironskinTurns -= 1;
+      }
+    }
+    if((player.poisonTurns||0)>0){
+      const pdmg = player.poisonDmgPerTurn||0;
+      player.poisonTurns -= 1;
+      if(pdmg>0 && player.hp>0){
+        player.hp = Math.max(0, player.hp-pdmg);
+        popDamage('-'+pdmg, 'bleed');
+        setBattleMsg('중독된 상처가 욱신거린다…', `중독 피해로 ${pdmg}의 피해를 입었다.`);
+        renderStatus();
+        if(checkBattleEnd()) return;
+      }
+    }
     const activeDots = (enemy.dots||[]).filter(d=>d.turns>0);
     // 독 중첩(mastery_venomstacks, 맹독 연금술사): 일반 dot과 달리 턴이 지나도
     // 사라지지 않고 전투가 끝날 때까지 유지되므로, enemy.dots에 영구 저장하지
@@ -292,45 +372,47 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
       let dmg;
       let label = `${enemy.name}의 공격!`;
-      if(skillKey==='smash'){ dmg = Math.round(enemy.atk*1.6); label = `${enemy.name}이(가) 강타를 날린다!`; }
-      else if(skillKey==='bite'){ dmg = Math.round(enemy.atk*1.4); label = `${enemy.name}이(가) 물어뜯는다!`; }
-      else if(skillKey==='curse'){ dmg = Math.round(enemy.atk*1.3); label = `${enemy.name}이(가) 저주를 건다!`; }
-      else if(skillKey==='heroWarriorSmite'){ dmg = Math.round(enemy.atk*2.0); label = `${enemy.name}이(가) 필멸의 참격을 내리찍는다!`; }
-      else if(skillKey==='heroMageBurst'){ dmg = Math.round(enemy.atk*2.2); label = `${enemy.name}이(가) 멸망의 화염구를 쏘아보낸다!`; }
-      else if(skillKey==='heroRogueSlash'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 그림자처럼 스며들어 베어낸다!`; }
-      else if(skillKey==='heroPaladinSmite'){ dmg = Math.round(enemy.atk*1.7); label = `${enemy.name}이(가) 심판의 빛을 내려찍는다!`; }
-      else if(skillKey==='heroMechanicBlast'){ dmg = Math.round(enemy.atk*1.8); label = `${enemy.name}이(가) 장치를 기폭시킨다!`; }
+      // 정예 특성(광폭/사냥꾼/복수/광기)을 전부 반영한 이번 턴의 실제 공격력.
+      const effAtk = getEffectiveEnemyAtk();
+      if(skillKey==='smash'){ dmg = Math.round(effAtk*1.6); label = `${enemy.name}이(가) 강타를 날린다!`; }
+      else if(skillKey==='bite'){ dmg = Math.round(effAtk*1.4); label = `${enemy.name}이(가) 물어뜯는다!`; }
+      else if(skillKey==='curse'){ dmg = Math.round(effAtk*1.3); label = `${enemy.name}이(가) 저주를 건다!`; }
+      else if(skillKey==='heroWarriorSmite'){ dmg = Math.round(effAtk*2.0); label = `${enemy.name}이(가) 필멸의 참격을 내리찍는다!`; }
+      else if(skillKey==='heroMageBurst'){ dmg = Math.round(effAtk*2.2); label = `${enemy.name}이(가) 멸망의 화염구를 쏘아보낸다!`; }
+      else if(skillKey==='heroRogueSlash'){ dmg = Math.round(effAtk*1.9); label = `${enemy.name}이(가) 그림자처럼 스며들어 베어낸다!`; }
+      else if(skillKey==='heroPaladinSmite'){ dmg = Math.round(effAtk*1.7); label = `${enemy.name}이(가) 심판의 빛을 내려찍는다!`; }
+      else if(skillKey==='heroMechanicBlast'){ dmg = Math.round(effAtk*1.8); label = `${enemy.name}이(가) 장치를 기폭시킨다!`; }
       else if(skillKey==='heroJesterGamble'){
-        if(Math.random()<0.5){ dmg = Math.round(enemy.atk*3.0); label = `${enemy.name}의 동전이 앞면으로 떨어진다! 회심의 일격!`; }
+        if(Math.random()<0.5){ dmg = Math.round(effAtk*3.0); label = `${enemy.name}의 동전이 앞면으로 떨어진다! 회심의 일격!`; }
         else { dmg = 0; label = `${enemy.name}의 동전이 뒷면으로 떨어진다…`; }
       }
-      else if(skillKey==='trueBossJudgment'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 태초의 심판을 내리찍는다!`; }
-      else if(skillKey==='krakenGrip'){ dmg = Math.round(enemy.atk*1.75); label = `${enemy.name}이(가) 촉수로 온몸을 옥죈다!`; }
-      else if(skillKey==='ironCrush'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
-      else if(skillKey==='wraithWail'){ dmg = Math.round(enemy.atk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
-      else if(skillKey==='eliteFerocity'){ dmg = Math.round(enemy.atk*2.1); label = `${enemy.name}이(가) 정예의 위압적인 기세로 짓쳐든다!`; }
+      else if(skillKey==='trueBossJudgment'){ dmg = Math.round(effAtk*1.9); label = `${enemy.name}이(가) 태초의 심판을 내리찍는다!`; }
+      else if(skillKey==='krakenGrip'){ dmg = Math.round(effAtk*1.75); label = `${enemy.name}이(가) 촉수로 온몸을 옥죈다!`; }
+      else if(skillKey==='ironCrush'){ dmg = Math.round(effAtk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
+      else if(skillKey==='wraithWail'){ dmg = Math.round(effAtk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
+      else if(skillKey==='eliteFerocity'){ dmg = Math.round(effAtk*2.1); label = `${enemy.name}이(가) 정예의 위압적인 기세로 짓쳐든다!`; }
       // ---------- 신규 4종 보스 전용 스킬 ----------
       // 각 스킬마다 playBanner()로 서로 다른 시각 효과를 준다(사용자 요청 —
       // "유물 발동처럼 스킬마다 이펙트가 달랐으면"). 배너 클래스별 색상/글로우는
       // index.html에 CSS로 추가해야 실제로 보인다(별도 안내 참고).
-      else if(skillKey==='lockedVoices'){ dmg = Math.round(enemy.atk*1.5); label = `${enemy.name}의 두건 속에서 수십 개의 목소리가 동시에 흘러나온다!`; playBanner('잠긴 목소리들','fx-voices'); }
-      else if(skillKey==='prophecyFlame'){ dmg = Math.round(enemy.atk*2.0); label = `지팡이에 갇힌 유령불이 폭발하듯 타오른다!`; playBanner('예언의 불꽃','fx-prophecy'); }
-      else if(skillKey==='judgmentKey'){ dmg = Math.round(enemy.atk*1.6); label = `${enemy.name}이(가) 굽은 단검으로 급소를 찌른다 — 짤그랑, 열쇠 부딪는 소리가 울린다.`; playBanner('심판의 열쇠','fx-key'); }
-      else if(skillKey==='whisperingHorn'){ dmg = Math.round(enemy.atk*1.85); label = `낮은 뿔피리 소리와 함께 그림자 사슬이 뻗어온다!`; playBanner('속삭이는 뿔피리','fx-horn'); }
-      else if(skillKey==='petalBloodletting'){ dmg = Math.round(enemy.atk*1.4); label = `칼날꽃이 만개하며 가시 섞인 꽃잎을 흩뿌린다!`; playBanner('꽃잎의 선혈','fx-petal'); }
-      else if(skillKey==='bladeStemSweep'){ dmg = Math.round(enemy.atk*2.1); label = `굽은 칼날 줄기가 그대로 휩쓸어 벤다!`; playBanner('칼날 줄기의 휩쓸기','fx-bladestem'); }
-      else if(skillKey==='pulseShockwave'){ dmg = Math.round(enemy.atk*1.7); label = `녹슨 톱니 우리 안, 거대한 심장이 크게 박동한다!`; playBanner('박동의 충격파','fx-pulse'); }
-      else if(skillKey==='rustedChainBind'){ dmg = Math.round(enemy.atk*1.5); label = `사방에서 녹슨 사슬이 튀어나와 온몸을 옭아맨다!`; playBanner('녹슨 사슬의 포박','fx-chain'); }
+      else if(skillKey==='lockedVoices'){ dmg = Math.round(effAtk*1.5); label = `${enemy.name}의 두건 속에서 수십 개의 목소리가 동시에 흘러나온다!`; playBanner('잠긴 목소리들','fx-voices'); }
+      else if(skillKey==='prophecyFlame'){ dmg = Math.round(effAtk*2.0); label = `지팡이에 갇힌 유령불이 폭발하듯 타오른다!`; playBanner('예언의 불꽃','fx-prophecy'); }
+      else if(skillKey==='judgmentKey'){ dmg = Math.round(effAtk*1.6); label = `${enemy.name}이(가) 굽은 단검으로 급소를 찌른다 — 짤그랑, 열쇠 부딪는 소리가 울린다.`; playBanner('심판의 열쇠','fx-key'); }
+      else if(skillKey==='whisperingHorn'){ dmg = Math.round(effAtk*1.85); label = `낮은 뿔피리 소리와 함께 그림자 사슬이 뻗어온다!`; playBanner('속삭이는 뿔피리','fx-horn'); }
+      else if(skillKey==='petalBloodletting'){ dmg = Math.round(effAtk*1.4); label = `칼날꽃이 만개하며 가시 섞인 꽃잎을 흩뿌린다!`; playBanner('꽃잎의 선혈','fx-petal'); }
+      else if(skillKey==='bladeStemSweep'){ dmg = Math.round(effAtk*2.1); label = `굽은 칼날 줄기가 그대로 휩쓸어 벤다!`; playBanner('칼날 줄기의 휩쓸기','fx-bladestem'); }
+      else if(skillKey==='pulseShockwave'){ dmg = Math.round(effAtk*1.7); label = `녹슨 톱니 우리 안, 거대한 심장이 크게 박동한다!`; playBanner('박동의 충격파','fx-pulse'); }
+      else if(skillKey==='rustedChainBind'){ dmg = Math.round(effAtk*1.5); label = `사방에서 녹슨 사슬이 튀어나와 온몸을 옭아맨다!`; playBanner('녹슨 사슬의 포박','fx-chain'); }
       // ---------- 2차 신규 4종 보스 전용 스킬 ----------
-      else if(skillKey==='carvedBrand'){ dmg = Math.round(enemy.atk*1.55); label = `석판 표면의 룬이 붉게 달아오르며 살갗에 새겨진다!`; playBanner('새겨지는 낙인','fx-brand'); }
-      else if(skillKey==='unblinkingGaze'){ dmg = Math.round(enemy.atk*2.05); label = `석판 중앙의 거대한 눈이 한 번도 깜빡이지 않은 채 옭아맨다!`; playBanner('깜빡이지 않는 시선','fx-gaze'); }
-      else if(skillKey==='threadWinds'){ dmg = Math.round(enemy.atk*1.5); label = `진홍빛 실이 사지를 타고 스멀스멀 감겨온다!`; playBanner('실이 감긴다','fx-thread'); }
-      else if(skillKey==='scissorGreeting'){ dmg = Math.round(enemy.atk*1.9); label = `가위날 두 손이 인사하듯 빠르게 두 번 엇갈린다!`; playBanner('가위의 인사','fx-scissor'); }
-      else if(skillKey==='burningSin'){ dmg = Math.round(enemy.atk*1.45); label = `등롱 하나가 유독 짙은 색으로 타오르며 열기를 뿜는다!`; playBanner('타오르는 죄','fx-sin'); }
-      else if(skillKey==='lanternChorus'){ dmg = Math.round(enemy.atk*2.0); label = `엉겨붙은 등롱 전부가 한꺼번에 타오른다!`; playBanner('등롱의 합창','fx-chorus'); }
-      else if(skillKey==='crumblingSand'){ dmg = Math.round(enemy.atk*1.6); label = `허물어진 모래가 파도처럼 밀려든다!`; playBanner('무너지는 모래','fx-sand'); }
-      else if(skillKey==='timeTurningBack'){ dmg = Math.round(enemy.atk*2.15); label = `쏟아지던 모래가 순간 거꾸로 흐르며 시간을 되감는다!`; playBanner('되돌아오는 시간','fx-timeturn'); }
-      else { dmg = enemy.atk + Math.floor(Math.random()*3)-1; }
+      else if(skillKey==='carvedBrand'){ dmg = Math.round(effAtk*1.55); label = `석판 표면의 룬이 붉게 달아오르며 살갗에 새겨진다!`; playBanner('새겨지는 낙인','fx-brand'); }
+      else if(skillKey==='unblinkingGaze'){ dmg = Math.round(effAtk*2.05); label = `석판 중앙의 거대한 눈이 한 번도 깜빡이지 않은 채 옭아맨다!`; playBanner('깜빡이지 않는 시선','fx-gaze'); }
+      else if(skillKey==='threadWinds'){ dmg = Math.round(effAtk*1.5); label = `진홍빛 실이 사지를 타고 스멀스멀 감겨온다!`; playBanner('실이 감긴다','fx-thread'); }
+      else if(skillKey==='scissorGreeting'){ dmg = Math.round(effAtk*1.9); label = `가위날 두 손이 인사하듯 빠르게 두 번 엇갈린다!`; playBanner('가위의 인사','fx-scissor'); }
+      else if(skillKey==='burningSin'){ dmg = Math.round(effAtk*1.45); label = `등롱 하나가 유독 짙은 색으로 타오르며 열기를 뿜는다!`; playBanner('타오르는 죄','fx-sin'); }
+      else if(skillKey==='lanternChorus'){ dmg = Math.round(effAtk*2.0); label = `엉겨붙은 등롱 전부가 한꺼번에 타오른다!`; playBanner('등롱의 합창','fx-chorus'); }
+      else if(skillKey==='crumblingSand'){ dmg = Math.round(effAtk*1.6); label = `허물어진 모래가 파도처럼 밀려든다!`; playBanner('무너지는 모래','fx-sand'); }
+      else if(skillKey==='timeTurningBack'){ dmg = Math.round(effAtk*2.15); label = `쏟아지던 모래가 순간 거꾸로 흐르며 시간을 되감는다!`; playBanner('되돌아오는 시간','fx-timeturn'); }
+      else { dmg = effAtk + Math.floor(Math.random()*3)-1; }
 
       if(dmg<=0){
         setBattleMsg(label, `공격이 완전히 빗나갔다!`);
@@ -420,6 +502,21 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       player.hp = Math.max(0, player.hp - mitigated);
       checkPaladinAwoken();
       if(mitigated>0) Sound.hit();
+
+      // 정예 특성 — 흡혈(가한 피해의 20% 회복)/독성(적중 시 플레이어 중독 3턴 부여).
+      if(mitigated>0 && enemy.eliteTraits && enemy.eliteTraits.length){
+        if(hasEliteTrait('lifesteal')){
+          const healAmt = Math.max(1, Math.round(mitigated*0.2));
+          enemy.hp = Math.min(enemy.maxhp, enemy.hp+healAmt);
+          updateEnemyHpBar();
+          extraMsg += ` ${enemy.name}이(가) 피해의 일부를 흡수해 회복했다!`;
+        }
+        if(hasEliteTrait('poison')){
+          player.poisonTurns = 3;
+          player.poisonDmgPerTurn = Math.max(1, Math.round(effAtk*0.15));
+          extraMsg += ' 상처에 독이 스며든다!';
+        }
+      }
 
       // 거울의 파편(반사) / 복수자의 반지(다음 공격 무장) — 실제로 HP 피해를 받았을 때만 발동
       if(mitigated>0){
