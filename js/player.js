@@ -74,6 +74,23 @@ export(전역): newPlayer
       // 플래그가 있으면 나중에 "봉인된 관" 이벤트가 자동으로 좋은 결과로
       // 확정된다.
       hasMapFragment:false,
+      // ---- 이벤트 시스템 신규 필드(사용자 요청) ----
+      // 정예의 인장 조각: 4개 모이면 자동으로 인장 1개로 전환(초과분은 유지).
+      eliteSealFragments:0,
+      // "다음 전투"에 한해 적 공격력을 낮추는 단발성 배율(촛불 이벤트 등).
+      // combat/battle-setup.js의 startBattle()에서 소비 즉시 null로 되돌아간다.
+      nextBattleEnemyAtkMult:null,
+      // "다음 N전투" 동안 지속되는 버프(수수께끼의 마법사). type: 'atk'|'mitigate'|'mpcost'.
+      // startBattle()에서 매 전투 시작 시 반영하고, combat/battle-end.js의
+      // checkBattleEnd()에서 승/패 판정마다 battlesLeft를 1씩 깎는다.
+      multiBattleBuff:null,
+      // "마을 도착 전까지" 유지되는 계약형 버프(악마의 계약). 전투 승리마다
+      // hpDrainPct만큼 HP를 추가로 깎는 대신 공격력이 오른다. 보스를 잡고
+      // 마을에 도착하는 순간(showBossRewardChoice의 finish()) 자동 해제된다.
+      contractBuff:null,
+      // 부상당한 모험가 이벤트(사용자 요청 — 연계 이벤트). 도와준 적이 있으면
+      // 다음에 "재회" 이벤트가 이벤트 풀에 포함된다(1회성 소비).
+      helpedInjuredAdventurer:false,
     };
     p.hp = p.maxhp; p.mp = p.maxmp;
     // 테스트용: 아이디(이름)가 'admin'이면 레벨 9부터 시작한다. combat/battle-end.js의
