@@ -3,9 +3,15 @@
 탐험 화면 로직 — 게임 시작, 화면 전환, 상태바/탐험 로그 렌더, 휴식, 마을 귀환,
 보스소굴 진입, 층 진행(다음 층 이동, 유물/저주 제단 조우, 보스/최종보스 조우 판정).
 export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementCheck, renderStatus,
-              currentLocation, renderExplore, addLog, onRest, onReturnTown, enterBossDen,
-              showBossDenConfirm, proceedEnterBossDen, proceedBossDenAdvance, onAdvance,
+              currentLocation, renderExplore, addLog, onRest, showRestChoice,
+              makeTownCheckpoint, applyTownCheckpoint, onAdvance,
               showFinalFloorConfirm, proceedAdvance
+주의(신규): 마을로 가기 버튼이 삭제되어 onReturnTown()은 완전히 제거했다
+     (보스 클리어 시 자동으로 마을에 도착하는 방식으로 대체 — battle-end.js
+     참고). 보스소굴 버튼도 삭제되었지만 enterBossDen/showBossDenConfirm/
+     proceedEnterBossDen/proceedBossDenAdvance 함수 정의 자체는 얽힌 참조가
+     많아 삭제 시 실수 위험이 커서 죽은 코드로 남겨뒀다(더 이상 어디서도
+     호출되지 않는다) — 나중에 보스소굴을 다시 살릴 경우 참고용.
 의존성: state.js, storage.js, relics.js, combat/battle-setup.js(startBattle 호출),
        data/jobs.js(needsSpecializationMigration, getJobLabel)
 주의: renderStatus()가 전직(세분화) 후에도 상태바 왼쪽에 항상 기본 직업 이름("전사")만
@@ -50,7 +56,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 채워 넣는다. tierIndex는 기존에 저장된 depth로부터 역산한다(예:
       // depth=7이었다면 5층 보스를 이미 넘긴 뒤였을 테니 tierIndex=1로 복구,
       // 정확히 안 맞아도 다음 "나아가다"에서 새 지도를 뽑으므로 큰 문제 없음).
-      if(player.tierIndex===undefined) player.tierIndex = Math.floor(Math.max(0,depth-1)/5);
+      if(player.tierIndex===undefined) player.tierIndex = Math.floor(Math.max(0,depth-1)/10);
       if(player.nodeMap===undefined) player.nodeMap = null;
       if(player.nodeRow===undefined) player.nodeRow = -1;
       if(player.nodeCurrentId===undefined) player.nodeCurrentId = null;
@@ -63,6 +69,10 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.originGrowthRemainder===undefined) player.originGrowthRemainder = {hp:0, mp:0, atk:0, spd:0};
       if(player.tempCurses===undefined) player.tempCurses = {};
       if(player.hasMapFragment===undefined) player.hasMapFragment = false;
+      // 마을 체크포인트 시스템(신규) — 예전 세이브엔 없으므로 지금 상태를
+      // 기준으로 하나 만들어둔다(다음 보스 클리어 때 정상적으로 갱신됨).
+      if(player.townCheckpoint===undefined) player.townCheckpoint = town ? makeTownCheckpoint() : null;
+      if(player.eliteSealFirstSeen===undefined) player.eliteSealFirstSeen = (player.eliteSeals||0) > 0;
       if(player.level>=10 && !player.jobChosenAt10) player.jobAdvancePending = true;
       if(needsSpecializationMigration(player)) player.jobAdvancePending = true; // 레거시 하이브리드 → 재전직 필요
       document.getElementById('statusbar').style.display='flex';
@@ -87,6 +97,9 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   // 보여줘야 해서 별도 함수로 뺐다.
   function finishNewGameStart(){
     document.getElementById('statusbar').style.display='flex';
+    // 마을 체크포인트(신규): 오프닝 심리테스트 보너스까지 반영된 시작 상태를
+    // 기준으로 최초 체크포인트를 만들어둔다.
+    player.townCheckpoint = makeTownCheckpoint();
     showScreen('explore');
     renderStatus();
     renderExplore(['회랑 어귀에 첫 발을 내디뎠다.']);
@@ -164,16 +177,17 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       document.getElementById('ex-loc-name').textContent = '심연의 투기장';
       document.getElementById('ex-loc-desc').textContent = '오직 강자만이 다음 상대와 마주할 수 있는 곳. 돌아가지 않는 한, 쉼 없이 다음 보스가 나타난다.';
     } else {
-      const depthLabel = (!town && hasRelicFlag('hideDepth')) ? '깊이 ???' : ('깊이 '+depth);
-      document.getElementById('ex-depth-tag').textContent = town ? '마을' : depthLabel;
+      // 사용자 요청: 탐험 화면 상단에 숫자 깊이("깊이 23" 등)를 노출하지
+      // 않는다. 구역 이름(loc.name)만으로 진행 위치를 드러낸다. 마을일 때만
+      // 태그에 '마을'을 표시하고, 던전에서는 태그 자체를 숨긴다.
+      const depthTag = document.getElementById('ex-depth-tag');
+      depthTag.textContent = town ? '마을' : '';
+      depthTag.style.display = town ? 'inline-block' : 'none';
       document.getElementById('ex-loc-name').textContent = town ? '안식의 마을' : loc.name;
       document.getElementById('ex-loc-desc').textContent = town ? '따뜻한 화롯불과 상인들의 목소리가 들린다. 이곳에서는 안전하다.' : loc.desc;
     }
     document.getElementById('btn-advance').style.display = 'block';
     document.getElementById('btn-advance').textContent = inBossDen ? '⚔ 다음 상대와 맞서다' : (town ? '➡ 던전으로 출발' : '➡ 나아가다');
-    document.getElementById('btn-town').style.display = town ? 'none' : 'block';
-    const bossDenBtn = document.getElementById('btn-bossden');
-    if(bossDenBtn) bossDenBtn.style.display = (!inBossDen && player && (player.level||1) >= 15) ? 'block' : 'none';
     // 노드맵 영역 갱신 — 마을/보스소굴이 아니고 진행 중인 지도가 있으면 이
     // 함수가 알아서 '나아가다'/'휴식'/'상점' 버튼을 감추고 지도를 보여준다.
     renderNodeMapArea();
@@ -190,6 +204,41 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     }
   }
 
+  // 마을 체크포인트(신규) — 타이어 보스를 잡고 마을에 도착하는 시점의 상태를
+  // 통째로 스냅샷 저장해둔다. 이후 사망 시(쉬움/보통 난이도) 이 스냅샷으로
+  // 되돌려, 이번 구간에서 얻은 골드/경험치/장비/유물 등을 전부 무효화한다.
+  // combat/battle-end.js가 보스 클리어 시 makeTownCheckpoint()로 저장하고,
+  // 사망 시 applyTownCheckpoint()로 복원한다.
+  function makeTownCheckpoint(){
+    return {
+      hp: player.hp, mp: player.mp, maxhp: player.maxhp, maxmp: player.maxmp,
+      gold: player.gold, exp: player.exp, expNext: player.expNext, level: player.level,
+      atk: player.atk, def: player.def, mag: player.mag, spd: player.spd,
+      job: player.job, job2: player.job2, specialization: player.specialization,
+      jobChosenAt10: player.jobChosenAt10,
+      skills: (player.skills||[]).slice(),
+      equipment: Object.assign({}, player.equipment),
+      equipOwned: (player.equipOwned||[]).slice(),
+      relics: (player.relics||[]).slice(),
+      relicSlots: player.relicSlots,
+      relicAppliedDeltas: Object.assign({}, player.relicAppliedDeltas),
+      eliteSeals: player.eliteSeals,
+      tierIndex: player.tierIndex,
+    };
+  }
+
+  function applyTownCheckpoint(cp){
+    if(!cp) return;
+    Object.keys(cp).forEach(k=>{
+      if(k==='equipment') player.equipment = Object.assign({}, cp.equipment);
+      else if(k==='equipOwned') player.equipOwned = cp.equipOwned.slice();
+      else if(k==='relics') player.relics = cp.relics.slice();
+      else if(k==='skills') player.skills = cp.skills.slice();
+      else if(k==='relicAppliedDeltas') player.relicAppliedDeltas = Object.assign({}, cp.relicAppliedDeltas);
+      else player[k] = cp[k];
+    });
+  }
+
   function addLog(text, cls){
     const logEl = document.getElementById('ex-log');
     const div = document.createElement('div');
@@ -200,36 +249,54 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     logEl.scrollTop = logEl.scrollHeight;
   }
 
+  // 휴식(사용자 요청 — 무조건 완전회복 대신 3가지 방법 중 선택). 마을에서는
+  // 무료, 던전 휴식 노드에서는 기존과 동일한 골드 비용이 든다(비용은 선택과
+  // 무관하게 화롯불 자체를 마련하는 값 — 어떤 선택을 하든 한 번만 낸다).
   function onRest(){
-    if(town){
-      player.hp = player.maxhp; player.mp = player.maxmp;
-      renderStatus();
-      addLog('마을의 화로 곁에서 몸을 녹였다. 체력과 마력이 전부 회복되었다.', 'gold');
-      saveGame();
-    } else {
-      const cost = Math.round(30 + depth*4);
-      if(player.gold < cost){ addLog(`휴식을 취하기엔 금화가 부족하다. (${cost}G 필요)`, 'warn'); return; }
-      player.gold -= cost;
-      player.hp = player.maxhp; player.mp = player.maxmp;
-      renderStatus();
-      addLog(`${cost}G를 들여 마련한 화롯불 곁에서 완전히 몸을 추슬렀다. (HP/MP 완전 회복)`, 'gold');
-      saveGame();
-    }
+    const cost = town ? 0 : Math.round(30 + depth*4);
+    if(!town && player.gold < cost){ addLog(`휴식을 취하기엔 금화가 부족하다. (${cost}G 필요)`, 'warn'); return; }
+    showRestChoice(cost);
   }
 
-  function onReturnTown(){
-    town = true;
-    // 노드맵 시스템: 마을로 돌아가면 진행 중이던 지도는 버려진다(다음에 나갈 때
-    // 새 지도가 생성됨). 다만 tierIndex(어느 보스를 잡아야 하는지)는 그대로
-    // 유지되므로, depth 표시는 "마지막으로 클리어한 보스 층수"로 맞춘다
-    // (예: 5층 보스를 잡은 뒤 마을에 왔다면 depth=5로 표시).
-    depth = player.tierIndex*5;
-    player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
-    inBossDen = false; bossDenFloor = 0;
-    player.hp = player.maxhp; player.mp = player.maxmp;
-    renderStatus();
-    renderExplore(['마을로 돌아왔다. 상처가 아물고 기운이 되살아난다.']);
-    saveGame();
+  function showRestChoice(cost){
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'rest-choice-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `
+      <h3 style="color:var(--rust-bright);">휴식</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        ${cost>0 ? `${cost}G를 들여 마련한 화롯불 곁에서 쉴 방법을 고른다.` : '마을의 화로 곁에서 쉴 방법을 고른다.'}
+      </p>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="rest-deep">🔥 깊은 휴식 — HP 40% 회복</button>
+        <button class="btn" id="rest-maint">🔧 정비 — HP 15% 회복 (장비 강화는 추후 추가 예정)</button>
+        <button class="btn" id="rest-medi">🧘 명상 — HP 회복 없음, 다음 전투 공격력 +15%</button>
+      </div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    function finish(logText){
+      if(cost>0) player.gold -= cost;
+      overlay.remove();
+      renderStatus();
+      addLog(logText, 'gold');
+      saveGame();
+    }
+    panel.querySelector('#rest-deep').addEventListener('click', ()=>{
+      const heal = Math.round(player.maxhp*0.4);
+      player.hp = Math.min(player.maxhp, player.hp+heal);
+      finish(`깊은 휴식을 취했다. HP가 ${heal} 회복되었다.`);
+    });
+    panel.querySelector('#rest-maint').addEventListener('click', ()=>{
+      const heal = Math.round(player.maxhp*0.15);
+      player.hp = Math.min(player.maxhp, player.hp+heal);
+      finish(`장비를 정비했다. HP가 ${heal} 회복되었다. (장비 강화는 추후 추가될 예정이다)`);
+    });
+    panel.querySelector('#rest-medi').addEventListener('click', ()=>{
+      player.buffAtkTurns = 99; player.buffAtkMult = 1.15;
+      finish('명상을 통해 정신을 집중했다. 다음 전투에서 공격력이 15% 상승한다.');
+    });
   }
 
   function enterBossDen(){
