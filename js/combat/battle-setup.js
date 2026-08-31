@@ -190,7 +190,13 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // 등 레거시 경로용으로 남겨둠).
     const isElite = !isBoss && (nodeForcedElite || (depth>=3 && Math.random()<0.10));
     nodeForcedElite = false;
-    const eliteMult = isElite ? {hp:1.8, atk:1.35, def:1.3, reward:2.2} : {hp:1, atk:1, def:1, reward:1};
+    // 더 강한 정예(사용자 요청 — 피투성이 도전자 이벤트 "도발한다" 전용).
+    // nodemap.js에 nodeForcedElite와 함께 선언된 nodeEliteBoost 플래그를 여기서
+    // 소비한다 — isElite가 아니면(정예가 아니면) 애초에 의미가 없으니 무시된다.
+    const isEliteBoosted = isElite && nodeEliteBoost;
+    nodeEliteBoost = false;
+    const eliteMult = isEliteBoosted ? {hp:2.3, atk:1.6, def:1.5, reward:2.6}
+      : (isElite ? {hp:1.8, atk:1.35, def:1.3, reward:2.2} : {hp:1, atk:1, def:1, reward:1});
     // 보스소굴은 에픽/희귀 파밍을 위한 공간이므로, 여기서 잡는 보스는 골드/경험치 보상이 크게 줄어든다
     // (드랍 확률 자체는 그대로 유지되어, 장비 파밍 목적은 그대로 살아있다).
     const bossDenRewardMult = (isBoss && inBossDen) ? 0.35 : 1;
@@ -210,6 +216,12 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   function startBattle(isBoss, isFinal, isTrueFinal){
     revertDiceDelta(); // 직전 전투의 불확실성의 주사위 효과가 남아있다면 먼저 되돌린다(안전망).
     enemy = pickEnemy(isBoss, isFinal, isTrueFinal);
+    // 다음 전투 한정 적 공격력 감소(사용자 요청 — 이상한 촛불 이벤트 "촛불을 끈다").
+    // 단발성이라 소비 즉시 되돌린다.
+    if(player.nextBattleEnemyAtkMult){
+      enemy.atk = Math.max(1, Math.round(enemy.atk*player.nextBattleEnemyAtkMult));
+      player.nextBattleEnemyAtkMult = null;
+    }
     battleOver = false; subMode = null;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null};
     battleFlags.creed = null; battleFlags.creedStacks = 0;
@@ -229,6 +241,23 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     }
     if(hasRelicFlag('diceRoll')) rollDiceEffectForBattle();
     checkPaladinAwoken();
+    // 다중 전투 버프(사용자 요청 — 수수께끼의 마법사, 다음 3전투 지속)와 계약
+    // 버프(악마의 계약, 마을 도착 전까지 지속)를 매 전투 시작 시 반영한다.
+    // 둘 다 기존 buffAtkTurns/buffAtkMult·buffDefTurns/buffDefMult 필드를
+    // 그대로 재활용한다(값이 겹치면 나중에 세팅되는 쪽이 우선 — 계약이 더
+    // 강렬한 효과라는 컨셉이라 다중전투 버프 다음에 적용해 우선하게 한다).
+    let eventBuffMsgs = [];
+    if(player.multiBattleBuff && player.multiBattleBuff.battlesLeft>0){
+      const mb = player.multiBattleBuff;
+      if(mb.type==='atk'){ player.buffAtkTurns = 99; player.buffAtkMult = 1+mb.value; }
+      else if(mb.type==='mitigate'){ player.buffDefTurns = 99; player.buffDefMult = 1-mb.value; }
+      // type==='mpcost'는 combat/player-actions.js의 playerSkill()에서 직접 참조한다.
+      eventBuffMsgs.push(`남은 축복 전투 ${mb.battlesLeft}회`);
+    }
+    if(player.contractBuff){
+      player.buffAtkTurns = 99; player.buffAtkMult = player.contractBuff.atkMult;
+      eventBuffMsgs.push('악마와의 계약이 유지되고 있다');
+    }
     const hpLockPct = getRelicSum('hpLockPct');
     if(hpLockPct>0 && player.maxhp>0){
       player.hp = Math.max(1, Math.round(player.maxhp*hpLockPct));
@@ -268,5 +297,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     }
     if(battleFlags.creed){
       showToast(`<h3>📜 계율</h3><p>이번 전투의 계율: <b>${creedLabel}</b><br>유지할수록 공격력이 오르고, 어기면 즉시 상실한다.</p>`, '#d9c07a');
+    }
+    if(eventBuffMsgs.length){
+      showToast(`<h3>✨ 지속 효과</h3><p>${eventBuffMsgs.join('<br>')}</p>`, '#c9a8ff');
     }
   }
