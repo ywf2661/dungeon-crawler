@@ -2,18 +2,20 @@
 /*
 전투 시작 세팅 — 최종보스/진 최종보스 데이터, 광폭화(엔레이지) 페이즈 시스템,
 난이도별 몬스터 스탯 보정, 적 선택(pickEnemy), 전투 시작(startBattle),
-보스 예고 필살기 데이터(사용자 요청 — 보스전 리뉴얼).
+보스 예고 스킬 이름 데이터(사용자 요청 — 보스전 리뉴얼).
 export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pickFinalBossJob,
               canEnrage, triggerEnragePhase, getDifficultyMonsterMult, scaleEnemyForDifficulty,
-              pickEnemy, startBattle, BOSS_ULTIMATE_SKILL, BOSS_ULTIMATE_LABELS, getUltimateSkillFor
+              pickEnemy, startBattle, BOSS_SKILL_LABELS
 의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS 등), Sound(sound.js), showToast(ui/difficulty.js),
        monster-visuals.js(getDungeonBgForDepth — 전투 시작 시 던전 배경 갱신)
 주의(신규 — 보스전 리뉴얼): 3페이즈(최후의 발악)는 기존 ENRAGE_STEPS_FINAL/TRUE
      (부활형 광폭화, 1~2페이즈)를 그대로 두고, 그 마지막 부활 이후 HP 30%
      이하에서 combat/enemy-turn.js의 checkLastStand()가 별도로 발동시킨다
-     (부활 없이 공격력↑/방어력↓/매 턴 자체 피해만 추가되는 방식). 보스 필살기는
-     새 스킬을 만들지 않고 이미 존재하는 보스 스킬 중 배율이 더 높은 쪽을
-     그대로 지정했다(BOSS_ULTIMATE_SKILL).
+     (부활 없이 공격력↑/방어력↓/매 턴 자체 피해만 추가되는 방식).
+주의(수정): 처음엔 "분노 게이지가 차면 필살기 하나만 예고"하는 구조였으나,
+     사용자 피드백으로 "보스가 스킬을 쓸 때마다(전부) 예고"로 다시 설계했다
+     — 분노 게이지 관련 필드/함수는 전부 제거했다. combat/enemy-turn.js의
+     enemyAction()이 보스의 스킬 굴림 자체를 한 턴 늦추는 방식으로 구현한다.
 */
 
   /* ============ 전투 ============ */
@@ -166,33 +168,28 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return picked;
   }
 
-  /* ============ 보스 예고 필살기(사용자 요청 — 보스전 리뉴얼) ============ */
-  // "예고 → 대응 → 발동" 구조. 새 스킬을 만들지 않고, 이미 있는 보스 스킬 중
-  // 데미지 배율이 더 높은 쪽을 그대로 "필살기"로 지정한다(combat/enemy-turn.js의
-  // 데미지 분기 참고). BOSS_ULTIMATE_LABELS는 예고 UI/카드에 쓰는 한글 이름.
-  const BOSS_ULTIMATE_SKILL = {
-    watchertablet:   'unblinkingGaze',   // 1.55 vs 2.05
-    hollowprophet:   'prophecyFlame',    // 1.5  vs 2.0
-    hornedwarden:    'whisperingHorn',   // 1.6  vs 1.85
-    threadmannequin: 'scissorGreeting',  // 1.5  vs 1.9
-    bladedbloom:     'bladeStemSweep',   // 1.4  vs 2.1
-    sinlantern:      'lanternChorus',    // 1.45 vs 2.0
-    clockheart:      'pulseShockwave',   // 1.7  vs 1.5
-    unstoppingsand:  'timeTurningBack',  // 1.6  vs 2.15
-  };
-  const BOSS_ULTIMATE_LABELS = {
-    unblinkingGaze:'깜빡이지 않는 시선', prophecyFlame:'예언의 불꽃', whisperingHorn:'속삭이는 뿔피리',
-    scissorGreeting:'가위의 인사', bladeStemSweep:'칼날 줄기의 휩쓸기', lanternChorus:'등롱의 합창',
-    pulseShockwave:'박동의 충격파', timeTurningBack:'되돌아오는 시간',
+  /* ============ 보스 예고 스킬(사용자 요청 — 보스전 리뉴얼) ============ */
+  // "예고 → 대응 → 발동" 구조. 사용자 재확인: 특정 "필살기" 하나만 예고하는 게
+  // 아니라, 보스가 스킬을 쓸 때마다(어떤 스킬이든) 항상 한 턴 전에 예고해야
+  // 한다 — 그래서 분노 게이지로 필살기 하나만 가끔 예고하던 1차 버전을
+  // 걷어내고, 보스의 스킬 굴림 자체를 "이번 턴 발동" 대신 "다음 턴 예고 →
+  // 그다음 턴 발동"으로 한 턴 늦추는 방식으로 다시 만들었다(combat/enemy-turn.js
+  // 참고). 치유(heal)는 위협이 아니라 예고 없이 즉시 사용한다.
+  // BOSS_SKILL_LABELS는 예고 UI/카드에 쓰는 한글 이름 — 보스가 가진 스킬
+  // 전부(둘 다) + 최종보스류를 포함한다.
+  const BOSS_SKILL_LABELS = {
+    carvedBrand:'새겨지는 낙인', unblinkingGaze:'깜빡이지 않는 시선',
+    lockedVoices:'잠긴 목소리들', prophecyFlame:'예언의 불꽃',
+    judgmentKey:'심판의 열쇠', whisperingHorn:'속삭이는 뿔피리',
+    threadWinds:'실이 감긴다', scissorGreeting:'가위의 인사',
+    petalBloodletting:'꽃잎의 선혈', bladeStemSweep:'칼날 줄기의 휩쓸기',
+    burningSin:'타오르는 죄', lanternChorus:'등롱의 합창',
+    pulseShockwave:'박동의 충격파', rustedChainBind:'녹슨 사슬의 포박',
+    crumblingSand:'무너지는 모래', timeTurningBack:'되돌아오는 시간',
     heroWarriorSmite:'필멸의 참격', heroMageBurst:'멸망의 화염구', heroRogueSlash:'그림자 베기',
     heroPaladinSmite:'심판의 빛', heroMechanicBlast:'장치 기폭', heroJesterGamble:'최후의 도박',
     trueBossJudgment:'태초의 심판',
   };
-  // 최종보스(직업별/진)는 스킬이 1개(+선택적 heal)뿐이라 그 공격 스킬 자체가 필살기.
-  function getUltimateSkillFor(type, skills){
-    if(BOSS_ULTIMATE_SKILL[type]) return BOSS_ULTIMATE_SKILL[type];
-    return (skills||[]).find(k=>k!=='heal') || (skills&&skills[0]) || null;
-  }
 
   function pickEnemy(isBoss, isFinal, isTrueFinal){
     if(isTrueFinal){
@@ -207,9 +204,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         exp: base.exp,
         gold: base.gold,
         skills: base.skills, guarding:false,
-        // 보스 예고 필살기/최후의 발악(사용자 요청 — 보스전 리뉴얼).
-        ultimateSkillKey: getUltimateSkillFor(base.type, base.skills),
-        rageGauge:0, rageMax:100, telegraphed:false, aboutToUltimate:false,
+        // 보스 예고 스킬/최후의 발악(사용자 요청 — 보스전 리뉴얼).
+        telegraphed:false, aboutToUltimate:false, pendingSkillKey:null,
         lastStandActive:false, lastStandTriggered:false,
       });
     }
@@ -239,8 +235,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         exp: base.exp,
         gold: base.gold,
         skills: base.skills, guarding:false,
-        ultimateSkillKey: getUltimateSkillFor(base.type, base.skills),
-        rageGauge:0, rageMax:100, telegraphed:false, aboutToUltimate:false,
+        telegraphed:false, aboutToUltimate:false, pendingSkillKey:null,
         lastStandActive:false, lastStandTriggered:false,
       });
     }
@@ -311,10 +306,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       if(built.eliteTraits.includes('undying')) built.usedUndying = false;
     }
     if(isBoss){
-      // 보스 예고 필살기/분노 게이지/최후의 발악(사용자 요청 — 보스전 리뉴얼).
-      built.ultimateSkillKey = getUltimateSkillFor(base.type, base.skills);
-      built.rageGauge = 0; built.rageMax = 100;
-      built.telegraphed = false; built.aboutToUltimate = false;
+      // 보스 예고 스킬/최후의 발악(사용자 요청 — 보스전 리뉴얼). 특정 스킬
+      // 하나만 "필살기"로 지정하던 걸 없애고, 어떤 스킬이 나오든 매번
+      // 예고되도록 바꿨다(combat/enemy-turn.js 참고) — pendingSkillKey에
+      // "예고된 다음 턴 발동 예정 스킬"을 담아둔다.
+      built.telegraphed = false; built.aboutToUltimate = false; built.pendingSkillKey = null;
       built.lastStandActive = false; built.lastStandTriggered = false;
       // 약점(사용자 요청 — 시범 3개 보스만). data/monsters.js의 BOSSES 데이터에
       // weakness가 있으면 그대로 옮겨 심는다(없으면 undefined로 아무 효과 없음).

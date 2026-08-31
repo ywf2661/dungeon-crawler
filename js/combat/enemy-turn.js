@@ -13,13 +13,14 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
               getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus, getLuckWaveBonus,
               getVenomDmgPerStack, hasEliteTrait, getEffectiveEnemyAtk, handleEliteOnHitTraits,
-              handleBossRageGain, checkLastStand
-주의(신규 — 보스전 리뉴얼): 보스 예고 필살기는 combat/battle-setup.js가 배정한
-     enemy.ultimateSkillKey/rageGauge를 여기서 소비한다 — 게이지가 차면
-     enemy.telegraphed를 세우고(이번 턴은 "힘을 끌어모은다"만 하고 지나감),
-     다음 보스 턴에 enemy.aboutToUltimate로 필살기를 강제 발동시킨다(실제
-     데미지 계산은 이미 있던 skillKey 분기를 그대로 재사용). 최후의 발악은
-     handleBossRageGain과 같은 시점(updateEnemyHpBar 델타 감지)에 체크한다.
+              checkLastStand
+주의(신규 — 보스전 리뉴얼): 보스는 스킬을 쓰기로 결정될 때마다(치유 제외)
+     즉시 발동하는 대신 한 턴 예고("힘을 끌어모은다")부터 하고, 그 다음
+     보스 턴에 enemy.pendingSkillKey를 강제로 확정 발동시킨다(실제 데미지
+     계산은 이미 있던 skillKey 분기를 그대로 재사용). 처음엔 분노 게이지가
+     차야만 필살기 하나만 예고하는 구조였는데, 사용자 피드백으로 "스킬을
+     쓸 때마다 전부 예고"로 다시 만들었다 — 분노 게이지 관련 코드는 전부
+     제거했다. 최후의 발악(3페이즈)은 checkLastStand()가 그대로 담당한다.
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
 주의(신규 — 정예 특성): hasEliteTrait/getEffectiveEnemyAtk/handleEliteOnHitTraits가
      combat/battle-setup.js가 배정한 enemy.eliteTraits를 읽어 전투 중 효과를
@@ -91,25 +92,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     if(hasEliteTrait('revenge')) enemy.revengeArmed = true;
   }
 
-  /* ============ 보스 예고 필살기 / 최후의 발악(사용자 요청 — 보스전 리뉴얼) ============ */
+  /* ============ 보스 최후의 발악(사용자 요청 — 보스전 리뉴얼) ============ */
   // combat/battle-fx.js의 updateEnemyHpBar()가 enemy.hp 감소를 감지할 때마다
   // handleEliteOnHitTraits와 함께 호출한다.
-  function handleBossRageGain(dealt){
-    if(!enemy || !enemy.isBoss || battleOver || dealt<=0) return;
-    if(enemy.telegraphed || enemy.aboutToUltimate) return; // 예고~발동 대기 중엔 게이지가 멈춘다
-    // 게이지는 보스 최대HP의 약 33%를 누적으로 때리면 가득 찬다(*300).
-    // 원래 *100(=최대HP 전체를 때려야 참)이었는데, 이러면 게이지가 차는
-    // 시점이 보스가 죽는 시점과 거의 같아져서 예고를 볼 틈이 없었다(사용자
-    // 피드백으로 발견 — HP135 보스를 20데미지씩 때리면 처치 6.75대 vs
-    // 충전 6.67대로 사실상 동시였음).
-    const gain = Math.max(1, Math.round((dealt/enemy.maxhp)*300));
-    enemy.rageGauge = Math.min(enemy.rageMax||100, (enemy.rageGauge||0)+gain);
-    if(enemy.rageGauge >= (enemy.rageMax||100)){
-      enemy.telegraphed = true;
-      enemy.rageGauge = 0;
-    }
-    if(typeof updateBossIntentCard==='function') updateBossIntentCard();
-  }
   // 최종보스 전용 3페이즈: 더 이상 부활(광폭화) 카드가 남아있지 않은 마지막
   // 생명력에서 HP가 30% 이하로 떨어지면 자동 발동. 부활은 하지 않고, 그
   // 생명력 안에서 공격력↑/방어력↓/매 턴 자체 피해가 지속된다.
@@ -413,26 +398,29 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function enemyAction(){
     setTimeout(()=>{
       let skillKey = null;
-      // 보스 예고 필살기(사용자 요청): 예고 대기 중이던 다음 턴이면 강제로
-      // 필살기를 발동, 분노 게이지가 막 가득 찬 턴이면(telegraphed && !aboutToUltimate)
-      // 이번 턴은 예고만 하고 실제 공격은 하지 않는다(대응할 시간을 준다).
+      // 보스 예고 스킬(사용자 요청 — 어떤 스킬이든 매번 예고). 예고했던 다음
+      // 턴이면 그 스킬을 강제로 확정 발동한다.
       if(enemy.isBoss && enemy.aboutToUltimate){
-        skillKey = enemy.ultimateSkillKey;
+        skillKey = enemy.pendingSkillKey;
         enemy.aboutToUltimate = false;
         enemy.telegraphed = false;
+        enemy.pendingSkillKey = null;
         if(typeof updateBossIntentCard==='function') updateBossIntentCard();
-      } else if(enemy.isBoss && enemy.telegraphed){
-        skillKey = '__charge__';
       } else if(enemy.skills.length && Math.random()<(enemy.skillChance||0.4)){
-        skillKey = enemy.skills[Math.floor(Math.random()*enemy.skills.length)];
-      }
-      if(skillKey==='__charge__'){
-        enemy.aboutToUltimate = true;
-        setBattleMsg(`${enemy.name}이(가) 힘을 끌어모은다…`, `⚠ 다음 턴 [${BOSS_ULTIMATE_LABELS[enemy.ultimateSkillKey]||'필살기'}]이(가) 발동한다!`);
-        showToast(`<h3>⚠ 예고</h3><p><b>[${BOSS_ULTIMATE_LABELS[enemy.ultimateSkillKey]||'필살기'}]</b> — 다음 턴 발동!</p>`, '#ff4a3a');
-        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
-        finishEnemyTurn();
-        return;
+        const chosen = enemy.skills[Math.floor(Math.random()*enemy.skills.length)];
+        // 보스이고 치유가 아닌 스킬이면 즉시 쓰지 않고 한 턴 예고부터 한다.
+        // 치유는 플레이어에게 위협이 아니라 예고할 이유가 없어 그대로 즉시 사용.
+        if(enemy.isBoss && chosen !== 'heal'){
+          enemy.pendingSkillKey = chosen;
+          enemy.telegraphed = true;
+          enemy.aboutToUltimate = true;
+          setBattleMsg(`${enemy.name}이(가) 힘을 끌어모은다…`, `⚠ 다음 턴 [${BOSS_SKILL_LABELS[chosen]||'강공격'}]이(가) 발동한다!`);
+          showToast(`<h3>⚠ 예고</h3><p><b>[${BOSS_SKILL_LABELS[chosen]||'강공격'}]</b> — 다음 턴 발동!</p>`, '#ff4a3a');
+          if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+          finishEnemyTurn();
+          return;
+        }
+        skillKey = chosen;
       }
       if(skillKey==='heal' && enemy.hp < enemy.maxhp*0.5){
         const h = Math.round(enemy.maxhp*0.2);

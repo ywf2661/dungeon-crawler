@@ -30,9 +30,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(enemy && typeof enemy._prevHp==='number' && enemy.hp < enemy._prevHp){
       const dealt = enemy._prevHp - enemy.hp;
       if(typeof handleEliteOnHitTraits==='function') handleEliteOnHitTraits(dealt);
-      // 보스 예고 필살기 분노 게이지 상승 + 최후의 발악(3페이즈) 트리거 체크
-      // (사용자 요청 — 보스전 리뉴얼).
-      if(typeof handleBossRageGain==='function') handleBossRageGain(dealt);
+      // 최후의 발악(3페이즈) 트리거 체크(사용자 요청 — 보스전 리뉴얼).
       if(typeof checkLastStand==='function') checkLastStand();
     }
     if(enemy) enemy._prevHp = enemy.hp;
@@ -122,7 +120,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     card.style.display = 'block';
     if(enemy.telegraphed || enemy.aboutToUltimate){
       card.className = 'boss-intent-card warn';
-      card.textContent = `⚠ [${BOSS_ULTIMATE_LABELS[enemy.ultimateSkillKey]||'필살기'}] — 다음 턴 발동!`;
+      card.textContent = `⚠ [${BOSS_SKILL_LABELS[enemy.pendingSkillKey]||'강공격'}] — 다음 턴 발동!`;
     } else {
       card.className = 'boss-intent-card';
       card.textContent = '다음 행동: 알 수 없음';
