@@ -109,6 +109,56 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     if(curseAtkPct>0) e.atk = Math.max(1, Math.round(e.atk*(1+curseAtkPct)));
     return e;
   }
+  /* ============ 정예 특성(사용자 요청 — 정예 몬스터 리뉴얼) ============ */
+  // 실제 효과 구현은 대부분 combat/enemy-turn.js(hasEliteTrait, getEffectiveEnemyAtk 등)와
+  // combat/battle-fx.js(updateEnemyHpBar 후킹 — 반사/철갑/복수), explore.js(renderStatus
+  // 후킹 — 저주로 인한 회복량 감소)에 있다. 여기서는 정의/배정만 담당한다.
+  const ELITE_TRAITS = {
+    berserk:   {label:'광폭',     desc:'HP 50% 이하일 때 공격력 +30%'},
+    lifesteal: {label:'흡혈',     desc:'가한 피해의 20% 회복'},
+    ironskin:  {label:'철갑',     desc:'첫 2턴 받는 피해 -40%'},
+    revenge:   {label:'복수',     desc:'피격 시 다음 공격 +30%'},
+    regen:     {label:'재생',     desc:'매 턴 최대HP 4% 회복'},
+    undying:   {label:'불사',     desc:'사망 시 1회, HP 25%로 부활'},
+    curse:     {label:'저주',     desc:'플레이어가 받는 회복 효과 -30%'},
+    madness:   {label:'광기',     desc:'3턴마다 한 번, 그 턴 공격력이 크게 오른다'},
+    poison:    {label:'독성',     desc:'공격이 적중하면 중독(3턴) 부여'},
+    reflect:   {label:'반사',     desc:'받는 피해의 15%를 플레이어에게 반사'},
+    manaburn:  {label:'마나포식', desc:'플레이어가 스킬을 쓸 때마다 MP -2'},
+    hunter:    {label:'사냥꾼',   desc:'플레이어 HP 30% 이하일 때 가하는 피해 +40%'},
+  };
+  const ALL_ELITE_TRAIT_KEYS = Object.keys(ELITE_TRAITS);
+  // 몬스터별 전용 풀(사용자 요청 예시 기반 — 표에 없는 "도주/훔치기/주문강화/
+  // 보호막/도발" 등은 이번엔 12개 표 안에서 컨셉이 가장 가까운 특성으로
+  // 대체했다). 풀에 없는 타입(슬라임/박쥐/늑대 등)은 12종 전체에서 무작위로
+  // 뽑는다. 보스(BOSSES)에는 이번엔 적용하지 않는다(사용자 확정).
+  const MONSTER_TYPE_TRAIT_POOLS = {
+    goblin:   ['berserk','poison','hunter'],       // 광폭/독/훔치기·도주 대체(사냥꾼)
+    skeleton: ['undying','curse','regen'],         // 언데드 계열
+    ghost:    ['undying','curse','regen'],
+    wraith:   ['undying','curse','regen'],
+    knight:   ['ironskin','revenge','reflect'],     // 철갑/복수/도발 대체(반사)
+    witch:    ['manaburn','madness','regen'],       // 마나포식/주문강화 대체(광기)/보호막 대체(재생)
+    cultist:  ['manaburn','madness','regen'],
+  };
+  // 정예 특성 개수(사용자 요청 — 진행상황 + 난이도에 따라 1~3개).
+  function getEliteTraitCount(atDepth, difficulty){
+    const base = atDepth<20 ? 1 : (atDepth<40 ? 2 : 3);
+    if(difficulty==='easy') return Math.max(1, base-1);
+    if(difficulty==='hardcore') return Math.min(3, base+1);
+    return base;
+  }
+  function rollEliteTraits(monsterType, count){
+    const pool = MONSTER_TYPE_TRAIT_POOLS[monsterType] || ALL_ELITE_TRAIT_KEYS;
+    const shuffled = pool.slice().sort(()=>Math.random()-0.5);
+    const picked = shuffled.slice(0, count);
+    if(picked.length < count){
+      const rest = ALL_ELITE_TRAIT_KEYS.filter(k=>!picked.includes(k)).sort(()=>Math.random()-0.5);
+      picked.push(...rest.slice(0, count-picked.length));
+    }
+    return picked;
+  }
+
   function pickEnemy(isBoss, isFinal, isTrueFinal){
     if(isTrueFinal){
       const base = TRUE_FINAL_BOSS;
@@ -201,7 +251,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // (드랍 확률 자체는 그대로 유지되어, 장비 파밍 목적은 그대로 살아있다).
     const bossDenRewardMult = (isBoss && inBossDen) ? 0.35 : 1;
     const skills = isElite ? base.skills.concat(['eliteFerocity']) : base.skills;
-    return scaleEnemyForDifficulty({
+    const built = {
       type: base.type, name: (isElite?'정예 ':'')+base.name, isBoss, isElite,
       maxhp: Math.round(base.hp*scale*eliteMult.hp), hp: Math.round(base.hp*scale*eliteMult.hp),
       atk: Math.round((base.atk*scale*0.8 + depth*0.4)*eliteMult.atk),
@@ -210,7 +260,15 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       exp: Math.round(base.exp*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult),
       gold: [Math.round(base.gold[0]*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult), Math.round(base.gold[1]*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult)],
       skills, guarding:false,
-    });
+    };
+    if(isElite){
+      const traitCount = getEliteTraitCount(depth, player && player.difficulty);
+      built.eliteTraits = rollEliteTraits(base.type, traitCount);
+      // 철갑/불사는 지속 카운터·1회성 플래그가 필요해 여기서 초기값을 함께 심어둔다.
+      if(built.eliteTraits.includes('ironskin')) built.ironskinTurns = 2;
+      if(built.eliteTraits.includes('undying')) built.usedUndying = false;
+    }
+    return scaleEnemyForDifficulty(built);
   }
 
   function startBattle(isBoss, isFinal, isTrueFinal){
@@ -223,6 +281,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       player.nextBattleEnemyAtkMult = null;
     }
     battleOver = false; subMode = null;
+    // 정예 "저주" 특성(플레이어 회복량 감소)이 explore.js의 renderStatus()에서
+    // HP 증가분을 감지하는 기준값. 전투 시작 시점 HP로 초기화해 이전 화면의
+    // HP 변화가 오작동으로 걸리지 않게 한다.
+    player._prevHpForCurse = player.hp;
+    if(enemy) enemy._prevHp = enemy.hp;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null};
     battleFlags.creed = null; battleFlags.creedStacks = 0;
     // 로봇군단장(mastery_multideploy)의 두 번째 로봇 슬롯, 데토네이터
@@ -300,5 +363,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     }
     if(eventBuffMsgs.length){
       showToast(`<h3>✨ 지속 효과</h3><p>${eventBuffMsgs.join('<br>')}</p>`, '#c9a8ff');
+    }
+    // 정예 특성 안내(사용자 요청 — 정예 몬스터 리뉴얼). 무엇과 싸우는지 미리 알 수 있게.
+    if(enemy.eliteTraits && enemy.eliteTraits.length){
+      const traitLines = enemy.eliteTraits.map(k=> `<b>[${ELITE_TRAITS[k].label}]</b> ${ELITE_TRAITS[k].desc}`).join('<br>');
+      showToast(`<h3>⚔ 정예 특성</h3><p>${traitLines}</p>`, '#ff8a3a');
     }
   }
