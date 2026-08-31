@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, playComboFinish, playStatusFx, playCastBurst, playBanner,
-              updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub
+              updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard
 의존성: state.js(enemy/player), Sound(sound.js)
 주의: updatePlayerStatusBadges()는 적 화면 왼쪽 위(#bt-player-status)에 현재 켜져 있는
      내 토글 상태(혈서=🩸, 화염/빙결/번개계약=🔥/❄/⚡)를 아이콘으로 표시한다. SKILLDB의
@@ -28,7 +28,12 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 감지해 한 곳에서 처리한다(combat/enemy-turn.js의 handleEliteOnHitTraits 참고).
   function updateEnemyHpBar(){
     if(enemy && typeof enemy._prevHp==='number' && enemy.hp < enemy._prevHp){
-      if(typeof handleEliteOnHitTraits==='function') handleEliteOnHitTraits(enemy._prevHp - enemy.hp);
+      const dealt = enemy._prevHp - enemy.hp;
+      if(typeof handleEliteOnHitTraits==='function') handleEliteOnHitTraits(dealt);
+      // 보스 예고 필살기 분노 게이지 상승 + 최후의 발악(3페이즈) 트리거 체크
+      // (사용자 요청 — 보스전 리뉴얼).
+      if(typeof handleBossRageGain==='function') handleBossRageGain(dealt);
+      if(typeof checkLastStand==='function') checkLastStand();
     }
     if(enemy) enemy._prevHp = enemy.hp;
     document.getElementById('bt-ehp-bar').style.width = Math.max(0,(enemy.hp/enemy.maxhp*100))+'%';
@@ -105,6 +110,23 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.className = 'cast-burst'+(cls?(' '+cls):'');
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 600);
+  }
+
+  // 보스 다음 행동 미리보기 카드(사용자 요청 — 보스전 리뉴얼). 예고 상태가
+  // 아니면 "다음 행동: 알 수 없음"(운빨을 그대로 인정), 예고 상태면 어떤
+  // 필살기가 다음 턴 확정 발동하는지 보여줘 플레이어가 대응할 수 있게 한다.
+  function updateBossIntentCard(){
+    const card = document.getElementById('bt-boss-intent');
+    if(!card) return;
+    if(!enemy || !enemy.isBoss){ card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    if(enemy.telegraphed || enemy.aboutToUltimate){
+      card.className = 'boss-intent-card warn';
+      card.textContent = `⚠ [${BOSS_ULTIMATE_LABELS[enemy.ultimateSkillKey]||'필살기'}] — 다음 턴 발동!`;
+    } else {
+      card.className = 'boss-intent-card';
+      card.textContent = '다음 행동: 알 수 없음';
+    }
   }
 
   function playBanner(text, cls){
