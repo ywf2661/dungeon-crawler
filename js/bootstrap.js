@@ -90,7 +90,6 @@ export(전역): init, showMaintenanceModal, isAdminName
       });
     });
     document.getElementById('btn-advance').addEventListener('click', onAdvance);
-    document.getElementById('btn-rest').addEventListener('click', onRest);
     document.getElementById('btn-shop').addEventListener('click', openShop);
     document.getElementById('btn-equip').addEventListener('click', openEquipment);
     document.getElementById('btn-relics').addEventListener('click', showMyRelics);
