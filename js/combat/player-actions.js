@@ -150,7 +150,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
     const s = SKILLDB[key];
-    const mpCost = s.mp;
+    // 마나의 축복(사용자 요청 — 수수께끼의 마법사 이벤트, 다음 3전투 스킬 MP
+    // 비용 감소). player.multiBattleBuff는 event.js에서 세팅되고
+    // combat/battle-end.js의 checkBattleEnd()가 전투마다 battlesLeft를 깎는다.
+    const mbb = player.multiBattleBuff;
+    const mpCostMult = (mbb && mbb.type==='mpcost' && mbb.battlesLeft>0) ? (1-mbb.value) : 1;
+    const mpCost = Math.max(0, Math.round(s.mp*mpCostMult));
     if(player.mp < mpCost) return;
     setCommandsEnabled(false);
 
