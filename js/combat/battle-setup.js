@@ -338,10 +338,20 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         + `linear-gradient(180deg, #00000000 55%, #171009cc 100%), `
         + `url('${bgFile}')`;
     }
+    const eliteTagHtml = enemy.isElite
+      ? (enemy.eliteTraits && enemy.eliteTraits.length
+          ? enemy.eliteTraits.map(k=>`<span class="elite-tag">[${ELITE_TRAITS[k].label}]</span>`).join('')
+          : '<span class="elite-tag">⚔ 정예</span>')
+      : '';
+    // enemy.name은 로그/토스트 등 다른 곳에서 "정예 OO" 형태로 계속 쓰이므로
+    // 그대로 두고, 이 표시줄에서만 접두어를 떼어 특성 태그와 중복되지 않게 한다.
+    const displayName = (enemy.isElite && enemy.eliteTraits && enemy.eliteTraits.length)
+      ? enemy.name.replace(/^정예 /, '')
+      : enemy.name;
     document.getElementById('bt-ename').innerHTML =
-      (enemy.isElite ? '<span class="elite-tag">⚔ 정예</span>' : '')
+      eliteTagHtml
       + (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))
-      + enemy.name;
+      + displayName;
     document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
     document.getElementById('bt-stage').className='enemy-stage'+(enemy.isElite?' elite':'');
     // PNG 몬스터 그림이 캔버스 안 투명 여백 때문에 "붕 떠 보이는" 문제를
