@@ -37,6 +37,25 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         triggerEnragePhase();
         return true;
       }
+      // 정예 특성 "불사"(사용자 요청): 사망 시 1회, HP 25%로 되살아난다.
+      // canEnrage()(최종보스/진최종보스 전용)와 겹치지 않는 정예 전용 부활이다.
+      if(typeof hasEliteTrait==='function' && hasEliteTrait('undying') && !enemy.usedUndying){
+        enemy.usedUndying = true;
+        enemy.hp = Math.max(1, Math.round(enemy.maxhp*0.25));
+        enemy._prevHp = enemy.hp;
+        updateEnemyHpBar();
+        updateStatusBadges();
+        document.getElementById('bt-stage').classList.remove('dying');
+        shakeEnemy();
+        playBanner('불사!', 'phoenix');
+        Sound.gameOver();
+        setBattleMsg(`${enemy.name}이(가) 쓰러지지 않는다…!`, '불사의 힘으로 다시 일어섰다!');
+        setTimeout(()=>{
+          if(battleOver) return;
+          resetCommandUI();
+        }, 1400);
+        return true;
+      }
       // 황금고블린(외상 도박사): 일반 승리 처리(처치 골드/경험치/레벨업/드랍)를
       // 전부 건너뛰고, 빚 탕감이라는 이 전투만의 고유 보상을 준다. 빚을 완전히
       // 갚지 못했더라도 남은 빚의 70%를 즉시 탕감해준다(전액 탕감이 아닌 이유:
@@ -395,6 +414,9 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       town = true;
       // 악마의 계약(사용자 요청): 마을에 도착하면 자동으로 해제된다.
       player.contractBuff = null;
+      // 정예의 교환소 재고(사용자 요청): 다음 마을에 도착하면 자동으로
+      // 새로고침된다 — null로 비워두면 shop.js의 openExchange()가 새로 뽑는다.
+      player.exchangeStock = null;
       player.townCheckpoint = makeTownCheckpoint();
       renderStatus();
       renderExplore([{text:logText, cls:'gold'}]);
