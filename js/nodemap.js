@@ -225,23 +225,21 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
   function renderNodeMapArea(){
     const area = document.getElementById('node-map-area');
     const btnAdvance = document.getElementById('btn-advance');
-    const btnRest = document.getElementById('btn-rest');
     const btnShop = document.getElementById('btn-shop');
     const btnExchange = document.getElementById('btn-exchange');
     if(!area) return; // index.html에 아직 마크업이 없으면 조용히 무시(안전장치)
     if(!player.nodeMap || town || inBossDen){
       area.style.display = 'none';
       if(btnAdvance) btnAdvance.style.display = 'block';
-      // 상점/휴식/정예 교환소는 마을에서만 상시 노출한다(사용자 확정 A안 —
-      // 상점/휴식은 노드로만, 교환소는 애초에 마을 전용으로 설계됨).
-      if(btnRest) btnRest.style.display = town ? 'block' : 'none';
+      // 상점/정예 교환소는 마을에서만 상시 노출한다(사용자 확정 A안 —
+      // 상점은 노드로만, 교환소는 애초에 마을 전용으로 설계됨). 휴식하다
+      // 버튼은 삭제됐다(사용자 요청 — 체크포인트 무료 힐 스캠 방지).
       if(btnShop) btnShop.style.display = town ? 'block' : 'none';
       if(btnExchange) btnExchange.style.display = town ? 'block' : 'none';
       return;
     }
     area.style.display = 'block';
     if(btnAdvance) btnAdvance.style.display = 'none';
-    if(btnRest) btnRest.style.display = 'none';
     if(btnShop) btnShop.style.display = 'none';
     if(btnExchange) btnExchange.style.display = 'none';
 
