@@ -5,7 +5,8 @@
 export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pickFinalBossJob,
               canEnrage, triggerEnragePhase, getDifficultyMonsterMult, scaleEnemyForDifficulty,
               pickEnemy, startBattle
-의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS 등), Sound(sound.js), showToast(ui/difficulty.js)
+의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS 등), Sound(sound.js), showToast(ui/difficulty.js),
+       monster-visuals.js(getDungeonBgForDepth — 전투 시작 시 던전 배경 갱신)
 */
 
   /* ============ 전투 ============ */
@@ -233,6 +234,18 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       player.hp = Math.max(1, Math.round(player.maxhp*hpLockPct));
     }
     showScreen('battle');
+    // 던전 배경(구역별): getDungeonBgForDepth()는 이미 monster-visuals.js에
+    // 정의돼 있었지만 여기서 실제로 호출되지 않아 배경이 항상 dungeon1.png로
+    // 고정돼 있던 버그를 고쳤다. .archway의 background는 3중 레이어(그라디언트
+    // 2개 + 배경 이미지)라 shorthand로 이미지 URL만 갈아끼운다.
+    const archwayEl = document.querySelector('.archway');
+    if(archwayEl){
+      const bgFile = getDungeonBgForDepth(depth);
+      archwayEl.style.backgroundImage =
+        `radial-gradient(ellipse at 50% 30%, #3a2c1c66 0%, transparent 65%), `
+        + `linear-gradient(180deg, #00000000 55%, #171009cc 100%), `
+        + `url('${bgFile}')`;
+    }
     document.getElementById('bt-ename').innerHTML =
       (enemy.isElite ? '<span class="elite-tag">⚔ 정예</span>' : '')
       + (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))
