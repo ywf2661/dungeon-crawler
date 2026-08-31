@@ -45,13 +45,13 @@ export(전역): MONSTERS, BOSSES, LOCATIONS
     // 악마 군주→모래. (참고: 기존 데이터에 '회랑의 리치'가 실수로 두 번 중복
     // 등록되어 있었는데, 이번에 함께 정리했다.)
     {type:'watchertablet',  name:'감시자의 석판',     minDepth:6,  hp:90,  atk:16, def:6,  spd:7,  exp:80,  gold:[60,90],   skills:['carvedBrand','unblinkingGaze']},
-    {type:'hollowprophet',  name:'빈 옷의 예언자',    minDepth:8,  hp:130, atk:20, def:10, spd:9,  exp:140, gold:[100,150], skills:['lockedVoices','prophecyFlame']},
+    {type:'hollowprophet',  name:'빈 옷의 예언자',    minDepth:8,  hp:130, atk:20, def:10, spd:9,  exp:140, gold:[100,150], skills:['lockedVoices','prophecyFlame'], weakness:'dot'},
     {type:'hornedwarden',   name:'뿔 두른 파수인',    minDepth:12, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['judgmentKey','whisperingHorn']},
     {type:'threadmannequin',name:'붉은 실의 재봉인형', minDepth:14, hp:150, atk:24, def:10, spd:5,  exp:160, gold:[110,150], skills:['threadWinds','scissorGreeting']},
     {type:'bladedbloom',    name:'넝쿨진 칼날꽃',     minDepth:16, hp:180, atk:23, def:12, spd:6,  exp:200, gold:[130,170], skills:['petalBloodletting','bladeStemSweep']},
     {type:'sinlantern',     name:'죄의 등롱',         minDepth:18, hp:210, atk:26, def:18, spd:3,  exp:260, gold:[160,220], skills:['burningSin','lanternChorus']},
-    {type:'clockheart',     name:'잠들지 않는 태엽 심장', minDepth:20, hp:235, atk:27, def:20, spd:4, exp:300, gold:[170,230], skills:['pulseShockwave','rustedChainBind']},
-    {type:'unstoppingsand', name:'멈추지 않는 모래',   minDepth:28, hp:260, atk:32, def:16, spd:9,  exp:380, gold:[220,300], skills:['crumblingSand','timeTurningBack']},
+    {type:'clockheart',     name:'잠들지 않는 태엽 심장', minDepth:20, hp:235, atk:27, def:20, spd:4, exp:300, gold:[170,230], skills:['pulseShockwave','rustedChainBind'], weakness:'dot'},
+    {type:'unstoppingsand', name:'멈추지 않는 모래',   minDepth:28, hp:260, atk:32, def:16, spd:9,  exp:380, gold:[220,300], skills:['crumblingSand','timeTurningBack'], weakness:'dot'},
   ];
 
 
