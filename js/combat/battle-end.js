@@ -20,6 +20,17 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
      전직 시점 마나도 함께 0으로 초기화한다).
 */
 
+  // 다중 전투 버프(사용자 요청 — 수수께끼의 마법사, 다음 3전투 지속) 소진.
+  // 전투가 실제로 끝나는 지점(golden goblin 승/패, 일반 승/패)에서만 호출한다
+  // — canEnrage()로 광폭화가 재판정되는 경우는 아직 전투가 끝난 게 아니라서
+  // 여기서 호출하면 안 된다.
+  function tickMultiBattleBuff(){
+    if(player.multiBattleBuff){
+      player.multiBattleBuff.battlesLeft -= 1;
+      if(player.multiBattleBuff.battlesLeft<=0) player.multiBattleBuff = null;
+    }
+  }
+
   function checkBattleEnd(){
     if(enemy.hp<=0){
       if(canEnrage(enemy)){
@@ -35,6 +46,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         battleOver = true;
         setCommandsEnabled(false);
         revertDiceDelta();
+        tickMultiBattleBuff();
         document.getElementById('bt-stage').classList.add('dying');
         const forgiven = Math.round((player.debt||0)*0.7);
         player.debt = Math.max(0, (player.debt||0) - forgiven);
@@ -55,6 +67,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       battleOver = true;
       setCommandsEnabled(false);
       revertDiceDelta();
+      tickMultiBattleBuff();
       document.getElementById('bt-stage').classList.add('dying');
       let g = enemy.gold[0]+Math.floor(Math.random()*(enemy.gold[1]-enemy.gold[0]+1));
       const curseRewardMult = getCurseRewardMult();
@@ -66,6 +79,12 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult + goldSenseBonus + originGoldBonus;
       if(goldBoost>0) g = Math.round(g*(1+goldBoost));
       player.gold += g;
+      // 악마의 계약(사용자 요청): 계약 중이면 승리할 때마다 HP를 추가로 깎는다.
+      // 마을 도착 시(showBossRewardChoice) 자동 해제되므로 여기선 소모만 처리.
+      if(player.contractBuff && player.contractBuff.hpDrainPct>0){
+        const drain = Math.max(1, Math.round(player.maxhp*player.contractBuff.hpDrainPct));
+        player.hp = Math.max(1, player.hp - drain);
+      }
       const killHealPct = getRelicSum('killHealPct');
       if(killHealPct>0 && player.hp>0 && player.hp<player.maxhp){
         player.hp = Math.min(player.maxhp, player.hp + Math.max(1, Math.round(player.maxhp*killHealPct)));
@@ -171,13 +190,19 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           if(purifiedCurseNames.length){
             lines.push({text:`✨ ${purifiedCurseNames.join(', ')}의 저주가 풀렸다! 견뎌낸 대가로 몸이 단단해졌다(전 능력치 영구 +4%).`, cls:'gold'});
           }
-          // 미지의 사건 "그림자와의 결투"(events.js): 정예의 인장을 정예 사냥이
-          // 아닌 다른 방법으로도 얻을 수 있게 한 이벤트 전투. 이 전투를 이겼을
-          // 때만 켜지는 1회용 플래그를 events.js가 세워두고, 여기서 소비한다.
-          if(typeof pendingDuelSealReward!=='undefined' && pendingDuelSealReward){
-            pendingDuelSealReward = false;
-            player.eliteSeals = (player.eliteSeals||0) + 1;
-            lines.push({text:`🔱 결투에서 승리해 정예의 인장을 얻었다! (보유 ${player.eliteSeals}개)`, cls:'gold'});
+          // 미지의 사건(events.js)의 결투류 이벤트가 승리 시 정예의 인장/추가
+          // 골드를 지급하도록 세워두는 1회용 값들을 여기서 소비한다. 기존
+          // "그림자와의 결투"는 count=1로 세팅해 그대로 동작하고, 새로 추가된
+          // "피투성이 도전자"/"봉인된 문"은 상황에 따라 1~2개를 세팅한다.
+          if(typeof pendingDuelSealCount!=='undefined' && pendingDuelSealCount>0){
+            player.eliteSeals = (player.eliteSeals||0) + pendingDuelSealCount;
+            lines.push({text:`🔱 결투에서 승리해 정예의 인장 ${pendingDuelSealCount}개를 얻었다! (보유 ${player.eliteSeals}개)`, cls:'gold'});
+            pendingDuelSealCount = 0;
+          }
+          if(typeof pendingDuelBonusGold!=='undefined' && pendingDuelBonusGold>0){
+            player.gold += pendingDuelBonusGold;
+            lines.push({text:`💰 승리 보상으로 골드 +${pendingDuelBonusGold}G를 추가로 얻었다.`, cls:'gold'});
+            pendingDuelBonusGold = 0;
           }
           if(rareDropId){
             const item = RARE_EQUIPMENT[rareDropId];
@@ -224,6 +249,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         battleOver = true;
         setCommandsEnabled(false);
         revertDiceDelta();
+        tickMultiBattleBuff();
         player.hp = 1;
         const penalty = Math.max(1, Math.round((player.debt||0)*0.5));
         player.debt = (player.debt||0) + penalty;
@@ -293,6 +319,11 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         // 생성된다. depth는 10층 단위 경계로 재계산한다.
         depth = player.tierIndex*10; town = true; inBossDen = false; bossDenFloor = 0;
         player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
+        // 이벤트 시스템의 전투 한정/지속 효과도 함께 정리한다(마을로 돌아온
+        // 이상 유지될 이유가 없다).
+        player.nextBattleEnemyAtkMult = null;
+        player.multiBattleBuff = null;
+        player.contractBuff = null;
         saveGame();
       }, 900);
       return true;
@@ -362,6 +393,8 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       // 경계)로 맞춘다.
       depth = player.tierIndex*10;
       town = true;
+      // 악마의 계약(사용자 요청): 마을에 도착하면 자동으로 해제된다.
+      player.contractBuff = null;
       player.townCheckpoint = makeTownCheckpoint();
       renderStatus();
       renderExplore([{text:logText, cls:'gold'}]);
