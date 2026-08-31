@@ -58,6 +58,10 @@ export(전역): newPlayer
       // 시점의 상태 스냅샷. 사망 시(쉬움/보통 난이도) 이 상태로 되돌아간다.
       // combat/battle-end.js가 보스 클리어 시 갱신, 사망 시 복원한다.
       townCheckpoint:null,
+      // 정예의 교환소 재고(사용자 요청 — 5개만 무작위 노출, 재방문해도 유지).
+      // 다음 마을 도착 시(battle-end.js의 showBossRewardChoice) null로
+      // 리셋되어 shop.js의 openExchange()가 새로 뽑는다.
+      exchangeStock:null,
       // 오프닝 심리테스트(origin.js) — 실제 값은 퀴즈 완료 시 채워진다. 여기서는
       // 안전한 빈 기본값만 둔다(전투 스케일링 등 다른 계산식이 undefined를 0으로
       // 처리하므로 없어도 안전하지만, 명시적으로 두는 편이 읽기 좋다).
