@@ -47,6 +47,7 @@
     align-items:center;
     justify-content:center;
     min-height:100vh;
+    min-height:calc(var(--app-vh, 1vh) * 100);
     min-height:100dvh;
     padding:18px;
     padding:max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
@@ -58,6 +59,7 @@
     width:100%;
     max-width:560px;
     height:min(700px, 92vh);
+    height:min(700px, calc(var(--app-vh, 1vh) * 92));
     height:min(700px, 92dvh);
     background:linear-gradient(180deg,#221a13,#171009);
     border:1px solid #4a3a24;
@@ -561,6 +563,7 @@
     width:100%; background:linear-gradient(180deg,#241b12,#170f08);
     border-top:2px solid #6b5230; border-radius:10px 10px 0 0;
     padding:18px; max-height:85%; overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
   }
   .shop-panel h3{color:var(--gold-bright); text-align:center; margin-bottom:12px;}
   .shop-item{display:flex; justify-content:space-between; align-items:flex-start; padding:10px 6px; border-bottom:1px solid #3a2c1c; gap:10px;}
@@ -710,6 +713,20 @@
   ::-webkit-scrollbar-thumb{background:#4a3a24; border-radius:4px;}
   ::-webkit-scrollbar-track{background:#0f0b07;}
 </style>
+<script>
+  // 모바일 브라우저 주소창(특히 모바일 크롬)이 보였다 숨었다 하면서 실제
+  // 보이는 높이가 바뀌는데, 100vh는 이걸 반영 못 하는 구버전 브라우저가 있다
+  // (주소창이 떠 있을 때 100vh 기준으로 배치된 하단 요소가 화면 밖으로 잘려
+  // 보이는 유명한 문제). --app-vh를 실제 window.innerHeight 기준으로 매번
+  // 갱신해 CSS의 vh 폴백보다 더 정확한 값을 제공한다(dvh를 지원하는 최신
+  // 브라우저는 dvh가 최종적으로 우선 적용됨 — index.html의 #app 규칙 참고).
+  function __setAppVh(){
+    document.documentElement.style.setProperty('--app-vh', (window.innerHeight*0.01)+'px');
+  }
+  __setAppVh();
+  window.addEventListener('resize', __setAppVh);
+  window.addEventListener('orientationchange', __setAppVh);
+</script>
 </head>
 <body>
 <div id="app">
