@@ -22,7 +22,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
      사용자가 존재조차 모를 수 있다는 지적에 따른 개선.
 */
 
+  // 정예 특성(사용자 요청) 중 "반사"/"철갑"/"복수"는 player-actions.js 안에
+  // 흩어진 40여 곳의 개별 피해 적용 지점을 전부 손대는 대신, enemy.hp가
+  // 실제로 줄어들 때마다 항상 호출되는 이 함수에서 델타(직전 대비 감소량)를
+  // 감지해 한 곳에서 처리한다(combat/enemy-turn.js의 handleEliteOnHitTraits 참고).
   function updateEnemyHpBar(){
+    if(enemy && typeof enemy._prevHp==='number' && enemy.hp < enemy._prevHp){
+      if(typeof handleEliteOnHitTraits==='function') handleEliteOnHitTraits(enemy._prevHp - enemy.hp);
+    }
+    if(enemy) enemy._prevHp = enemy.hp;
     document.getElementById('bt-ehp-bar').style.width = Math.max(0,(enemy.hp/enemy.maxhp*100))+'%';
   }
 
