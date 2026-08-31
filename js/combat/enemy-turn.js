@@ -12,7 +12,14 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
               enemyTurnReal, processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
               getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus, getLuckWaveBonus,
-              getVenomDmgPerStack, hasEliteTrait, getEffectiveEnemyAtk, handleEliteOnHitTraits
+              getVenomDmgPerStack, hasEliteTrait, getEffectiveEnemyAtk, handleEliteOnHitTraits,
+              handleBossRageGain, checkLastStand
+주의(신규 — 보스전 리뉴얼): 보스 예고 필살기는 combat/battle-setup.js가 배정한
+     enemy.ultimateSkillKey/rageGauge를 여기서 소비한다 — 게이지가 차면
+     enemy.telegraphed를 세우고(이번 턴은 "힘을 끌어모은다"만 하고 지나감),
+     다음 보스 턴에 enemy.aboutToUltimate로 필살기를 강제 발동시킨다(실제
+     데미지 계산은 이미 있던 skillKey 분기를 그대로 재사용). 최후의 발악은
+     handleBossRageGain과 같은 시점(updateEnemyHpBar 델타 감지)에 체크한다.
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
 주의(신규 — 정예 특성): hasEliteTrait/getEffectiveEnemyAtk/handleEliteOnHitTraits가
      combat/battle-setup.js가 배정한 enemy.eliteTraits를 읽어 전투 중 효과를
@@ -82,6 +89,40 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     }
     // 복수: 다음 적 공격이 강화되도록 예약(getEffectiveEnemyAtk에서 소비).
     if(hasEliteTrait('revenge')) enemy.revengeArmed = true;
+  }
+
+  /* ============ 보스 예고 필살기 / 최후의 발악(사용자 요청 — 보스전 리뉴얼) ============ */
+  // combat/battle-fx.js의 updateEnemyHpBar()가 enemy.hp 감소를 감지할 때마다
+  // handleEliteOnHitTraits와 함께 호출한다.
+  function handleBossRageGain(dealt){
+    if(!enemy || !enemy.isBoss || battleOver || dealt<=0) return;
+    if(enemy.telegraphed || enemy.aboutToUltimate) return; // 예고~발동 대기 중엔 게이지가 멈춘다
+    const gain = Math.max(1, Math.round((dealt/enemy.maxhp)*100));
+    enemy.rageGauge = Math.min(enemy.rageMax||100, (enemy.rageGauge||0)+gain);
+    if(enemy.rageGauge >= (enemy.rageMax||100)){
+      enemy.telegraphed = true;
+      enemy.rageGauge = 0;
+    }
+    if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+  }
+  // 최종보스 전용 3페이즈: 더 이상 부활(광폭화) 카드가 남아있지 않은 마지막
+  // 생명력에서 HP가 30% 이하로 떨어지면 자동 발동. 부활은 하지 않고, 그
+  // 생명력 안에서 공격력↑/방어력↓/매 턴 자체 피해가 지속된다.
+  function checkLastStand(){
+    if(!enemy || !enemy.isBoss || battleOver) return;
+    if(!(enemy.isFinal || enemy.isTrueFinal)) return;
+    if(enemy.lastStandTriggered || enemy.hp<=0) return;
+    const steps = enemy.isTrueFinal ? ENRAGE_STEPS_TRUE : ENRAGE_STEPS_FINAL;
+    if((enemy.phase||0) < steps.length) return; // 아직 부활 카드가 남아있으면 최후의 발악 아님
+    if(enemy.hp > enemy.maxhp*0.3) return;
+    enemy.lastStandTriggered = true;
+    enemy.lastStandActive = true;
+    enemy.atk = Math.round(enemy.atk*1.3);
+    enemy.def = Math.max(0, Math.round(enemy.def*0.7));
+    enemy.skillChance = Math.min(0.9, (enemy.skillChance||0.4)+0.25);
+    playBanner('최후의 발악!', 'enrage');
+    setBattleMsg(`${enemy.name}이(가) 남은 생명을 불태운다!`, '공격력이 크게 오르고 방어력이 떨어졌다. 매 턴 스스로 상처를 입는다.');
+    if(typeof updateBossIntentCard==='function') updateBossIntentCard();
   }
 
   function enemyTurn(){
@@ -316,6 +357,15 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         if(checkBattleEnd()) return;
       }
     }
+    // 최후의 발악(사용자 요청 — 보스전 리뉴얼): 매 턴 스스로 HP를 깎는다.
+    if(enemy && enemy.lastStandActive && enemy.hp>0){
+      const selfDmg = Math.max(1, Math.round(enemy.maxhp*0.05));
+      enemy.hp = Math.max(0, enemy.hp - selfDmg);
+      updateEnemyHpBar();
+      popDamage('-'+selfDmg, 'bleed');
+      setBattleMsg(`${enemy.name}이(가) 스스로를 불태우며 힘을 쥐어짠다…`, `자체 피해 ${selfDmg}.`);
+      if(checkBattleEnd()) return;
+    }
     const activeDots = (enemy.dots||[]).filter(d=>d.turns>0);
     // 독 중첩(mastery_venomstacks, 맹독 연금술사): 일반 dot과 달리 턴이 지나도
     // 사라지지 않고 전투가 끝날 때까지 유지되므로, enemy.dots에 영구 저장하지
@@ -358,8 +408,26 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function enemyAction(){
     setTimeout(()=>{
       let skillKey = null;
-      if(enemy.skills.length && Math.random()<(enemy.skillChance||0.4)){
+      // 보스 예고 필살기(사용자 요청): 예고 대기 중이던 다음 턴이면 강제로
+      // 필살기를 발동, 분노 게이지가 막 가득 찬 턴이면(telegraphed && !aboutToUltimate)
+      // 이번 턴은 예고만 하고 실제 공격은 하지 않는다(대응할 시간을 준다).
+      if(enemy.isBoss && enemy.aboutToUltimate){
+        skillKey = enemy.ultimateSkillKey;
+        enemy.aboutToUltimate = false;
+        enemy.telegraphed = false;
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+      } else if(enemy.isBoss && enemy.telegraphed){
+        skillKey = '__charge__';
+      } else if(enemy.skills.length && Math.random()<(enemy.skillChance||0.4)){
         skillKey = enemy.skills[Math.floor(Math.random()*enemy.skills.length)];
+      }
+      if(skillKey==='__charge__'){
+        enemy.aboutToUltimate = true;
+        setBattleMsg(`${enemy.name}이(가) 힘을 끌어모은다…`, `⚠ 다음 턴 [${BOSS_ULTIMATE_LABELS[enemy.ultimateSkillKey]||'필살기'}]이(가) 발동한다!`);
+        showToast(`<h3>⚠ 예고</h3><p><b>[${BOSS_ULTIMATE_LABELS[enemy.ultimateSkillKey]||'필살기'}]</b> — 다음 턴 발동!</p>`, '#ff4a3a');
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+        finishEnemyTurn();
+        return;
       }
       if(skillKey==='heal' && enemy.hp < enemy.maxhp*0.5){
         const h = Math.round(enemy.maxhp*0.2);
