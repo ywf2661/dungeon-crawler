@@ -40,7 +40,7 @@ export(전역): newPlayer
       debt:0, debtPrincipal:0, loanCounts:{small:0, medium:0, large:0},
       debtAppliedDelta:{}, debtBorrowedAtDepth:null, debtFreezeFloors:0, debtCollectorImminent:false,
       // 노드맵 시스템(사용자 요청 — 슬레이 더 스파이어식 절차적 경로 선택) 전용.
-      // tierIndex=현재 몇 번째 5층 구간을 도는 중인지(0-based, 0이면 1~5층 구간),
+      // tierIndex=현재 몇 번째 10층 구간을 도는 중인지(0-based, 0이면 1~10층 구간),
       // nodeMap=현재 구간의 노드 배치(행 배열, 마지막 행이 항상 보스),
       // nodeRow=지금 서 있는 행 인덱스(-1=아직 첫 노드도 안 고름),
       // nodeCurrentId=지금 서 있는 노드 id, nodeVisited=지나온 노드 id 목록(지도
@@ -51,6 +51,13 @@ export(전역): newPlayer
       // 교환"하는 방식으로 재설계). 정예 몬스터를 처치할 때마다 쌓이고,
       // 마을의 교환소(exchange.js)에서 에픽 장비와 교환해 소비한다.
       eliteSeals:0,
+      // 정예의 인장 획득 팝업(사용자 요청) — 캐릭터 생애 최초 1회만 큰
+      // 토스트 팝업을 띄우고, 이후엔 탐험 로그 텍스트로만 안내한다.
+      eliteSealFirstSeen:false,
+      // 마을 체크포인트(사용자 요청) — 타이어 보스를 잡고 마을에 도착하는
+      // 시점의 상태 스냅샷. 사망 시(쉬움/보통 난이도) 이 상태로 되돌아간다.
+      // combat/battle-end.js가 보스 클리어 시 갱신, 사망 시 복원한다.
+      townCheckpoint:null,
       // 오프닝 심리테스트(origin.js) — 실제 값은 퀴즈 완료 시 채워진다. 여기서는
       // 안전한 빈 기본값만 둔다(전투 스케일링 등 다른 계산식이 undefined를 0으로
       // 처리하므로 없어도 안전하지만, 명시적으로 두는 편이 읽기 좋다).
