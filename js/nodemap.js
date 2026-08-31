@@ -15,7 +15,7 @@ depth가 정확히 10/20/30...이 되는 시점은 오직 "그 구간의 보스�
 
 export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
               enterNodeMapTier, getVirtualDepth, pickNode, resolveNode,
-              renderNodeMapArea, nodeForcedElite(변수)
+              renderNodeMapArea, nodeForcedElite(변수), nodeEliteBoost(변수)
 의존성: state.js(player, depth), explore.js(addLog, renderExplore, saveGame 호출),
        relics.js(showRelicAltar/showCurseAltar), shop.js(openShop),
        combat/battle-setup.js(startBattle) — 순환 의존이라 함수 호출 시점에만 참조.
@@ -50,6 +50,10 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
   // 대신 확정으로 정예를 내주도록 하는 1회용 플래그. resolveNode()에서 세우고,
   // pickEnemy() 안에서 소비 즉시 꺼진다.
   let nodeForcedElite = false;
+  // 더 강한 정예(사용자 요청 — 피투성이 도전자 이벤트 "도발한다" 전용). 위
+  // nodeForcedElite와 함께 세팅해야 의미가 있다(정예가 아니면 무시됨).
+  // combat/battle-setup.js의 pickEnemy()에서 소비 즉시 꺼진다.
+  let nodeEliteBoost = false;
   // 지도 접기/펼치기 상태(사용자 요청 — 지도가 항상 펼쳐져 있으면 장비/유물
   // 같은 다른 메뉴 버튼을 누를 공간이 없어짐). 저장하지 않는 순수 화면 상태다.
   let nodeMapCollapsed = false;
