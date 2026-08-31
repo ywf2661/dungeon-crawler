@@ -17,7 +17,7 @@ export(전역): MONSTERS, BOSSES, LOCATIONS
     {type:'bat',     name:'찢긴 속삭임들', minDepth:1,  hp:14, atk:5,  def:1,  spd:12, exp:10, gold:[5,10],  skills:['bite']},
     {type:'bandit',  name:'누더기 좀도둑', minDepth:1,  hp:24, atk:7,  def:2,  spd:8,  exp:14, gold:[10,20], skills:['steal']},
     {type:'wolf',    name:'떠도는 발자국', minDepth:2,  hp:26, atk:8,  def:2,  spd:10, exp:16, gold:[5,12],  skills:['bite']},
-    {type:'spider',  name:'독거미',        minDepth:3,  hp:28, atk:9,  def:3,  spd:7,  exp:18, gold:[9,16],  skills:['bite']},
+    {type:'spider',  name:'숲망꾼',        minDepth:3,  hp:28, atk:9,  def:3,  spd:7,  exp:18, gold:[9,16],  skills:['bite']},
     {type:'skeleton',name:'해골 전사',     minDepth:3,  hp:32, atk:9,  def:4,  spd:5,  exp:20, gold:[8,18],  skills:[]},
     {type:'ghost',   name:'원혼',          minDepth:5,  hp:30, atk:10, def:2,  spd:11, exp:24, gold:[12,20], skills:['curse']},
     {type:'orc',     name:'오크 전사',     minDepth:5,  hp:44, atk:12, def:5,  spd:4,  exp:28, gold:[14,26], skills:['smash']},
