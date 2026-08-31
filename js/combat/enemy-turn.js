@@ -97,7 +97,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function handleBossRageGain(dealt){
     if(!enemy || !enemy.isBoss || battleOver || dealt<=0) return;
     if(enemy.telegraphed || enemy.aboutToUltimate) return; // 예고~발동 대기 중엔 게이지가 멈춘다
-    const gain = Math.max(1, Math.round((dealt/enemy.maxhp)*100));
+    // 게이지는 보스 최대HP의 약 33%를 누적으로 때리면 가득 찬다(*300).
+    // 원래 *100(=최대HP 전체를 때려야 참)이었는데, 이러면 게이지가 차는
+    // 시점이 보스가 죽는 시점과 거의 같아져서 예고를 볼 틈이 없었다(사용자
+    // 피드백으로 발견 — HP135 보스를 20데미지씩 때리면 처치 6.75대 vs
+    // 충전 6.67대로 사실상 동시였음).
+    const gain = Math.max(1, Math.round((dealt/enemy.maxhp)*300));
     enemy.rageGauge = Math.min(enemy.rageMax||100, (enemy.rageGauge||0)+gain);
     if(enemy.rageGauge >= (enemy.rageMax||100)){
       enemy.telegraphed = true;
