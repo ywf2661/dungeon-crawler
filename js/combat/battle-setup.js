@@ -1,12 +1,19 @@
 "use strict";
 /*
 전투 시작 세팅 — 최종보스/진 최종보스 데이터, 광폭화(엔레이지) 페이즈 시스템,
-난이도별 몬스터 스탯 보정, 적 선택(pickEnemy), 전투 시작(startBattle).
+난이도별 몬스터 스탯 보정, 적 선택(pickEnemy), 전투 시작(startBattle),
+보스 예고 필살기 데이터(사용자 요청 — 보스전 리뉴얼).
 export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pickFinalBossJob,
               canEnrage, triggerEnragePhase, getDifficultyMonsterMult, scaleEnemyForDifficulty,
-              pickEnemy, startBattle
+              pickEnemy, startBattle, BOSS_ULTIMATE_SKILL, BOSS_ULTIMATE_LABELS, getUltimateSkillFor
 의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS 등), Sound(sound.js), showToast(ui/difficulty.js),
        monster-visuals.js(getDungeonBgForDepth — 전투 시작 시 던전 배경 갱신)
+주의(신규 — 보스전 리뉴얼): 3페이즈(최후의 발악)는 기존 ENRAGE_STEPS_FINAL/TRUE
+     (부활형 광폭화, 1~2페이즈)를 그대로 두고, 그 마지막 부활 이후 HP 30%
+     이하에서 combat/enemy-turn.js의 checkLastStand()가 별도로 발동시킨다
+     (부활 없이 공격력↑/방어력↓/매 턴 자체 피해만 추가되는 방식). 보스 필살기는
+     새 스킬을 만들지 않고 이미 존재하는 보스 스킬 중 배율이 더 높은 쪽을
+     그대로 지정했다(BOSS_ULTIMATE_SKILL).
 */
 
   /* ============ 전투 ============ */
@@ -159,6 +166,34 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return picked;
   }
 
+  /* ============ 보스 예고 필살기(사용자 요청 — 보스전 리뉴얼) ============ */
+  // "예고 → 대응 → 발동" 구조. 새 스킬을 만들지 않고, 이미 있는 보스 스킬 중
+  // 데미지 배율이 더 높은 쪽을 그대로 "필살기"로 지정한다(combat/enemy-turn.js의
+  // 데미지 분기 참고). BOSS_ULTIMATE_LABELS는 예고 UI/카드에 쓰는 한글 이름.
+  const BOSS_ULTIMATE_SKILL = {
+    watchertablet:   'unblinkingGaze',   // 1.55 vs 2.05
+    hollowprophet:   'prophecyFlame',    // 1.5  vs 2.0
+    hornedwarden:    'whisperingHorn',   // 1.6  vs 1.85
+    threadmannequin: 'scissorGreeting',  // 1.5  vs 1.9
+    bladedbloom:     'bladeStemSweep',   // 1.4  vs 2.1
+    sinlantern:      'lanternChorus',    // 1.45 vs 2.0
+    clockheart:      'pulseShockwave',   // 1.7  vs 1.5
+    unstoppingsand:  'timeTurningBack',  // 1.6  vs 2.15
+  };
+  const BOSS_ULTIMATE_LABELS = {
+    unblinkingGaze:'깜빡이지 않는 시선', prophecyFlame:'예언의 불꽃', whisperingHorn:'속삭이는 뿔피리',
+    scissorGreeting:'가위의 인사', bladeStemSweep:'칼날 줄기의 휩쓸기', lanternChorus:'등롱의 합창',
+    pulseShockwave:'박동의 충격파', timeTurningBack:'되돌아오는 시간',
+    heroWarriorSmite:'필멸의 참격', heroMageBurst:'멸망의 화염구', heroRogueSlash:'그림자 베기',
+    heroPaladinSmite:'심판의 빛', heroMechanicBlast:'장치 기폭', heroJesterGamble:'최후의 도박',
+    trueBossJudgment:'태초의 심판',
+  };
+  // 최종보스(직업별/진)는 스킬이 1개(+선택적 heal)뿐이라 그 공격 스킬 자체가 필살기.
+  function getUltimateSkillFor(type, skills){
+    if(BOSS_ULTIMATE_SKILL[type]) return BOSS_ULTIMATE_SKILL[type];
+    return (skills||[]).find(k=>k!=='heal') || (skills&&skills[0]) || null;
+  }
+
   function pickEnemy(isBoss, isFinal, isTrueFinal){
     if(isTrueFinal){
       const base = TRUE_FINAL_BOSS;
@@ -172,6 +207,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         exp: base.exp,
         gold: base.gold,
         skills: base.skills, guarding:false,
+        // 보스 예고 필살기/최후의 발악(사용자 요청 — 보스전 리뉴얼).
+        ultimateSkillKey: getUltimateSkillFor(base.type, base.skills),
+        rageGauge:0, rageMax:100, telegraphed:false, aboutToUltimate:false,
+        lastStandActive:false, lastStandTriggered:false,
       });
     }
     if(isFinal){
@@ -200,6 +239,9 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         exp: base.exp,
         gold: base.gold,
         skills: base.skills, guarding:false,
+        ultimateSkillKey: getUltimateSkillFor(base.type, base.skills),
+        rageGauge:0, rageMax:100, telegraphed:false, aboutToUltimate:false,
+        lastStandActive:false, lastStandTriggered:false,
       });
     }
     // 몬스터 선택: 예전엔 조건(depth>=minDepth)만 맞으면 전부 동일 확률로
@@ -267,6 +309,16 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       // 철갑/불사는 지속 카운터·1회성 플래그가 필요해 여기서 초기값을 함께 심어둔다.
       if(built.eliteTraits.includes('ironskin')) built.ironskinTurns = 2;
       if(built.eliteTraits.includes('undying')) built.usedUndying = false;
+    }
+    if(isBoss){
+      // 보스 예고 필살기/분노 게이지/최후의 발악(사용자 요청 — 보스전 리뉴얼).
+      built.ultimateSkillKey = getUltimateSkillFor(base.type, base.skills);
+      built.rageGauge = 0; built.rageMax = 100;
+      built.telegraphed = false; built.aboutToUltimate = false;
+      built.lastStandActive = false; built.lastStandTriggered = false;
+      // 약점(사용자 요청 — 시범 3개 보스만). data/monsters.js의 BOSSES 데이터에
+      // weakness가 있으면 그대로 옮겨 심는다(없으면 undefined로 아무 효과 없음).
+      if(base.weakness) built.weakness = base.weakness;
     }
     return scaleEnemyForDifficulty(built);
   }
@@ -352,6 +404,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       eliteTagHtml
       + (isTrueFinal?'👑 ':(isFinal?'☠️ ':(isBoss?'💀 ':'')))
       + displayName;
+    // 보스 다음 행동 미리보기 카드(사용자 요청 — 보스전 리뉴얼) 초기화.
+    if(typeof updateBossIntentCard==='function') updateBossIntentCard();
     document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
     document.getElementById('bt-stage').className='enemy-stage'+(enemy.isElite?' elite':'');
     // PNG 몬스터 그림이 캔버스 안 투명 여백 때문에 "붕 떠 보이는" 문제를
