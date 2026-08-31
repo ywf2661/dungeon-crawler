@@ -243,6 +243,25 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       eliteSeals: player.eliteSeals,
       exchangeStock: player.exchangeStock ? player.exchangeStock.slice() : null,
       tierIndex: player.tierIndex,
+      // 사용자 지적 — 빠져있던 것들을 보강했다.
+      inv: Object.assign({}, player.inv),
+      eliteSealFragments: player.eliteSealFragments,
+      // 외상 도박사(jester_debtor) 전용 빚 상태 전체. atk/mag는 위에서 이미
+      // 체크포인트 시점 값으로 되돌아가는데, debt 쪽을 같이 되돌리지 않으면
+      // "대출로 오른 스탯은 사라졌는데 빚만 남는" 모순이 생긴다.
+      debt: player.debt, debtPrincipal: player.debtPrincipal,
+      loanCounts: Object.assign({}, player.loanCounts),
+      debtAppliedDelta: Object.assign({}, player.debtAppliedDelta),
+      debtBorrowedAtDepth: player.debtBorrowedAtDepth,
+      debtFreezeFloors: player.debtFreezeFloors,
+      debtCollectorImminent: player.debtCollectorImminent,
+      // 임시 저주(이 구간 한정) 추적 목록 — relics는 이미 되돌아가지만, 이
+      // 추적 목록도 같이 되돌리지 않으면 이미 사라진 저주 id가 남아있게 된다.
+      tempCurses: Object.assign({}, player.tempCurses),
+      // 연계 이벤트 플래그(수상한 지도 조각/부상당한 모험가) — 하드코어의
+      // 완전 리셋과 동일하게, 이번 구간에서 생긴 진행 상황이라 되돌린다.
+      hasMapFragment: player.hasMapFragment,
+      helpedInjuredAdventurer: player.helpedInjuredAdventurer,
     };
   }
 
@@ -255,6 +274,13 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       else if(k==='skills') player.skills = cp.skills.slice();
       else if(k==='exchangeStock') player.exchangeStock = cp.exchangeStock ? cp.exchangeStock.slice() : null;
       else if(k==='relicAppliedDeltas') player.relicAppliedDeltas = Object.assign({}, cp.relicAppliedDeltas);
+      // 아래 객체형 필드들은 참조를 그대로 대입하면 이후 플레이 중 변경이
+      // 체크포인트 원본까지 오염시키므로(다음 사망 때 잘못된 값으로 복원됨)
+      // 항상 얕은 복사를 새로 만들어 대입한다.
+      else if(k==='inv') player.inv = Object.assign({}, cp.inv);
+      else if(k==='loanCounts') player.loanCounts = Object.assign({}, cp.loanCounts);
+      else if(k==='debtAppliedDelta') player.debtAppliedDelta = Object.assign({}, cp.debtAppliedDelta);
+      else if(k==='tempCurses') player.tempCurses = Object.assign({}, cp.tempCurses);
       else player[k] = cp[k];
     });
   }
@@ -269,12 +295,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     logEl.scrollTop = logEl.scrollHeight;
   }
 
-  // 휴식(사용자 요청 — 무조건 완전회복 대신 3가지 방법 중 선택). 마을에서는
-  // 무료, 던전 휴식 노드에서는 기존과 동일한 골드 비용이 든다(비용은 선택과
-  // 무관하게 화롯불 자체를 마련하는 값 — 어떤 선택을 하든 한 번만 낸다).
+  // 휴식(사용자 요청 — 3가지 방법 중 선택). 마을의 "휴식하다" 버튼은 삭제되어
+  // (사용자 요청 — 체크포인트에서 무료로 힐 스캠하는 걸 막기 위함) 이제 이
+  // 함수는 던전 휴식 노드에서만 호출된다. 항상 유료.
   function onRest(){
-    const cost = town ? 0 : Math.round(30 + depth*4);
-    if(!town && player.gold < cost){ addLog(`휴식을 취하기엔 금화가 부족하다. (${cost}G 필요)`, 'warn'); return; }
+    const cost = Math.round(30 + depth*4);
+    if(player.gold < cost){ addLog(`휴식을 취하기엔 금화가 부족하다. (${cost}G 필요)`, 'warn'); return; }
     showRestChoice(cost);
   }
 
@@ -287,10 +313,10 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">휴식</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        ${cost>0 ? `${cost}G를 들여 마련한 화롯불 곁에서 쉴 방법을 고른다.` : '마을의 화로 곁에서 쉴 방법을 고른다.'}
+        ${cost}G를 들여 마련한 화롯불 곁에서 쉴 방법을 고른다.
       </p>
       <div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="btn" id="rest-deep">🔥 깊은 휴식 — HP 40% 회복</button>
+        <button class="btn" id="rest-deep">🔥 깊은 휴식 — HP/MP 40% 회복</button>
         <button class="btn" id="rest-maint">🔧 정비 — HP 15% 회복 (장비 강화는 추후 추가 예정)</button>
         <button class="btn" id="rest-medi">🧘 명상 — HP 회복 없음, 다음 전투 공격력 +15%</button>
       </div>`;
@@ -304,9 +330,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       saveGame();
     }
     panel.querySelector('#rest-deep').addEventListener('click', ()=>{
-      const heal = Math.round(player.maxhp*0.4);
-      player.hp = Math.min(player.maxhp, player.hp+heal);
-      finish(`깊은 휴식을 취했다. HP가 ${heal} 회복되었다.`);
+      const healHp = Math.round(player.maxhp*0.4);
+      const healMp = Math.round(player.maxmp*0.4);
+      player.hp = Math.min(player.maxhp, player.hp+healHp);
+      player.mp = Math.min(player.maxmp, player.mp+healMp);
+      finish(`깊은 휴식을 취했다. HP가 ${healHp}, MP가 ${healMp} 회복되었다.`);
     });
     panel.querySelector('#rest-maint').addEventListener('click', ()=>{
       const heal = Math.round(player.maxhp*0.15);
