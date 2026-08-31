@@ -74,6 +74,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.multiBattleBuff===undefined) player.multiBattleBuff = null;
       if(player.contractBuff===undefined) player.contractBuff = null;
       if(player.helpedInjuredAdventurer===undefined) player.helpedInjuredAdventurer = false;
+      if(player.exchangeStock===undefined) player.exchangeStock = null;
       // 마을 체크포인트 시스템(신규) — 예전 세이브엔 없으므로 지금 상태를
       // 기준으로 하나 만들어둔다(다음 보스 클리어 때 정상적으로 갱신됨).
       if(player.townCheckpoint===undefined) player.townCheckpoint = town ? makeTownCheckpoint() : null;
@@ -150,6 +151,18 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     if(player && hasRelicFlag('mpZero')){
       player.maxmp = 0; player.mp = 0;
     }
+    // 정예 특성 "저주"(사용자 요청 — 플레이어 회복 효과 -30%). player-actions.js
+    // 안의 9곳에 흩어진 개별 회복 적용 지점을 전부 손대는 대신, 전투 중 HP가
+    // 증가할 때마다 항상 뒤이어 호출되는 이 함수에서 델타를 감지해 사후에
+    // 일부를 되돌리는 방식으로 처리한다(combat/enemy-turn.js의
+    // handleEliteOnHitTraits와 동일한 설계 원칙).
+    if(isBattleActive() && enemy && enemy.eliteTraits && enemy.eliteTraits.includes('curse')
+       && typeof player._prevHpForCurse==='number' && player.hp > player._prevHpForCurse){
+      const healedAmt = player.hp - player._prevHpForCurse;
+      const reduce = Math.round(healedAmt*0.3);
+      if(reduce>0) player.hp = Math.max(0, player.hp - reduce);
+    }
+    player._prevHpForCurse = player.hp;
     // 전직(세분화) 후 상태바에 항상 기본 직업 이름("전사")만 뜨던 버그를 고쳤다.
     // getJobLabel()(data/jobs.js)이 전직했으면 분기 이름을, 레거시 하이브리드면
     // 그 이름을, 둘 다 아니면 기본 직업 이름을 알아서 골라 반환한다.
@@ -228,6 +241,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       relicSlots: player.relicSlots,
       relicAppliedDeltas: Object.assign({}, player.relicAppliedDeltas),
       eliteSeals: player.eliteSeals,
+      exchangeStock: player.exchangeStock ? player.exchangeStock.slice() : null,
       tierIndex: player.tierIndex,
     };
   }
@@ -239,6 +253,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       else if(k==='equipOwned') player.equipOwned = cp.equipOwned.slice();
       else if(k==='relics') player.relics = cp.relics.slice();
       else if(k==='skills') player.skills = cp.skills.slice();
+      else if(k==='exchangeStock') player.exchangeStock = cp.exchangeStock ? cp.exchangeStock.slice() : null;
       else if(k==='relicAppliedDeltas') player.relicAppliedDeltas = Object.assign({}, cp.relicAppliedDeltas);
       else player[k] = cp[k];
     });
