@@ -161,6 +161,29 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     enemyTurn();
   }
 
+  // 메카닉 - 폭주 화부/축압 기술자 공용 헬퍼: 압력 상한을 마스터리에 따라 계산.
+  // mastery_overheat(폭주 화부)이 있으면 150, 그 외(축압 기술자 포함 기본값)는 100.
+  function getPressureCap(){
+    return (player.skills && player.skills.includes('mastery_overheat')) ? 150 : 100;
+  }
+  // 폭주 화부(mastery_overheat) 전용 — 압력이 100을 넘긴 초과분만큼 즉시 자해
+  // 피해를 입힌다(다른 궁극기 hpCostPct들과 동일하게 HP 1은 항상 남도록 클램프
+  // — 자해 자체로는 전투불능이 되지 않는다). 과열 내성(mechanicHeatResist)이
+  // 있으면 자해가 발생할 때마다 회피 스택도 함께 쌓는다(battleFlags.overheatDodgeStacks,
+  // 실제 회피율 반영은 combat/enemy-turn.js의 effectiveDodge류 계산에서 사용).
+  // deployrig(보일러 점화)와 enemy-turn.js의 rig 압력 틱, 양쪽에서 호출된다.
+  function applyOverheatOverflowDamage(currentPressure){
+    if(!player.skills || !player.skills.includes('mastery_overheat')) return;
+    const overflow = Math.max(0, currentPressure-100);
+    if(overflow<=0) return;
+    const selfDmg = Math.round(overflow*1.5);
+    player.hp = Math.max(1, player.hp-selfDmg);
+    if(player.skills.includes('mechanicHeatResist') && battleFlags){
+      battleFlags.overheatDodgeStacks = Math.min(10, (battleFlags.overheatDodgeStacks||0)+2);
+    }
+    renderStatus();
+  }
+
   function playerSkill(key){
     if(battleOver) return;
     // 저주술사(mastery_curseweaver)는 스킬 봉인(침묵의 서약)을 저주 개수만큼의 확률로
@@ -799,12 +822,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       let turns = s.rigTurns;
       if(mechTier>=2) tickMult *= 1.2;
       if(mechTier>=3) turns += 1;
+      // 축압 기술자(mastery_pressureseal) — 장치 지속시간 +2턴, 압력 축적 속도 +9/틱.
+      const hasPressureSeal = !!(player.skills && player.skills.includes('mastery_pressureseal'));
+      if(hasPressureSeal) turns += 2;
       const dmgPerTick = Math.max(1, Math.round(player.mag*tickMult));
       const newRig = {
         kind: s.rigKind, name: s.rigName, turnsLeft: turns, dmgPerTick,
         shieldPct: s.shieldPct||0,
         // 메카닉 리뉴얼(사용자 요청) — 이 장치가 매 틱마다 만들어내는 보일러 압력.
-        pressurePerTick: s.rigPressurePerTick||0,
+        pressurePerTick: (s.rigPressurePerTick||0) + (hasPressureSeal ? 9 : 0),
       };
       // 버그 수정: 예전엔 이 분기가 항상 battleFlags.rig 하나만 무조건 덮어써서,
       // 다중 전개(mastery_multideploy)로 2기까지 가능한 로봇군단장이 자동포탑을
@@ -843,7 +869,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       // 메카닉 리뉴얼(사용자 요청) — 배치 즉시 압력을 소폭 채워준다(보일러 점화 전용).
       if(s.pressureOnDeploy){
-        battleFlags.pressure = Math.min(100, (battleFlags.pressure||0) + s.pressureOnDeploy);
+        battleFlags.pressure = Math.min(getPressureCap(), (battleFlags.pressure||0) + s.pressureOnDeploy);
+        applyOverheatOverflowDamage(battleFlags.pressure);
         if(typeof updatePressureGauge==='function') updatePressureGauge();
       }
       let dmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edef*0.5));
@@ -998,6 +1025,104 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(healed>0) msg2 += ` HP ${healed} 회복.`;
         setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       }
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    // 폭주 화부 - 레벨10 액티브 "폭주 사출": 압력을 소모하지 않고 즉시 압력비례
+    // 피해를 준 뒤, 오히려 압력을 pressureGainOnUse만큼 더 쌓는다(스노우볼).
+    // 초과분(100 초과) 자해/회피스택은 applyOverheatOverflowDamage()가 처리.
+    if(s.type==='pressuresurge'){
+      const edefS = getEffectiveEnemyDef(enemy.def);
+      const pressure = battleFlags.pressure||0;
+      const overflow = Math.max(0, pressure-100);
+      const effRate = s.dmgPerPressure + overflow*0.0006; // mastery_overheat의 초과분 보너스
+      let dmg = Math.max(1, Math.round(player.mag*pressure*effRate) - Math.round(edefS*0.5));
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+      Sound.magic();
+      battleFlags.pressure = Math.min(getPressureCap(), pressure + s.pressureGainOnUse);
+      applyOverheatOverflowDamage(battleFlags.pressure);
+      if(typeof updatePressureGauge==='function') updatePressureGauge();
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `압력 ${pressure}을(를) 그대로 유지한 채 ${dmg}의 피해를 입혔다! 오히려 압력이 ${battleFlags.pressure}까지 더 쌓였다.`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    // 폭주 화부 - 레벨15 궁극기 "임계 폭주": 압력 100 이상 필요. 현재 압력
+    // 전체를 압도적 피해로 전환하고 최대HP 25% 반동 피해(HP 1 클램프)를 입는다.
+    if(s.type==='criticaloverload'){
+      const pressureCO = battleFlags.pressure||0;
+      if(pressureCO < (s.minPressure||100)){
+        setCommandsEnabled(true);
+        player.mp += mpCost;
+        setBattleMsg('압력이 부족하다…', `최소 ${s.minPressure} 이상 쌓여야 발동할 수 있다. (현재 압력 ${pressureCO})`);
+        return;
+      }
+      const edefCO = getEffectiveEnemyDef(enemy.def);
+      let dmg = Math.max(1, Math.round(player.mag*pressureCO*s.dmgPerPressure) - Math.round(edefCO*0.5));
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg,'crit');
+      Sound.bomb();
+      const recoil = Math.round(player.maxhp*s.recoilHpCostPct);
+      player.hp = Math.max(1, player.hp-recoil);
+      battleFlags.pressure = 0;
+      if(typeof updatePressureGauge==='function') updatePressureGauge();
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `압력 ${pressureCO} 전체를 쏟아부어 ${dmg}의 대폭발을 일으켰다! 반동으로 HP ${recoil}을(를) 잃었다.`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    // 축압 기술자 - 레벨10 액티브 "정밀 배분"(mode:firepower/shield) 및
+    // 레벨15 궁극기 "범람"(mode:both). 압력을 전량 소모(minPressure 이상 필요)한
+    // 뒤, refundAmount만큼(효율 개선 보유 시 +10) 즉시 돌려받는다.
+    if(s.type==='pressureallocate'){
+      const pressurePA = battleFlags.pressure||0;
+      if(pressurePA < (s.minPressure||1)){
+        setCommandsEnabled(true);
+        player.mp += mpCost;
+        setBattleMsg('압력이 부족하다…', `최소 ${s.minPressure} 이상 쌓여야 배분할 수 있다. (현재 압력 ${pressurePA})`);
+        return;
+      }
+      const consumed = pressurePA;
+      let msg2 = '';
+      if(s.mode==='firepower' || s.mode==='both'){
+        const buffMult = 1 + consumed*s.dmgBuffPerPressure;
+        if(battleFlags.rig && battleFlags.rig.turnsLeft>0){
+          battleFlags.rig.dmgPerTick = Math.max(1, Math.round(battleFlags.rig.dmgPerTick*buffMult));
+          updateRigVisuals();
+          msg2 += `${battleFlags.rig.name}의 화력이 강화되었다(+${Math.round((buffMult-1)*100)}%).`;
+        } else if(battleFlags.rig2 && battleFlags.rig2.turnsLeft>0){
+          battleFlags.rig2.dmgPerTick = Math.max(1, Math.round(battleFlags.rig2.dmgPerTick*buffMult));
+          updateRigVisuals();
+          msg2 += `${battleFlags.rig2.name}의 화력이 강화되었다(+${Math.round((buffMult-1)*100)}%).`;
+        } else {
+          player.buffAtkTurns = 3;
+          player.buffAtkMult = buffMult;
+          msg2 += `가동 중인 장치가 없어, 대신 3턴간 공격력이 오른다(+${Math.round((buffMult-1)*100)}%).`;
+        }
+      }
+      if(s.mode==='shield' || s.mode==='both'){
+        const reduce = Math.min(s.defReduceCap||0.6, consumed*s.defReducePerPressure);
+        player.buffDefTurns = 1;
+        player.buffDefMult = Math.max(0.05, 1-reduce);
+        msg2 += ` 다음 피격 피해가 크게 줄어든다.`;
+      }
+      const refund = (s.refundAmount||0) + ((player.skills && player.skills.includes('mechanicAccumEfficiency')) ? 10 : 0);
+      battleFlags.pressure = Math.min(getPressureCap(), refund);
+      if(typeof updatePressureGauge==='function') updatePressureGauge();
+      renderStatus();
+      playCastBurst('def');
+      Sound.buff();
+      msg2 += ` (압력 ${consumed} 소모, ${battleFlags.pressure} 환급)`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;

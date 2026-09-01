@@ -268,7 +268,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 메카닉 리뉴얼(사용자 요청) — 장치가 사격할 때마다 압력도 함께 쌓는다.
       let pressureMsg = '';
       if(rig.pressurePerTick && battleFlags){
-        battleFlags.pressure = Math.min(100, (battleFlags.pressure||0) + rig.pressurePerTick);
+        const pressureCapTick = (typeof getPressureCap==='function') ? getPressureCap() : 100;
+        battleFlags.pressure = Math.min(pressureCapTick, (battleFlags.pressure||0) + rig.pressurePerTick);
+        if(typeof applyOverheatOverflowDamage==='function') applyOverheatOverflowDamage(battleFlags.pressure);
         if(typeof updatePressureGauge==='function') updatePressureGauge();
         pressureMsg = ` 압력 +${rig.pressurePerTick}(현재 ${battleFlags.pressure}).`;
       }
@@ -517,7 +519,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         return;
       }
 
-      const dodgeChance = getSpecialSum('dodgeChance') + getBloodPactDodgeBonus();
+      const dodgeChance = getSpecialSum('dodgeChance') + getBloodPactDodgeBonus() + getOverheatDodgeBonus();
       if(dodgeChance>0 && Math.random()<dodgeChance){
         playBanner('회피!','dodge');
         setBattleMsg(label, `${player.name}이(가) 재빠르게 공격을 피했다!`);
@@ -789,6 +791,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     if(!player.maxhp) return 0;
     const missingRatio = 1 - (player.hp/player.maxhp);
     return missingRatio * 0.35;
+  }
+  // 과열 내성(mechanicHeatResist, 폭주 화부 레벨12): applyOverheatOverflowDamage()가
+  // 과부하 자해가 발생할 때마다 battleFlags.overheatDodgeStacks를 쌓아둔다
+  // (스택당 +2%p, 최대 +20%p). 여기서는 그 스택을 회피율로 환산만 한다.
+  function getOverheatDodgeBonus(){
+    if(!(battleFlags && battleFlags.overheatDodgeStacks)) return 0;
+    return Math.min(10, battleFlags.overheatDodgeStacks) * 0.02;
   }
   // 시간 왜곡(mastery_timewarp): 마녀의 시계 유물과 동일한 "이번 턴 이미 사용함" 안전
   // 장치(battleFlags.witchClockUsedThisTurn)를 공유하는 고정 20% 확률 추가 행동.
