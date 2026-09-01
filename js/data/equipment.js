@@ -261,10 +261,17 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   }
 
   function equippedSpecials(){
-    return Object.values(player.equipment).filter(Boolean).map(id=>{
+    const list = Object.values(player.equipment).filter(Boolean).map(id=>{
       const def = getItemDef(id);
       return def && def.special;
     }).filter(Boolean);
+    // 장비 강화(사용자 요청)로 얻은 special도 합친다 — js/blacksmith.js의
+    // ENHANCEMENTS 카탈로그 중 기존 special 어휘(lifestealPct 등)를 재사용하는
+    // 효과가 여기로 자동 반영된다.
+    if(typeof getEquippedEnhancementSpecials==='function'){
+      list.push(...getEquippedEnhancementSpecials());
+    }
+    return list;
   }
   function getSpecialSum(key){
     return equippedSpecials().reduce((sum,sp)=> sum + (typeof sp[key]==='number' ? sp[key] : 0), 0);
@@ -505,6 +512,20 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     mult *= getEmptySackMult();
     mult *= (ctx.onHitMult||1);
     if(ctx.type!=='basic' && hasBladeHiltSet()) mult *= 2;
+    // 장신구 강화(사용자 요청) — 마력의 반지(스킬 피해 전용), 행운의 부적(치명타),
+    // 도박사의 주사위(도박), 시간의 모래(전투 첫 행동)까지 전부 이 지점에서 처리.
+    if(ctx.type!=='basic') mult *= (1 + getSpecialSum('skillDmgPctBonus'));
+    const critChance = getSpecialSum('critChancePct');
+    if(critChance>0 && Math.random()<critChance) mult *= 1.5;
+    const gambleChance = getSpecialSum('gambleDiceChance');
+    if(gambleChance>0){
+      if(Math.random()<gambleChance) mult *= 2;
+      else mult *= 0.8;
+    }
+    if(hasSpecial('firstActionBonus') && battleFlags && !battleFlags.firstActionUsed){
+      battleFlags.firstActionUsed = true;
+      mult *= (1+getSpecialSum('firstActionBonus'));
+    }
     let result = Math.max(1, Math.round(dmg*mult));
     return Math.max(1, result);
   }
