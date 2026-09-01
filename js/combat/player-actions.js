@@ -12,6 +12,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 은신 연속 사용 방지: 기본 공격을 포함해 은신이 아닌 어떤 행동을 해도 쿨다운이
     // 풀린다(다시 은신을 쓸 수 있게 된다).
     if(battleFlags) battleFlags.stealthOnCooldown = false;
+    // 스킬 쿨타임(사용자 요청) — 기본 공격도 한 턴을 소모하므로 쿨타임이 깎여야 한다.
+    if(battleFlags) battleFlags.cooldownTickPending = true;
     // 계율(mastery_creed): '기본 공격 금지' 계율 중이면 기본 공격이 위반이다.
     // '물약 금지' 계율 중이면 기본 공격은 계율을 지킨 것이므로 스택이 오른다.
     let creedMsg = '';
@@ -175,6 +177,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     const mpCostMult = (mbb && mbb.type==='mpcost' && mbb.battlesLeft>0) ? (1-mbb.value) : 1;
     const mpCost = Math.max(0, Math.round(s.mp*mpCostMult));
     if(player.mp < mpCost) return;
+    // 스킬 쿨타임(사용자 요청 — 1차 직업 궁극기 로테이션 개선). 쿨타임이 남아
+    // 있으면 MP가 충분해도 사용할 수 없다(스킬 메뉴에서도 비활성화되지만
+    // 방어적으로 한 번 더 막는다).
+    if(s.cooldown && battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[key]>0) return;
     setCommandsEnabled(false);
 
     // 은신 연속 사용 방지: 은신이 아닌 스킬을 쓰면 쿨다운이 풀린다. 은신 자체는
@@ -195,6 +201,17 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       playBanner('무한한 탄창!','def');
     } else {
       player.mp -= mpCost;
+    }
+    // 스킬 쿨타임(사용자 요청) — 이 스킬에 쿨타임이 있으면 지금 세팅한다.
+    // cooldownTickPending은 "플레이어가 실제로 행동했다"는 표시로, 다음
+    // 내 턴이 돌아올 때(combat/battle-fx.js의 resetCommandUI()) 정확히
+    // 1번만 소비되며 전체 쿨타임을 1씩 깎는다.
+    if(battleFlags){
+      if(s.cooldown){
+        if(!battleFlags.skillCooldowns) battleFlags.skillCooldowns = {};
+        battleFlags.skillCooldowns[key] = s.cooldown;
+      }
+      battleFlags.cooldownTickPending = true;
     }
     // 정예 특성 "마나포식"(사용자 요청): 스킬을 쓸 때마다 MP를 추가로 깎는다.
     // 무료 시전(freeCast)이었어도 이건 별개로 적용된다 — 스킬을 "쓰는 행위"
@@ -786,6 +803,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const newRig = {
         kind: s.rigKind, name: s.rigName, turnsLeft: turns, dmgPerTick,
         shieldPct: s.shieldPct||0,
+        // 메카닉 리뉴얼(사용자 요청) — 이 장치가 매 틱마다 만들어내는 보일러 압력.
+        pressurePerTick: s.rigPressurePerTick||0,
       };
       // 버그 수정: 예전엔 이 분기가 항상 battleFlags.rig 하나만 무조건 덮어써서,
       // 다중 전개(mastery_multideploy)로 2기까지 가능한 로봇군단장이 자동포탑을
@@ -822,6 +841,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         player.buffAtkTurns = s.selfAtkBuffTurns;
         player.buffAtkMult = s.selfAtkBuffMult||1.15;
       }
+      // 메카닉 리뉴얼(사용자 요청) — 배치 즉시 압력을 소폭 채워준다(보일러 점화 전용).
+      if(s.pressureOnDeploy){
+        battleFlags.pressure = Math.min(100, (battleFlags.pressure||0) + s.pressureOnDeploy);
+        if(typeof updatePressureGauge==='function') updatePressureGauge();
+      }
       let dmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edef*0.5));
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
       enemy.hp = Math.max(0, enemy.hp-dmg);
@@ -840,8 +864,85 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(s.exposeTurns) msg2 += ' 적의 급소가 드러나 받는 피해가 늘어난다.';
       if(s.shieldPct) msg2 += ` 가동 중엔 받는 피해의 ${Math.round(s.shieldPct*100)}%를 대신 막아준다.`;
       if(s.selfAtkBuffTurns) msg2 += ` ${s.selfAtkBuffTurns}턴간 공격력도 함께 오른다.`;
+      if(s.rigPressurePerTick||s.pressureOnDeploy){ msg2 += ` 압력이 ${battleFlags.pressure||0}까지 쌓였다.`; }
       if(healed>0) msg2 += ` HP ${healed} 흡수.`;
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    // 메카닉 리뉴얼(사용자 요청) — 압력 방출(공격/방어 두 모드 공유). 표적
+    // 마킹이 걸려 있으면 위력이 늘어난다.
+    if(s.type==='pressurevent'){
+      const pressure = (battleFlags.pressure||0);
+      if(pressure < (s.minPressure||1)){
+        setCommandsEnabled(true);
+        setBattleMsg('압력이 부족하다…', `최소 ${s.minPressure} 이상 쌓여야 방출할 수 있다. (현재 압력 ${pressure})`);
+        return;
+      }
+      const markBonus = (enemy.markedTurns>0) ? (enemy.markBonus||0.25) : 0;
+      if(s.ventMode==='attack'){
+        const edefV = getEffectiveEnemyDef(enemy.def);
+        let dmg = Math.max(1, Math.round(player.mag*pressure*s.dmgPerPressure*(1+markBonus)) - Math.round(edefV*0.5));
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        Sound.magic();
+        renderStatus();
+        battleFlags.pressure = 0;
+        if(typeof updatePressureGauge==='function') updatePressureGauge();
+        let msg2 = `압력 ${pressure}을(를) 전부 방출해 ${dmg}의 피해를 입혔다!`;
+        if(markBonus>0) msg2 += ' 표식 덕분에 위력이 더 늘어났다.';
+        setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      } else {
+        const reduce = Math.min(s.defReduceCap||0.6, pressure*s.defReducePerPressure);
+        player.buffDefTurns = 1;
+        player.buffDefMult = Math.max(0.05, 1-reduce*(1+markBonus));
+        renderStatus();
+        battleFlags.pressure = 0;
+        if(typeof updatePressureGauge==='function') updatePressureGauge();
+        playCastBurst('def');
+        Sound.buff();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `압력 ${pressure}을(를) 방출해, 다음 피격 시 받는 피해를 크게 줄인다.`);
+      }
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    // 메카닉 리뉴얼(사용자 요청) — 표적 마킹(다음 압력 방출 스킬 위력 증가).
+    if(s.type==='mechmark'){
+      enemy.markedTurns = s.markTurns;
+      enemy.markBonus = s.markBonus;
+      updateStatusBadges();
+      playCastBurst();
+      Sound.magic();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${s.markTurns}턴간 표식을 남겼다. 압력 방출 스킬의 위력이 늘어난다.`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    // 메카닉 리뉴얼(사용자 요청) — 과압 각성(1차 10레벨 궁극기). 오메가 유닛
+    // 투입 + 압력 강제 최대치 + 그 자리에서 안전하게(반동 없이) 전량 방출을
+    // 한 번에 처리한다.
+    if(s.type==='overpressureult'){
+      const edefU = getEffectiveEnemyDef(enemy.def);
+      const dmgPerTick = Math.max(1, Math.round(player.mag*s.rigMult));
+      battleFlags.rig = {kind:s.rigKind, name:s.rigName, turnsLeft:s.rigTurns, dmgPerTick, shieldPct:s.shieldPct||0, pressurePerTick:s.rigPressurePerTick||0};
+      updateRigVisuals();
+      battleFlags.pressure = 100;
+      const markBonus = (enemy.markedTurns>0) ? (enemy.markBonus||0.25) : 0;
+      let dmg = Math.max(1, Math.round(player.mag*(s.mult + 100*s.dmgPerPressure)*(1+markBonus)) - Math.round(edefU*0.5));
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg,'crit');
+      Sound.bomb();
+      battleFlags.pressure = 0;
+      if(typeof updatePressureGauge==='function') updatePressureGauge();
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `오메가 유닛을 투입하며 압력을 강제로 끌어올려 ${dmg}의 대폭발을 일으켰다! 이후 오메가 유닛이 훨씬 빠르게 압력을 쌓는다.`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -1905,6 +2006,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
     setCommandsEnabled(false);
+    // 스킬 쿨타임(사용자 요청) — 아이템 사용도 한 턴을 소모한다.
+    if(battleFlags) battleFlags.cooldownTickPending = true;
     // 은신 연속 사용 방지: 물약을 써도 쿨다운이 풀린다.
     if(battleFlags) battleFlags.stealthOnCooldown = false;
     // 계율(mastery_creed): '물약 금지' 계율 중이면 물약 사용이 위반이다.
