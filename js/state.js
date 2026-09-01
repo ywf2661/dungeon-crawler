@@ -20,7 +20,9 @@ export(전역): player, enemy, depth, town, log, battleOver, subMode, battleFlag
 
   // admin 전용 직업 목록. 여기 넣은 id는 이름이 정확히 "admin"(대소문자 무관)일
   // 때만 선택할 수 있다. 다른 직업을 추가로 잠그고 싶으면 이 배열에 id만 추가하면 된다.
-  const ADMIN_ONLY_JOB_IDS = ['jester', 'mechanic'];
+  // (사용자 요청) 메카닉은 압력 게이지 시스템으로 리뉴얼 완료되어 잠금 해제.
+  // 도박사는 아직 리뉴얼 전이라 계속 admin 전용으로 남겨둔다.
+  const ADMIN_ONLY_JOB_IDS = ['jester'];
 
   function isAdminNameEntered(){
     const input = document.getElementById('name-input');
