@@ -76,6 +76,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.helpedInjuredAdventurer===undefined) player.helpedInjuredAdventurer = false;
       if(player.exchangeStock===undefined) player.exchangeStock = null;
       if(player.equipEnhancements===undefined) player.equipEnhancements = {};
+      if(player.equipEnhancementDeltas===undefined) player.equipEnhancementDeltas = {};
       if(player.reinforceStones===undefined) player.reinforceStones = 0;
       // 마을 체크포인트 시스템(신규) — 예전 세이브엔 없으므로 지금 상태를
       // 기준으로 하나 만들어둔다(다음 보스 클리어 때 정상적으로 갱신됨).
