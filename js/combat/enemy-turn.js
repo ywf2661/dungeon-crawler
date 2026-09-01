@@ -265,11 +265,18 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       enemy.hp = Math.max(0, enemy.hp - dmg);
       updateEnemyHpBar(); popDamage('-'+dmg, 'rig');
       Sound.hit();
+      // 메카닉 리뉴얼(사용자 요청) — 장치가 사격할 때마다 압력도 함께 쌓는다.
+      let pressureMsg = '';
+      if(rig.pressurePerTick && battleFlags){
+        battleFlags.pressure = Math.min(100, (battleFlags.pressure||0) + rig.pressurePerTick);
+        if(typeof updatePressureGauge==='function') updatePressureGauge();
+        pressureMsg = ` 압력 +${rig.pressurePerTick}(현재 ${battleFlags.pressure}).`;
+      }
       // 로봇 사격 시 해당 로봇 슬롯을 살짝 번쩍여 "지금 이 로봇이 쐈다"는 게
       // 눈에 보이게 한다(사용자 요청 — 로봇이 실제로 화면에 있다는 걸 체감하게
       // 만드는 핵심 연출).
       flashRigSlot(slotKey);
-      setBattleMsg(`${rig.name}이(가) 자동으로 사격한다!`, `${dmg}의 추가 피해!`);
+      setBattleMsg(`${rig.name}이(가) 자동으로 사격한다!`, `${dmg}의 추가 피해!${pressureMsg}`);
       rig.turnsLeft -= 1;
       const expired = rig.turnsLeft<=0;
       if(expired) battleFlags[slotKey] = null;
@@ -293,6 +300,11 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     }
     if(enemy && enemy.exposedTurns>0){
       enemy.exposedTurns -= 1;
+      updateStatusBadges();
+    }
+    // 메카닉 리뉴얼(사용자 요청) — 표적 마킹도 exposedTurns와 동일한 방식으로 감소.
+    if(enemy && enemy.markedTurns>0){
+      enemy.markedTurns -= 1;
       updateStatusBadges();
     }
     if(battleFlags){
