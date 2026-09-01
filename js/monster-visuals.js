@@ -629,16 +629,21 @@ export(전역): heroBossSvg, svgMonster
   })();
 
   // ---------- 던전 배경(구역별) ----------
-  // data/monsters.js의 LOCATIONS와 정확히 동일한 depth 경계(9/19/29/39/49)를
+  // data/monsters.js의 LOCATIONS와 정확히 동일한 depth 경계(10/20/30/40/50)를
   // 쓴다 — 층이 깊어질수록 dungeon1.png→dungeon6.png로 점점 더 불길한 배경으로
   // 바뀐다. combat/battle-setup.js의 startBattle()에서 getDungeonBgForDepth(depth)
   // 로 매 전투 시작 시 .archway의 배경을 이 값으로 갈아끼운다.
+  // 버그 수정(사용자 피드백 — "보스전에서 배경이 벌써 다음층 걸로 바뀐다"):
+  // 원래 경계가 9/19/29/39/49였는데, 타이어 보스 층수는 정확히 10/20/30/40/50
+  // (nodemap.js의 bossDepth = tierIndex*10+10)이라 보스전 시점에 depth<=9가
+  // 거짓이 되어 배경이 한 구역 일찍 다음 걸로 넘어갔다. 경계를 보스 층수와
+  // 정확히 맞춰 10/20/30/40/50으로 수정했다.
   const DUNGEON_BG_ZONES = [
-    {maxDepth:9,   file:'images/backgrounds/dungeon1.png'},
-    {maxDepth:19,  file:'images/backgrounds/dungeon2.png'},
-    {maxDepth:29,  file:'images/backgrounds/dungeon3.png'},
-    {maxDepth:39,  file:'images/backgrounds/dungeon4.png'},
-    {maxDepth:49,  file:'images/backgrounds/dungeon5.png'},
+    {maxDepth:10,  file:'images/backgrounds/dungeon1.png'},
+    {maxDepth:20,  file:'images/backgrounds/dungeon2.png'},
+    {maxDepth:30,  file:'images/backgrounds/dungeon3.png'},
+    {maxDepth:40,  file:'images/backgrounds/dungeon4.png'},
+    {maxDepth:50,  file:'images/backgrounds/dungeon5.png'},
     {maxDepth:9999,file:'images/backgrounds/dungeon6.png'},
   ];
   function getDungeonBgForDepth(d){
