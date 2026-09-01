@@ -244,6 +244,7 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     if(btnAdvance) btnAdvance.style.display = 'none';
     if(btnShop) btnShop.style.display = 'none';
     if(btnExchange) btnExchange.style.display = 'none';
+    if(btnBlacksmith) btnBlacksmith.style.display = 'none';
 
     const totalSteps = player.nodeMap.length;
     const progressLabel = document.getElementById('node-map-progress');
