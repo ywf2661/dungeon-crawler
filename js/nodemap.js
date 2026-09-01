@@ -13,8 +13,15 @@
 depth가 정확히 10/20/30...이 되는 시점은 오직 "그 구간의 보스를 잡았을
 때"뿐이다.
 
+주의(사용자 요청 — 최종보스 트리거 위치 변경): 5번째 구간(tierIndex===5)은
+generateSilentAltarMap()이 만드는 "고요한 제단" 특수 지도를 쓴다 — 가지
+갈라짐 없이 준비 노드 1개(휴식/유물/상점/미지의 사건 중 무작위)+보스 노드
+1개뿐이다. 이 보스 노드가 이제 진짜 최종보스 트리거다(resolveNode() 참고) —
+원래 4번째 구간(depth 50) 보스가 곧바로 최종보스로 이어졌었는데, 이제 그
+보스는 평범한 구간 보스가 되고 최종보스는 그 다음 "고요한 제단"에서 나온다.
+
 export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
-              enterNodeMapTier, getVirtualDepth, pickNode, resolveNode,
+              generateSilentAltarMap, enterNodeMapTier, getVirtualDepth, pickNode, resolveNode,
               renderNodeMapArea, nodeForcedElite(변수), nodeEliteBoost(변수)
 의존성: state.js(player, depth), explore.js(addLog, renderExplore, saveGame 호출),
        relics.js(showRelicAltar/showCurseAltar), shop.js(openShop),
@@ -120,9 +127,24 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     return rows;
   }
 
+  // "고요한 제단"(사용자 요청) — 5번째 구간(tierIndex===5) 전용 특수 지도.
+  // 일반 절차적 생성(generateNodeMap)과 달리 가지 갈라짐 없이 딱 2개 노드만
+  // 일직선으로 존재한다: 1번 노드(휴식/유물 제단/상점/미지의 사건 중 무작위
+  // 하나, 전투 없음 — 최종결전 전 순수 준비 노드), 2번 노드(보스 — 여기서
+  // 진짜 최종보스가 나온다. resolveNode()의 트리거 조건 참고).
+  function generateSilentAltarMap(tierIndex){
+    const prepTypes = ['rest','relic','shop','event'];
+    const prepType = prepTypes[Math.floor(Math.random()*prepTypes.length)];
+    const prepNode = {id:`t${tierIndex}r0n0`, type:prepType, connections:[]};
+    const bossNode = {id:`t${tierIndex}boss`, type:'boss', connections:[]};
+    prepNode.connections.push(bossNode.id);
+    return [[prepNode], [bossNode]];
+  }
+
   // 새 구간 진입 — 지도를 새로 뽑고 첫 행 선택 대기 상태로 초기화한다.
   function enterNodeMapTier(){
-    player.nodeMap = generateNodeMap(player.tierIndex);
+    // 5번째 구간(tierIndex===5)은 "고요한 제단" 특수 지도를 쓴다(사용자 요청).
+    player.nodeMap = (player.tierIndex===5) ? generateSilentAltarMap(player.tierIndex) : generateNodeMap(player.tierIndex);
     player.nodeRow = -1;
     player.nodeCurrentId = null;
     player.nodeVisited = [];
@@ -178,7 +200,13 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     if(node.type==='boss'){
       const bossDepth = player.tierIndex*10 + 10;
       depth = bossDepth;
-      if(bossDepth===50 && !player.endingSeen){
+      // 사용자 요청 — 최종보스 트리거를 "고요한 제단"(tierIndex===5)의 보스
+      // 노드로 옮겼다. 원래 5번째 구간(depth 50) 보스가 곧바로 최종보스로
+      // 이어졌는데, 이제 그 보스는 평범한 구간 보스가 되고, 그 다음에 오는
+      // "고요한 제단"(노드 2개짜리 특수 구간)의 보스가 진짜 최종보스다.
+      // 실제 최종보스 진입 서사(showFinalFloorConfirm — 기원 답변/무사고
+      // 클리어 판정에 따른 분기)는 전혀 안 건드렸다, 트리거 위치만 이동.
+      if(player.tierIndex===5 && !player.endingSeen){
         showFinalFloorConfirm();
         return;
       }
