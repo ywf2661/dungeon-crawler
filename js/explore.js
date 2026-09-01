@@ -82,7 +82,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 기준으로 하나 만들어둔다(다음 보스 클리어 때 정상적으로 갱신됨).
       if(player.townCheckpoint===undefined) player.townCheckpoint = town ? makeTownCheckpoint() : null;
       if(player.eliteSealFirstSeen===undefined) player.eliteSealFirstSeen = (player.eliteSeals||0) > 0;
-      if(player.level>=10 && !player.jobChosenAt10) player.jobAdvancePending = true;
+      // 메카닉은 2차 전직(로봇군단장/데토네이터)이 아직 압력 게이지 리뉴얼에
+      // 맞춰 재작업되지 않아서, 당분간 10레벨 전직 선택 화면 자체를 건너뛴다
+      // (사용자 요청). 나중에 2차도 리뉴얼되면 이 조건만 지우면 다시 정상
+      // 동작한다.
+      if(player.level>=10 && !player.jobChosenAt10 && player.job!=='mechanic') player.jobAdvancePending = true;
       if(needsSpecializationMigration(player)) player.jobAdvancePending = true; // 레거시 하이브리드 → 재전직 필요
       document.getElementById('statusbar').style.display='flex';
       showScreen('explore');
