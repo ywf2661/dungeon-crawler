@@ -40,6 +40,16 @@ export(전역): init, showMaintenanceModal, isAdminName
     // 점검 중: 아이디(이름 입력)가 'admin'이 아니면 시작/이어하기 모두 점검중 모달만 띄운다.
     document.getElementById('btn-start').addEventListener('click', ()=>{
       //if(!isAdminName()){ showMaintenanceModal(); return; }
+      // 이름 입력 필수화(사용자 요청) — 비어있으면 시작을 막고 입력칸을 강조한다.
+      const nameEl = document.getElementById('name-input');
+      if(!nameEl.value.trim()){
+        nameEl.classList.remove('input-error'); void nameEl.offsetWidth;
+        nameEl.classList.add('input-error');
+        nameEl.placeholder = '이름을 입력해야 시작할 수 있다';
+        nameEl.focus();
+        Sound.click();
+        return;
+      }
       startGame(false);
     });
     document.getElementById('btn-continue').addEventListener('click', ()=>{
