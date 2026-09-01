@@ -4,7 +4,14 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, playComboFinish, playStatusFx, playCastBurst, playBanner,
-              updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard
+              updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
+              checkMechanicOverheat, updatePressureGauge
+주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
+     보일러 압력이 100에서 방출되지 않고 넘어갔을 때의 자동 폭주를 처리하고,
+     updatePressureGauge()는 #bt-pressure 요소에 압력 수치를 표시한다. 둘 다
+     resetCommandUI() 안에서 "플레이어가 실제로 행동했을 때"만 정확히 1번
+     발동하는 지점(cooldownTickPending 플래그)을 그대로 재사용한다 — 스킬
+     쿨타임 감소와 동일한 안전장치 원칙.
 의존성: state.js(enemy/player), Sound(sound.js)
 주의: updatePlayerStatusBadges()는 적 화면 왼쪽 위(#bt-player-status)에 현재 켜져 있는
      내 토글 상태(혈서=🩸, 화염/빙결/번개계약=🔥/❄/⚡)를 아이콘으로 표시한다. SKILLDB의
@@ -54,6 +61,27 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     runBtn.style.display = canFlee ? '' : 'none';
     updatePlayerStatusBadges();
     updateRigVisuals();
+    updatePressureGauge();
+    // 스킬 쿨타임(사용자 요청 — 1차 직업 궁극기 로테이션 개선). resetCommandUI()는
+    // 메뉴 열기/닫기(closeSub) 등 실제 턴 진행과 무관한 경로로도 호출되므로,
+    // 그런 호출에서까지 쿨타임이 깎이면 메뉴만 열었다 닫아도 쿨타임을 공짜로
+    // 줄이는 악용이 생긴다. 그래서 "플레이어가 실제로 행동했다"는 표시
+    // (battleFlags.cooldownTickPending, player-actions.js에서 세팅)가 있을 때만
+    // 여기서 정확히 1번 소비하며 감소시킨다.
+    if(battleFlags && battleFlags.cooldownTickPending){
+      battleFlags.cooldownTickPending = false;
+      if(battleFlags.skillCooldowns){
+        Object.keys(battleFlags.skillCooldowns).forEach(k=>{
+          battleFlags.skillCooldowns[k] -= 1;
+          if(battleFlags.skillCooldowns[k]<=0) delete battleFlags.skillCooldowns[k];
+        });
+      }
+      // 메카닉 리뉴얼(사용자 요청) — 보일러 압력 폭주(오버히트). 압력을 100까지
+      // 채운 채 스스로 방출하지 않고 넘기면, 내 턴이 돌아오는 이 시점에 자동
+      // 발동한다(20% 확률로 반동 피해도 함께). cooldownTickPending과 동일한
+      // "정확히 1번만" 보장 지점을 그대로 재사용한다.
+      if(typeof checkMechanicOverheat==='function') checkMechanicOverheat();
+    }
   }
   function setCommandsEnabled(en){
     ['cmd-attack','cmd-skill','cmd-item','cmd-run'].forEach(id=>document.getElementById(id).disabled=!en);
@@ -158,6 +186,40 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.style.display = 'block';
     el.classList.toggle('rig-wide', rig.kind==='omega');
   }
+  // 메카닉 리뉴얼(사용자 요청) — 보일러 압력 폭주. 압력이 100에 도달한 채
+  // 방출되지 않고 넘어가면, 내 턴이 돌아올 때 자동으로 터진다(20% 확률로
+  // 나 자신도 반동 피해를 입어 "무한정 쌓아두기만 해도 안전"하지 않게 한다).
+  function checkMechanicOverheat(){
+    if(!battleFlags || (battleFlags.pressure||0) < 100) return;
+    if(!enemy || enemy.hp<=0 || battleOver) return;
+    const edef = typeof getEffectiveEnemyDef==='function' ? getEffectiveEnemyDef(enemy.def) : enemy.def;
+    let dmg = Math.max(1, Math.round((player.mag||0)*2.2) - Math.round(edef*0.5));
+    enemy.hp = Math.max(0, enemy.hp-dmg);
+    updateEnemyHpBar(); popDamage('-'+dmg,'crit');
+    battleFlags.pressure = 0;
+    updatePressureGauge();
+    let msg = `보일러 압력이 폭주해 ${dmg}의 피해를 입혔다!`;
+    if(Math.random()<0.2 && player.hp>0){
+      const selfDmg = Math.max(1, Math.round(player.maxhp*0.08));
+      player.hp = Math.max(0, player.hp-selfDmg);
+      popDamage('-'+selfDmg,'bleed');
+      msg += ` 반동으로 나도 ${selfDmg}의 피해를 입었다!`;
+    }
+    setBattleMsg('보일러 폭주!', msg);
+    renderStatus();
+    if(typeof checkBattleEnd==='function') checkBattleEnd();
+  }
+  // 압력 게이지 UI(사용자 요청) — 메카닉일 때만 rig 슬롯 근처에 작은 계기판으로 표시.
+  function updatePressureGauge(){
+    const el = document.getElementById('bt-pressure');
+    if(!el) return;
+    if(!player || player.job!=='mechanic' || !isBattleActive()){ el.style.display='none'; return; }
+    const p = (battleFlags && battleFlags.pressure) || 0;
+    el.style.display = 'block';
+    el.textContent = `🔥 압력 ${p}/100`;
+    el.classList.toggle('pressure-high', p>=70);
+  }
+
   function updateRigVisuals(){
     const slot1 = document.getElementById('bt-rig1');
     const slot2 = document.getElementById('bt-rig2');
@@ -330,7 +392,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       normalKeys.forEach(k=>{
         const s = SKILLDB[k];
         const mpCost = s.mp;
-        const canUse = player.mp>=mpCost;
+        const cdLeft = (battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[k]) || 0;
+        const canUse = player.mp>=mpCost && cdLeft<=0;
         const div = document.createElement('div');
         div.className = 'sub-item'+(canUse?'':' disabled');
         // 베팅/올인(goldbet 타입): 실제로 쓰면 판돈이 얼마가 될지 현재 소지 골드
@@ -350,7 +413,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
           const count = (player.loanCounts && player.loanCounts[s.loanKey]) || 0;
           extraInfo = `<div class="si-desc" style="color:var(--gold-bright); margin-top:2px;">📒 지금까지 ${count}회 대출 · 빌리면 빚 ${(player.debt||0)+loan.amount}G</div>`;
         }
-        div.innerHTML = `<div class="si-info"><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div>${extraInfo}</div><div class="si-cost">MP ${mpCost}</div>`;
+        const costBadge = cdLeft>0 ? `쿨타임 ${cdLeft}턴` : `MP ${mpCost}`;
+        div.innerHTML = `<div class="si-info"><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div>${extraInfo}</div><div class="si-cost">${costBadge}</div>`;
         if(canUse) div.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
         sub.appendChild(div);
       });
