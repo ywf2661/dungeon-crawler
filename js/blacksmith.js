@@ -4,7 +4,8 @@
 export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhancementsFor,
               getEnhancedDisplayName, getEquippedEnhancementSpecials, getWeaponEnhanceDamageMult,
               applyWeaponOnHitEffects, shouldTriggerWeaponMultiStrike, grantReinforceStones,
-              rollReinforceStoneDrop, openBlacksmith
+              rollReinforceStoneDrop, openBlacksmith, applyEnhancementStatBonuses,
+              unapplyEnhancementStatBonuses
 의존성: player(state.js), data/equipment.js(getItemDef/EQUIPMENT/RARE_EQUIPMENT/EPIC_EQUIPMENT),
        combat/enemy-turn.js(applyDot, effectiveAtk), explore.js(addLog/renderStatus/saveGame)
 
@@ -216,6 +217,36 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
     return 0;
   }
 
+  // 강화로 얻은 %기반 스탯 보너스(피의 갑옷/마력의 반지)를 "장착 중일 때만"
+  // 적용/회수한다. data/equipment.js의 equipItem()/unequipItem()이 호출한다.
+  // 적용 시점의 현재 최대치 기준으로 계산한 델타를 player.equipEnhancementDeltas
+  // 에 캐싱해두고, 해제할 땐 그 캐싱된 값을 정확히 그대로 빼야 한다(그 사이
+  // 레벨업 등으로 최대치가 달라졌어도 어긋나지 않도록).
+  function applyEnhancementStatBonuses(id){
+    const list = getEnhancementsFor(id);
+    if(!list.length) return;
+    let dHp = 0, dMp = 0;
+    list.forEach(eid=>{
+      const def = ENHANCEMENTS[eid];
+      if(!def) return;
+      if(def.maxhpPctBonus) dHp += Math.round(player.maxhp*def.maxhpPctBonus);
+      if(def.maxmpPctBonus) dMp += Math.round(player.maxmp*def.maxmpPctBonus);
+    });
+    if(dHp||dMp){
+      player.maxhp += dHp; player.hp = Math.min(player.maxhp, player.hp+dHp);
+      player.maxmp += dMp; player.mp = Math.min(player.maxmp, player.mp+dMp);
+      if(!player.equipEnhancementDeltas) player.equipEnhancementDeltas = {};
+      player.equipEnhancementDeltas[id] = {maxhp:dHp, maxmp:dMp};
+    }
+  }
+  function unapplyEnhancementStatBonuses(id){
+    const d = player.equipEnhancementDeltas && player.equipEnhancementDeltas[id];
+    if(!d) return;
+    if(d.maxhp){ player.maxhp -= d.maxhp; player.hp = Math.min(player.maxhp, Math.max(0, player.hp-d.maxhp)); }
+    if(d.maxmp){ player.maxmp -= d.maxmp; player.mp = Math.min(player.maxmp, Math.max(0, player.mp-d.maxmp)); }
+    delete player.equipEnhancementDeltas[id];
+  }
+
   /* ============ 대장간 UI ============ */
   function openBlacksmith(){
     const overlay = document.createElement('div');
@@ -298,20 +329,14 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
         player.reinforceStones -= cost;
         if(!player.equipEnhancements[id]) player.equipEnhancements[id] = [];
         player.equipEnhancements[id].push(eid);
-        const def = ENHANCEMENTS[eid];
-        // 1회성 스탯 델타(사용자 요청 — 피의 갑옷 최대HP+20%, 마력의 반지 최대MP+20%).
-        // 유물 적용분(player.relicAppliedDeltas)과 동일한 원리로, 부여 시점의
-        // 현재 최대치 기준으로 딱 한 번 계산해 더한다(장착 여부와 무관하게 유지).
-        if(def.maxhpPctBonus){
-          const delta = Math.round(player.maxhp*def.maxhpPctBonus);
-          player.maxhp += delta; player.hp += delta;
-        }
-        if(def.maxmpPctBonus){
-          const delta = Math.round(player.maxmp*def.maxmpPctBonus);
-          player.maxmp += delta; player.mp += delta;
+        // 스탯형 보너스(피의 갑옷 최대HP+20%, 마력의 반지 최대MP+20%)는 지금
+        // 이 아이템이 장착 중일 때만 즉시 적용한다 — 장착 중이 아니면 나중에
+        // 장착하는 순간 data/equipment.js의 equipItem()이 적용해준다.
+        if(player.equipment && player.equipment[slot]===id && typeof applyEnhancementStatBonuses==='function'){
+          applyEnhancementStatBonuses(id);
         }
         renderStatus();
-        addLog(`[${getEnhancedDisplayName(id)}]에 [${def.name}]을(를) 새겼다!`, 'gold');
+        addLog(`[${getEnhancedDisplayName(id)}]에 [${ENHANCEMENTS[eid].name}]을(를) 새겼다!`, 'gold');
         saveGame();
         renderBlacksmithHome(panel);
       });
