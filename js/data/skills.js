@@ -619,6 +619,62 @@ export(전역): SKILLDB
     mechanicDetonate: {name:'기폭', mp:7, desc:'가동 중인 장치를 그 자리에서 폭파시킨다. 연쇄 기폭 스택이 쌓여 있을수록 훨씬 강력하다. 가동 중인 장치가 없으면 예비 폭발물을 대신 투척한다',
       type:'detonaterig', noRigMult:1.3, burstMult:2.2},
 
+    // 메카닉 - 폭주 화부(mechanic_stoker) — 안전장치를 뜯어낸 화부. 압력 상한을
+    // 무시하고 위험할수록 강해지는 하이리스크 하이리턴 분기. 축압 기술자와
+    // 정반대 축을 이루는 컨셉(사용자 확정 — 시뮬레이션으로 수치 조정 완료).
+    // 마스터리 "폭주 압력": 압력 상한이 100→150으로 늘어난다. 100을 넘는 압력은
+    // 초과분만큼(1당 1.5) 즉시 자해 피해를 입히지만, 압력 방출 스킬(폭주 사출/
+    // 임계 폭주 포함, 1차 밸브개방/안전밸브도 해당)의 dmgPerPressure에 초과분당
+    // 0.0006이 추가로 붙는다. 실제 자해/보너스 적용은 combat/player-actions.js의
+    // applyOverheatOverflowDamage()가 담당(deployrig pressureOnDeploy 및
+    // combat/enemy-turn.js의 rig 압력 틱 양쪽에서 호출됨).
+    mastery_overheat: {name:'폭주 압력', mp:0, type:'passive',
+      pressureCapBonus:50, overflowSelfDmgPerPoint:1.5, ventPowerBonusPerOverflow:0.0006,
+      desc:'압력 상한이 150으로 늘어난다. 100을 넘는 압력은 매번 초과분만큼 자해 피해를 입히지만, 압력 방출 스킬의 위력도 초과분에 비례해 강해진다.'},
+    // 레벨10 액티브 "폭주 사출": 압력을 소모하지 않고 즉시 압력비례 피해를 준
+    // 뒤, 오히려 압력을 25 더 쌓는 스노우볼형 스킬(기존 밸브개방과 정반대 방향).
+    mechanicOverloadDischarge: {name:'폭주 사출', mp:6, type:'pressuresurge',
+      dmgPerPressure:0.03, pressureGainOnUse:25,
+      desc:'압력을 소모하지 않고 즉시 압력량에 비례한 피해를 입힌다. 사용할 때마다 오히려 압력이 25 더 쌓인다.'},
+    // 레벨12: 과부하 자해를 입을 때마다 회피 스택이 쌓이는 생존 보상 패시브.
+    mechanicHeatResist: {name:'과열 내성', mp:0, type:'passive',
+      dodgePerOverflowTrigger:0.02, maxDodgeStacks:10,
+      desc:'과부하로 자해 피해를 입을 때마다 이번 전투 동안 회피율이 2%p 오른다(최대 +20%p).'},
+    // 레벨15 궁극기 "임계 폭주": 압력 100 이상일 때만 사용 가능. 현재 압력 전체를
+    // 압도적 피해로 전환하고 최대HP 25%의 반동 피해를 입는다(다른 궁극기들과
+    // 동일하게 반동으로 죽지는 않도록 player-actions.js에서 HP 1 클램프 처리).
+    mechanicCriticalOverload: {name:'임계 폭주', mp:20, type:'criticaloverload', cooldown:4,
+      minPressure:100, dmgPerPressure:0.04, recoilHpCostPct:0.25,
+      desc:'상한을 완전히 무시하고 이번 압력 전체를 압도적 피해로 전환한다. 사용 후 최대HP 25%의 반동 피해를 입는다.'},
+
+    // 메카닉 - 축압 기술자(mechanic_accumulator) — 압력을 함부로 흘려보내지
+    // 않는 제어형 분기. 폭주 화부와 정반대로, 100에 도달해도 넘치지 않고
+    // 그대로 고정 유지되며, 대신 장치 지속시간과 압력 축적 속도가 늘어난다.
+    // 마스터리 "압력 봉인": rigTurnsBonus/rigPressureTickBonus는 combat/
+    // player-actions.js의 deployrig 분기에서 직접 적용한다(자동포탑/오메가
+    // 유닛 배치 시점에 지속시간 +2턴, 압력 축적 +9/틱).
+    mastery_pressureseal: {name:'압력 봉인', mp:0, type:'passive',
+      rigTurnsBonus:2, rigPressureTickBonus:9,
+      desc:'압력이 100에 도달하면 넘치거나 터지지 않고 그대로 고정 유지된다. 가동 중인 장치의 지속시간이 2턴, 압력 축적 속도가 틱당 +9 늘어난다.'},
+    // 레벨10 액티브 "정밀 배분": 현재 압력을 전부 소모해 화력강화(가동 중인
+    // 장치의 dmgPerTick을 소모량 비례로 영구 강화) 또는 보호막(다음 피격 피해
+    // 감소, 1차 안전밸브와 동일한 defReducePerPressure/defReduceCap 필드 재사용)
+    // 중 하나를 선택. 사용 후 압력 50을 즉시 돌려받는다.
+    mechanicAccumFirepower: {name:'정밀 배분: 화력 강화', mp:5, type:'pressureallocate', mode:'firepower',
+      minPressure:50, refundAmount:50, dmgBuffPerPressure:0.01,
+      desc:'압력을 소모해 가동 중인 장치의 화력을 강화한다(소모량에 비례). 사용 후 압력 50을 돌려받는다.'},
+    mechanicAccumShield: {name:'정밀 배분: 보호막', mp:5, type:'pressureallocate', mode:'shield',
+      minPressure:50, refundAmount:50, defReducePerPressure:0.006, defReduceCap:0.6,
+      desc:'압력을 소모해 다음 피격 시 받는 피해를 줄인다(소모량에 비례). 사용 후 압력 50을 돌려받는다.'},
+    // 레벨12: 환급량 50→60.
+    mechanicAccumEfficiency: {name:'효율 개선', mp:0, type:'passive', refundBonus:10,
+      desc:'정밀 배분 사용 시 돌려받는 압력이 10 늘어난다(50→60).'},
+    // 레벨15 궁극기 "범람": 압력이 최대(100)일 때만 사용 가능. 화력강화+보호막을
+    // 동시에 발동시키며 이번엔 환급 없이 압력을 전량 소모한다.
+    mechanicAccumOverflow: {name:'범람', mp:18, type:'pressureallocate', mode:'both', cooldown:3,
+      minPressure:100, refundAmount:0, dmgBuffPerPressure:0.014, defReducePerPressure:0.007, defReduceCap:0.7,
+      desc:'압력이 최대일 때만 사용 가능. 화력 강화와 보호막을 동시에 발동시키며 압력을 전량 소모한다(환급 없음).'},
+
     // 도박사 - 운명의 반란자(jester_rebel)
     // 마스터리 "행운의 파도": 매 라운드(적의 실제 턴이 열릴 때, combat/enemy-turn.js의
     // enemyTurnReal())마다 battleFlags.luckGauge가 -3~+3 사이에서 무작위로 오르내리고,

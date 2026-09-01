@@ -117,7 +117,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       }
       const leveled = grantExp(enemy.exp);
       const isFinalKill = !!enemy.isFinal;
-      if(leveled.includes(10) && !player.jobChosenAt10 && player.job!=='mechanic'){
+      if(leveled.includes(10) && !player.jobChosenAt10){
         player.jobAdvancePending = true;
       }
       let rareDropId = null;

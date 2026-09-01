@@ -190,22 +190,28 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         activeName:'성휘참', activeDesc:'칼리버 X에 신성한 빛을 모아 적을 강하게 베어낸다.', activeSkillId:'paladinHolyRend',
         skillLevels: {12:'paladinDarkPrayer', 15:'paladinCaliberXFinale'}},
     ],
+    // [교체됨] 기존 로봇군단장(mechanic_legion)/데토네이터(mechanic_detonator)는
+    // 사용자 요청으로 폐기되고 아래 두 분기로 전면 교체되었다. mastery_multideploy/
+    // mastery_chaindetonate 등 구버전 SKILLDB 항목은 삭제하지 않고 남겨둔다(레거시
+    // 세이브 크래시 방지) — 단지 JOB_SPECIALIZATIONS 목록에서만 빠져 새 캐릭터는
+    // 더 이상 선택할 수 없다.
+    //
+    // 폭주 화부(mechanic_stoker) / 축압 기술자(mechanic_accumulator): 1차 기관사의
+    // 핵심 정체성(압력 축적/방출 타이밍 판단)을 두 방향으로 쪼갠 대칭 구도.
+    // 화부=상한 초과/자해 감수형 하이리스크, 축압=상한 고정/장치 강화형 안정형.
+    // 시뮬레이션(전사/마법사/도적/성기사 2차 기준, 5턴 실전 조건)으로 압력
+    // 증가율(폭주사출 +25, 압력 봉인 rigPressureTickBonus +9)까지 조정 완료.
     mechanic: [
-      {id:'mechanic_legion', name:'로봇군단장', icon:'🤖',
-        desc:'로봇 군단을 이끄는 지휘관. 홀로 싸우지 않는다 — 여러 기의 로봇과 함께 전장을 장악한다.',
-        masteryName:'다중 전개', masteryDesc:'로봇을 여러 기 동시에 배치 가능. 대신 폭발 계열 스킬은 일절 사용 불가.', masterySkillId:'mastery_multideploy',
-        activeName:'역할 배치', activeDesc:'정찰/화력/방벽 로봇 중 원하는 역할을 직접 선택해 즉시 배치.', activeSkillIds:['mechanicDeployRecon','mechanicDeployFirepower','mechanicDeployShield'],
-        // 레벨15 궁극기 "집중포화": 사용자 확정 — 이 분기는 폭발(기폭) 계열을
-        // 쓰지 않는다는 정체성을 그대로 지킨다. 로봇을 파괴하는 대신, 현재
-        // 배치된 로봇들의 역할을 그대로 활용해 함께 집중사격한다(로봇은 이후에도
-        // 그대로 가동 계속). 새 타입 'legionbarrage'로 처리하며, mastery의
-        // "폭발 계열 스킬 사용 불가" 제한은 s.type==='detonaterig'만 검사하므로
-        // 이 새 타입엔 걸리지 않는다.
-        skillLevels: {15:'mechanicFocusFire'}},
-      {id:'mechanic_detonator', name:'데토네이터', icon:'💥',
-        desc:'폭발 하나에 모든 것을 건다. 설치하고, 기다리고, 터뜨리는 데토네이터.',
-        masteryName:'연쇄 기폭', masteryDesc:'설치된 폭발물 개수만큼 기폭 시 배율 자동 누적.', masterySkillId:'mastery_chaindetonate',
-        activeName:'기폭', activeDesc:'설치된 폭발물을 한 번에 전부 터뜨림(범위 내 자신도 휘말릴 수 있음).', activeSkillId:'mechanicDetonate'},
+      {id:'mechanic_stoker', name:'폭주 화부', icon:'🔥',
+        desc:'안전장치를 스스로 뜯어낸 화부. 압력 상한을 무시하고 오직 앞으로 나아간다. 위험할수록 강해진다.',
+        masteryName:'폭주 압력', masteryDesc:'압력 상한이 150으로 늘어난다. 100을 넘는 압력은 초과분만큼 자해 피해를 입히지만, 압력 방출 스킬의 위력도 초과분에 비례해 강해진다.', masterySkillId:'mastery_overheat',
+        activeName:'폭주 사출', activeDesc:'압력을 소모하지 않고 즉시 압력량에 비례한 피해를 입힌다. 사용할 때마다 오히려 압력이 더 쌓인다.', activeSkillId:'mechanicOverloadDischarge',
+        skillLevels: {12:'mechanicHeatResist', 15:'mechanicCriticalOverload'}},
+      {id:'mechanic_accumulator', name:'축압 기술자', icon:'🔋',
+        desc:'압력을 함부로 흘려보내지 않는다. 100에 도달한 압력은 넘치지도, 터지지도 않고 그 자리에 그대로 쌓여 기다린다.',
+        masteryName:'압력 봉인', masteryDesc:'압력이 100에 도달하면 초과분 없이 그대로 고정 유지된다(과부하 자해 없음). 가동 중인 장치의 지속시간과 압력 축적 속도가 늘어난다.', masterySkillId:'mastery_pressureseal',
+        activeName:'정밀 배분', activeDesc:'현재 압력을 소모해 화력 강화 또는 보호막 중 하나를 선택한다. 사용 후 압력 일부를 돌려받는다.', activeSkillIds:['mechanicAccumFirepower','mechanicAccumShield'],
+        skillLevels: {12:'mechanicAccumEfficiency', 15:'mechanicAccumOverflow'}},
     ],
     jester: [
       // [교체됨] 운명의 반란자(jester_rebel)는 사용자 요청으로 폐기되고 "황금
