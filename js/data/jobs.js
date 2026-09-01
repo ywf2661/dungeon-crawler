@@ -27,7 +27,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       desc:'신성한 힘으로 자신과 전황을 지키는 수호자. 축복과 응징으로 전투의 흐름을 지배한다.',
       statMods:{maxhp:5, maxmp:4, atk:1, def:3, mag:1, spd:-3},
       skillLevels:{1:'judgment', 3:'paladinblessing', 5:'retributionoath', 7:'holylight', 10:'divinejudgment'}},
-    {id:'mechanic', name:'메카닉', icon:'⚙️',
+    {id:'mechanic', name:'기관사', icon:'⚙️',
       desc:'증기와 압력으로 움직이는 장치를 부리는 기계공학자. 보일러 압력을 쌓고, 언제 터뜨릴지 스스로 판단하며 싸운다.',
       statMods:{maxhp:-4, maxmp:6, atk:0, def:-2, mag:5, spd:3},
       skillLevels:{1:'mechanicIgnite', 3:'mechanicValve', 5:'mechanicMark', 7:'mechanicSafety', 10:'mechanicOverpressure'}},
