@@ -98,6 +98,8 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult + goldSenseBonus + originGoldBonus;
       if(goldBoost>0) g = Math.round(g*(1+goldBoost));
       player.gold += g;
+      // 강화석 드랍(사용자 요청 — 등급별 확률/개수 차등, 상점 판매는 절대 금지).
+      const stonesGained = (typeof rollReinforceStoneDrop==='function') ? rollReinforceStoneDrop() : 0;
       // 악마의 계약(사용자 요청): 계약 중이면 승리할 때마다 HP를 추가로 깎는다.
       // 마을 도착 시(showBossRewardChoice) 자동 해제되므로 여기선 소모만 처리.
       if(player.contractBuff && player.contractBuff.hpDrainPct>0){
@@ -206,6 +208,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           }
           showScreen('explore');
           const lines = [{text:`${enemy.name}을(를) 물리쳤다. (EXP +${enemy.exp}, 골드 +${g})`, cls:'gold'}];
+          if(stonesGained>0) lines.push({text:`🔶 강화석 +${stonesGained}개를 얻었다. (보유 ${player.reinforceStones}개)`, cls:'gold'});
           if(purifiedCurseNames.length){
             lines.push({text:`✨ ${purifiedCurseNames.join(', ')}의 저주가 풀렸다! 견뎌낸 대가로 몸이 단단해졌다(전 능력치 영구 +4%).`, cls:'gold'});
           }
@@ -394,6 +397,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     panel.className = 'shop-panel';
     const goldReward = 100 + player.tierIndex*60;
     const expReward = Math.round(player.expNext*0.25);
+    const stoneReward = 4 + player.tierIndex*2;
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">보스를 물리쳤다!</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">마을로 향하기 전, 마지막으로 얻어갈 것을 하나 고른다.</p>
@@ -402,6 +406,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         <button class="btn" id="reward-gold">💰 두둑한 보상 — 골드 +${goldReward}</button>
         <button class="btn" id="reward-exp">📖 정진 — 경험치 +${expReward}</button>
         <button class="btn" id="reward-seal">🔱 정예의 증표 — 정예의 인장 +1</button>
+        <button class="btn" id="reward-stone">🔶 강화석 조달 — 강화석 +${stoneReward}</button>
         <button class="btn" id="reward-awaken">⚡ 각성 — 다음 전투 공격력 +20%</button>
       </div>`;
     overlay.appendChild(panel);
@@ -440,6 +445,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     panel.querySelector('#reward-seal').addEventListener('click', ()=>{
       player.eliteSeals = (player.eliteSeals||0)+1;
       finish(`정예의 증표를 선택했다. 정예의 인장 +1개를 얻었다. (보유 ${player.eliteSeals}개)`);
+    });
+    panel.querySelector('#reward-stone').addEventListener('click', ()=>{
+      player.reinforceStones = (player.reinforceStones||0) + stoneReward;
+      finish(`강화석을 조달했다. 강화석 +${stoneReward}개를 얻었다. (보유 ${player.reinforceStones}개)`);
     });
     panel.querySelector('#reward-awaken').addEventListener('click', ()=>{
       player.buffAtkTurns = 99; player.buffAtkMult = 1.2;
