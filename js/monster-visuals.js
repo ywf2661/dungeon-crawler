@@ -47,8 +47,7 @@ export(전역): heroBossSvg, svgMonster
     demon:  'images/monsters/demon.png',
     jack:   'images/monsters/jack.png', 
     egg:   'images/monsters/egg.png',    
-    ogre:   'images/monsters/ogre.png',
-    harpy:   'images/monsters/harpy.png',   
+    ogre:   'images/monsters/ogre.png',   
     
     herowarrior:  'images/monsters/herowarrior.png',
     heromage:  'images/monsters/heromage.png',
@@ -67,6 +66,16 @@ export(전역): heroBossSvg, svgMonster
     threadmannequin: 'images/monsters/threadmannequin.png',
     sinlantern: 'images/monsters/sinlantern.png',
     unstoppingsand: 'images/monsters/unstoppingsand.png',
+    // 일반 몬스터 이미지 없던 5종 재해석(사용자 요청 — 원혼/언데드기사/하피/
+    // 레이스/광신도를 독창적인 컨셉으로 새로 디자인). 아직 실제 그림은 없고
+    // 경로만 미리 등록해뒀다 — 위 보스들과 동일한 패턴으로, 이 경로에 그림을
+    // 넣으면 자동으로 그림으로 바뀐다. 그 전까지는 아래 svgMonsterPlaceholder3()
+    // 전용 실루엣이 뜬다.
+    ghost: 'images/monsters/ghost.png',
+    knight: 'images/monsters/knight.png',
+    harpy: 'images/monsters/harpy.png',
+    wraith: 'images/monsters/wraith.png',
+    cultist: 'images/monsters/cultist.png',
   };
 
   // PNG 몬스터 그림 하단의 투명 여백을 자동으로 감지해 보정한다(사용자 피드백
@@ -126,7 +135,7 @@ export(전역): heroBossSvg, svgMonster
       // 아이콘 대신 전용 추상 실루엣(svgMonsterPlaceholder, 없으면 기본 원)
       // 으로 자동 전환한다. 나중에 올바른 경로에 그림을 넣으면 정상적으로
       // 그림이 뜬다(이 폴백은 그때는 아예 발동하지 않음).
-      const fallbackSvg = svgMonsterPlaceholder(type) || svgMonsterPlaceholder2(type) || `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
+      const fallbackSvg = svgMonsterPlaceholder(type) || svgMonsterPlaceholder2(type) || svgMonsterPlaceholder3(type) || `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
       const escaped = fallbackSvg.replace(/"/g, '&quot;').replace(/\n/g, '');
       return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:100%; height:100%; object-fit:contain;" onerror="this.outerHTML='${escaped}'">`;
     }
@@ -484,6 +493,71 @@ export(전역): heroBossSvg, svgMonster
         <circle cx="60" cy="69" r="4" fill="#fff2c0" filter="url(#pg2)"/>
         <path d="M46 40 Q60 60 74 40" stroke="#8a7020" stroke-width="2" fill="none" opacity="0.6"/>
         <path d="M46 100 Q60 80 74 100" stroke="#8a7020" stroke-width="2" fill="none" opacity="0.6"/>
+      </svg>`;
+      default: return null;
+    }
+  }
+
+  // ---------- 일반 몬스터 재해석 5종 임시 실루엣(사용자 요청) ----------
+  // 원혼/언데드기사/하피/레이스/광신도를 "귀엽지만 으스스한" 새 컨셉으로
+  // 재디자인했다(옭아맨 통곡/짓눌린 맹세/울부짖는 깃털비/얼어붙은 유언/
+  // 천 개의 기도). 실제 그림이 준비되기 전까지 default(밋밋한 원)로 떨어지지
+  // 않도록 각자 컨셉을 드러내는 둥글둥글한 형태를 잡아뒀다. MONSTER_IMG에
+  // 그림 경로를 넣으면 이 SVG 대신 그림이 우선 표시된다.
+  function svgMonsterPlaceholder3(type){
+    const glow = `<filter id="pg3"><feGaussianBlur stdDeviation="1.3"/></filter>`;
+    switch(type){
+      case 'ghost': return `<svg viewBox="0 0 120 120">${glow}
+        <ellipse cx="60" cy="104" rx="30" ry="7" fill="#000" opacity="0.2"/>
+        <circle cx="60" cy="66" r="38" fill="#d8dee6" opacity="0.9"/>
+        <circle cx="32" cy="80" r="16" fill="#c7cfd9" opacity="0.85"/>
+        <circle cx="88" cy="78" r="14" fill="#c7cfd9" opacity="0.85"/>
+        <ellipse cx="20" cy="96" rx="8" ry="12" fill="#eef1f5" opacity="0.8"/>
+        <ellipse cx="98" cy="94" rx="7" ry="11" fill="#eef1f5" opacity="0.8"/>
+        <circle cx="48" cy="62" r="3.4" fill="#ffcf6a" filter="url(#pg3)"/>
+        <circle cx="66" cy="60" r="3" fill="#ffcf6a" filter="url(#pg3)"/>
+        <circle cx="58" cy="76" r="2.4" fill="#ffcf6a" filter="url(#pg3)" opacity="0.85"/>
+      </svg>`;
+      case 'knight': return `<svg viewBox="0 0 130 140">${glow}
+        <ellipse cx="65" cy="128" rx="38" ry="8" fill="#000" opacity="0.25"/>
+        <path d="M65 26 C42 26 32 44 34 58 C24 64 26 96 40 112 L90 112 C104 96 106 64 96 58 C98 44 88 26 65 26 Z" fill="#8a8f96"/>
+        <path d="M65 26 C52 26 46 34 44 44 L86 44 C84 34 78 26 65 26 Z" fill="#6f7580"/>
+        <rect x="42" y="60" width="46" height="18" rx="6" fill="#5f646d"/>
+        <circle cx="65" cy="69" r="7" fill="#1a1510"/>
+        <circle cx="65" cy="69" r="3.4" fill="#ffcf6a" filter="url(#pg3)"/>
+        <path d="M92 78 L110 84 L104 118 L88 114 Z" fill="#8a3a3a" opacity="0.85"/>
+        <rect x="24" y="86" width="14" height="30" rx="4" fill="#6f7580"/>
+      </svg>`;
+      case 'harpy': return `<svg viewBox="0 0 120 120">${glow}
+        <ellipse cx="60" cy="104" rx="26" ry="6" fill="#000" opacity="0.2"/>
+        <circle cx="60" cy="66" r="34" fill="#4a4f58"/>
+        <ellipse cx="26" cy="60" rx="14" ry="20" fill="#3d4149" transform="rotate(-20 26 60)"/>
+        <ellipse cx="94" cy="60" rx="14" ry="20" fill="#3d4149" transform="rotate(20 94 60)"/>
+        <path d="M14 50 L4 44 L12 62 Z" fill="#3d4149"/>
+        <path d="M106 50 L116 44 L108 62 Z" fill="#3d4149"/>
+        <path d="M52 78 L60 88 L68 78 Z" fill="#1a1510"/>
+        <circle cx="60" cy="80" r="2.6" fill="#ff9a4a" filter="url(#pg3)"/>
+        <ellipse cx="48" cy="94" rx="6" ry="3" fill="#5c6068"/>
+        <ellipse cx="72" cy="94" rx="6" ry="3" fill="#5c6068"/>
+      </svg>`;
+      case 'wraith': return `<svg viewBox="0 0 110 130">${glow}
+        <ellipse cx="55" cy="118" rx="22" ry="6" fill="#000" opacity="0.2"/>
+        <path d="M55 20 C34 20 24 38 26 54 C18 62 20 84 30 96 C36 104 44 110 55 116 C66 110 74 104 80 96 C90 84 92 62 84 54 C86 38 76 20 55 20 Z" fill="#cfe6f2" opacity="0.9"/>
+        <path d="M55 96 C50 104 50 112 55 118 C60 112 60 104 55 96 Z" fill="#e8f4fa"/>
+        <path d="M40 56 Q55 48 70 56" stroke="#9fc3d6" stroke-width="4" fill="none" opacity="0.6"/>
+        <circle cx="55" cy="58" r="4" fill="#7a5ac9" filter="url(#pg3)" opacity="0.9"/>
+        <ellipse cx="34" cy="86" rx="8" ry="4" fill="#bcdbe8" opacity="0.7"/>
+      </svg>`;
+      case 'cultist': return `<svg viewBox="0 0 110 120">${glow}
+        <ellipse cx="55" cy="108" rx="30" ry="7" fill="#000" opacity="0.2"/>
+        <path d="M55 24 C34 24 24 44 26 62 C24 80 34 98 55 104 C76 98 86 80 84 62 C86 44 76 24 55 24 Z" fill="#6b3c3c"/>
+        <path d="M40 50 L44 54 L40 58 L36 54 Z" fill="#e9dcc0" opacity="0.8"/>
+        <path d="M70 66 L74 70 L70 74 L66 70 Z" fill="#e9dcc0" opacity="0.7"/>
+        <circle cx="45" cy="60" r="2.6" fill="#ffcf6a" filter="url(#pg3)"/>
+        <circle cx="63" cy="58" r="2.2" fill="#ffcf6a" filter="url(#pg3)"/>
+        <circle cx="54" cy="70" r="2" fill="#ffcf6a" filter="url(#pg3)" opacity="0.8"/>
+        <circle cx="55" cy="88" r="7" fill="#3a2418"/>
+        <circle cx="55" cy="88" r="3.4" fill="#ffcf6a" filter="url(#pg3)"/>
       </svg>`;
       default: return null;
     }
