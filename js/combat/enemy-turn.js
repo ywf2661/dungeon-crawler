@@ -356,6 +356,16 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       setBattleMsg(`${enemy.name}이(가) 스스로를 불태우며 힘을 쥐어짠다…`, `자체 피해 ${selfDmg}.`);
       if(checkBattleEnd()) return;
     }
+    // 재생의 갑옷(사용자 요청 — 장비 강화): 턴 종료 시 최대HP의 일정 %를 회복.
+    if(typeof getSpecialSum==='function' && player.hp>0 && player.hp<player.maxhp){
+      const regenPct = getSpecialSum('turnRegenPct');
+      if(regenPct>0){
+        const heal = Math.max(1, Math.round(player.maxhp*regenPct));
+        player.hp = Math.min(player.maxhp, player.hp+heal);
+        renderStatus();
+        popDamage('+'+heal, 'heal');
+      }
+    }
     const activeDots = (enemy.dots||[]).filter(d=>d.turns>0);
     // 독 중첩(mastery_venomstacks, 맹독 연금술사): 일반 dot과 달리 턴이 지나도
     // 사라지지 않고 전투가 끝날 때까지 유지되므로, enemy.dots에 영구 저장하지
@@ -539,6 +549,30 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       if(reduceMult!==1) mitigated = Math.max(1, Math.round(mitigated*reduceMult));
 
       let extraMsg = '';
+      // 장비 강화(사용자 요청) — 강철판/응급 갑옷/탐욕의 목걸이의 받는 피해 증감.
+      // getSpecialSum은 equippedSpecials()를 거치므로 강화로 얻은 special도
+      // 자동으로 합산된다(js/blacksmith.js 참고).
+      if(typeof getSpecialSum==='function'){
+        let armorMult = 1 - getSpecialSum('dmgReductionPct') + getSpecialSum('dmgTakenPctBonus');
+        if(player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
+          const armorId = player.equipment && player.equipment.armor;
+          if(armorId && typeof getEnhancementsFor==='function' && getEnhancementsFor(armorId).includes('emergency')){
+            armorMult -= ENHANCEMENTS.emergency.lowHpDmgReduction.pct;
+          }
+        }
+        armorMult = Math.max(0.1, armorMult);
+        if(armorMult!==1) mitigated = Math.max(1, Math.round(mitigated*armorMult));
+      }
+      // 마나 갑옷: HP 대신 보유 MP로 피해의 절반까지 흡수.
+      if(typeof hasSpecial==='function' && hasSpecial('manaArmor') && player.mp>0 && mitigated>0){
+        const absorbNeed = Math.round(mitigated*0.5);
+        const absorbed = Math.min(player.mp, absorbNeed);
+        if(absorbed>0){
+          player.mp -= absorbed;
+          mitigated -= absorbed;
+          extraMsg += ` 마나 갑옷이 MP ${absorbed}을(를) 소모해 피해를 흡수했다!`;
+        }
+      }
 
       // 뱀의 허물: 이번 전투에서 실제로 HP 피해를 받는 첫 순간에만 발동(회피/빗나감엔 발동하지 않음 — 이 지점까지 오면 이미 그 조건은 통과한 것)
       if(mitigated>0 && hasRelicFlag('snakeskinFirstHit') && battleFlags && !battleFlags.snakeskinUsed){
@@ -558,6 +592,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         battleFlags.guardian = true;
         playBanner('완전 방어!','guardian');
         extraMsg += ' 수호자의 부적이 치명적인 일격을 완전히 막아냈다!';
+      } else if(mitigated >= player.hp && battleFlags && !battleFlags.undyingArmorUsed && hasSpecial('preventLethalOnce')){
+        // 불굴의 갑옷(사용자 요청 — 장비 강화). 완전 차단이 아니라 HP 1로만 버틴다는
+        // 점이 수호자의 부적/촛불과 다르다.
+        battleFlags.undyingArmorUsed = true;
+        mitigated = player.hp - 1;
+        playBanner('불굴!','guardian');
+        extraMsg += ' 불굴의 갑옷이 치명적인 피해를 버텨냈다!';
       }
 
       player.hp = Math.max(0, player.hp - mitigated);
@@ -591,6 +632,20 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           }
         }
         if(hasRelicFlag('revengeArmBonus') && battleFlags){
+          battleFlags.revengeArmed = true;
+        }
+        // 가시 갑옷(사용자 요청 — 장비 강화): 받은 피해의 15% 반사.
+        if(hasSpecial('thornsPct')){
+          const thornDmg = Math.max(0, Math.round(mitigated*getSpecialSum('thornsPct')));
+          if(thornDmg>0){
+            enemy.hp = Math.max(0, enemy.hp-thornDmg);
+            updateEnemyHpBar();
+            popDamage('-'+thornDmg,'counter');
+            extraMsg += ` 가시 갑옷이 ${thornDmg}의 피해를 반사했다!`;
+          }
+        }
+        // 반격의 갑옷(사용자 요청 — 장비 강화): 다음 공격 강화 예약.
+        if(hasSpecial('counterOnHit') && battleFlags){
           battleFlags.revengeArmed = true;
         }
         // 인내(mastery_endurance): 실제로 HP 피해를 입을 때마다 스택이 쌓인다.
@@ -701,6 +756,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     let a = player.atk;
     if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
     a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus()));
+    // 광전사의 반지(사용자 요청 — 장비 강화): HP 40% 이하일 때 공격력 +30%.
+    if(typeof getEnhancementsFor==='function' && player.equipment && player.equipment.accessory){
+      const accId = player.equipment.accessory;
+      if(getEnhancementsFor(accId).includes('berserkring') && player.maxhp>0 && (player.hp/player.maxhp)<=0.4){
+        a = Math.round(a*1.30);
+      }
+    }
     return a;
   }
   function consumeAtkBuff(){
