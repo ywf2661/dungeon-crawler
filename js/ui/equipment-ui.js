@@ -59,7 +59,7 @@ export(전역): renderSetProgressHTML, openEquipment
       const equippedRow = equippedId
         ? `<div class="shop-item">
             <div class="si-info">
-              <span class="si-name" style="font-family:Cinzel;color:${equippedDef.epic?'var(--epic-bright)':(equippedDef.storyWeapon?'var(--rust-bright)':'var(--gold-bright)')};">★ ${equippedDef.epic?'✦✦ ':(equippedDef.rare?'✨ ':(equippedDef.storyWeapon?'☠ ':''))}${equippedDef.name}</span>
+              <span class="si-name" style="font-family:Cinzel;color:${equippedDef.epic?'var(--epic-bright)':(equippedDef.storyWeapon?'var(--rust-bright)':'var(--gold-bright)')};">★ ${equippedDef.epic?'✦✦ ':(equippedDef.rare?'✨ ':(equippedDef.storyWeapon?'☠ ':''))}${typeof getEnhancedDisplayName==='function'?getEnhancedDisplayName(equippedId):equippedDef.name}</span>
               <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">${statsText(equippedDef.stats)}</span>
               <div class="${equippedDef.epic?'item-desc-epic':(equippedDef.rare?'item-desc-rare':'item-desc')}">${equippedDef.desc}</div>
             </div>
@@ -71,7 +71,7 @@ export(전역): renderSetProgressHTML, openEquipment
         return `
           <div class="shop-item">
             <div class="si-info">
-              <span class="si-name" style="font-family:Cinzel;color:${def.epic?'var(--epic-bright)':(def.rare?'var(--violet)':'var(--parchment)')};">${def.epic?'✦✦ ':(def.rare?'✨ ':'')}${def.name}</span>
+              <span class="si-name" style="font-family:Cinzel;color:${def.epic?'var(--epic-bright)':(def.rare?'var(--violet)':'var(--parchment)')};">${def.epic?'✦✦ ':(def.rare?'✨ ':'')}${typeof getEnhancedDisplayName==='function'?getEnhancedDisplayName(id):def.name}</span>
               <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">${statsText(def.stats)}</span>
               <div class="${def.epic?'item-desc-epic':(def.rare?'item-desc-rare':'item-desc')}">${def.desc}</div>
             </div>
