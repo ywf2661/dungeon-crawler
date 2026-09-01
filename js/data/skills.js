@@ -11,20 +11,20 @@ export(전역): SKILLDB
     guard:          {name:'방어태세',      mp:0,  desc:'다음 피해를 크게 줄인다',                  type:'guard'},
     warcry:         {name:'전투의 함성',   mp:5,  desc:'포효하여 3턴간 공격력을 크게 높인다',      type:'buff'},
     crushingblow:   {name:'분쇄의 일격',   mp:8,  desc:'무기를 내리찍어 강력한 피해를 입힌다',     type:'phys',    mult:2.3},
-    earthrend:      {name:'대지분쇄',      mp:14, desc:'대지를 가르는 필살의 일격을 날린다',       type:'phys',    mult:3.0, cooldown:2},
+    earthrend:      {name:'대지분쇄',      mp:14, desc:'대지를 가르는 필살의 일격을 날린다',       type:'phys',    mult:3.0, cooldown:3},
     // 마법사
     fireball:       {name:'파이어볼',      mp:5,  desc:'화염 마법으로 적을 태운다',                type:'magic',   mult:1.9},
     icelance:       {name:'얼음창',        mp:7,  desc:'얼어붙는 냉기의 창을 꽂는다',              type:'magic',   mult:2.2},
     thunderbolt:    {name:'번개화살',      mp:9,  desc:'하늘의 벼락을 끌어내려 적을 꿰뚫는다',     type:'magic',   mult:2.5},
     blizzard:       {name:'블리자드',      mp:11, desc:'매서운 눈보라로 적을 몰아친다',            type:'magic',   mult:2.8},
-    meteor:         {name:'메테오',        mp:14, desc:'강력한 유성을 떨어뜨린다',                 type:'magic',   mult:3.0, cooldown:2},
+    meteor:         {name:'메테오',        mp:14, desc:'강력한 유성을 떨어뜨린다',                 type:'magic',   mult:3.0, cooldown:3},
     // 도적
     doubleslash:    {name:'연속 베기',     mp:4,  desc:'빠르게 두 번 베어낸다',                    type:'multihit',mult:0.95, hits:2},
     backstab:       {name:'급소 찌르기',   mp:5,  desc:'적의 급소를 정확히 찔러 큰 피해를 입힌다', type:'phys',    mult:2.0},
     draintouch:     {name:'은신',         mp:8,  desc:'그림자에 몸을 숨긴다. 이번에 다가오는 적의 공격을 전부 피하고, 다음 자신의 공격(기본 공격/스킬 모두)에 피해 +30%가 붙는다',
       type:'stealth'},
     shadowslash:    {name:'그림자 베기',   mp:10, desc:'그림자처럼 스며들어 세 번 베어낸다',       type:'multihit',mult:0.85, hits:3},
-    assassinate:    {name:'암살',          mp:15, desc:'모든 것을 걸고 치명적인 일격을 노린다',    type:'phys',    mult:3.4, cooldown:2},
+    assassinate:    {name:'암살',          mp:15, desc:'모든 것을 걸고 치명적인 일격을 노린다',    type:'phys',    mult:3.4, cooldown:3},
     // 성기사
     judgment:       {name:'심판의 일격',   mp:4,  desc:'신성한 힘을 담아 적을 벌한다. 가한 피해의 일부를 흡수한다',   type:'phys',    mult:1.6, lifesteal:0.12},
     paladinblessing:{name:'축복의 인도',   mp:7,  desc:'성스러운 축복을 두른다. 3턴간 공격력이 오르고 받는 피해가 줄어든다',
@@ -33,7 +33,7 @@ export(전역): SKILLDB
       type:'counterbuff', turns:3, chance:0.4},
     holylight:      {name:'신성한 빛',     mp:11, desc:'성스러운 빛으로 크게 회복한다',            type:'heal',    mult:0.8},
     divinejudgment: {name:'심판의 빛',     mp:15, desc:'신성한 빛의 심판을 내려 적을 무찌른다. 상태이상에 걸린 적일수록 더 강력하며 피해의 일부를 흡수한다',
-      type:'phys',    mult:3.0, statusSynergyBonus:0.18, lifesteal:0.2, cooldown:2},
+      type:'phys',    mult:3.0, statusSynergyBonus:0.18, lifesteal:0.2, cooldown:3},
     // 메카닉(리뉴얼 — 사용자 요청) — 보일러 압력(0~100, battleFlags.pressure)을
     // 매 턴 자동으로 쌓고, 언제 어떻게 터뜨릴지 직접 판단하는 자원 관리형
     // 재설계. 기존 "장치 설치 → 자동 사격" 구조는 상태이상 DOT와 실질적으로
@@ -49,7 +49,7 @@ export(전역): SKILLDB
     mechanicSafety: {name:'안전밸브', mp:6, desc:'쌓인 압력을 전부 소모해, 다음 피격 시 받는 피해를 압력량에 비례해 크게 줄인다',
       type:'pressurevent', ventMode:'defense', minPressure:10, defReducePerPressure:0.006, defReduceCap:0.6},
     mechanicOverpressure: {name:'과압 각성', mp:16, desc:'오메가 유닛을 투입하며 압력을 강제로 최대까지 끌어올려 그 자리에서 안전하게 전량 방출한다. 이후 오메가 유닛은 평소보다 훨씬 빠르게 압력을 만들어낸다',
-      type:'overpressureult', mult:1.2, rigKind:'omega', rigName:'오메가 유닛', rigTurns:4, rigMult:0.4, rigPressurePerTick:30, shieldPct:0.3, dmgPerPressure:0.03, cooldown:2},
+      type:'overpressureult', mult:1.2, rigKind:'omega', rigName:'오메가 유닛', rigTurns:4, rigMult:0.4, rigPressurePerTick:30, shieldPct:0.3, dmgPerPressure:0.03, cooldown:3},
     // ---- 이하 구 메카닉 스킬(리뉴얼로 미사용, 참고용 보존) ----
     deployturret:   {name:'자동 포탑 설치', mp:6,  desc:'소형 포탑을 설치한다. 설치와 동시에 첫 사격을 가하고, 이후 3턴간 무엇을 하든 매 턴 자동으로 사격한다. 이미 가동 중인 장치가 있다면 교체된다',
       type:'deployrig', mult:1.0, rigKind:'turret', rigName:'자동 포탑', rigTurns:3, rigMult:0.85},
@@ -163,7 +163,7 @@ export(전역): SKILLDB
     gamble: {name:'도박', mp:5,  desc:'가진 MP를 모두 걸고 도박을 벌인다. 성공하면 건 MP에 비례해 폭발적인 피해를 주지만, 실패하면 반동으로 자신도 크게 다친다',
       type:'gamble', chance:0.5, mult:3.6, selfMult:2.2, luck:true},
     finalcard: {name:'마지막 카드', mp:12, desc:'체력이 낮을수록 성공률과 배율이 극단적으로 치솟는 필살의 패. 실패해도 반동은 크지 않다',
-      type:'finalcard', baseChance:0.35, maxChance:0.95, baseMult:2.0, maxMult:6.0, defPierce:0.2, failSelfRatio:0.08, luck:true, cooldown:2},
+      type:'finalcard', baseChance:0.35, maxChance:0.95, baseMult:2.0, maxMult:6.0, defPierce:0.2, failSelfRatio:0.08, luck:true, cooldown:3},
     // 환영술사(도박사+마법사)
     illusionbolt:  {name:'환영의 화살', mp:8,  desc:'환영이 섞인 마력의 화살을 쏜다. 50% 확률로 2.4배의 피해와 화상을 입히고, 50% 확률로 완전히 빗나간다',
       type:'coinflip', magic:true, mult:1.3, critMult:2.4, chance:0.5, luck:true,
