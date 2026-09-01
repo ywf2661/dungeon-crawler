@@ -159,6 +159,15 @@
     -webkit-user-select:text; user-select:text; -webkit-touch-callout:default;
   }
   #name-input:focus{border-color:var(--gold);}
+  /* 이름 미입력 상태로 시작 시도 시 경고(사용자 요청 — 이름 입력 필수화) */
+  #name-input.input-error{ border-color:#d1543c; animation:nameinputshake .35s ease; }
+  @keyframes nameinputshake{
+    0%,100%{ transform:translateX(0); }
+    20%{ transform:translateX(-6px); }
+    40%{ transform:translateX(6px); }
+    60%{ transform:translateX(-4px); }
+    80%{ transform:translateX(4px); }
+  }
 
   /* ---------- job select ----------
      직업 수가 늘어나도(예: 4개→5개) 줄 수가 그대로 유지되도록 3열로 배치한다.
