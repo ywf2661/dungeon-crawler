@@ -709,12 +709,17 @@
 .fx-banner.pact-lightning{color:#ffe98a; border-color:#ffe06a; text-shadow:0 0 10px #ffe06a99, 0 1px 3px #000;}
 
 .rig-slot{
-  position:absolute; bottom:-6px; width:100px; height:105px;
+  position:absolute; bottom:-4px; width:150px; height:125px;
   z-index:3; display:none; pointer-events:none;
   filter:drop-shadow(0 2px 3px #00000088);
   transition:width .2s ease;
 }
-.rig-slot svg, .rig-slot img{ width:100%; height:100%; }
+.rig-slot svg{ width:100%; height:100%; }
+/* 사용자 요청 — 이미지(사진/일러스트 기반 rig)는 머리(포신) 위주로 크게
+   보이면 되고 아래쪽(다리 등)은 잘려도 된다. object-fit:cover로 슬롯을 꽉
+   채우고, object-position:top으로 항상 이미지 위쪽이 우선 보이게 자른다.
+   손그림 SVG는 원래대로 전체가 다 보이는(contain과 동일한 효과) 방식 유지. */
+.rig-slot img{ width:100%; height:100%; object-fit:cover; object-position:top center; }
 .rig-slot-left{ left:0px; }
 .rig-slot-right{ right:0px; }
 /* 사용자 요청 — 크기를 키운 만큼, 오른쪽 슬롯은 좌우로 뒤집어서 포신이
@@ -724,7 +729,7 @@
 /* 오메가 유닛일 때만 자기 슬롯 안에서 폭이 넓어진다(왼쪽 슬롯은 오른쪽으로,
    오른쪽 슬롯은 왼쪽으로 확장 — "가운데를 향해 길게 뻗는" 인상을 주면서도
    반대편 슬롯의 다른 로봇은 가리지 않는다). */
-.rig-slot.rig-wide{ width:190px; }
+.rig-slot.rig-wide{ width:270px; }
 .rig-turns{
   position:absolute; bottom:-2px; left:50%; transform:translateX(-50%);
   font-family:'Cinzel'; font-size:9px; color:var(--parchment-dim);
