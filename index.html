@@ -726,10 +726,22 @@
    원본 그림 기준 오른쪽(중앙/적 방향)이 아니라 왼쪽(마찬가지로 중앙 방향)을
    향하게 한다. 왼쪽 슬롯은 원본 그대로 둬도 이미 중앙 쪽을 향한다. */
 .rig-slot-right img, .rig-slot-right svg{ transform:scaleX(-1); }
-/* 오메가 유닛일 때만 자기 슬롯 안에서 폭이 넓어진다(왼쪽 슬롯은 오른쪽으로,
-   오른쪽 슬롯은 왼쪽으로 확장 — "가운데를 향해 길게 뻗는" 인상을 주면서도
-   반대편 슬롯의 다른 로봇은 가리지 않는다). */
-.rig-slot.rig-wide{ width:270px; }
+/* 오메가 유닛일 때는 좌/우 어느 슬롯에 들어있었든 화면 하단 중앙에 크게
+   고정 배치한다(사용자 요청 — 참고 이미지처럼 양쪽 포신이 대칭으로 크게
+   펼쳐져야 함). omegabot.png 자체가 이미 좌우대칭 구도(양쪽 포신+중앙
+   계기판)로 그려져 있어서, 굳이 좌우 반전/한쪽 구석 확장을 하지 않고
+   중앙에 통째로 크게 놓는 편이 훨씬 자연스럽다. object-fit도 contain으로
+   바꿔 이 구도가 잘리지 않고 전부 보이게 한다.
+   *역 특이성 순서 주의*: 아래 .rig-wide 규칙들이 위의 .rig-slot-left/
+   .rig-slot-right/.rig-slot img 규칙보다 CSS 안에서 나중에 나오고 선택자
+   구체성도 같거나 더 높아 정상적으로 덮어쓴다. */
+.rig-slot.rig-wide{
+  width:360px; height:190px; bottom:-6px;
+  left:50%; right:auto; transform:translateX(-50%);
+}
+.rig-slot.rig-wide img{
+  object-fit:contain; object-position:center bottom; transform:none;
+}
 .rig-turns{
   position:absolute; bottom:-2px; left:50%; transform:translateX(-50%);
   font-family:'Cinzel'; font-size:9px; color:var(--parchment-dim);
