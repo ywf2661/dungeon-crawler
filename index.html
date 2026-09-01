@@ -398,6 +398,16 @@
     border-color:#ff4a3a; color:#ffb3a8; background:#2a0f0dd0;
     box-shadow:0 0 10px #ff4a3a55; animation:elitepulse 1s ease-in-out infinite;
   }
+  .pressure-gauge{
+    margin:4px auto 0; max-width:180px; padding:4px 10px; border-radius:6px;
+    text-align:center; font-family:'Cinzel'; font-size:11px; letter-spacing:.03em;
+    background:#1a130cd0; border:1px solid #8a6f3f; color:#ffcf6a;
+    position:relative; z-index:4;
+  }
+  .pressure-gauge.pressure-high{
+    border-color:#ff8a3a; color:#ffb15a; box-shadow:0 0 8px #ff8a3a66;
+    animation:elitepulse 1.2s ease-in-out infinite;
+  }
 
   .cast-burst{
     position:absolute; top:50%; left:50%; width:20px; height:20px; margin:-10px 0 0 -10px;
@@ -812,6 +822,7 @@
         <div class="enemy-hp-outer"><div class="enemy-hp-inner" id="bt-ehp-bar" style="width:100%;"></div></div>
       </div>
       <div class="boss-intent-card" id="bt-boss-intent" style="display:none;"></div>
+      <div class="pressure-gauge" id="bt-pressure" style="display:none;"></div>
       <div class="enemy-stage" id="bt-stage"></div>
       <div class="enemy-status-badges" id="bt-status"></div>
       <div class="rig-slot rig-slot-left" id="bt-rig1"></div>
