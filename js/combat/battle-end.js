@@ -182,29 +182,35 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           // town 전환/체크포인트 저장은 보상 선택(showBossRewardChoice) 이후에
           // 하므로, 이 시점엔 "이번이 타이어 보스였는지" 플래그만 세워둔다.
           let isTierBossClear = false;
+          let clearedTier = player.tierIndex;
+          let pendingPurifyIds = [];
           if(enemy.isBoss && player.nodeMap && player.nodeRow === player.nodeMap.length-1){
             isTierBossClear = true;
-            const clearedTier = player.tierIndex;
             // 임시 저주 정화(사용자 요청 — 저주술사가 아니면 저주가 "이 구간
             // 한정"): 이번에 클리어한 구간에서 받은 저주를 전부 해제하고,
             // 견뎌낸 대가로 전스탯 영구 +4%를 지급한다. 저주술사가 받은 저주는
             // relics.js의 showCurseAltar()에서 애초에 tempCurses에 기록하지
             // 않으므로 여기서 걸리지 않는다(계속 영구 저주로 남음).
+            //
+            // 버그 수정(사용자 피드백 — "보스 잡고 새로고침하면 다음 층으로
+            // 넘어가있다"): 예전엔 여기서 곧바로 player.tierIndex를 올리고
+            // nodeMap을 지운 뒤 saveGame()까지 해버렸는데, 실제 마을 도착(보상
+            // 선택 확정)은 그로부터 1~2초 뒤에야 일어난다. 그 사이에 새로고침
+            // 하면 "tierIndex는 이미 다음 구간인데 town은 아직 false"인 애매한
+            // 상태로 저장돼, 이어하기 시 보상 선택을 건너뛰고 곧장 다음 구간
+            // 노드맵이 생성되는 문제가 있었다. 그래서 이제 여기서는 "정화될
+            // 저주 목록"만 미리 계산해서 로그 표시용으로만 쓰고, 실제 상태
+            // 변경(tierIndex 증가/노드맵 초기화/저주 정화/스탯 보너스)은 전부
+            // showBossRewardChoice()의 finish()로 미뤄서, 보상을 실제로 고르기
+            // 전까지는 언제 새로고침해도 "이 보스를 다시 잡으면 되는" 안전한
+            // 상태로만 저장되게 했다.
             Object.keys(player.tempCurses||{}).forEach(curseId=>{
               if(player.tempCurses[curseId] === clearedTier){
+                pendingPurifyIds.push(curseId);
                 const r = RELICS[curseId];
-                if(removeRelic(curseId)) purifiedCurseNames.push(r ? r.name : curseId);
-                delete player.tempCurses[curseId];
+                purifiedCurseNames.push(r ? r.name : curseId);
               }
             });
-            if(purifiedCurseNames.length){
-              player.atk = Math.round(player.atk*1.04);
-              player.def = Math.round(player.def*1.04);
-              player.mag = Math.round(player.mag*1.04);
-              player.spd = Math.round(player.spd*1.04);
-            }
-            player.tierIndex += 1;
-            player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
           }
           showScreen('explore');
           const lines = [{text:`${enemy.name}을(를) 물리쳤다. (EXP +${enemy.exp}, 골드 +${g})`, cls:'gold'}];
@@ -253,7 +259,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           // 사용자 요청: 타이어 보스를 잡으면 무조건 마을로 — 보상을 하나
           // 고른 뒤에 실제로 마을에 도착한다(그 시점에 체크포인트 저장).
           if(isTierBossClear){
-            setTimeout(()=>showBossRewardChoice(), toastDelay + (enemy.isElite?500:0) + 400);
+            setTimeout(()=>showBossRewardChoice(clearedTier, pendingPurifyIds), toastDelay + (enemy.isElite?500:0) + 400);
           }
           saveGame();
         }, 1300);
@@ -389,15 +395,18 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
   // 보스 클리어 보상 선택(신규, 사용자 요청) — 5가지 중 하나를 골라 얻고,
   // 선택이 끝나야 실제로 마을에 도착한다(town=true + 마을 체크포인트 저장은
   // 여기서 보상까지 반영한 뒤에 한다).
-  function showBossRewardChoice(){
+  function showBossRewardChoice(clearedTier, pendingPurifyIds){
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'boss-reward-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
-    const goldReward = 100 + player.tierIndex*60;
+    // 보상 수치는 "이제 막 넘어갈 다음 구간" 기준(기존과 동일한 값)으로 계산한다
+    // — tierIndex 자체는 아직 증가시키지 않았으므로 +1을 명시적으로 더한다.
+    const nextTier = clearedTier + 1;
+    const goldReward = 100 + nextTier*60;
     const expReward = Math.round(player.expNext*0.25);
-    const stoneReward = 4 + player.tierIndex*2;
+    const stoneReward = 4 + nextTier*2;
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">보스를 물리쳤다!</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">마을로 향하기 전, 마지막으로 얻어갈 것을 하나 고른다.</p>
@@ -411,8 +420,26 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
+    // 구간 전환 확정(사용자 피드백으로 새로고침 취약점 수정 — combat/battle-end.js의
+    // checkBattleEnd() 주석 참고). 보상을 실제로 고른 이 시점에야 저주 정화/
+    // 스탯 보너스/tierIndex 증가/노드맵 초기화를 전부 한 번에 확정한다.
+    function commitTierAdvance(){
+      if((pendingPurifyIds||[]).length){
+        pendingPurifyIds.forEach(curseId=>{
+          removeRelic(curseId);
+          delete player.tempCurses[curseId];
+        });
+        player.atk = Math.round(player.atk*1.04);
+        player.def = Math.round(player.def*1.04);
+        player.mag = Math.round(player.mag*1.04);
+        player.spd = Math.round(player.spd*1.04);
+      }
+      player.tierIndex = nextTier;
+      player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
+    }
     function finish(logText){
       overlay.remove();
+      commitTierAdvance();
       // 노드맵 시스템: 마을 도착 시 depth를 이번 구간의 보스 층수(10층 단위
       // 경계)로 맞춘다.
       depth = player.tierIndex*10;
