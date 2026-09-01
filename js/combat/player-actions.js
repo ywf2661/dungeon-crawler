@@ -62,6 +62,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       player.lightningCritArmed = false;
     }
     dmg = applyOutgoingDamageMods(dmg, {type:'basic', onHitMult});
+    // 무기 강화(사용자 요청) — 날카로운/잔혹한/처형자의 칼날/무거운 일격 배율.
+    // applyOutgoingDamageMods 밖에서 별도로 곱하는 이유: 저 함수는 스킬에도
+    // 공통으로 쓰이는데, 이 강화들은 "기본 공격 한정"이라 여기서만 적용한다.
+    if(typeof getWeaponEnhanceDamageMult==='function'){
+      dmg = Math.max(1, Math.round(dmg*getWeaponEnhanceDamageMult()));
+    }
     consumeAtkBuff();
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -76,6 +82,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
     const healed = applyPassiveLifesteal(dmg);
     rogueRegisterHit(true);
+    // 무기 강화(사용자 요청) — 독/마나파괴/무거운 일격의 반작용은 여기서.
+    if(typeof applyWeaponOnHitEffects==='function') applyWeaponOnHitEffects();
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
     if(healed>0) msg2 += ` HP ${healed} 흡수.`;
     if(creedMsg) msg2 += creedMsg;
@@ -90,6 +98,16 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-extraDmg);
       updateEnemyHpBar(); popDamage('-'+extraDmg);
       msg2 += ` 거인강림의 힘으로 한 번 더 몰아쳐 ${extraDmg}의 추가 피해!`;
+    }
+
+    // 연격(사용자 요청 — 무기 강화). 위 거인강림 추가타와 동일한 패턴.
+    if(enemy.hp>0 && typeof shouldTriggerWeaponMultiStrike==='function' && shouldTriggerWeaponMultiStrike()){
+      const edef5 = getEffectiveEnemyDef(enemy.def);
+      let extraDmg2 = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef5);
+      extraDmg2 = applyOutgoingDamageMods(extraDmg2, {type:'basic', onHitMult});
+      enemy.hp = Math.max(0, enemy.hp-extraDmg2);
+      updateEnemyHpBar(); popDamage('-'+extraDmg2);
+      msg2 += ` 연격이 몰아쳐 ${extraDmg2}의 추가 피해!`;
     }
 
     // 쌍격의 파문(warriorPuristDoubleStrike, 레벨15): 사용자 요청으로 "확률로 한 번
