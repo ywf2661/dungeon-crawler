@@ -75,6 +75,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.contractBuff===undefined) player.contractBuff = null;
       if(player.helpedInjuredAdventurer===undefined) player.helpedInjuredAdventurer = false;
       if(player.exchangeStock===undefined) player.exchangeStock = null;
+      if(player.equipEnhancements===undefined) player.equipEnhancements = {};
+      if(player.reinforceStones===undefined) player.reinforceStones = 0;
       // 마을 체크포인트 시스템(신규) — 예전 세이브엔 없으므로 지금 상태를
       // 기준으로 하나 만들어둔다(다음 보스 클리어 때 정상적으로 갱신됨).
       if(player.townCheckpoint===undefined) player.townCheckpoint = town ? makeTownCheckpoint() : null;
@@ -151,15 +153,16 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     if(player && hasRelicFlag('mpZero')){
       player.maxmp = 0; player.mp = 0;
     }
-    // 정예 특성 "저주"(사용자 요청 — 플레이어 회복 효과 -30%). player-actions.js
-    // 안의 9곳에 흩어진 개별 회복 적용 지점을 전부 손대는 대신, 전투 중 HP가
-    // 증가할 때마다 항상 뒤이어 호출되는 이 함수에서 델타를 감지해 사후에
-    // 일부를 되돌리는 방식으로 처리한다(combat/enemy-turn.js의
-    // handleEliteOnHitTraits와 동일한 설계 원칙).
-    if(isBattleActive() && enemy && enemy.eliteTraits && enemy.eliteTraits.includes('curse')
-       && typeof player._prevHpForCurse==='number' && player.hp > player._prevHpForCurse){
+    // 회복량 감소(사용자 요청) — 두 출처를 합산한다: ①정예 특성 "저주"(전투 중
+    // 한정, -30%) ②피의 갑옷 강화(장착 중이면 상시, -20%). player-actions.js
+    // 안의 여러 회복 적용 지점을 전부 손대는 대신, HP가 증가할 때마다 항상
+    // 뒤이어 호출되는 이 함수에서 델타를 감지해 사후에 일부를 되돌린다.
+    const curseHealPenalty = (isBattleActive() && enemy && enemy.eliteTraits && enemy.eliteTraits.includes('curse')) ? 0.3 : 0;
+    const equipHealPenalty = typeof getSpecialSum==='function' ? getSpecialSum('healPenaltyPct') : 0;
+    const totalHealPenalty = Math.min(0.9, curseHealPenalty + equipHealPenalty);
+    if(totalHealPenalty>0 && typeof player._prevHpForCurse==='number' && player.hp > player._prevHpForCurse){
       const healedAmt = player.hp - player._prevHpForCurse;
-      const reduce = Math.round(healedAmt*0.3);
+      const reduce = Math.round(healedAmt*totalHealPenalty);
       if(reduce>0) player.hp = Math.max(0, player.hp - reduce);
     }
     player._prevHpForCurse = player.hp;
@@ -262,6 +265,10 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 완전 리셋과 동일하게, 이번 구간에서 생긴 진행 상황이라 되돌린다.
       hasMapFragment: player.hasMapFragment,
       helpedInjuredAdventurer: player.helpedInjuredAdventurer,
+      // 장비 강화(사용자 요청) — 다른 진행 자원과 동일하게 사망 시(쉬움/보통)
+      // 마지막 마을 상태로 되돌아간다.
+      reinforceStones: player.reinforceStones,
+      equipEnhancements: JSON.parse(JSON.stringify(player.equipEnhancements||{})),
     };
   }
 
@@ -281,6 +288,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       else if(k==='loanCounts') player.loanCounts = Object.assign({}, cp.loanCounts);
       else if(k==='debtAppliedDelta') player.debtAppliedDelta = Object.assign({}, cp.debtAppliedDelta);
       else if(k==='tempCurses') player.tempCurses = Object.assign({}, cp.tempCurses);
+      else if(k==='equipEnhancements') player.equipEnhancements = JSON.parse(JSON.stringify(cp.equipEnhancements||{}));
       else player[k] = cp[k];
     });
   }
@@ -317,11 +325,19 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       </p>
       <div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="rest-deep">🔥 깊은 휴식 — HP/MP 40% 회복</button>
-        <button class="btn" id="rest-maint">🔧 정비 — HP 15% 회복 (장비 강화는 추후 추가 예정)</button>
+        <button class="btn" id="rest-maint">🔧 정비 — HP 15% 회복</button>
         <button class="btn" id="rest-medi">🧘 명상 — HP 회복 없음, 다음 전투 공격력 +15%</button>
+      </div>
+      <div style="text-align:center; margin-top:10px;">
+        <button class="btn" id="rest-blacksmith">🔨 대장간에 들르기</button>
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
+    // 대장간(사용자 요청 — 휴식 노드에서도 이용 가능). 휴식 선택과는 별개라
+    // 화롯불 비용을 쓰지 않고, 대장간 오버레이를 그 위에 그대로 띄운다.
+    panel.querySelector('#rest-blacksmith').addEventListener('click', ()=>{
+      if(typeof openBlacksmith==='function') openBlacksmith();
+    });
     function finish(logText){
       if(cost>0) player.gold -= cost;
       overlay.remove();
@@ -339,7 +355,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     panel.querySelector('#rest-maint').addEventListener('click', ()=>{
       const heal = Math.round(player.maxhp*0.15);
       player.hp = Math.min(player.maxhp, player.hp+heal);
-      finish(`장비를 정비했다. HP가 ${heal} 회복되었다. (장비 강화는 추후 추가될 예정이다)`);
+      finish(`장비를 정비했다. HP가 ${heal} 회복되었다.`);
     });
     panel.querySelector('#rest-medi').addEventListener('click', ()=>{
       player.buffAtkTurns = 99; player.buffAtkMult = 1.15;
