@@ -219,7 +219,14 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       let jobId, bossName;
       if(recentRunRecord && recentRunRecord.job && FINAL_BOSS_BY_JOB[recentRunRecord.job]){
         jobId = recentRunRecord.job;
-        bossName = `잠식된 ${recentRunRecord.name}`;
+        // 사용자 요청 — 직업(2차 전직했다면 그 전직명까지) 라벨을 이름 앞에 넣는다.
+        // jobLabel은 "🔮 계약술사"처럼 아이콘+이름 형태로 저장되어 있어, 아이콘
+        // 부분만 떼어낸다. 옛 기록(jobLabel 필드가 없는 경우)은 예전처럼
+        // 이름만 사용한다.
+        const jobLabelText = recentRunRecord.jobLabel
+          ? recentRunRecord.jobLabel.replace(/^\S+\s*/, '')
+          : '';
+        bossName = jobLabelText ? `잠식된 ${jobLabelText} ${recentRunRecord.name}` : `잠식된 ${recentRunRecord.name}`;
       } else {
         jobId = pickFinalBossJob();
         bossName = FINAL_BOSS_BY_JOB[jobId].name;
