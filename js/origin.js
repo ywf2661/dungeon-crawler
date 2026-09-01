@@ -29,6 +29,19 @@ export(전역): showOriginQuiz
     ],
   };
 
+  // 선택지별 문지기의 짧은 반응 대사(사용자 요청 — 설문조사 다양화). 답변
+  // 직후 showDialogueSequence()로 한 번씩 보여준 뒤 다음 단계로 넘어간다.
+  const ORIGIN_Q1_REACTIONS = {
+    gold: '문지기가 나직이 웃는다.\n"부(富)라... 흔한 대답이다. 하나 흔하다고 틀린 것은 아니지."',
+    truth: '문지기의 눈빛이 잠시 흔들린다.\n"진실이라... 오랜만에 듣는 대답이군."',
+    survival: '문지기가 천천히 고개를 끄덕인다.\n"생존... 그것이야말로 가장 정직한 이유겠지."',
+  };
+  const ORIGIN_Q2_REACTIONS = {
+    strength: '"완력이라. 이 회랑은 힘없는 자에게 자비를 베풀지 않는다."',
+    swiftness: '"재빠름이라... 나쁘지 않지. 다만 이 회랑에서는, 빠른 자가 먼저 함정을 밟기도 한다."',
+    spirit: '"정신력이라... 이 회랑은 몸보다 마음을 먼저 부러뜨리려 든다는 걸, 곧 알게 될 것이다."',
+  };
+
   const ORIGIN_STORIES = {
     gold: [
       '오랫동안 떠돌던 소문이 있었다.',
@@ -95,20 +108,22 @@ export(전역): showOriginQuiz
       body.querySelectorAll('[data-key]').forEach(btn=>{
         btn.addEventListener('click', ()=>{
           Sound.click();
-          if(step==='q1'){ originAnswers.q1 = btn.dataset.key; renderOriginStep('q2'); }
-          else { originAnswers.q2 = btn.dataset.key; renderOriginStep('story'); }
+          const key = btn.dataset.key;
+          if(step==='q1'){
+            originAnswers.q1 = key;
+            showDialogueSequence([ORIGIN_Q1_REACTIONS[key]], {title:'문지기', onDone:()=>renderOriginStep('q2')});
+          } else {
+            originAnswers.q2 = key;
+            showDialogueSequence([ORIGIN_Q2_REACTIONS[key]], {title:'문지기', onDone:()=>renderOriginStep('story')});
+          }
         });
       });
     } else if(step==='story'){
+      // 한 화면에 몰아서 보여주던 8줄을 대화 팝업으로 한 줄씩 넘긴다(사용자 요청).
+      // 다 넘기면 별도 확인 버튼 없이 바로 적용/시작한다.
+      body.innerHTML = '';
       const lines = ORIGIN_STORIES[originAnswers.q1] || ORIGIN_STORIES.survival;
-      body.innerHTML = `
-        <div style="color:var(--parchment); font-size:14.5px; line-height:2; font-style:italic; margin-bottom:22px;">
-          ${lines.map(l=>`<p style="margin:0 0 4px;">${l}</p>`).join('')}
-        </div>
-        <div style="text-align:center;">
-          <button class="btn btn-primary" id="origin-confirm">확인</button>
-        </div>`;
-      document.getElementById('origin-confirm').addEventListener('click', applyOriginAndStart);
+      showDialogueSequence(lines, {onDone:applyOriginAndStart});
     }
   }
 

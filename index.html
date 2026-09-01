@@ -688,6 +688,28 @@
   .toast-epic{
     border:1px solid var(--epic); box-shadow:0 10px 40px #000000cc, 0 0 26px #ff7a3c55;
   }
+
+  /* 공용 대화 팝업(사용자 요청 — 오프닝/최종층 진입/엔딩을 한 줄씩 페이드인/
+     페이드아웃되는 모달로 보여주기 위함). js/ui/dialogue.js의 showDialogueSequence()가 사용한다. */
+  .dialogue-overlay{
+    position:fixed; inset:0; background:#000000aa; z-index:50;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .dialogue-box{
+    max-width:340px; width:86%; background:#1a130ce8; border:1px solid var(--gold);
+    border-radius:8px; padding:24px 20px; text-align:center; box-shadow:0 10px 40px #000000cc;
+    opacity:0;
+  }
+  .dialogue-box.fade-in{ animation:dialoguein .4s ease forwards; }
+  .dialogue-box.fade-out{ animation:dialogueout .26s ease forwards; }
+  .dialogue-box.dialogue-grand.fade-in{ animation:dialoguein .9s ease forwards; }
+  .dialogue-box.dialogue-grand.fade-out{ animation:dialogueout .55s ease forwards; }
+  @keyframes dialoguein{from{opacity:0; transform:scale(0.92);} to{opacity:1; transform:scale(1);}}
+  @keyframes dialogueout{from{opacity:1; transform:scale(1);} to{opacity:0; transform:scale(0.96);}}
+  .dialogue-title{ color:var(--gold-bright); font-family:'Cinzel'; font-size:12px; letter-spacing:.05em; margin-bottom:10px; }
+  .dialogue-line{ color:var(--parchment); font-size:14.5px; line-height:1.9; font-style:italic; white-space:pre-line; margin:0; }
+  .dialogue-hint{ color:var(--parchment-dim); font-size:10.5px; margin-top:16px; opacity:.5; animation:dialoguehint 1.4s ease-in-out infinite; }
+  @keyframes dialoguehint{0%,100%{opacity:.25;} 50%{opacity:.65;}}
   .set-progress-box{
     background:#3a1f0f22; border:1px solid var(--epic); border-radius:4px;
     padding:6px 8px; margin-bottom:6px; font-size:11.5px; color:var(--parchment-dim); line-height:1.6;
@@ -847,9 +869,9 @@
       <div class="enemy-name-bar">
         <div class="ename" id="bt-ename">???</div>
         <div class="enemy-hp-outer"><div class="enemy-hp-inner" id="bt-ehp-bar" style="width:100%;"></div></div>
+        <div class="pressure-gauge" id="bt-pressure" style="display:none;"></div>
       </div>
       <div class="boss-intent-card" id="bt-boss-intent" style="display:none;"></div>
-      <div class="pressure-gauge" id="bt-pressure" style="display:none;"></div>
       <div class="enemy-stage" id="bt-stage"></div>
       <div class="enemy-status-badges" id="bt-status"></div>
       <div class="rig-slot rig-slot-left" id="bt-rig1"></div>
@@ -900,6 +922,7 @@
 <script src="js/storage.js"></script>
 <script src="js/state.js"></script>
 <script src="js/ui/difficulty.js"></script>
+<script src="js/ui/dialogue.js"></script>
 <script src="js/data/jobs.js"></script>
 <script src="js/data/equipment.js"></script>
 <script src="js/relics.js"></script>
