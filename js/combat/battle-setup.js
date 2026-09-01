@@ -31,7 +31,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     mage:     {name:'잠식된 마법사 용사', type:'heromage',     hp:280, atk:38, def:9,  spd:8,  exp:600, gold:[350,450], skills:['heroMageBurst']},
     rogue:    {name:'잠식된 도적 용사',   type:'herorogue',    hp:290, atk:35, def:10, spd:13, exp:600, gold:[350,450], skills:['heroRogueSlash']},
     paladin:  {name:'잠식된 성기사 용사', type:'heropaladin',  hp:340, atk:29, def:16, spd:6,  exp:600, gold:[350,450], skills:['heroPaladinSmite','heal']},
-    mechanic: {name:'잠식된 메카닉 용사', type:'heromechanic', hp:310, atk:32, def:12, spd:9,  exp:600, gold:[350,450], skills:['heroMechanicBlast']},
+    mechanic: {name:'잠식된 기관사 용사', type:'heromechanic', hp:310, atk:32, def:12, spd:9,  exp:600, gold:[350,450], skills:['heroMechanicBlast']},
     jester:   {name:'잠식된 도박사 용사',   type:'herojester',   hp:285, atk:35, def:10, spd:11, exp:600, gold:[350,450], skills:['heroJesterGamble']},
   };
   // 단 한 번도 쓰러지지 않고(deathCount===0) 50층에 도달했을 때만 등장하는 진짜 최종보스.
