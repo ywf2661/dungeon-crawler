@@ -116,15 +116,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   function updateBossIntentCard(){
     const card = document.getElementById('bt-boss-intent');
     if(!card) return;
-    if(!enemy || !enemy.isBoss){ card.style.display = 'none'; return; }
-    card.style.display = 'block';
-    if(enemy.telegraphed || enemy.aboutToUltimate){
-      card.className = 'boss-intent-card warn';
-      card.textContent = `⚠ [${BOSS_SKILL_LABELS[enemy.pendingSkillKey]||'강공격'}] — 다음 턴 발동!`;
-    } else {
-      card.className = 'boss-intent-card';
-      card.textContent = '다음 행동: 알 수 없음';
+    // 사용자 요청: 예고된 다음 행동이 있을 때만 카드를 보여준다. 평소 상태
+    // ("다음 행동: 알 수 없음")는 그냥 숨겨서 보스 이름을 가리지 않게 한다.
+    if(!enemy || !enemy.isBoss || !(enemy.telegraphed || enemy.aboutToUltimate)){
+      card.style.display = 'none';
+      return;
     }
+    card.style.display = 'block';
+    card.className = 'boss-intent-card warn';
+    card.textContent = `⚠ [${BOSS_SKILL_LABELS[enemy.pendingSkillKey]||'강공격'}] — 다음 턴 발동!`;
   }
 
   function playBanner(text, cls){
