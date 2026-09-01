@@ -226,7 +226,7 @@
   .btn-danger{border-color:var(--rust-bright); color:#ffb9a3;}
 
   /* ---------- explore screen ---------- */
-  #screen-explore{padding:20px; gap:16px; justify-content:flex-start; min-height:0;}
+  #screen-explore{padding:20px; gap:16px; justify-content:flex-start; min-height:0; overflow-y:auto;}
   .location-card{
     background:linear-gradient(180deg,#241b12,#1a130c);
     border:1px solid #4a3a24; border-radius:5px; padding:10px 14px;
@@ -387,6 +387,16 @@
     color:#1a130c; background:linear-gradient(180deg,#ffe9a0,#e6c34a);
     border-radius:8px; padding:1px 7px; margin-right:6px; vertical-align:middle;
     box-shadow:0 0 8px #e6c34a99;
+  }
+  .boss-intent-card{
+    margin:4px auto 0; max-width:260px; padding:5px 12px; border-radius:6px;
+    text-align:center; font-family:'Cinzel'; font-size:11px; letter-spacing:.03em;
+    background:#1a130cd0; border:1px solid #6b5230; color:var(--parchment-dim);
+    position:relative; z-index:4;
+  }
+  .boss-intent-card.warn{
+    border-color:#ff4a3a; color:#ffb3a8; background:#2a0f0dd0;
+    box-shadow:0 0 10px #ff4a3a55; animation:elitepulse 1s ease-in-out infinite;
   }
 
   .cast-burst{
@@ -788,6 +798,7 @@
       <button class="btn" id="btn-equip">🎽 장비</button>
       <button class="btn" id="btn-relics">✦ 유물</button>
       <button class="btn" id="btn-exchange" style="display:none;">🔱 정예의 교환소</button>
+      <button class="btn" id="btn-blacksmith" style="display:none;">🔨 대장간</button>
     </div>
   </div>
 
@@ -800,6 +811,7 @@
         <div class="ename" id="bt-ename">???</div>
         <div class="enemy-hp-outer"><div class="enemy-hp-inner" id="bt-ehp-bar" style="width:100%;"></div></div>
       </div>
+      <div class="boss-intent-card" id="bt-boss-intent" style="display:none;"></div>
       <div class="enemy-stage" id="bt-stage"></div>
       <div class="enemy-status-badges" id="bt-status"></div>
       <div class="rig-slot rig-slot-left" id="bt-rig1"></div>
@@ -862,6 +874,7 @@
 <script src="js/events.js"></script>
 <script src="js/explore.js"></script>
 <script src="js/shop.js"></script>
+<script src="js/blacksmith.js"></script>
 <script src="js/ui/equipment-ui.js"></script>
 <script src="js/combat/battle-setup.js"></script>
 <script src="js/combat/battle-fx.js"></script>
