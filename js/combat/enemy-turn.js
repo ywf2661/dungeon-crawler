@@ -796,22 +796,26 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     return (battleFlags.luckGauge||0) * 0.07;
   }
   // 독 중첩(mastery_venomstacks, 맹독 연금술사): "스택 하나당" 매 라운드 피해량을
-  // 계산한다. 기본값은 마력의 12% — 여기에 레벨12 패시브(독성 정제, +50%)와
-  // 장비의 중독 강화 아이템(getDotBoostRatio('poison') — 도적의 단검 +40%,
-  // 영혼의 반지 +25% 등 기존 아이템과 자연스럽게 시너지)이 곱연산으로 붙는다.
-  // 최종 틱 피해 = 이 값 × 현재 스택 수(최대 10) — 풀스택+독성 정제만 있어도
-  // 마력의 약 1.8배가 매 라운드 들어가는 셈이라, 오래 끄는 전투일수록 강력해진다.
+  // 계산한다. 여기에 레벨12 패시브(독성 정제)와 장비의 중독 강화 아이템
+  // (getDotBoostRatio('poison') — 도적의 단검 +40%, 영혼의 반지 +25% 등 기존
+  // 아이템과 자연스럽게 시너지)이 곱연산으로 붙는다. 최종 틱 피해 = 이 값 ×
+  // 현재 스택 수(최대 10) — 오래 끄는 전투일수록 강력해진다.
+  //
+  // 밸런스 조정(사용자 요청 — 코드 기반 시뮬레이션으로 확인): 도적의 다른
+  // 전직(환영검사)/마법사 2차 전직들과 비교했을 때 독사가 맨몸 기준 2.4배,
+  // 중독 강화 무기 착용 시 3배 가까이 압도적으로 강했다. 스택 상한/삼중주입
+  // 보너스 등 다른 손잡이는 아무리 깎아도 격차를 크게 못 줄여서(구조적으로
+  // "매 라운드 자동 발동, 자원 소모 없음"이라 기본 로테이션 위에 통째로
+  // 얹히는 보너스이기 때문), 근본 배율 두 개를 함께 낮췄다 — 기본 비율
+  // 0.18→0.09(절반), 독성 정제 +90%→+30%. 조정 후 시뮬레이션: 맨몸 기준
+  // 환영검사 대비 1.22배, 도적의 단검 착용 시 1.40배(다른 전직들의 정상
+  // 편차 범위 안으로 들어옴).
   function getVenomDmgPerStack(){
     if(!(player.skills && player.skills.includes('mastery_venomstacks'))) return 0;
-    // 2차 조정(더 근본적인 수정): 원래 마력(player.mag) 기준으로 계산하고
-    // 있었는데, 도적은 JOBS의 statMods에서 mag:-2로 오히려 페널티를 받는
-    // 직업이라(공격력/속도에 투자하는 게 정상) 비율을 아무리 올려도 기준
-    // 스탯 자체가 작아 체감이 약할 수밖에 없었다. 실제 도적이 투자하는
-    // 스탯인 effectiveAtk() 기준으로 바꾸고, 그에 맞춰 비율도 재조정했다
-    // (atk가 mag보다 값 자체가 크므로 0.22보다 낮은 0.18로 설정).
-    // 독성 정제 배율은 그대로 +90% 유지.
-    let per = Math.max(0.01, effectiveAtk() * 0.18);
-    if(player.skills.includes('rogueVenomRefine')) per *= 1.9;
+    // 마력이 아니라 effectiveAtk() 기준(도적은 mag에 페널티가 있어 atk가
+    // 실제 투자 스탯이므로).
+    let per = Math.max(0.01, effectiveAtk() * 0.09);
+    if(player.skills.includes('rogueVenomRefine')) per *= 1.3;
     const boost = getDotBoostRatio('poison');
     if(boost>0) per *= (1+boost);
     return per;
