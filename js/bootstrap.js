@@ -94,6 +94,7 @@ export(전역): init, showMaintenanceModal, isAdminName
     document.getElementById('btn-equip').addEventListener('click', openEquipment);
     document.getElementById('btn-relics').addEventListener('click', showMyRelics);
     document.getElementById('btn-exchange').addEventListener('click', openExchange);
+    document.getElementById('btn-blacksmith').addEventListener('click', openBlacksmith);
     document.getElementById('cmd-attack').addEventListener('click', ()=>{ Sound.click(); playerAttack(); });
     document.getElementById('cmd-skill').addEventListener('click', ()=>{ Sound.click(); openSub('skill'); });
     document.getElementById('cmd-item').addEventListener('click', ()=>{ Sound.click(); openSub('item'); });
