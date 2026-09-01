@@ -568,7 +568,16 @@ export(전역): heroBossSvg, svgMonster
   // 슬롯에 그려진다(combat/battle-fx.js의 updateRigVisuals() 참고). 사용자
   // 요청: "설치한 로봇들이 눈에 보여야 재미있다" — 이전엔 battleFlags 안의
   // 순수 데이터였을 뿐 화면에 전혀 그려지지 않았다.
+  // rig(장치) 이미지 등록(사용자 제공 — 스팀펑크 그림체). 있는 kind는 이미지로,
+  // 없는 kind(recon/firepower/shield)는 기존 손그림 SVG로 자동 대체된다.
+  const RIG_IMG = {
+    turret: 'images/bot/autobot.png',
+    omega:  'images/bot/omegabot.png',
+  };
   function svgRig(kind){
+    if(RIG_IMG[kind]){
+      return `<img src="${RIG_IMG[kind]}" alt="${kind}" style="width:100%; height:100%; object-fit:contain;">`;
+    }
     const glow = `<filter id="rg"><feGaussianBlur stdDeviation="1"/></filter>`;
     switch(kind){
       case 'recon': return `<svg viewBox="0 0 70 50">${glow}
