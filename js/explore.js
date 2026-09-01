@@ -304,16 +304,13 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     logEl.scrollTop = logEl.scrollHeight;
   }
 
-  // 휴식(사용자 요청 — 3가지 방법 중 선택). 마을의 "휴식하다" 버튼은 삭제되어
-  // (사용자 요청 — 체크포인트에서 무료로 힐 스캠하는 걸 막기 위함) 이제 이
-  // 함수는 던전 휴식 노드에서만 호출된다. 항상 유료.
+  // 휴식(사용자 요청 — 3가지 방법 중 선택). 던전 휴식 노드에서 무료로
+  // 이용한다(골드 소비 없음 — 사용자 요청으로 제거).
   function onRest(){
-    const cost = Math.round(30 + depth*4);
-    if(player.gold < cost){ addLog(`휴식을 취하기엔 금화가 부족하다. (${cost}G 필요)`, 'warn'); return; }
-    showRestChoice(cost);
+    showRestChoice();
   }
 
-  function showRestChoice(cost){
+  function showRestChoice(){
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'rest-choice-overlay';
@@ -322,7 +319,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">휴식</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        ${cost}G를 들여 마련한 화롯불 곁에서 쉴 방법을 고른다.
+        화롯불 곁에서 쉴 방법을 고른다.
       </p>
       <div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="rest-deep">🔥 깊은 휴식 — HP/MP 40% 회복</button>
@@ -334,13 +331,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
-    // 대장간(사용자 요청 — 휴식 노드에서도 이용 가능). 휴식 선택과는 별개라
-    // 화롯불 비용을 쓰지 않고, 대장간 오버레이를 그 위에 그대로 띄운다.
+    // 대장간(사용자 요청 — 휴식 노드에서도 이용 가능).
     panel.querySelector('#rest-blacksmith').addEventListener('click', ()=>{
       if(typeof openBlacksmith==='function') openBlacksmith();
     });
     function finish(logText){
-      if(cost>0) player.gold -= cost;
       overlay.remove();
       renderStatus();
       addLog(logText, 'gold');
