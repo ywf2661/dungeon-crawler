@@ -58,6 +58,18 @@ export(전역): newPlayer
       // 시점의 상태 스냅샷. 사망 시(쉬움/보통 난이도) 이 상태로 되돌아간다.
       // combat/battle-end.js가 보스 클리어 시 갱신, 사망 시 복원한다.
       townCheckpoint:null,
+      // 장비 강화(사용자 요청) — 아이템ID → 부여된 강화 id 배열. 장착 여부와
+      // 무관하게 그 아이템 자체에 귀속된다(장착 해제해도 유지, 다시 장착하면
+      // 그대로 돌아옴). js/blacksmith.js 참고.
+      equipEnhancements:{},
+      // 강화로 얻은 %기반 스탯 보너스(피의 갑옷 최대HP+20% 등)는 장착 중일
+      // 때만 적용돼야 하므로, 적용 시점에 계산한 정확한 델타 값을 아이템ID별로
+      // 캐싱해둔다 — 해제 시 이 값 그대로 되돌려야 나중에 스탯이 달라져도
+      // 어긋나지 않는다(유물 relicAppliedDeltas와 동일한 원리).
+      equipEnhancementDeltas:{},
+      // 강화석(사용자 요청) — 단일 재화. 몬스터 처치/보스 보상으로만 얻으며
+      // 상점에서는 절대 판매하지 않는다.
+      reinforceStones:0,
       // 정예의 교환소 재고(사용자 요청 — 5개만 무작위 노출, 재방문해도 유지).
       // 다음 마을 도착 시(battle-end.js의 showBossRewardChoice) null로
       // 리셋되어 shop.js의 openExchange()가 새로 뽑는다.
