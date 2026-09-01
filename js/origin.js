@@ -104,6 +104,9 @@ export(전역): showOriginQuiz
         <p style="text-align:center;color:var(--parchment-dim); font-size:14px; line-height:1.9; font-style:italic; margin-bottom:22px; white-space:pre-line;">${q.question}</p>
         <div style="display:flex; flex-direction:column; gap:10px;">
           ${q.options.map(o=>`<button class="btn" data-key="${o.key}" style="text-align:left; height:auto; padding:12px 14px; white-space:normal; line-height:1.5;">${o.text}</button>`).join('')}
+        </div>
+        <div style="text-align:center; margin-top:18px;">
+          <img src="images/npc/gatekeeper.png" alt="문지기" style="max-width:220px; width:60%; filter:drop-shadow(0 8px 14px #00000099);">
         </div>`;
       body.querySelectorAll('[data-key]').forEach(btn=>{
         btn.addEventListener('click', ()=>{
