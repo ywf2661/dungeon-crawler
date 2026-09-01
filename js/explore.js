@@ -323,18 +323,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       </p>
       <div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="rest-deep">🔥 깊은 휴식 — HP/MP 40% 회복</button>
-        <button class="btn" id="rest-maint">🔧 정비 — HP 15% 회복</button>
+        <button class="btn" id="rest-maint">🔧 정비 — HP 15% 회복 + 대장간 들르기</button>
         <button class="btn" id="rest-medi">🧘 명상 — HP 회복 없음, 다음 전투 공격력 +15%</button>
-      </div>
-      <div style="text-align:center; margin-top:10px;">
-        <button class="btn" id="rest-blacksmith">🔨 대장간에 들르기</button>
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
-    // 대장간(사용자 요청 — 휴식 노드에서도 이용 가능).
-    panel.querySelector('#rest-blacksmith').addEventListener('click', ()=>{
-      if(typeof openBlacksmith==='function') openBlacksmith();
-    });
     function finish(logText){
       overlay.remove();
       renderStatus();
@@ -351,7 +344,9 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     panel.querySelector('#rest-maint').addEventListener('click', ()=>{
       const heal = Math.round(player.maxhp*0.15);
       player.hp = Math.min(player.maxhp, player.hp+heal);
+      // 정비(사용자 요청 — 별도 버튼 대신 이 선택지에서 바로 대장간을 연다).
       finish(`장비를 정비했다. HP가 ${heal} 회복되었다.`);
+      if(typeof openBlacksmith==='function') openBlacksmith();
     });
     panel.querySelector('#rest-medi').addEventListener('click', ()=>{
       player.buffAtkTurns = 99; player.buffAtkMult = 1.15;
