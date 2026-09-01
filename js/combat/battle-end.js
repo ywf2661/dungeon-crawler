@@ -360,36 +360,50 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
   }
 
   function showEnding(isTrueEnding){
-    showScreen('ending');
     // 기록(record) 저장 시(bootstrap.js) 무결 클리어 여부 판정에 쓰인다.
     player.trueEndingSeen = !!isTrueEnding;
     // 전직(세분화) 후에도 항상 기본 직업 이름("전사")으로만 표시되던 버그를
     // getJobLabel()(data/jobs.js)로 교체해 고쳤다 — 전직했으면 분기 이름을 보여준다.
     const jobLabel = getJobLabel(player);
-    const titleEl = document.getElementById('ending-title');
+    saveGame();
+    // 사용자 요청 — 엔딩 텍스트 뭉치를 한 번에 뿌리지 않고 대화 팝업으로 한
+    // 줄씩 보여준 뒤, 마지막에 실제 엔딩 화면(타이틀+통계)으로 전환한다.
+    // 진엔딩(트루엔딩)은 tone:'grand'로 페이드가 더 느리고 장엄하며, 원혼들의
+    // 목소리 대사 다음에 타이틀 자체를 마지막 대사로 한 번 더 짚어준다.
     if(isTrueEnding){
-      titleEl.textContent = '회랑, 마침내 안식에 들다';
-      document.getElementById('ending-summary').textContent =
-        `회랑의 시조가 무너져 내리는 순간, 돌벽 틈새로 스며들던 서늘한 기운이 거짓말처럼 걷힌다. `
-        + `오랫동안 이 곳을 넘지 못한 채 쓰러져간 이름 없는 용사들의 원혼이, 하나둘 빛으로 떠올라 ${player.name}의 곁을 스쳐 지나간다. `
-        + `"고맙다." 누군가의 목소리가, 어쩌면 수백의 목소리가 겹쳐 들려온다. "너의 승리로, 우리는 비로소 이곳을 떠날 수 있게 되었다." `
-        + `돌기둥이 하나씩 허물어지고, 회랑을 지탱하던 저주의 뿌리가 빛무리와 함께 흩어진다. `
-        + `${player.name}(${jobLabel})은(는) 무너져 내리는 회랑을 뒤로하고, 마침내 지상으로 향하는 계단을 오른다. `
-        + `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 그 무엇보다 값진, 단 한 번도 무릎 꿇지 않았다는 증명을 품고서. `
-        + `회랑의 문은 이제 열리지 않는다. 지킬 것도, 가둘 것도 남지 않았기 때문이다.`;
+      const lines = [
+        '회랑의 시조가 무너져 내리는 순간, 돌벽 틈새로 스며들던 서늘한 기운이 거짓말처럼 걷힌다.',
+        `오랫동안 이 곳을 넘지 못한 채 쓰러져간 이름 없는 용사들의 원혼이, 하나둘 빛으로 떠올라 ${player.name}의 곁을 스쳐 지나간다.`,
+        '"고맙다." 누군가의 목소리가, 어쩌면 수백의 목소리가 겹쳐 들려온다.',
+        '"너의 승리로, 우리는 비로소 이곳을 떠날 수 있게 되었다."',
+        '돌기둥이 하나씩 허물어지고, 회랑을 지탱하던 저주의 뿌리가 빛무리와 함께 흩어진다.',
+        `${player.name}(${jobLabel})은(는) 무너져 내리는 회랑을 뒤로하고, 마침내 지상으로 향하는 계단을 오른다.`,
+        '"회랑, 마침내 안식에 들다."',
+      ];
+      showDialogueSequence(lines, {tone:'grand', onDone: ()=>{
+        showScreen('ending');
+        document.getElementById('ending-title').textContent = '회랑, 마침내 안식에 들다';
+        document.getElementById('ending-summary').textContent =
+          `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 그 무엇보다 값진, 단 한 번도 무릎 꿇지 않았다는 증명을 품고서. `
+          + `회랑의 문은 이제 열리지 않는다. 지킬 것도, 가둘 것도 남지 않았기 때문이다.`;
+      }});
     } else {
-      titleEl.textContent = '회랑의 새로운 파수꾼';
       const bossJob = (enemy && enemy.finalJobId && JOBS.find(j=>j.id===enemy.finalJobId)) || null;
       const bossJobName = bossJob ? bossJob.name : '용사';
-      document.getElementById('ending-summary').textContent =
-        `${player.name}은(는) 회랑의 가장 깊은 곳에서, ${bossJobName}의 모습을 한 무언가를 마침내 쓰러뜨렸다. `
-        + `그러나 승리의 환희도 잠시, 발밑에서 차오르는 서늘한 기운이 온몸을 휘감는다. `
-        + `회랑은 정복자를 놓아주지 않는다 — 애초에 이곳이 원한 것은 승자가 아니라, 새로운 파수꾼이었을 뿐이다. `
-        + `의식이 흐려지는 사이, ${player.name}(${jobLabel})의 형상이 서서히 어둠 속으로 녹아든다. `
-        + `이제 이 회랑의 가장 깊은 곳을 지키는 것은, 한때 용사였던 무언가다. `
-        + `레벨 ${player.level}, 소지금 ${player.gold}G. 탑의 문은 다시, 조용히 닫혔다.`;
+      const lines = [
+        `${player.name}은(는) 회랑의 가장 깊은 곳에서, ${bossJobName}의 모습을 한 무언가를 마침내 쓰러뜨렸다.`,
+        '그러나 승리의 환희도 잠시, 발밑에서 차오르는 서늘한 기운이 온몸을 휘감는다.',
+        '회랑은 정복자를 놓아주지 않는다 — 애초에 이곳이 원한 것은 승자가 아니라, 새로운 파수꾼이었을 뿐이다.',
+        `의식이 흐려지는 사이, ${player.name}(${jobLabel})의 형상이 서서히 어둠 속으로 녹아든다.`,
+        '이제 이 회랑의 가장 깊은 곳을 지키는 것은, 한때 용사였던 무언가다.',
+      ];
+      showDialogueSequence(lines, {onDone: ()=>{
+        showScreen('ending');
+        document.getElementById('ending-title').textContent = '회랑의 새로운 파수꾼';
+        document.getElementById('ending-summary').textContent =
+          `레벨 ${player.level}, 소지금 ${player.gold}G. 탑의 문은 다시, 조용히 닫혔다.`;
+      }});
     }
-    saveGame();
   }
 
   // 보스 클리어 보상 선택(신규, 사용자 요청) — 5가지 중 하나를 골라 얻고,

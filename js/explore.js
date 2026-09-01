@@ -454,6 +454,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   // 붙잡힌 순간)부터는 선택지가 "저항한다" 하나뿐이다.
   const FINAL_FLOOR_SEEK_LINES = {
     gold: [
+      '불길한 기운이 느껴진다...',
+      '마치 무언가 끌어당기는듯한...',
       '"여기가... 마지막 층인가."',
       '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
       '황금. 그 하나만을 좇아 이 어둠 속을 헤매왔다.',
@@ -462,6 +464,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       '"...설마, 처음부터 그런 건 없었던 걸까."',
     ],
     truth: [
+      '불길한 기운이 느껴진다...',
+      '마치 무언가 끌어당기는듯한...',
       '"여기가... 마지막 층인가."',
       '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
       '진실. 그 하나만을 좇아 이 어둠 속을 헤매왔다.',
@@ -470,6 +474,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       '"...어쩌면, 이 회랑 자체가 답 없는 질문이었는지도."',
     ],
     survival: [
+      '불길한 기운이 느껴진다...',
+      '마치 무언가 끌어당기는듯한...',
       '"여기가... 마지막 층인가."',
       '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
       '살아남는 것. 그 하나만을 붙들고 이 어둠 속을 버텨왔다.',
@@ -479,6 +485,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     ],
     // 오프닝 심리테스트가 생기기 전에 시작한 캐릭터(또는 기록이 없는 경우) 폴백.
     unknown: [
+      '불길한 기운이 느껴진다...',
+      '마치 무언가 끌어당기는듯한...',
       '"여기가... 마지막 층인가."',
       '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
       '왜 이곳까지 왔는지, 이제는 스스로도 명확히 기억나지 않는다.',
@@ -488,6 +496,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     ],
   };
   const FINAL_FLOOR_SEEK_LINES_TRUE = [
+    '불길한 기운이 느껴진다...',
+    '마치 무언가 끌어당기는듯한...',
     '"여기가... 마지막 층인가."',
     '단 한 번도 무릎 꿇지 않았다. 그 사실 하나가 지금 이 순간을 지탱한다.',
     '숱한 회랑을 지나오며 스러져간 이름 없는 그림자들이 떠오른다.',
@@ -498,7 +508,42 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
 
   function showFinalFloorConfirm(){
     const flawless = (player.deathCount||0) === 0;
-    renderFinalFloorStep('seek', flawless);
+    const traitKey = (player.originTraits && player.originTraits[0]) || 'unknown';
+    const lines = flawless ? FINAL_FLOOR_SEEK_LINES_TRUE : (FINAL_FLOOR_SEEK_LINES[traitKey] || FINAL_FLOOR_SEEK_LINES.unknown);
+    // 사용자 요청 — 서사를 한 블록으로 보여주던 걸 대화 팝업 시퀀스로 바꾼다.
+    // 진행을 다 넘기면 실제 선택지(물러난다/계속 나아간다) 패널을 띄운다.
+    showDialogueSequence(lines, {tone: flawless?'grand':'default', onDone: ()=> showFinalFloorChoice(flawless)});
+  }
+
+  function showFinalFloorChoice(flawless){
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'final-confirm-overlay';
+    document.getElementById('app').appendChild(overlay);
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `
+      <h3 style="color:var(--rust-bright);">회랑의 끝</h3>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button class="btn" id="final-step-back">물러난다</button>
+        <button class="btn btn-danger" id="final-step-next">계속 나아간다</button>
+      </div>`;
+    overlay.appendChild(panel);
+    panel.querySelector('#final-step-back').addEventListener('click', ()=> overlay.remove());
+    panel.querySelector('#final-step-next').addEventListener('click', ()=>{
+      overlay.remove();
+      renderFinalFloorGrasp(flawless);
+    });
+  }
+
+  // "되돌릴 수 없는 순간" — 서사를 대화 팝업으로 보여준 뒤 최종 선택지(저항한다!) 하나만 남긴다.
+  function renderFinalFloorGrasp(flawless){
+    const graspLines = [
+      '그 순간, 발밑의 돌바닥이 무너지듯 갈라진다.',
+      `차갑고 앙상한 손길이 어둠 속에서 솟아올라, ${player.name}의 발목을 움켜쥔다.`,
+      '더는 물러설 곳이 없다.',
+    ];
+    showDialogueSequence(graspLines, {tone: flawless?'grand':'default', onDone: ()=> renderFinalFloorStep('grasp', flawless)});
   }
 
   function renderFinalFloorStep(step, flawless){
@@ -512,33 +557,9 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
 
-    if(step==='seek'){
-      const traitKey = (player.originTraits && player.originTraits[0]) || 'unknown';
-      const lines = flawless ? FINAL_FLOOR_SEEK_LINES_TRUE : (FINAL_FLOOR_SEEK_LINES[traitKey] || FINAL_FLOOR_SEEK_LINES.unknown);
-      panel.innerHTML = `
-        <h3 style="color:var(--rust-bright);">회랑의 끝</h3>
-        <div style="color:var(--parchment); font-size:13.5px; line-height:1.9; font-style:italic; margin-bottom:18px;">
-          ${lines.map(l=>`<p style="margin:0 0 4px;">${l}</p>`).join('')}
-        </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-          <button class="btn" id="final-step-back">물러난다</button>
-          <button class="btn btn-danger" id="final-step-next">계속 나아간다</button>
-        </div>`;
-      overlay.innerHTML = '';
-      overlay.appendChild(panel);
-      panel.querySelector('#final-step-back').addEventListener('click', ()=> overlay.remove());
-      panel.querySelector('#final-step-next').addEventListener('click', ()=> renderFinalFloorStep('grasp', flawless));
-      return;
-    }
-
     // step === 'grasp' — 되돌릴 수 없는 순간. 선택지가 하나뿐이다.
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">회랑의 끝</h3>
-      <div style="color:var(--parchment); font-size:13.5px; line-height:1.9; font-style:italic; margin-bottom:18px;">
-        <p style="margin:0 0 4px;">그 순간, 발밑의 돌바닥이 무너지듯 갈라진다.</p>
-        <p style="margin:0 0 4px;">차갑고 앙상한 손길이 어둠 속에서 솟아올라, ${player.name}의 발목을 움켜쥔다.</p>
-        <p style="margin:0;"><b style="color:var(--gold-bright);">더는 물러설 곳이 없다.</b></p>
-      </div>
       <div style="text-align:center;">
         <button class="btn btn-danger" id="final-step-fight">저항한다!</button>
       </div>`;
