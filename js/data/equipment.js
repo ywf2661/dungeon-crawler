@@ -216,8 +216,13 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     const current = player.equipment[slot];
     if(current === itemId) return;
     const prevCounts = getEpicSetCounts();
-    if(current) unapplyEquipStats(getItemDef(current).stats);
+    if(current){
+      unapplyEquipStats(getItemDef(current).stats);
+      // 장비 강화(사용자 요청) — 갈아끼우는 이전 장비의 스탯형 강화 보너스도 회수.
+      if(typeof unapplyEnhancementStatBonuses==='function') unapplyEnhancementStatBonuses(current);
+    }
     applyEquipStats(item.stats);
+    if(typeof applyEnhancementStatBonuses==='function') applyEnhancementStatBonuses(itemId);
     player.equipment[slot] = itemId;
     renderStatus();
     checkEpicSetToast(prevCounts);
@@ -232,6 +237,8 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(def && def.storyWeapon) return;
     const prevCounts = getEpicSetCounts();
     unapplyEquipStats(def.stats);
+    // 장비 강화(사용자 요청) — 스탯형 강화 보너스도 함께 회수(장착 중에만 적용).
+    if(typeof unapplyEnhancementStatBonuses==='function') unapplyEnhancementStatBonuses(current);
     player.equipment[slot] = null;
     renderStatus();
     checkEpicSetToast(prevCounts);
