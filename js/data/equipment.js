@@ -286,17 +286,42 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   function hasSpecial(key){
     return equippedSpecials().some(sp=>sp[key]);
   }
+  // 슬롯 하나(무기/방어구/장신구)에 걸린 dotBoost 총합(원본 아이템 special +
+  // 그 아이템에 붙은 강화 special 전부 포함).
+  function getSlotDotBoost(slot, type){
+    const id = player.equipment && player.equipment[slot];
+    if(!id) return 0;
+    let sum = 0;
+    const def = getItemDef(id);
+    if(def && def.special){
+      const sp = def.special;
+      if(typeof sp.dotBoost === 'number') sum += sp.dotBoost;
+      else if(sp.dotBoost && sp.dotBoost[type]) sum += sp.dotBoost[type];
+    }
+    if(typeof getEnhancementsFor==='function' && typeof ENHANCEMENTS!=='undefined'){
+      getEnhancementsFor(id).forEach(eid=>{
+        const edef = ENHANCEMENTS[eid];
+        if(!edef || !edef.special) return;
+        const sp = edef.special;
+        if(typeof sp.dotBoost === 'number') sum += sp.dotBoost;
+        else if(sp.dotBoost && sp.dotBoost[type]) sum += sp.dotBoost[type];
+      });
+    }
+    return sum;
+  }
   function getDotBoostRatio(type){
-    let total = 0;
-    equippedSpecials().forEach(sp=>{
-      if(!sp.dotBoost) return;
-      if(typeof sp.dotBoost === 'number') total += sp.dotBoost;
-      else if(sp.dotBoost[type]) total += sp.dotBoost[type];
-    });
+    // 사용자 요청(밸런스 조정): 무기(도적의 단검 등)와 방어구/장신구의 중독
+    // 강화 효과는 더 이상 합산되지 않는다 — 둘 중 더 높은 쪽 하나만 적용된다.
+    // (예: 도적의 단검 +40% + 독사의 반지 강화 +25%를 동시에 껴도 65%가 아니라
+    // 더 높은 40%만 적용) 방어구/장신구끼리는(둘 다 dotBoost를 주는 경우)
+    // 여전히 합산된다 — 무기 쪽만 별도로 분리해 비교하는 취지이기 때문.
+    const weaponBoost = getSlotDotBoost('weapon', type);
+    const nonWeaponBoost = getSlotDotBoost('armor', type) + getSlotDotBoost('accessory', type);
+    let total = Math.max(weaponBoost, nonWeaponBoost);
     // 보스 약점(사용자 요청 — 정예/보스 리뉴얼 1차): weakness:'dot'인 보스는
     // 지속피해에 특히 취약해 피해량이 2배(+100%)가 된다. data/monsters.js의
     // BOSSES 데이터에 시범 적용된 3개 보스 한정(잠들지 않는 태엽 심장/멈추지
-    // 않는 모래/빈 옷의 예언자).
+    // 않는 모래/빈 옷의 예언자). 이건 장비 중첩 규칙과 무관하게 항상 별도로 더해진다.
     if(typeof enemy!=='undefined' && enemy && enemy.weakness==='dot') total += 1.0;
     return total;
   }
