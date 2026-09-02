@@ -150,6 +150,12 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     player.nodeVisited = [];
     saveGame();
     renderExplore(['새로운 구간에 들어섰다. 나아갈 길을 고를 수 있다.']);
+    // 긴박한 BGM(사용자 요청) — showScreen('explore')는 이미 그 이전(보스 보상
+    // 선택 전)에 호출되어 있어서 tierIndex 갱신 시점을 놓친다. 여기서 직접
+    // 확정한다(고요한 제단에 들어서는 유일한 지점).
+    if(player.tierIndex===5 && !player.endingSeen){
+      Sound.setBgmMode('dread');
+    }
     // 사용자 요청: 새 구간에 들어서면 지도가 출발 지점(맨 위, row 0)부터
     // 보이도록 스크롤을 초기화한다. #node-map-area는 구간이 바뀌어도 DOM
     // 요소 자체는 그대로 재사용되고 안쪽 내용만 다시 그려지므로, 이전 구간

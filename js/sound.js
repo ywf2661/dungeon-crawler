@@ -9,7 +9,7 @@ export(전역): const Sound
   const Sound = (function(){
     let ctx = null, master = null, bgmGain = null, sfxGain = null;
     let muted = false;
-    let bgmTimer = null, bgmStep = 0, bgmMode = 'explore'; // 'explore' | 'battle' | 'off'
+    let bgmTimer = null, bgmStep = 0, bgmMode = 'explore'; // 'explore' | 'battle' | 'dread' | 'finalboss' | 'off'
 
     try{
       const saved = window.localStorage ? window.localStorage.getItem('lc_muted') : null;
@@ -213,6 +213,10 @@ export(전역): const Sound
     // ---- 배경음(BGM): 저음 드론 + 간헐적 아르페지오를 실시간 스케줄링하는 루프 ----
     const SCALE_EXPLORE = [220, 261.6, 293.7, 329.6, 392, 440]; // A minor 계열, 잔잔하게
     const SCALE_BATTLE   = [220, 246.9, 277.2, 329.6, 369.9, 440]; // 살짝 긴장감 있는 스케일
+    // 사용자 요청 — 최종 노드맵("고요한 제단")/최종보스전 전용 긴박한 스케일.
+    // 반음 간격(220-233.1)과 트라이톤(220-311.1)을 섞어 불협화음을 만든다.
+    const SCALE_DREAD    = [220, 233.1, 277.2, 311.1, 349.2, 415.3];
+    const SCALE_FINALBOSS = [220, 233.1, 277.2, 311.1, 369.9, 415.3, 466.2];
     let droneOsc = [];
 
     function stopDrone(){
@@ -223,13 +227,18 @@ export(전역): const Sound
       const c = ensureCtx(); if(!c) return;
       stopDrone();
       const t = c.currentTime;
-      const freqs = bgmMode==='battle' ? [110, 164.8] : [110, 146.8];
+      // 최종보스전은 저음역에 트라이톤(불협화음) 간격을 준 드론으로 다른 전투보다
+      // 훨씬 불안하게, 고요한 제단은 explore보다 좁고 팽팽한 간격으로 긴장감만 더한다.
+      const freqs = bgmMode==='finalboss' ? [82.4, 116.5]
+        : bgmMode==='dread' ? [110, 155.6]
+        : bgmMode==='battle' ? [110, 164.8] : [110, 146.8];
       freqs.forEach((f,i)=>{
         const osc = c.createOscillator(); osc.type = i===0?'sine':'triangle';
         osc.frequency.setValueAtTime(f, t);
         const g = c.createGain(); g.gain.setValueAtTime(0, t);
         g.gain.linearRampToValueAtTime(i===0?0.5:0.28, t+2.2);
-        const lp = c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value = bgmMode==='battle'?1400:900;
+        const lp = c.createBiquadFilter(); lp.type='lowpass';
+        lp.frequency.value = bgmMode==='finalboss' ? 2000 : (bgmMode==='dread' ? 1100 : (bgmMode==='battle'?1400:900));
         osc.connect(lp); lp.connect(g); g.connect(bgmGain);
         osc.start(t);
         droneOsc.push(osc); droneOsc.push(g);
@@ -237,15 +246,18 @@ export(전역): const Sound
     }
     function scheduleBgmStep(){
       const c = ensureCtx(); if(!c || bgmMode==='off') return;
-      const scale = bgmMode==='battle' ? SCALE_BATTLE : SCALE_EXPLORE;
-      const interval = bgmMode==='battle' ? 900 : 1500;
+      const scale = bgmMode==='finalboss' ? SCALE_FINALBOSS
+        : bgmMode==='dread' ? SCALE_DREAD
+        : bgmMode==='battle' ? SCALE_BATTLE : SCALE_EXPLORE;
+      const interval = bgmMode==='finalboss' ? 650 : bgmMode==='dread' ? 1100 : bgmMode==='battle' ? 900 : 1500;
+      const prob = bgmMode==='finalboss' ? 0.7 : bgmMode==='dread' ? 0.45 : bgmMode==='battle' ? 0.55 : 0.35;
       // 확률적으로 짧은 아르페지오 음을 하나 얹어 심심하지 않게 한다(음소거 시엔 건너뜀)
-      if(!muted && Math.random() < (bgmMode==='battle'?0.55:0.35)){
+      if(!muted && Math.random() < prob){
         const t = c.currentTime;
         const freq = scale[Math.floor(Math.random()*scale.length)] * (Math.random()<0.5?2:1);
         const osc = c.createOscillator(); osc.type='sine'; osc.frequency.setValueAtTime(freq, t);
         const g = c.createGain(); g.gain.setValueAtTime(0.0001, t);
-        g.gain.exponentialRampToValueAtTime(0.1, t+0.05);
+        g.gain.exponentialRampToValueAtTime(bgmMode==='finalboss'?0.13:0.1, t+0.05);
         g.gain.exponentialRampToValueAtTime(0.0001, t+0.9);
         osc.connect(g); g.connect(bgmGain);
         osc.start(t); osc.stop(t+0.95);
