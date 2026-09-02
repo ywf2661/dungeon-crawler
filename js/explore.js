@@ -122,9 +122,14 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('screen-'+id).classList.add('active');
     if(id==='explore'){
       scheduleJobAdvancementCheck();
-      Sound.setBgmMode('explore');
+      // 사용자 요청 — "고요한 제단"(tierIndex===5, 진짜 최종보스 직전 특수 구간)에
+      // 있는 동안은 explore 화면이라도 긴박한 BGM(dread)을 쓴다.
+      const inFinalTier = player && player.tierIndex===5 && !player.endingSeen;
+      Sound.setBgmMode(inFinalTier ? 'dread' : 'explore');
     } else if(id==='battle'){
-      Sound.setBgmMode('battle');
+      // 사용자 요청 — 최종보스/진최종보스 전투는 훨씬 긴박한 전용 BGM(finalboss)을 쓴다.
+      const isFinalBattle = !!(enemy && (enemy.isFinal || enemy.isTrueFinal));
+      Sound.setBgmMode(isFinalBattle ? 'finalboss' : 'battle');
     } else if(id==='title' || id==='gameover'){
       Sound.setBgmMode('explore');
     }
