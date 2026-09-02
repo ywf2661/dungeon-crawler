@@ -78,6 +78,10 @@ export(전역): heroBossSvg, svgMonster
     harpy: 'images/monsters/harpy.png',
     wraith: 'images/monsters/wraith.png',
     cultist: 'images/monsters/cultist.png',
+    // 신규 3종(사용자 요청 — 미믹/오크전사/마녀 삭제 후 3·4구간용으로 교체 투입).
+    tome: 'images/monsters/tome.png',
+    tailor: 'images/monsters/tailor.png',
+    hornbeast: 'images/monsters/hornbeast.png',
   };
 
   // PNG 몬스터 그림 하단의 투명 여백을 자동으로 감지해 보정한다(사용자 피드백

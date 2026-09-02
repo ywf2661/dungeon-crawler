@@ -20,9 +20,6 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS
     {type:'spider',  name:'숲망꾼',        minDepth:3,  hp:28, atk:9,  def:3,  spd:7,  exp:18, gold:[9,16],  skills:['bite']},
     {type:'skeleton',name:'해골 전사',     minDepth:3,  hp:32, atk:9,  def:4,  spd:5,  exp:20, gold:[8,18],  skills:[]},
     {type:'ghost',   name:'옭아맨 통곡',   minDepth:5,  hp:30, atk:10, def:2,  spd:11, exp:24, gold:[12,20], skills:['curse']},
-    {type:'orc',     name:'오크 전사',     minDepth:5,  hp:44, atk:12, def:5,  spd:4,  exp:28, gold:[14,26], skills:['smash']},
-    {type:'mimic',   name:'미믹',          minDepth:6,  hp:26, atk:15, def:3,  spd:4,  exp:30, gold:[25,40], skills:['smash']},
-    {type:'witch',   name:'숲의 마녀',     minDepth:6,  hp:34, atk:6,  def:3,  spd:9,  exp:26, gold:[16,28], skills:['curse','heal']},
     {type:'knight',  name:'짓눌린 맹세',   minDepth:8,  hp:52, atk:13, def:8,  spd:5,  exp:36, gold:[20,34], skills:['smash']},
     {type:'ogre',    name:'회랑의 정령',        minDepth:9,  hp:58, atk:14, def:6,  spd:3,  exp:40, gold:[18,30], skills:['smash']},
     {type:'harpy',   name:'울부짖는 깃털비', minDepth:11, hp:38, atk:12, def:3,  spd:14, exp:34, gold:[16,26], skills:['bite']},
@@ -32,6 +29,11 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS
     {type:'golem',   name:'회랑의 굴착꾼',       minDepth:20, hp:90, atk:16, def:14, spd:2,  exp:68, gold:[30,48], skills:['smash']},
     {type:'jack',  name:'회랑의 인형수집가 잭',     minDepth:22, hp:95, atk:15, def:10, spd:3,  exp:70, gold:[32,50], skills:['heal']},
     {type:'demon',   name:'회랑의 어릿광대',     minDepth:26, hp:80, atk:22, def:10, spd:8,  exp:90, gold:[45,65], skills:['smash','curse']},
+    // 신규 3종(사용자 요청 — 미믹/오크전사/마녀 삭제 후 3·4구간용으로 추가).
+    // 데몬(minDepth26) 이후로 이어지는 구간이라 데몬보다 소폭씩 더 강하게 잡았다.
+    {type:'tome',    name:'회랑의 금서',        minDepth:30, hp:75, atk:20, def:9,  spd:10, exp:96,  gold:[42,62], skills:['curse','heal']},
+    {type:'tailor',  name:'회랑의 실잣이',      minDepth:33, hp:88, atk:22, def:10, spd:7,  exp:104, gold:[45,66], skills:['smash','curse']},
+    {type:'hornbeast', name:'회랑의 뿔짐승',    minDepth:37, hp:98, atk:26, def:13, spd:8,  exp:120, gold:[50,72], skills:['smash']},
   ];
 
   // 구간(타이어)별 몬스터 풀(사용자 요청 — 몬스터 강함이 층수로만 정해지다
@@ -45,13 +47,13 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS
   // 강해진다.
   const TIER_MONSTER_POOLS = [
     { native:['slime','goblin','bat','bandit','wolf','spider','skeleton'],
-      reach:['ghost','orc','mimic','witch','knight','ogre'], reachChance:0.08 },
-    { native:['ghost','orc','mimic','witch','knight','ogre','harpy','wraith','cultist','egg'],
+      reach:['ghost','knight','ogre'], reachChance:0.08 },
+    { native:['ghost','knight','ogre','harpy','wraith','cultist','egg'],
       reach:['golem'], reachChance:0.08 },
     { native:['harpy','wraith','cultist','egg','golem','jack'],
       reach:['demon'], reachChance:0.08 },
-    { native:['egg','golem','jack','demon'], reach:[], reachChance:0 },
-    { native:['golem','jack','demon'], reach:[], reachChance:0 },
+    { native:['egg','golem','jack','demon','tome','tailor'], reach:['hornbeast'], reachChance:0.08 },
+    { native:['golem','jack','demon','tome','tailor','hornbeast'], reach:[], reachChance:0 },
   ];
 
   const BOSSES = [
