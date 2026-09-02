@@ -119,10 +119,19 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
       const w = NODE_TYPES[k].weight;
       for(let i=0;i<w;i++) weightedPool.push(k);
     });
-    rows[0].forEach(n=>{ n.type = Math.random()<0.85 ? 'combat' : 'elite'; });
-    specialPool.forEach(n=>{
-      if(n.type) return;
-      n.type = weightedPool[Math.floor(Math.random()*weightedPool.length)];
+    // 정예 노드 배정(사용자 요청) — 1구간(tier0)의 1~2층(rows[0]/rows[1])은
+    // 아직 정예가 나오면 안 된다. 다른 구간의 "그 구간 첫 행"은 실제 절대
+    // 층수가 이미 11층 이상이라 그대로 정예가 나와도 된다.
+    const noEliteEarly = tierIndex===0;
+    rows[0].forEach(n=>{ n.type = (noEliteEarly || Math.random()<0.85) ? 'combat' : 'elite'; });
+    const weightedPoolNoElite = weightedPool.filter(k=>k!=='elite');
+    rows.slice(1, rowCount).forEach((row, idx)=>{
+      const isDepth2Row = noEliteEarly && idx===0; // rows[1] = tier0의 2층
+      const pool = isDepth2Row ? weightedPoolNoElite : weightedPool;
+      row.forEach(n=>{
+        if(n.type) return; // 이미 유물/저주로 확정 배정된 노드
+        n.type = pool[Math.floor(Math.random()*pool.length)];
+      });
     });
     return rows;
   }
