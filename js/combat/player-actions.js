@@ -841,6 +841,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         shieldPct: s.shieldPct||0,
         // 메카닉 리뉴얼(사용자 요청) — 이 장치가 매 틱마다 만들어내는 보일러 압력.
         pressurePerTick: (s.rigPressurePerTick||0) + (hasPressureSeal ? 9 : 0),
+        // 1차 스킬 버프(사용자 요청 — "영리한 버프") — 포탑 사격 위력이 현재
+        // 쌓인 압력에 비례해서 커진다(pressureScaled/pressureScaleRate). 실제
+        // 적용은 combat/enemy-turn.js의 rig 틱 데미지 계산에서 이뤄진다.
+        pressureScaled: !!s.pressureScaled, pressureScaleRate: s.pressureScaleRate||0,
       };
       // 버그 수정: 예전엔 이 분기가 항상 battleFlags.rig 하나만 무조건 덮어써서,
       // 다중 전개(mastery_multideploy)로 2기까지 가능한 로봇군단장이 자동포탑을
@@ -888,6 +892,22 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, s.rigKind==='omega'?'crit':undefined);
       if(s.rigKind==='omega') Sound.bomb(); else Sound.magic();
+      // 1차 스킬 버프(사용자 요청 — "영리한 버프" B안) — 배치 즉시 포탑이
+      // 첫 사격도 같이 나간다(기존엔 배치 턴은 세팅만 하고 사격은 다음 턴부터
+      // 시작해서 "이번 턴은 손해"라는 체감이 컸다). 총 사격 횟수는 그대로
+      // 유지하기 위해 turnsLeft를 1 줄인다(즉시 1회 + 이후 turnsLeft-1회 자동
+      // 사격 = 원래 turns회와 동일).
+      let instantTickDmg = 0;
+      if(s.instantFirstTick && newRig.turnsLeft>0){
+        const targetRig = (battleFlags.rig===newRig) ? battleFlags.rig : (battleFlags.rig2===newRig ? battleFlags.rig2 : null);
+        if(targetRig){
+          const pressureBonus = targetRig.pressureScaled ? Math.round(player.mag*(battleFlags.pressure||0)*targetRig.pressureScaleRate) : 0;
+          instantTickDmg = Math.max(1, targetRig.dmgPerTick + pressureBonus - Math.round(edef*0.3));
+          enemy.hp = Math.max(0, enemy.hp-instantTickDmg);
+          updateEnemyHpBar(); shakeEnemy(); popDamage('-'+instantTickDmg);
+          targetRig.turnsLeft -= 1;
+        }
+      }
       let healed = 0;
       if(s.lifesteal){
         healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal));
@@ -895,7 +915,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       renderStatus();
       updateRigVisuals();
-      let msg2 = `${s.rigName}을(를) 전개했다! 첫 사격으로 ${dmg}의 피해를 입혔다. 이후 ${turns}턴간 자동으로 사격한다.${slotMsgDeploy}`;
+      let msg2 = `${s.rigName}을(를) 전개했다! 첫 사격으로 ${dmg}의 피해를 입혔다.`;
+      if(instantTickDmg>0) msg2 += ` 곧바로 이어진 포격으로 ${instantTickDmg}의 추가 피해!`;
+      msg2 += ` 이후 ${turns - (instantTickDmg>0?1:0)}턴간 자동으로 사격한다.${slotMsgDeploy}`;
       const dotLabelsDeploy = applySkillDots(s);
       if(dotLabelsDeploy) msg2 += ` ${dotLabelsDeploy} 효과 부여!`;
       if(s.exposeTurns) msg2 += ' 적의 급소가 드러나 받는 피해가 늘어난다.';

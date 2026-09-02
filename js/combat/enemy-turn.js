@@ -261,7 +261,11 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     const rig = battleFlags[slotKey];
     setTimeout(()=>{
       if(battleOver) return;
-      const dmg = Math.max(1, rig.dmgPerTick);
+      // 1차 스킬 버프(사용자 요청 — "영리한 버프" A안) — 압력 연동 포탑 화력.
+      // pressureScaled 장치는 현재 쌓인 압력만큼 틱 데미지에 보너스가 붙는다
+      // (마스터리로 상한이 150인 폭주 화부라면 그만큼 더 크게 붙는다).
+      const pressureBonus = rig.pressureScaled ? Math.round((player.mag||0)*(battleFlags.pressure||0)*(rig.pressureScaleRate||0)) : 0;
+      const dmg = Math.max(1, rig.dmgPerTick + pressureBonus);
       enemy.hp = Math.max(0, enemy.hp - dmg);
       updateEnemyHpBar(); popDamage('-'+dmg, 'rig');
       Sound.hit();
