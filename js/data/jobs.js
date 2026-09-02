@@ -238,11 +238,20 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // 상환 비율, 페널티 완화, 황금고블린 이벤트)은 relics.js에 헬퍼 함수로
       // 구현했다 — getCurseCount/getCurseRewardMult 같은 기존 "메타 자원 집계"
       // 함수들과 같은 위치·같은 패턴이라 자연스럽게 어울린다.
-      {id:'jester_debtor', name:'외상 도박사', icon:'📒',
-        desc:'빚을 내서 순간적으로 강해지는 도박사. 당장 세지는 대신, 언젠가 반드시 청산해야 한다 — 너무 오래 미루면 빚쟁이가 직접 찾아온다.',
-        masteryName:'복리의 굴레', masteryDesc:'남은 빚에 매 층 이자가 붙어 서서히 불어난다. 갚은 비율만큼 대출의 페널티가 즉시 완화되며, 완전히 갚으면 대출로 얻은 힘도 함께 회수된다.', masterySkillId:'mastery_debtcycle',
-        activeName:'대출', activeDesc:'소액/중액/거액 대출 중 하나를 걸어 즉시 강해지는 대신 빚을 진다(중복 대출로 스택 가능).', activeSkillIds:['jesterLoanSmall','jesterLoanMedium','jesterLoanLarge'],
-        skillLevels: {12:'jesterDebtFreeze', 15:'jesterAllInLoan'}},
+      // [교체됨] 외상 도박사(jester_debtor)는 사용자 요청으로 대출/이자 경제
+      // 시스템을 전면 폐기하고 "불운의 채권자"로 교체되었다. mastery_debtcycle/
+      // jesterLoanSmall 등 구버전 SKILLDB 항목은 삭제하지 않고 남겨둔다(레거시
+      // 세이브 크래시 방지) — 단지 JOB_SPECIALIZATIONS 목록에서만 빠져 새
+      // 캐릭터는 더 이상 선택할 수 없다.
+      //
+      // 불운의 채권자(jester_debtcollector): 운 스킬이 실패할 때마다 쌓이는
+      // "채무" 스택을 몰아서 청산하는 하이리스크 분기. 1차 스킬 로직은 건드리지
+      // 않고 결과만 지켜보는 훅(addLuckDebtStack)이라 1차 리뉴얼과 호환된다.
+      {id:'jester_debtcollector', name:'불운의 채권자', icon:'🩸',
+        desc:'운이 나쁠수록 오히려 반긴다. 실패는 그저 손해가 아니라, 몰아서 갚아낼 채무일 뿐이다.',
+        masteryName:'불운의 장부', masteryDesc:'운 스킬이 실패할 때마다 "채무" 스택이 쌓인다(최대 5, 전투 중 유지).', masterySkillId:'mastery_luckdebt',
+        activeName:'청산', activeDesc:'쌓인 채무를 전량 소모해, 채무 수에 비례한 확정 크리티컬을 꽂는다.', activeSkillId:'jesterSettle',
+        skillLevels: {12:'jesterReceivable', 15:'jesterBankruptcy'}},
     ],
   };
   function getSpecialization(p){

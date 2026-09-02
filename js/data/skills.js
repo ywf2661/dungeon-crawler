@@ -154,16 +154,28 @@ export(전역): SKILLDB
     worldenderprotocol: {name:'종말 프로토콜', mp:18, desc:'가동 중인 장치를 세상의 끝을 상정한 위력으로 폭파시킨다. 폭발 직후 곧바로 새로운 포탑이 무료로 재전개된다. 장치가 없으면 예비 폭발물을 투척한다',
       type:'detonaterig', noRigMult:1.8, burstMult:3.0, guaranteedRedeploy:true, redeployRigName:'명공의 포탑', redeployRigTurns:4, redeployRigMult:1.0},
     // 도박사 — 숫자 대신 운을 정면으로 다루는 고위험 고보상 직업
+    // 1차 리뉴얼(사용자 요청 — 스킬끼리 시너지를 억지로 엮기보다, 각 스킬의
+    // "확률 구조" 자체를 서로 다르게 만들어 결을 구분했다). 기존 id는 그대로
+    // 재사용한다(메카닉 1차 리뉴얼 때와 동일한 패턴 — 저장 데이터 호환).
     coinflip: {name:'동전 던지기', mp:3,  desc:'운명의 동전을 던진다. 50% 확률로 2배의 피해를 입히고, 50% 확률로 완전히 빗나간다',
       type:'coinflip', mult:1.0, chance:0.5, critMult:2.0, luck:true},
-    fateshift: {name:'운명 조작', mp:6,  desc:'운명의 흐름을 뒤틀어, 다음에 사용할 운 스킬(동전 던지기·도박·마지막 카드 등)의 성공 확률과 배율을 크게 끌어올린다',
-      type:'fateshift', chanceBonus:0.3, multBonus:0.6},
+    // [리뉴얼] 운명 조작 → 야바위. 컵 게임처럼 3분기 판정(완전실패/적중/간파)이라
+    // 동전 던지기의 단순 이진법과 확실히 다르다. "간파"는 exposedTurns/
+    // exposePierce(기존 필드, data/equipment.js의 getEffectiveEnemyDef가 이미
+    // 소비)를 재사용해 새 코드 없이 급소노출 효과를 낸다. 새 타입 'shellgame'.
+    fateshift: {name:'야바위', mp:6, desc:'컵 안의 주사위를 재빠르게 섞는다. 완전히 놓치거나(무피해), 적당히 맞히거나(1.5배), 완벽하게 간파해(2.8배) 급소를 드러낼 수도 있다',
+      type:'shellgame', missChance:0.34, hitChance:0.33, hitMult:1.5, greatMult:2.8, greatExposeTurns:2, greatExposePierce:0.2, luck:true},
     wildcard: {name:'운명의 주사위', mp:9,  desc:'운명의 주사위를 던진다. 나온 눈(1~6)이 클수록 강력한 피해를 입힌다',
       type:'dicecast', diceMults:[0.6,1.1,1.7,2.4,3.2,4.5], luck:true},
-    gamble: {name:'도박', mp:5,  desc:'가진 MP를 모두 걸고 도박을 벌인다. 성공하면 건 MP에 비례해 폭발적인 피해를 주지만, 실패하면 반동으로 자신도 크게 다친다',
-      type:'gamble', chance:0.5, mult:3.6, selfMult:2.2, luck:true},
-    finalcard: {name:'마지막 카드', mp:12, desc:'체력이 낮을수록 성공률과 배율이 극단적으로 치솟는 필살의 패. 실패해도 반동은 크지 않다',
-      type:'finalcard', baseChance:0.35, maxChance:0.95, baseMult:2.0, maxMult:6.0, defPierce:0.2, failSelfRatio:0.08, luck:true, cooldown:3},
+    // [리뉴얼] 도박 → 승부수. 기존 MP 전액 스테이크 구조는 그대로 두고 확률/
+    // 배율만 극단으로 밀어붙였다(50%/3.6배 → 25%/7.0배) — 동전 던지기의
+    // "무난한 반반"과 겹치지 않는 "거의 안 터지지만 터지면 판이 뒤집히는" 결.
+    gamble: {name:'승부수', mp:8,  desc:'모든 것을 걸고 필사의 한 수를 던진다. 성공률은 낮지만(25%) 터지면 압도적인 피해가 터진다',
+      type:'gamble', chance:0.25, mult:7.0, selfMult:2.0, luck:true},
+    // [리뉴얼] 성공 시 자힐(healOnSuccessPct)을 추가 — 벼랑 끝에서 역전하는
+    // 느낌을 강화했다. 나머지 HP 스케일링 구조는 그대로.
+    finalcard: {name:'마지막 카드', mp:12, desc:'체력이 낮을수록 성공률과 배율이 극단적으로 치솟는 필살의 패. 실패해도 반동은 크지 않다. 성공하면 그 기세로 스스로도 크게 회복한다',
+      type:'finalcard', baseChance:0.35, maxChance:0.95, baseMult:2.0, maxMult:6.0, defPierce:0.2, failSelfRatio:0.08, healOnSuccessPct:0.15, luck:true, cooldown:3},
     // 환영술사(도박사+마법사)
     illusionbolt:  {name:'환영의 화살', mp:8,  desc:'환영이 섞인 마력의 화살을 쏜다. 50% 확률로 2.4배의 피해와 화상을 입히고, 50% 확률로 완전히 빗나간다',
       type:'coinflip', magic:true, mult:1.3, critMult:2.4, chance:0.5, luck:true,
@@ -698,18 +710,47 @@ export(전역): SKILLDB
     // 새 타입 'goldbet'로 처리한다(combat/player-actions.js).
     jesterGoldBet: {name:'베팅', mp:10, type:'goldbet', stakePct:0.1, stakeCap:2000, successChance:0.5, baseMult:1.4, stakeBonusMult:0.5, payoutMult:2.0,
       desc:'소지 골드의 10%(최대 2000G)를 판돈으로 건다. 성공하면 판돈의 2배를 얻고 판돈에 비례한 추가 피해가 들어가지만, 실패하면 판돈만 그대로 잃고 피해는 없다. 골드가 없으면 그냥 평범한 일격이 나간다.'},
-    // 레벨12 "촉": 기존 fateshift 타입을 그대로 재사용한다(운명 조작과 완전히
-    // 동일한 메커니즘 — player.fateBoostChance/fateBoostMult를 세워두면 다음
-    // 운 스킬(coinflip/goldbet 등)이 자동으로 소비한다). 신규 로직 불필요.
-    jesterHunch: {name:'촉', mp:7, type:'fateshift', chanceBonus:0.3, multBonus:0.5,
-      desc:'다음에 걸 승부의 흐름이 어렴풋이 보인다. 다음 베팅/올인의 성공 확률이 크게 오르고, 판돈 보너스 피해 배율도 함께 오른다.'},
+    // [리뉴얼] 촉 → 정보료. 기존엔 MP만 쓰는 범용 fateshift 재탕이라 황금
+    // 도박사만의 색깔(골드)이 전혀 없었다. 이제 골드를 직접 지불해 다음
+    // 베팅/올인을 사실상 확정시키는 스킬로 바꿨다 — 새 타입 'goldinfofee'.
+    // 내부적으로는 여전히 player.fateBoostChance/fateBoostMult를 세팅해
+    // goldbet 타입이 그대로 소비하므로(위 jesterGoldBet 주석 참고) 소비 로직은
+    // 손댈 필요가 없다.
+    jesterHunch: {name:'정보료', mp:3, type:'goldinfofee', goldCostPct:0.4, goldCostMin:20, chanceBonus:0.4, multBonus:0.5,
+      desc:'정보상에게 거금을 찔러준다(소지 골드의 40% 이상, 최소 20G). 다음 베팅/올인의 성공률이 사실상 확정에 가깝게 오르고, 판돈 보너스 배율도 함께 오른다.'},
     // 레벨15 궁극기 "올인": 소지 골드 전액을 건다. 성공 확률은 베팅보다 낮지만
     // (판돈이 훨씬 크므로) 기본 피해와 판돈 보너스 배율 모두 더 강하다. 베팅과
     // 동일한 'goldbet' 타입을 재사용하되 수치만 다르게 잡았다.
     jesterAllIn: {name:'올인', mp:16, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
       desc:'소지 골드 전액(최대 10000G)을 건다. 성공하면 강력한 피해와 함께 판돈의 2배를 돌려받지만, 실패하면 판돈만큼 잃는다. 골드가 없으면 그냥 평범한 강타가 나간다.'},
 
-    // ---------- 외상 도박사(jester_debtor) ----------
+    // ---------- [교체됨] 외상 도박사(jester_debtor) → 불운의 채권자 ----------
+    // 사용자 요청으로 대출/이자 경제 시스템을 전면 폐기하고 전투 메커니즘으로
+    // 재설계했다. mastery_debtcycle/jesterLoanSmall 등 구버전 SKILLDB 항목은
+    // 삭제하지 않고 아래에 그대로 남겨둔다(레거시 세이브 크래시 방지) — 단지
+    // JOB_SPECIALIZATIONS 목록에서만 빠져 새 캐릭터는 더 이상 선택할 수 없다.
+    //
+    // 마스터리 "불운의 장부": 운 스킬(동전 던지기/야바위 완전실패/승부수/
+    // 마지막카드/베팅·올인)이 실패할 때마다 battleFlags.jesterDebtStacks가
+    // 쌓인다(최대 5, 전투 중 유지) — combat/player-actions.js의
+    // addLuckDebtStack()이 각 실패 분기에서 호출한다. 1차 스킬 로직 자체는
+    // 건드리지 않고 결과만 지켜보는 훅이라 호환성이 좋다(사용자 요청 반영).
+    mastery_luckdebt: {name:'불운의 장부', mp:0, type:'passive',
+      desc:'운 스킬이 실패할 때마다 "채무" 스택이 쌓인다(최대 5, 전투 중 유지). 청산/파산 선언으로 한꺼번에 갚아낼 수 있다.'},
+    // 레벨10 액티브 "청산": 쌓인 채무를 전량 소모해 스택 수에 비례한 확정
+    // 크리티컬을 꽂는다. 새 타입 'debtsettle'.
+    jesterSettle: {name:'청산', mp:7, type:'debtsettle', baseMult:0.4, stackMult:0.5, defPierce:0.15,
+      desc:'쌓인 채무를 한꺼번에 청산한다. 채무가 많이 쌓여 있을수록 훨씬 강력한 확정 크리티컬이 터진다.'},
+    // 레벨12 "미수금"(패시브): 채무를 들고 있는 동안 스택당 공격력 보너스.
+    // combat/enemy-turn.js의 effectiveAtk()에 getReceivableAtkBonus()로 훅.
+    jesterReceivable: {name:'미수금', mp:0, type:'passive', atkBonusPerStack:0.03,
+      desc:'채무를 짊어지고 있는 동안 오히려 이를 갈며 강해진다(스택 1당 공격력 +3%, 최대 +15%).'},
+    // 레벨15 궁극기 "파산 선언": 채무를 즉시 최대(5건)로 확정한 뒤 강화된
+    // 청산을 발동한다. 대신 스스로도 반동 피해를 입는다. 새 타입 'bankruptcy'.
+    jesterBankruptcy: {name:'파산 선언', mp:15, type:'bankruptcy', cooldown:4, forceStacks:5, baseMult:1.0, stackMult:0.7, defPierce:0.3, selfHpCostPct:0.12,
+      desc:'감당 못할 걸 알면서도 채무를 극한까지 밀어붙인다. 채무를 즉시 최대(5건)로 확정한 뒤 압도적으로 청산하지만, 스스로도 그 대가를 치른다.'},
+
+    // ---------- [레거시] 옛 외상 도박사(jester_debtor) — 더 이상 선택 불가 ----------
     // 실제 대출/이자/상환/봉인 로직은 relics.js에 헬퍼 함수로 구현했다
     // (DEBTOR_LOANS 데이터, applyDebtorLoan/clearDebtorLoans/getDebtRepaymentRatio
     // 등 — getCurseCount류 기존 메타 자원 집계 함수와 동일한 위치·패턴).

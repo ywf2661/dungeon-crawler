@@ -769,7 +769,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function effectiveAtk(){
     let a = player.atk;
     if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
-    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus()));
+    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus() + getReceivableAtkBonus()));
     // 광전사의 반지(사용자 요청 — 장비 강화): HP 40% 이하일 때 공격력 +30%.
     if(typeof getEnhancementsFor==='function' && player.equipment && player.equipment.accessory){
       const accId = player.equipment.accessory;
@@ -831,6 +831,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function getCreedAtkBonus(){
     if(!(battleFlags && battleFlags.creed)) return 0;
     return Math.min(5, battleFlags.creedStacks||0) * 0.05;
+  }
+  // 미수금(jesterReceivable, 불운의 채권자 레벨12): 채무 스택 1당 공격력 +3%(최대 +15%).
+  function getReceivableAtkBonus(){
+    if(!(player.skills && player.skills.includes('jesterReceivable'))) return 0;
+    if(!battleFlags || !battleFlags.jesterDebtStacks) return 0;
+    return Math.min(5, battleFlags.jesterDebtStacks) * 0.03;
   }
   // 행운의 파도(mastery_luckwave): 운 게이지(-3~+3)를 공격력 배율로 환산한다
   // (게이지 1당 ±7%, 최대 ±21%).

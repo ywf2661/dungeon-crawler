@@ -27,9 +27,9 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
        relics.js(showRelicAltar/showCurseAltar), shop.js(openShop),
        combat/battle-setup.js(startBattle) — 순환 의존이라 함수 호출 시점에만 참조.
 주의: 상점/휴식 노드는 사용자가 확정한 A안(무제한 자유 이용 금지, 노드로만 접근)을
-     따른다. 외상 도박사(jester_debtor)의 빚/황금고블린 시스템은 리뉴얼 전까지
-     이 설계에서 완전히 제외한다(관련 depth 기반 유예기간 로직은 손대지 않고
-     그대로 둠 — 현재 admin 전용 잠금 상태라 실사용 영향 없음).
+     따른다. [구버전 메모] 옛 외상 도박사(jester_debtor)의 빚/황금고블린 시스템은
+     "불운의 채권자"로 전면 교체되어 더 이상 선택되지 않는다(관련 depth 기반
+     유예기간 로직은 레거시 세이브 호환용으로 손대지 않고 그대로 둠).
 */
 
   // 노드 종류. weight는 "특수 배치(relic/curse)를 제외한 나머지 칸"에 쓰는
