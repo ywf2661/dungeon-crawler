@@ -324,6 +324,23 @@
   }
    .enemy-stage.hit svg, .enemy-stage.hit img{animation:hitshake .32s;}
    .enemy-stage.dying svg, .enemy-stage.dying img{animation:diefade .6s forwards;}
+   /* 적 공격 연출(사용자 요청) — 앞으로 살짝 튀어나왔다 돌아오는 동작.
+      --ground-offset(PNG 보정치)는 기존 hitshake 패턴과 동일하게 calc()로 얹는다. */
+   .enemy-stage.attacking svg, .enemy-stage.attacking img{animation:enemyLunge .38s ease;}
+   @keyframes enemyLunge{
+     0%{ transform:translateY(var(--ground-offset,0px)) scale(1); }
+     35%{ transform:translateY(calc(var(--ground-offset,0px) + 8px)) scale(1.08); }
+     100%{ transform:translateY(var(--ground-offset,0px)) scale(1); }
+   }
+   /* 플레이어가 맞을 때 상태바가 흔들리는 연출(사용자 요청). */
+   #statusbar.player-hit{ animation:playerHitShake .35s ease; }
+   @keyframes playerHitShake{
+     0%,100%{ transform:translateX(0); }
+     20%{ transform:translateX(-4px); }
+     40%{ transform:translateX(4px); }
+     60%{ transform:translateX(-3px); }
+     80%{ transform:translateX(3px); }
+   }
   @keyframes hitshake{
     0%,100%{transform:translate(0,var(--ground-offset,0px));}
     20%{transform:translate(-6px, calc(var(--ground-offset,0px) + 2px)) rotate(-2deg);}
