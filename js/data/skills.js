@@ -41,7 +41,7 @@ export(전역): SKILLDB
     // 않고 넘기면 내 다음 턴 시작 시 자동으로 "폭주 방출"된다(combat/battle-fx.js
     // 의 resetCommandUI() 안 오버히트 체크 참고).
     mechanicIgnite: {name:'보일러 점화', mp:6, desc:'포탑을 가동한다. 배치 즉시 소량 피해와 함께 첫 사격도 동시에 나가고, 이후 3턴간 매 턴 피해와 함께 압력을 쌓는다(턴당 +18). 포탑의 사격은 방어력을 무시하며, 쌓인 압력이 높을수록 위력도 함께 강해진다',
-      type:'deployrig', mult:0.5, rigKind:'turret', rigName:'자동 포탑', rigTurns:4, rigMult:0.65, rigPressurePerTick:18, pressureOnDeploy:15,
+      type:'deployrig', mult:0.3, rigKind:'turret', rigName:'자동 포탑', rigTurns:4, rigMult:0.65, rigPressurePerTick:18, pressureOnDeploy:15,
       instantFirstTick:true, pressureScaled:true, pressureScaleRate:0.006},
     mechanicValve: {name:'밸브 개방', mp:5, desc:'쌓인 압력을 전부 소모해, 압력량에 비례한 즉발 피해를 가한다(압력이 많을수록 강력)',
       type:'pressurevent', ventMode:'attack', minPressure:10, dmgPerPressure:0.028},
