@@ -731,6 +731,26 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     Sound.statusApply(spec.type);
     updateStatusBadges();
   }
+  // 전염된 상처(relic_infectedwound): 공격 적중마다 확률로 감염 도트를 걸거나
+  // 중첩시킨다(최대 5중첩). 기존 applyDot()은 같은 종류 재적용 시 그냥
+  // 갱신(overwrite)만 하는 방식이라 "중첩"이 안 돼서 별도 함수로 뺐다.
+  // equipment.js의 consumeOnHitBonuses()(공격 행동 1회당 정확히 한 번 호출
+  // 보장)에서 호출한다.
+  function applyInfectedWoundOnHit(){
+    const chance = getRelicSum('infectedWoundChance');
+    if(chance<=0 || Math.random()>=chance || !enemy) return;
+    if(!enemy.dots) enemy.dots = [];
+    const existing = enemy.dots.find(d=>d.type==='infection');
+    const stacks = Math.min(5, (existing ? existing.stacks : 0) + 1);
+    const dmgPerTurn = Math.max(1, Math.round(effectiveAtk()*0.10*stacks));
+    if(existing){ existing.turns = 3; existing.dmgPerTurn = dmgPerTurn; existing.stacks = stacks; }
+    else { enemy.dots.push({type:'infection', turns:3, dmgPerTurn, stacks, label:'전염된 상처'}); }
+    // 전용 이펙트/사운드 자산이 없어 출혈(bleed) 것을 재사용한다(내부 type은
+    // 'infection'으로 별도 유지되어 뱃지/스택 로직엔 영향 없다).
+    playStatusFx('bleed');
+    Sound.statusApply('bleed');
+    updateStatusBadges();
+  }
   // 스킬에 정의된 단일 dot(s.dot) 또는 다중 dot(s.dots) 배열을 모두 함께 적용하고,
   // 부여된 상태이상 이름들을 메시지용 문자열로 반환한다
   function applySkillDots(s){

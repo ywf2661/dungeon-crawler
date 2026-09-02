@@ -113,6 +113,11 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     relic_emptysack:   {type:'wild', name:'빈 자루의 각오', desc:'물약/상급 물약/에테르가 모두 떨어지면, 벼랑 끝에 몰린 만큼 가한 피해가 크게 오른다.', effect:{emptySackDmg:true}},
 
     relic_merchantseal:{type:'blessing', name:'상인의 그림자 인장', desc:'상점에서 아이템을 구매할 때마다 공격력이 오른다(최대 10스택, 스택당 현재 공격력의 +2%).', effect:{merchantSeal:true}},
+
+    // 신규 변수(wild) 유물 2종(사용자 요청 — 재미 기획 라운드). 나머지 3안
+    // (동전의 양면/부서진 저울/낙인찍힌 주사위)은 이번엔 보류.
+    relic_scaleweight:  {type:'wild', name:'저울추', desc:'자신의 체력 비율이 적보다 낮으면 가하는 피해 +25%, 반대로 적의 체력 비율이 더 낮으면 오히려 -15%. 체력이 같으면 아무 변화 없다.', effect:{scaleWeight:true}},
+    relic_infectedwound:{type:'wild', name:'전염된 상처', desc:'공격이 적중할 때마다 20% 확률로 적에게 감염을 걸거나 중첩시킨다(최대 5중첩, 중첩마다 도트 피해가 늘어난다).', effect:{infectedWoundChance:0.20}},
   };
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
   const RELIC_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type!=='curse');

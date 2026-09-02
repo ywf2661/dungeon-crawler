@@ -262,10 +262,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     dots.forEach(d=>{
       const b = document.createElement('div');
       b.className = 'status-badge '+d.type;
-      const icon = d.type==='poison' ? '☠' : (d.type==='burn' ? '🔥' : '🩸');
-      b.textContent = `${icon} ${d.label} ${d.turns}턴`;
+      const icon = d.type==='poison' ? '☠' : (d.type==='burn' ? '🔥' : (d.type==='infection' ? '🦠' : '🩸'));
+      const stackText = d.type==='infection' ? ` x${d.stacks}` : '';
+      b.textContent = `${icon} ${d.label}${stackText} ${d.turns}턴`;
       box.appendChild(b);
-      stage.classList.add('dot-'+d.type);
+      // 전염(infection)은 전용 CSS 펄스 애니메이션이 없어서 출혈(bleed)
+      // 이펙트를 그대로 재사용한다(뱃지 아이콘/텍스트는 위에서 이미 구분됨).
+      stage.classList.add('dot-'+(d.type==='infection' ? 'bleed' : d.type));
     });
     if(enemy && enemy.exposedTurns>0){
       const b = document.createElement('div');

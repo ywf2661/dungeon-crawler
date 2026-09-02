@@ -522,6 +522,19 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     const missing = 0.75-ratio;
     return 1 + missing*missing*2.5;
   }
+  // 저울추(relic_scaleweight): 자신과 적의 체력 "비율"을 비교한다(절대 수치가
+  // 아니라 비율이라, 서로 최대체력이 달라도 공정하게 비교된다). 내가 더
+  // 위태로우면 필사적으로 몰아치는 느낌(+25%), 적이 더 위태로우면 오히려
+  // 신중해지는 느낌(-15%)으로 설계했다.
+  function getScaleWeightMult(){
+    if(!hasRelicFlag('scaleWeight')) return 1;
+    if(!enemy || player.maxhp<=0 || enemy.maxhp<=0) return 1;
+    const myRatio = player.hp/player.maxhp;
+    const enemyRatio = enemy.hp/enemy.maxhp;
+    if(myRatio < enemyRatio) return 1.25;
+    if(enemyRatio < myRatio) return 0.85;
+    return 1;
+  }
   // 빈 자루의 각오: 물약/상급 물약/에테르가 전부 0개일 때만 발동하는 실시간 조건부 배율.
   // 포션을 쓰는 순간 발동하고, 다시 채워 넣으면 곧바로 해제되는 동적 효과다.
   function getEmptySackMult(){
@@ -546,6 +559,7 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       if(stacks>0){ mult *= (1 + stacks*0.2); battleFlags.flaskStacks = 0; }
       if(battleFlags.revengeArmed){ mult *= 1.3; battleFlags.revengeArmed = false; }
     }
+    if(typeof applyInfectedWoundOnHit==='function') applyInfectedWoundOnHit();
     return mult;
   }
   function applyOutgoingDamageMods(dmg, ctx){
@@ -557,6 +571,7 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(ctx.type!=='basic') mult *= (1 + getRelicSum('skillDmgPctMult'));
     if(enemy && enemy.isBoss) mult *= (1 + getRelicSum('bossDmgPctMult'));
     mult *= getLowHpScalingMult();
+    mult *= getScaleWeightMult();
     mult *= getHourglassMult();
     mult *= getEmptySackMult();
     mult *= (ctx.onHitMult||1);
