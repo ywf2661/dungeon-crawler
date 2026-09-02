@@ -2,7 +2,7 @@
 /*
 몬스터 도감 데이터 테이블(정적 데이터, 로직 없음).
 의존성 없음.
-export(전역): MONSTERS, BOSSES, LOCATIONS
+export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS
 */
 
   /* ============ 몬스터 도감 ============ */
@@ -33,6 +33,27 @@ export(전역): MONSTERS, BOSSES, LOCATIONS
     {type:'jack',  name:'회랑의 인형수집가 잭',     minDepth:22, hp:95, atk:15, def:10, spd:3,  exp:70, gold:[32,50], skills:['heal']},
     {type:'demon',   name:'회랑의 어릿광대',     minDepth:26, hp:80, atk:22, def:10, spd:8,  exp:90, gold:[45,65], skills:['smash','curse']},
   ];
+
+  // 구간(타이어)별 몬스터 풀(사용자 요청 — 몬스터 강함이 층수로만 정해지다
+  // 보니, 강타(smash) 계열처럼 센 몬스터가 그 구간 "주력"으로 자주 나오는
+  // 문제가 있었다. 이제 구간마다 "주력"(native) 풀과 "희귀 조우"(reach) 풀을
+  // 나눈다 — native는 그 구간에서 흔하게, reach는 낮은 확률로만 나온다(다음
+  // 구간을 미리 살짝 맛보여주는 긴장감용). combat/battle-setup.js의
+  // pickWeightedMonster()가 이 풀을 소비한다. tier3/4는 기존 몬스터 수
+  // 자체가 이 두 구간에 새로 추가된 것 없이 재사용되므로(더 강한 신규
+  // 몬스터가 아직 없음) reach를 비워뒀다 — depth 스케일링만으로 충분히
+  // 강해진다.
+  const TIER_MONSTER_POOLS = [
+    { native:['slime','goblin','bat','bandit','wolf','spider','skeleton'],
+      reach:['ghost','orc','mimic','witch','knight','ogre'], reachChance:0.08 },
+    { native:['ghost','orc','mimic','witch','knight','ogre','harpy','wraith','cultist','egg'],
+      reach:['golem'], reachChance:0.08 },
+    { native:['harpy','wraith','cultist','egg','golem','jack'],
+      reach:['demon'], reachChance:0.08 },
+    { native:['egg','golem','jack','demon'], reach:[], reachChance:0 },
+    { native:['golem','jack','demon'], reach:[], reachChance:0 },
+  ];
+
   const BOSSES = [
     // ---------- 신규 8종 보스로 전면 교체(사용자 요청) ----------
     // 기존 8마리(붉은 유해룡/회랑의 리치/심연의 망령여왕/오우거 대족장/심해의
