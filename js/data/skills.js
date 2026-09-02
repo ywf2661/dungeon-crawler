@@ -40,8 +40,9 @@ export(전역): SKILLDB
     // 다를 게 없다는 피드백을 반영했다. 압력을 100까지 채운 채 방출하지
     // 않고 넘기면 내 다음 턴 시작 시 자동으로 "폭주 방출"된다(combat/battle-fx.js
     // 의 resetCommandUI() 안 오버히트 체크 참고).
-    mechanicIgnite: {name:'보일러 점화', mp:6, desc:'포탑을 가동한다. 즉시 소량 피해를 준 뒤, 이후 4턴간 매 턴 소량 피해와 함께 압력을 쌓는다(턴당 +18)',
-      type:'deployrig', mult:0.5, rigKind:'turret', rigName:'자동 포탑', rigTurns:4, rigMult:0.28, rigPressurePerTick:18, pressureOnDeploy:15},
+    mechanicIgnite: {name:'보일러 점화', mp:6, desc:'포탑을 가동한다. 배치 즉시 소량 피해와 함께 첫 사격도 동시에 나가고, 이후 3턴간 매 턴 소량 피해와 함께 압력을 쌓는다(턴당 +18). 포탑의 사격 위력은 쌓인 압력이 높을수록 함께 강해진다',
+      type:'deployrig', mult:0.5, rigKind:'turret', rigName:'자동 포탑', rigTurns:4, rigMult:0.28, rigPressurePerTick:18, pressureOnDeploy:15,
+      instantFirstTick:true, pressureScaled:true, pressureScaleRate:0.0025},
     mechanicValve: {name:'밸브 개방', mp:5, desc:'쌓인 압력을 전부 소모해, 압력량에 비례한 즉발 피해를 가한다(압력이 많을수록 강력)',
       type:'pressurevent', ventMode:'attack', minPressure:10, dmgPerPressure:0.028},
     mechanicMark: {name:'표적 마킹', mp:8, desc:'적에게 표식을 3턴간 남긴다. 표식이 걸린 동안 압력 방출 스킬(밸브 개방/안전밸브/과압 각성)의 위력이 25% 늘어난다',
