@@ -54,6 +54,7 @@ export(전역): heroBossSvg, svgMonster
     herorogue:  'images/monsters/herorogue.png',
     heropaladin:  'images/monsters/heropaladin.png',
     heromechanic: 'images/monsters/heromechanic.png',
+    herojester: 'images/monsters/herojester.png',
     // 신규 4종 보스(슬레이 더 스파이어식 독특한 디자인) — 아직 실제 그림은
     // 없고 경로만 미리 등록해뒀다. 아래 SVG 폴백이 default:가 아니라 각자
     // 전용 추상 실루엣으로 보이도록 svgMonster()에도 케이스를 추가했다 —
