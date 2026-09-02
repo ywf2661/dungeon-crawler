@@ -948,7 +948,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(s.ventMode==='attack'){
         const edefV = getEffectiveEnemyDef(enemy.def);
         let dmg = Math.max(1, Math.round(player.mag*pressure*s.dmgPerPressure*(1+markBonus)) - Math.round(edefV*0.5));
-        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+        dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, pressureConsumed: pressure});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
         Sound.magic();
@@ -998,7 +998,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.pressure = 100;
       const markBonus = (enemy.markedTurns>0) ? (enemy.markBonus||0.25) : 0;
       let dmg = Math.max(1, Math.round(player.mag*(s.mult + 100*s.dmgPerPressure)*(1+markBonus)) - Math.round(edefU*0.5));
-      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, pressureConsumed: 100});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg,'crit');
       Sound.bomb();
@@ -1101,7 +1101,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       const edefCO = getEffectiveEnemyDef(enemy.def);
       let dmg = Math.max(1, Math.round(player.mag*pressureCO*s.dmgPerPressure) - Math.round(edefCO*0.5));
-      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, pressureConsumed: pressureCO});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg,'crit');
       Sound.bomb();
