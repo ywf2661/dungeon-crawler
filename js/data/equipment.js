@@ -438,6 +438,11 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     }
 
     // 도적 — 밤을 걷는 학살자
+    // (정정) execReady는 실은 이미 살아있었다 — rogueRegisterHit()(물리 적중
+    // 3회 누적 시 무장, combat/player-actions.js 15곳에서 호출)이 정상 작동
+    // 중이었다. 앞서 조사할 때 grep에서 equipment.js를 실수로 빼고 검색해서
+    // 이 함수를 놓치고 "죽은 효과"로 잘못 판단했었다 — 자동 무장 코드는
+    // 제거했다(중복이었음, rogueRegisterHit이 원래 담당).
     const rt = epicSetTier('rogue');
     if(rt>=2 && isPhys && enemy && player.spd>enemy.spd) mult *= 1.25;
     if(rt>=3 && isPhys && battleFlags && battleFlags.execReady){
@@ -447,6 +452,9 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     }
 
     // 성기사 — 최후의 성전
+    // (정정) paladinAwoken도 이미 살아있었다 — checkPaladinAwoken()(HP 50%
+    // 이하 시 무장, combat/enemy-turn.js·battle-setup.js에서 호출)이 정상
+    // 작동 중이었다. 위와 같은 이유로 잘못 판단했었다 — 자동 무장 코드 제거.
     const pt = epicSetTier('paladin');
     if(pt>=2 && hpRatio<=0.5) mult *= 1.25;
     if(pt>=3 && battleFlags && battleFlags.paladinAwoken){

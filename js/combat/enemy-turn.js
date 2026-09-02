@@ -622,6 +622,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       player.hp = Math.max(0, player.hp - mitigated);
       checkPaladinAwoken();
       if(mitigated>0) Sound.hit();
+      // 적 공격 연출(사용자 요청) — 회피/무효화된 경우는 위쪽 dodgeChance
+      // 분기에서 이미 return돼서 여기까지 안 온다. 즉 이 지점에 도달했다는
+      // 것 자체가 "공격이 실제로 진행됐다"는 뜻이라 mitigated 값과 무관하게
+      // (0이어도) 항상 연출한다.
+      lungeEnemy();
+      if(mitigated>0) shakePlayerArea();
 
       // 정예 특성 — 흡혈(가한 피해의 20% 회복)/독성(적중 시 플레이어 중독 3턴 부여).
       if(mitigated>0 && enemy.eliteTraits && enemy.eliteTraits.length){

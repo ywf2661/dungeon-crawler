@@ -5,7 +5,7 @@
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, playComboFinish, playStatusFx, playCastBurst, playBanner,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
-              checkMechanicOverheat, updatePressureGauge
+              checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
      보일러 압력이 100에서 방출되지 않고 넘어갔을 때의 자동 폭주를 처리하고,
      updatePressureGauge()는 #bt-pressure 요소에 압력 수치를 표시한다. 둘 다
@@ -99,6 +99,20 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   function shakeEnemy(){
     const stage = document.getElementById('bt-stage');
     stage.classList.remove('hit'); void stage.offsetWidth; stage.classList.add('hit');
+  }
+
+  // 적이 공격할 때의 연출(사용자 요청) — 적 스프라이트가 살짝 앞으로
+  // 튀어나왔다 돌아오는 동작(lunge)과, 플레이어 쪽 상태바가 맞는 순간
+  // 흔들리는 연출. shakeEnemy()와 완전히 동일한 클래스 토글 패턴이다.
+  function lungeEnemy(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    stage.classList.remove('attacking'); void stage.offsetWidth; stage.classList.add('attacking');
+  }
+  function shakePlayerArea(){
+    const bar = document.getElementById('statusbar');
+    if(!bar) return;
+    bar.classList.remove('player-hit'); void bar.offsetWidth; bar.classList.add('player-hit');
   }
 
   function spawnSlashMark(seed){
