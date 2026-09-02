@@ -152,8 +152,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   }
 
   function renderStatus(){
-    // 빈 그릇(mpZero) 저주: 레벨업/전직 등 어떤 경로로 최대MP가 늘어나든 항상 0으로 되돌린다.
-    if(player && hasRelicFlag('mpZero')){
+    // 빈 그릇(mpZero) 저주 / 일격의 구도자(warrior_purist): 장비 착용, 강화,
+    // 유물 효과, 레벨업 등 어떤 경로로 최대MP가 조금이라도 늘어나든(원천을
+    // 하나하나 막는 대신) 상태를 그릴 때마다 항상 0으로 되돌린다 — 마나가
+    // "생겼다 없어지는" 현상의 원천 차단(사용자 요청).
+    if(player && (hasRelicFlag('mpZero') || player.specialization==='warrior_purist')){
       player.maxmp = 0; player.mp = 0;
     }
     // 회복량 감소(사용자 요청) — 두 출처를 합산한다: ①정예 특성 "저주"(전투 중
