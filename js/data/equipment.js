@@ -163,10 +163,10 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       set3Name:'별의 종말', set3Desc:'MP 10 이상 소모하는 공격 마법 사용 시 피해 +70% (MP 30% 이하면 +40% 추가), 화상 부여/강화'},
     rogue:    {name:'밤을 걷는 학살자',
       set2Name:'그림자 가속', set2Desc:'속도가 적보다 높을 때 모든 물리 피해 +25%',
-      set3Name:'죽음의 연쇄', set3Desc:'물리 공격 적중마다 처형 카운트 누적, 3회 누적 시 다음 공격 피해 +100% (적 HP 30% 이하면 +100% 추가), 방어력 50% 관통'},
+      set3Name:'죽음의 연쇄', set3Desc:'적 HP가 50% 이하로 떨어지면 다음 공격 피해 +100% (적 HP 30% 이하면 +100% 추가), 방어력 50% 관통'},
     paladin:  {name:'최후의 성전',
       set2Name:'신성한 맹세', set2Desc:'HP 50% 이상이면 받는 피해 -15%, HP 50% 이하면 가하는 피해 +25%',
-      set3Name:'최후의 심판', set3Desc:'전투 중 HP 50% 이하가 된 순간부터 피해 +50%, 흡혈 2배, 방어력 40% 관통 (HP 25% 이하 시 1회 추가로 피해 +100%)'},
+      set3Name:'최후의 심판', set3Desc:'전투 중 HP 30% 이하로 한 번이라도 떨어지면 각성해 이후 피해 +50%, 흡혈 2배, 방어력 40% 관통 (HP 25% 이하 시 1회 추가로 피해 +100%)'},
     mechanic: {name:'종말기계 Mk.Ω',
       set2Name:'과부하', set2Desc:'가동 중인 장치(포탑/드론/오메가 유닛)가 있으면 모든 피해 +20%',
       set3Name:'세계종말 프로토콜', set3Desc:'장치가 가동 중인 동안 방어력 40% 관통, 모든 피해 +35%. 압력을 소모하는 스킬(밸브개방/안전밸브/과압각성/임계폭주 등) 사용 시 소모한 압력 10당 피해 +5%(최대 +50%)'},
@@ -438,8 +438,16 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     }
 
     // 도적 — 밤을 걷는 학살자
+    // [리뉴얼] execReady 자동 무장(사용자 요청) — 예전엔 이 플래그를 true로
+    // 만드는 스킬이 어디에도 없어서 3세트 효과가 100% 발동 불가능했다(죽은
+    // 효과). 이제 적 HP가 50% 이하로 떨어지면 자동 무장된다. enemy.hp는 이
+    // 시점에 아직 "이번 타격"의 데미지가 반영되기 전 값이라, 이전 타격들로
+    // 이미 50% 이하가 된 다음 타격부터 자연스럽게 발동한다.
     const rt = epicSetTier('rogue');
     if(rt>=2 && isPhys && enemy && player.spd>enemy.spd) mult *= 1.25;
+    if(rt>=3 && isPhys && enemy && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5 && battleFlags){
+      battleFlags.execReady = true;
+    }
     if(rt>=3 && isPhys && battleFlags && battleFlags.execReady){
       mult *= 2.0;
       if(enemy && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.3) mult *= 2.0;
@@ -447,8 +455,15 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     }
 
     // 성기사 — 최후의 성전
+    // [리뉴얼] paladinAwoken 자동 무장(사용자 요청) — 마찬가지로 이 플래그를
+    // true로 만드는 스킬이 없어서 3세트 효과가 죽어있었다. HP 30% 이하로
+    // 떨어지면 자동으로 "각성"하며, 한 번 각성하면 이후 계속 유지된다(전투
+    // 내내 다시 꺼지지 않음 — 리셋 코드가 원래 없었다).
     const pt = epicSetTier('paladin');
     if(pt>=2 && hpRatio<=0.5) mult *= 1.25;
+    if(pt>=3 && hpRatio<=0.3 && battleFlags){
+      battleFlags.paladinAwoken = true;
+    }
     if(pt>=3 && battleFlags && battleFlags.paladinAwoken){
       mult *= 1.5;
       if(hpRatio<=0.25 && !battleFlags.paladinUltUsed){
