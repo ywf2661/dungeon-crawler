@@ -169,7 +169,7 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       set3Name:'최후의 심판', set3Desc:'전투 중 HP 50% 이하가 된 순간부터 피해 +50%, 흡혈 2배, 방어력 40% 관통 (HP 25% 이하 시 1회 추가로 피해 +100%)'},
     mechanic: {name:'종말기계 Mk.Ω',
       set2Name:'과부하', set2Desc:'가동 중인 장치(포탑/드론/오메가 유닛)가 있으면 모든 피해 +20%',
-      set3Name:'세계종말 프로토콜', set3Desc:'장치가 가동 중인 동안 방어력 40% 관통. 자폭 기동 시 위력이 대폭 강화되며, 사용 즉시 새로운 포탑이 무료로 재전개된다'},
+      set3Name:'세계종말 프로토콜', set3Desc:'장치가 가동 중인 동안 방어력 40% 관통, 모든 피해 +35%. 압력을 소모하는 스킬(밸브개방/안전밸브/과압각성/임계폭주 등) 사용 시 소모한 압력 10당 피해 +5%(최대 +50%)'},
     jester:   {name:'운명의 마지막 패',
       set2Name:'판돈 상승', set2Desc:'운 스킬 성공 시 다음 운 스킬 피해 +30% (최대 2중첩, 실패 시 중첩 초기화)',
       set3Name:'세계의 마지막 카드', set3Desc:'운 스킬 성공 3회마다 다음 운 스킬 성공 확률 최소 90%, 피해 +150%, 방어력 60% 관통, 실패해도 자해 피해 없음'},
@@ -457,10 +457,19 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       }
     }
 
-    // 메카닉 — 종말기계 Mk.Ω (가동 중인 장치가 있을 때 화력이 오른다. 자폭 기동의 강화/재전개는 detonaterig 핸들러에서 처리)
+    // 메카닉 — 종말기계 Mk.Ω (가동 중인 장치가 있을 때 화력이 오른다)
+    // [리뉴얼] 3세트 효과 교체(사용자 요청) — 옛 데토네이터(자폭 기동) 전용
+    // 효과라 지금 선택 가능한 폭주 화부/축압 기술자로는 절대 발동할 수 없는
+    // 죽은 효과였다. 압력을 소모하는 스킬 전반(밸브개방/안전밸브/과압각성/
+    // 임계폭주)에 걸리는 "압력 소모량 비례 피해 보너스"로 교체했다 — 1차와
+    // 양쪽 2차 분기 전부를 커버한다. ctx.pressureConsumed는 각 핸들러가
+    // applyOutgoingDamageMods 호출 시 실어준다(없으면 그냥 0으로 무시됨).
     const mct = epicSetTier('mechanic');
     if(mct>=2 && battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0){
       mult *= mct>=3 ? 1.35 : 1.2;
+    }
+    if(mct>=3 && ctx.pressureConsumed){
+      mult *= 1 + Math.min(0.5, Math.floor(ctx.pressureConsumed/10)*0.05);
     }
 
     // 도박사 — 운명의 마지막 패
