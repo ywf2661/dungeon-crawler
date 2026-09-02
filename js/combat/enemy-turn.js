@@ -519,7 +519,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         return;
       }
 
-      const dodgeChance = getSpecialSum('dodgeChance') + getBloodPactDodgeBonus() + getOverheatDodgeBonus();
+      const dodgeChance = getSpecialSum('dodgeChance') + getBloodPactDodgeBonus() + getOverheatDodgeBonus() + getSpdDodgeBonus();
       if(dodgeChance>0 && Math.random()<dodgeChance){
         playBanner('회피!','dodge');
         setBattleMsg(label, `${player.name}이(가) 재빠르게 공격을 피했다!`);
@@ -798,6 +798,17 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function getOverheatDodgeBonus(){
     if(!(battleFlags && battleFlags.overheatDodgeStacks)) return 0;
     return Math.min(10, battleFlags.overheatDodgeStacks) * 0.02;
+  }
+  // 속도 스탯 활용(사용자 요청 — 도망 확률/마녀의 시계 유물 외엔 쓸모가 없었음).
+  // 적과의 속도 차이만큼 회피율을 준다(차이 1당 +0.5%p). 너무 세지지 않도록
+  // 15%p 상한을 둔다 — 다른 회피 보너스(혈서 최대 35%p, 과열내성 최대 20%p)와
+  // 마찬가지로 이 항목 자체의 상한이며, dodgeChance 합산식(enemy-turn.js)에서
+  // 다른 소스와 그대로 더해진다.
+  function getSpdDodgeBonus(){
+    if(!player || !enemy) return 0;
+    const diff = (player.spd||0) - (enemy.spd||0);
+    if(diff<=0) return 0;
+    return Math.min(0.15, diff*0.005);
   }
   // 시간 왜곡(mastery_timewarp): 마녀의 시계 유물과 동일한 "이번 턴 이미 사용함" 안전
   // 장치(battleFlags.witchClockUsedThisTurn)를 공유하는 고정 20% 확률 추가 행동.
