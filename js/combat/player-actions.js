@@ -184,6 +184,16 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     renderStatus();
   }
 
+  // 불운의 채권자(mastery_luckdebt, 도박사 2차): 운 스킬이 실패할 때마다
+  // battleFlags.jesterDebtStacks를 쌓는다(최대 5, 전투 중 유지). 1차 스킬
+  // 로직 자체는 건드리지 않고 각 실패 분기에서 호출만 하는 훅이다.
+  function addLuckDebtStack(){
+    if(!(player.skills && player.skills.includes('mastery_luckdebt'))) return;
+    if(!battleFlags) return;
+    battleFlags.jesterDebtStacks = Math.min(5, (battleFlags.jesterDebtStacks||0)+1);
+    if(typeof updatePlayerStatusBadges==='function') updatePlayerStatusBadges();
+  }
+
   function playerSkill(key){
     if(battleOver) return;
     // 저주술사(mastery_curseweaver)는 스킬 봉인(침묵의 서약)을 저주 개수만큼의 확률로
@@ -1710,12 +1720,37 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         renderStatus();
         setBattleMsg(`${player.name}의 ${s.name}!`, `승부에서 이겼다! ${enemy.name}에게 ${dmg}의 피해를 입혔다. 판돈 ${stake}G가 ${payout}G로 불어났다!`);
       } else {
+        addLuckDebtStack();
         popDamage('빗나감!', 'miss');
         Sound.fail();
         playBanner('실패...', 'luckbad');
         renderStatus();
         setBattleMsg(`${player.name}의 ${s.name}!`, `승부에서 졌다... 판돈 ${stake}G를 그대로 잃었다. 완전히 빗나갔다.`);
       }
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    // 황금 도박사 - 레벨12 "정보료": 골드를 지불해 다음 베팅/올인의 성공률과
+    // 배율을 크게 끌어올린다(player.fateBoostChance/fateBoostMult를 세팅 —
+    // goldbet 타입이 위에서 이미 이 필드를 소비하도록 되어 있어 신규 소비
+    // 로직은 필요 없다).
+    if(s.type==='goldinfofee'){
+      const cost = Math.max(s.goldCostMin||0, Math.round((player.gold||0)*(s.goldCostPct||0.4)));
+      if((player.gold||0) < cost){
+        setCommandsEnabled(true);
+        player.mp += mpCost;
+        setBattleMsg('돈이 부족하다…', `정보료로 최소 ${cost}G가 필요하다. (현재 소지금 ${player.gold||0}G)`);
+        return;
+      }
+      player.gold -= cost;
+      player.fateBoostChance = s.chanceBonus||0.4;
+      player.fateBoostMult = s.multBonus||0.5;
+      renderStatus();
+      playCastBurst();
+      Sound.buff();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `정보상에게 ${cost}G를 찔러줬다. 다음 베팅의 성공률과 배율이 크게 오른다.`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -1757,6 +1792,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(healed>0) msg2 += ` HP ${healed} 흡수.`;
         setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       } else {
+        addLuckDebtStack();
         epicLuckPost(false, epicLuck);
         popDamage('빗나감!', 'miss');
         Sound.fail();
@@ -1787,6 +1823,63 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       playCastBurst();
       Sound.buff();
       setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, msg2);
+      enemyTurn();
+      return;
+    }
+
+    // 도박사 1차 리뉴얼 - 레벨3 "야바위": 3분기 판정(완전실패/적중/간파).
+    // 완전실패는 즉시 다음 턴으로 넘어가고(피해 0), 간파는 exposedTurns/
+    // exposePierce(기존 필드, data/equipment.js의 getEffectiveEnemyDef가 이미
+    // 소비)를 재사용해 급소노출을 건다. 도박사 세트(epicLuckPre/Post)도 다른
+    // 운 스킬과 동일하게 연동한다 — 세트 3단계로 잭팟이 무장돼 있으면 무조건
+    // "간파"로 처리한다.
+    if(s.type==='shellgame'){
+      const epicLuck = epicLuckPre(s);
+      const edefSg = getEffectiveEnemyDef(enemy.def);
+      const onHitMultSg = consumeOnHitBonuses();
+      let outcome;
+      if(epicLuck.wasArmed){
+        outcome = 'great';
+      } else {
+        const roll = Math.random();
+        if(roll < (s.missChance||0.34)) outcome = 'miss';
+        else if(roll < (s.missChance||0.34) + (s.hitChance||0.33)) outcome = 'hit';
+        else outcome = 'great';
+      }
+      if(outcome==='miss'){
+        addLuckDebtStack();
+        epicLuckPost(false, epicLuck);
+        popDamage('빗나감!', 'miss');
+        Sound.fail();
+        playBanner('허탕...', 'luckbad');
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, '컵을 잘못 짚었다... 완전히 허탕이다.');
+        if(checkBattleEnd()) return;
+        enemyTurn();
+        return;
+      }
+      const mult = outcome==='great' ? (s.greatMult||2.8) : (s.hitMult||1.5);
+      let dmg = Math.max(1, Math.round(effectiveAtk()*mult) - edefSg);
+      dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, luck:true, onHitMult:onHitMultSg});
+      consumeAtkBuff();
+      rogueRegisterHit(true);
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, outcome==='great'?'crit':undefined);
+      Sound.coin();
+      epicLuckPost(true, epicLuck);
+      let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+      if(outcome==='great'){
+        enemy.exposedTurns = s.greatExposeTurns||2;
+        enemy.exposePierce = s.greatExposePierce||0.2;
+        if(typeof updateStatusBadges==='function') updateStatusBadges();
+        playBanner('완벽 간파!');
+        msg2 = `완벽하게 간파했다! ${enemy.name}에게 ${dmg}의 피해를 입히고 급소를 드러냈다!`;
+      } else {
+        playBanner('적중!');
+      }
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
       enemyTurn();
       return;
     }
@@ -1850,6 +1943,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         enemyTurn();
         return;
       } else {
+        addLuckDebtStack();
         epicLuckPost(false, epicLuck);
         const selfDmg = epicLuck.wasArmed ? 0 : Math.min(player.hp-1, Math.max(6, Math.round(staked*(s.selfMult||2.2))));
         if(selfDmg>0) player.hp -= selfDmg;
@@ -1893,6 +1987,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
           healed = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal*epicLifestealMult()));
           player.hp = Math.min(player.maxhp, player.hp+healed);
         }
+        // [리뉴얼] 성공 시 자힐 추가 — 벼랑 끝에서 살아남는 "역전" 느낌 강화.
+        if(s.healOnSuccessPct){
+          const selfHeal = Math.min(player.maxhp-player.hp, Math.round(player.maxhp*s.healOnSuccessPct));
+          if(selfHeal>0){ player.hp += selfHeal; healed += selfHeal; }
+        }
         epicLuckPost(true, epicLuck);
         renderStatus();
         let msg2 = `운명이 응답했다! ${enemy.name}에게 ${dmg}의 필멸의 피해를 입혔다.`;
@@ -1904,6 +2003,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         enemyTurn();
         return;
       } else {
+        addLuckDebtStack();
         epicLuckPost(false, epicLuck);
         const selfDmg = epicLuck.wasArmed ? 0 : Math.max(0, Math.min(player.hp-1, Math.round(player.maxhp*(s.failSelfRatio||0.08))));
         if(selfDmg>0) player.hp -= selfDmg;
@@ -1917,6 +2017,57 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         enemyTurn();
         return;
       }
+    }
+
+    // 불운의 채권자(도박사 2차) - 레벨10 액티브 "청산": 쌓인 채무 스택을
+    // 전량 소모해 스택 수에 비례한 확정 크리티컬을 꽂는다.
+    if(s.type==='debtsettle'){
+      const stacks = battleFlags.jesterDebtStacks||0;
+      const mult = (s.baseMult||0.4) + stacks*(s.stackMult||0.5);
+      const edefDs = Math.round(getEffectiveEnemyDef(enemy.def)*(1-(s.defPierce||0)));
+      let dmg = Math.max(1, Math.round(effectiveAtk()*mult) - edefDs);
+      const onHitMultDs = consumeOnHitBonuses();
+      dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, onHitMult:onHitMultDs});
+      consumeAtkBuff();
+      rogueRegisterHit(true);
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
+      Sound.coin();
+      battleFlags.jesterDebtStacks = 0;
+      if(typeof updatePlayerStatusBadges==='function') updatePlayerStatusBadges();
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `쌓인 채무 ${stacks}건을 한꺼번에 청산했다! ${enemy.name}에게 ${dmg}의 피해를 입혔다.`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    // 불운의 채권자 - 레벨15 궁극기 "파산 선언": 채무를 즉시 최대로 확정한 뒤
+    // 강화된 청산을 발동한다. 반동으로 자신도 피해를 입는다(다른 궁극기들과
+    // 동일하게 HP 1은 항상 남도록 클램프).
+    if(s.type==='bankruptcy'){
+      battleFlags.jesterDebtStacks = s.forceStacks||5;
+      const stacksBk = battleFlags.jesterDebtStacks;
+      const multBk = (s.baseMult||1.0) + stacksBk*(s.stackMult||0.7);
+      const edefBk = Math.round(getEffectiveEnemyDef(enemy.def)*(1-(s.defPierce||0)));
+      let dmgBk = Math.max(1, Math.round(effectiveAtk()*multBk) - edefBk);
+      const onHitMultBk = consumeOnHitBonuses();
+      dmgBk = applyOutgoingDamageMods(dmgBk, {type:'physkill', mpCost, onHitMult:onHitMultBk});
+      consumeAtkBuff();
+      rogueRegisterHit(true);
+      enemy.hp = Math.max(0, enemy.hp-dmgBk);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmgBk,'crit');
+      Sound.bomb();
+      battleFlags.jesterDebtStacks = 0;
+      const selfDmgBk = Math.max(1, Math.min(player.hp-1, Math.round(player.maxhp*(s.selfHpCostPct||0.12))));
+      player.hp -= selfDmgBk;
+      if(typeof updatePlayerStatusBadges==='function') updatePlayerStatusBadges();
+      renderStatus();
+      popDamageOnPlayerArea('-'+selfDmgBk, 'bleed');
+      setBattleMsg(`${player.name}의 ${s.name}!`, `채무를 최대로 확정하고 전부 쏟아부었다! ${enemy.name}에게 ${dmgBk}의 압도적인 피해를 입혔다. 반동으로 ${selfDmgBk}의 피해를 입었다.`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
     }
 
     // phys or magic damage skill
