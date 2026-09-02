@@ -755,7 +755,10 @@
 .fx-banner.pact-lightning{color:#ffe98a; border-color:#ffe06a; text-shadow:0 0 10px #ffe06a99, 0 1px 3px #000;}
 
 .rig-slot{
-  position:absolute; bottom:-4px; width:150px; height:125px;
+  /* 사용자 요청 — 자동포탑 UI 크기를 2.75배 키우고, 화면 아래로 훨씬 더
+     내려서 포탑 머리(포신) 부분만 보이게 한다. .archway가 overflow:hidden
+     이라 bottom을 크게 음수로 주면 상단 일부만 잘려 보인다. */
+  position:absolute; bottom:-220px; width:412px; height:344px;
   z-index:3; display:none; pointer-events:none;
   filter:drop-shadow(0 2px 3px #00000088);
   transition:width .2s ease;
@@ -789,7 +792,10 @@
   object-fit:cover; object-position:center bottom; transform:none;
 }
 .rig-turns{
-  position:absolute; bottom:-2px; left:50%; transform:translateX(-50%);
+  /* rig-slot이 훨씬 커지고 아래로 내려가면서, 기존 bottom:-2px 기준으로는
+     화면 밖(잘리는 영역)에 배지가 숨어버린다. 이제 슬롯 "안쪽" 좌표로 보이는
+     영역(위쪽) 근처에 오도록 top 기준으로 바꿨다. */
+  position:absolute; top:108px; left:50%; transform:translateX(-50%);
   font-family:'Cinzel'; font-size:9px; color:var(--parchment-dim);
   background:#1a130cd0; padding:1px 5px; border-radius:6px; white-space:nowrap;
 }
