@@ -902,7 +902,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         const targetRig = (battleFlags.rig===newRig) ? battleFlags.rig : (battleFlags.rig2===newRig ? battleFlags.rig2 : null);
         if(targetRig){
           const pressureBonus = targetRig.pressureScaled ? Math.round(player.mag*(battleFlags.pressure||0)*targetRig.pressureScaleRate) : 0;
-          instantTickDmg = Math.max(1, targetRig.dmgPerTick + pressureBonus - Math.round(edef*0.3));
+          // 자동틱(enemy-turn.js의 tickActiveRig)이 방어력을 아예 무시하는
+          // 것과 동일하게, 즉시 첫틱도 방어 감산을 빼서 일관되게 맞췄다
+          // (사용자 요청 — 틱딜 위주 버프, "포탑은 방어 무시"라는 특성을
+          // 오히려 순수 이득으로 활용).
+          instantTickDmg = Math.max(1, targetRig.dmgPerTick + pressureBonus);
           enemy.hp = Math.max(0, enemy.hp-instantTickDmg);
           updateEnemyHpBar(); shakeEnemy(); popDamage('-'+instantTickDmg);
           targetRig.turnsLeft -= 1;
