@@ -332,7 +332,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(player.skills && player.skills.includes('mastery_luckdebt') && battleFlags && (battleFlags.jesterDebtStacks||0) > 0){
       const b = document.createElement('div');
       b.className = 'status-badge player-badge';
-      b.textContent = '🩸'.repeat(battleFlags.jesterDebtStacks) + ` 채무 ${battleFlags.jesterDebtStacks}/5`;
+      b.textContent = '⛓️'.repeat(battleFlags.jesterDebtStacks) + ` 채무 ${battleFlags.jesterDebtStacks}/5`;
       b.title = '운 스킬이 실패할 때마다 쌓이는 채무. 청산/파산 선언으로 한꺼번에 갚아내면 그만큼 강력한 확정 크리티컬이 터진다.';
       box.appendChild(b);
     }
