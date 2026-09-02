@@ -391,6 +391,30 @@
   @keyframes bleedpulse{ 0%,100%{filter:drop-shadow(0 0 0 #ff6a5a00);} 50%{filter:drop-shadow(0 0 14px #ff6a5a88);} }
   .enemy-stage.elite{animation:elitepulse 1.6s ease-in-out infinite;}
   @keyframes elitepulse{ 0%,100%{filter:drop-shadow(0 0 4px #e6c34a55);} 50%{filter:drop-shadow(0 0 22px #e6c34aee);} }
+
+  /* 층별보스 등뒤 후광(사용자 요청 — 정예몹 pulse처럼 CSS만으로 가볍게 처리,
+     이미지 로딩 없음). ::before는 img/svg보다 먼저(DOM상 앞서) 그려지므로
+     항상 몬스터 뒤쪽에 깔린다. */
+  .enemy-stage.boss-halo::before{
+    content:''; position:absolute; left:50%; top:46%; transform:translate(-50%,-50%);
+    width:170px; height:170px; border-radius:50%;
+    background:radial-gradient(circle, #e6c34a55 0%, #e6c34a22 42%, transparent 70%);
+    animation:bosshalo 2.4s ease-in-out infinite; pointer-events:none;
+  }
+  @keyframes bosshalo{
+    0%,100%{ opacity:.55; transform:translate(-50%,-50%) scale(0.92); }
+    50%{ opacity:.9; transform:translate(-50%,-50%) scale(1.05); }
+  }
+  /* 떠 있는 컨셉의 보스 전용 부유 애니메이션(사용자 요청, 해당되는 보스에만
+     JS에서 클래스 부여). --ground-offset(PNG 보정치)이 있는 img도 안전하게
+     같은 규칙을 쓸 수 있도록 calc()로 기존 보정값에 얹는다. */
+  .enemy-stage.boss-float svg, .enemy-stage.boss-float img{
+    animation: bossfloat 3.2s ease-in-out infinite;
+  }
+  @keyframes bossfloat{
+    0%,100%{ transform: translateY(var(--ground-offset, 0px)); }
+    50%{ transform: translateY(calc(var(--ground-offset, 0px) - 10px)); }
+  }
   .elite-tag{
     display:inline-block; font-family:'Cinzel'; font-size:10.5px; letter-spacing:.06em;
     color:#1a130c; background:linear-gradient(180deg,#ffe9a0,#e6c34a);

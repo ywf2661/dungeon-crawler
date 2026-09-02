@@ -410,7 +410,16 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // 보스 다음 행동 미리보기 카드(사용자 요청 — 보스전 리뉴얼) 초기화.
     if(typeof updateBossIntentCard==='function') updateBossIntentCard();
     document.getElementById('bt-stage').innerHTML = svgMonster(enemy.type);
-    document.getElementById('bt-stage').className='enemy-stage'+(enemy.isElite?' elite':'');
+    // 층별보스 후광(사용자 요청 — 정예몹 pulse처럼 CSS만으로 가볍게, 이미지
+    // 로딩 없음). 최종보스/진최종보스도 enemy.isBoss=true라 함께 적용된다.
+    // 부유 애니메이션은 컨셉상 "떠 있는" 보스에만 준다(감시자의 석판/빈 옷의
+    // 예언자/재봉인형/죄의 등롱 — 나머지는 그대로 둔 채 걷거나 서 있는
+    // 컨셉이라 부유가 어색해서 뺐다).
+    const isFloatingBoss = ['watchertablet','hollowprophet','threadmannequin','sinlantern'].includes(enemy.type);
+    document.getElementById('bt-stage').className='enemy-stage'
+      + (enemy.isElite?' elite':'')
+      + (enemy.isBoss?' boss-halo':'')
+      + (enemy.isBoss && isFloatingBoss?' boss-float':'');
     // PNG 몬스터 그림이 캔버스 안 투명 여백 때문에 "붕 떠 보이는" 문제를
     // 자동으로 보정한다(monster-visuals.js의 fixMonsterImageGrounding 참고).
     // SVG 몬스터일 땐 <img> 자체가 없으니 querySelector가 null을 반환해
