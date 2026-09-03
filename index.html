@@ -253,7 +253,21 @@
   #node-map-area{
     flex-shrink:0; max-height:340px; overflow-y:auto;
     background:#0f0b07aa; border:1px solid #3a2c1c; border-radius:4px;
-    padding:12px 10px;
+    padding:12px 10px; transition:background .6s ease, border-color .6s ease;
+  }
+  /* 최종보스 구간("고요한 제단", 사용자 요청 — 노드맵 배경도 음산하게)
+     전용 스타일. nodemap.js의 renderNodeMapArea()가 tierIndex===5일 때만
+     #node-map-area에 이 클래스를 붙인다. 핏빛 라디얼 그라디언트 위에
+     느리게 맥동하는 안쪽 그림자로 불길한 느낌을 준다(과하게 밝지 않도록
+     펄스 폭은 좁게 유지). */
+  #node-map-area.node-map-dread{
+    background: radial-gradient(ellipse at 50% 0%, #260707dd 0%, #0a0404ee 55%, #050202 100%);
+    border-color:#5a1414;
+    animation: dreadPulse 4.5s ease-in-out infinite;
+  }
+  @keyframes dreadPulse{
+    0%,100%{ box-shadow: inset 0 0 36px #3a050588; }
+    50%{ box-shadow: inset 0 0 62px #6b0d0dbb; }
   }
   /* 사용자 피드백 — "행 간격이 좁아서 연결선이 짧고 어디로 이어지는지
      안 보인다"에 따라 14px→46px로 대폭 넓혔다. 선이 확실히 대각선으로

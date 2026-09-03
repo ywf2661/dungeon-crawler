@@ -284,6 +284,9 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
       return;
     }
     area.style.display = 'block';
+    // 최종보스 구간("고요한 제단")은 배경도 음산하게(사용자 요청) — BGM
+    // dread 모드와 동일한 조건(tierIndex===5, 엔딩 전)을 그대로 재사용한다.
+    area.classList.toggle('node-map-dread', player.tierIndex===5 && !player.endingSeen);
     if(btnAdvance) btnAdvance.style.display = 'none';
     if(btnShop) btnShop.style.display = 'none';
     if(btnExchange) btnExchange.style.display = 'none';
