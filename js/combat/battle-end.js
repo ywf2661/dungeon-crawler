@@ -534,7 +534,8 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 잔여분을 player.originGrowthRemainder에 누적해뒀다가 정확히 1 이상
     // 쌓이는 시점에만 +1을 터뜨리는 방식으로 처리한다 — 매 레벨 눈에 보이진
     // 않아도, 여러 레벨에 걸쳐 정확히 8%만큼 실제로 더 성장한다.
-    player.originGrowthRemainder = player.originGrowthRemainder || {hp:0, mp:0, atk:0, spd:0};
+    player.originGrowthRemainder = player.originGrowthRemainder || {hp:0, mp:0, atk:0, spd:0, def:0};
+    if(player.originGrowthRemainder.def===undefined) player.originGrowthRemainder.def = 0;
     const ob = player.originBonuses || {};
     function applyOriginGrowth(base, bonusKey, remainderKey){
       const exact = base*(1+(ob[bonusKey]||0)) + player.originGrowthRemainder[remainderKey];
@@ -550,7 +551,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       player.maxmp += applyOriginGrowth(4, 'spirit', 'mp');
     }
     player.atk += applyOriginGrowth(2, 'strength', 'atk');
-    player.def += 1;
+    player.def += applyOriginGrowth(1, 'atonement', 'def');
     player.mag += 2;
     player.spd += applyOriginGrowth(1, 'swiftness', 'spd');
     // 저주술사(mastery_curseweaver)는 레벨업 시 무회복 저주도 저주 개수만큼의

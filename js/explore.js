@@ -66,7 +66,10 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 굳이 채워 넣지 않아도 안전하지만, 명시적으로 빈 객체를 둬 헷갈리지
       // 않게 한다).
       if(player.originBonuses===undefined) player.originBonuses = {};
-      if(player.originGrowthRemainder===undefined) player.originGrowthRemainder = {hp:0, mp:0, atk:0, spd:0};
+      if(player.originGrowthRemainder===undefined) player.originGrowthRemainder = {hp:0, mp:0, atk:0, spd:0, def:0};
+      // 방어력 성장 기질(속죄, 신규)이 생기기 전 세이브는 원격변수 객체 자체는
+      // 있어도 def 서브필드가 없을 수 있다 — 없으면 0으로 채운다.
+      else if(player.originGrowthRemainder.def===undefined) player.originGrowthRemainder.def = 0;
       if(player.tempCurses===undefined) player.tempCurses = {};
       if(player.hasMapFragment===undefined) player.hasMapFragment = false;
       if(player.eliteSealFragments===undefined) player.eliteSealFragments = 0;

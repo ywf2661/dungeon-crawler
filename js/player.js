@@ -77,7 +77,7 @@ export(전역): newPlayer
       // 오프닝 심리테스트(origin.js) — 실제 값은 퀴즈 완료 시 채워진다. 여기서는
       // 안전한 빈 기본값만 둔다(전투 스케일링 등 다른 계산식이 undefined를 0으로
       // 처리하므로 없어도 안전하지만, 명시적으로 두는 편이 읽기 좋다).
-      originBonuses:{}, originTraits:[], originGrowthRemainder:{hp:0, mp:0, atk:0, spd:0},
+      originBonuses:{}, originTraits:[], originGrowthRemainder:{hp:0, mp:0, atk:0, spd:0, def:0},
       // 임시 저주 시스템(사용자 요청 — 저주술사가 아니면 저주가 "이 구간 한정"이
       // 되도록 재설계). {저주id: 받아들인 시점의 tierIndex} 형태로 기록해두고,
       // 그 구간의 보스를 잡는 순간 combat/battle-end.js가 이 목록을 확인해
