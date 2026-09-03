@@ -57,9 +57,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   const ENRAGE_STEPS_FINAL = [
     {atkMult:1.15, defMult:1.1, hpMult:1.1, skillChance:0.45, label:'광폭화! 잠식된 힘이 폭주한다'},
   ];
+  // 사용자 요청 — 시뮬레이션(Python Monte Carlo, 자연 진행 레벨17 기준) 결과
+  // 반영: 부활 2회는 사실상 총 체력 3배에 가까운 효과라 시간 승부에서 답이
+  // 없었다. 1회로 축소하고 배율도 완화했다.
   const ENRAGE_STEPS_TRUE = [
-    {atkMult:1.12, defMult:1.08, hpMult:1.1,  skillChance:0.45, label:'1차 각성 — 태초의 분노가 깨어난다'},
-    {atkMult:1.25, defMult:1.12, hpMult:1.15, skillChance:0.6,  label:'2차 각성 — 회랑 그 자체가 몸부림친다'},
+    {atkMult:1.10, defMult:1.05, hpMult:1.10, skillChance:0.45, label:'각성 — 태초의 분노가 깨어난다'},
   ];
   function canEnrage(e){
     if(!e || !(e.isFinal || e.isTrueFinal)) return false;
@@ -195,10 +197,14 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     if(isTrueFinal){
       const base = TRUE_FINAL_BOSS;
       const scale = 1 + depth*0.05;
+      // 사용자 요청 — 시뮬레이션(자연 진행 레벨17, 유물슬롯 보정 포함) 결과
+      // 반영: hp/atk에 ×0.77 하향. def는 하향 대상에서 제외(원래도 별도
+      // 완만한 공식이라 과도하지 않았음).
+      const nerf = 0.77;
       return scaleEnemyForDifficulty({
         type: base.type, name: base.name, isBoss:true, isFinal:true, isTrueFinal:true,
-        maxhp: Math.round(base.hp*scale), hp: Math.round(base.hp*scale),
-        atk: Math.round(base.atk*scale*0.8),
+        maxhp: Math.round(base.hp*scale*nerf), hp: Math.round(base.hp*scale*nerf),
+        atk: Math.round(base.atk*scale*0.8*nerf),
         def: Math.round(base.def + depth*0.12),
         spd: base.spd,
         exp: base.exp,
