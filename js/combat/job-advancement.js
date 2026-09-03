@@ -136,6 +136,22 @@ export(전역): showJobAdvancement, resolveJobAdvancement
         applyLevelUpEffects();
       }
     }
+    // [디버그 전용] admin2는 위 admin과 같은 이유(12/15레벨 세분화 스킬 확인용)로
+    // 레벨을 다시 통과시켜야 하는데, admin2는 이미 레벨20으로 시작해버려서
+    // "레벨을 다시 올려 통과시키는" 방식(위 admin 블록)이 전혀 발동하지 않는다
+    // (player.level<15가 처음부터 거짓). 그래서 spec.skillLevels에 있는 레벨 중
+    // 이미 지난 것들을 레벨업 없이 직접 지급한다 — exp/expNext는 건드리지
+    // 않으므로 이후 정상적인 경험치 누적에 영향 없다. 이름이 "admin2"가 아닌
+    // 캐릭터에는 전혀 영향 없다.
+    if(player.name && player.name.trim().toLowerCase()==='admin2' && spec && spec.skillLevels){
+      Object.keys(spec.skillLevels).forEach(lvKey=>{
+        if(Number(lvKey) > player.level) return;
+        const skillKey = spec.skillLevels[lvKey];
+        if(skillKey && typeof SKILLDB!=='undefined' && SKILLDB[skillKey] && !player.skills.includes(skillKey)){
+          player.skills.push(skillKey);
+        }
+      });
+    }
     renderStatus();
     if(spec){
       // 일격의 구도자처럼 activeName이 없는(액티브 스킬 자체가 없는) 분기를 대비해,
