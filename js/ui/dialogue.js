@@ -12,6 +12,10 @@ export(전역): showDialogueSequence
     tone: 'default'|'grand',   // 'grand'면 대사 간 페이드 시간이 더 길다(진엔딩 등 장엄한 연출용)
     onDone: ()=>{ ... },       // 마지막 대사를 탭해서 넘긴 뒤 호출
   });
+  줄마다 화자가 다른 경우(사용자 요청 — 오프닝을 실제 대화처럼) 문자열 대신
+  {text:'대사', title:'화자'} 객체를 섞어서 넣을 수 있다. 객체로 넣은 줄은
+  opts.title 대신 자기 title을 쓰고(없으면 라벨 없이), 문자열로 넣은 줄은
+  기존처럼 opts.title을 그대로 쓴다.
 클릭/탭으로 다음 대사로 넘어간다(자동 진행 없음 — 사용자 페이스를 존중).
 lines가 비어 있으면 즉시 onDone()만 호출하고 아무것도 띄우지 않는다.
 */
@@ -33,8 +37,12 @@ lines가 비어 있으면 즉시 onDone()만 호출하고 아무것도 띄우지
     document.getElementById('app').appendChild(overlay);
 
     function renderLine(){
-      const titleHtml = opts.title ? `<div class="dialogue-title">${opts.title}</div>` : '';
-      box.innerHTML = `${titleHtml}<p class="dialogue-line">${lines[idx]}</p><div class="dialogue-hint">▼ 탭하여 계속</div>`;
+      const raw = lines[idx];
+      const isObj = raw && typeof raw === 'object';
+      const text = isObj ? raw.text : raw;
+      const title = isObj ? (raw.title || '') : (opts.title || '');
+      const titleHtml = title ? `<div class="dialogue-title">${title}</div>` : '';
+      box.innerHTML = `${titleHtml}<p class="dialogue-line">${text}</p><div class="dialogue-hint">▼ 탭하여 계속</div>`;
       idx++;
       box.classList.remove('fade-out');
       // 리플로우를 강제해 같은 클래스를 다시 넣어도 애니메이션이 재시작되게 한다.
