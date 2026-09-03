@@ -558,6 +558,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         reduceMult -= battleFlags.rig2.shieldPct;
       }
       reduceMult += getRelicSum('dmgTakenPctMult');
+      // 결투자의 서약(relic_duelistoath): 일반 몬스터(정예/보스 아님) 상대로만
+      // 받는 피해 증가.
+      if(!(enemy && (enemy.isElite || enemy.isBoss))) reduceMult += getRelicSum('normalDmgTakenPctMult');
       if(battleFlags && battleFlags.diceEffect==='dmgtaken') reduceMult += 0.3;
       // 중액 대출(외상 도박사)의 페널티 — 상환율만큼 완화되는 받는 피해 증가.
       // getDebtorDmgTakenMult()는 대출이 없으면 1을 반환하므로 reduceMult에

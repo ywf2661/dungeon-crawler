@@ -556,6 +556,8 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(ctx.type==='basic') mult *= (1 + getRelicSum('basicAtkPctMult'));
     if(ctx.type!=='basic') mult *= (1 + getRelicSum('skillDmgPctMult'));
     if(enemy && enemy.isBoss) mult *= (1 + getRelicSum('bossDmgPctMult'));
+    // 결투자의 서약(relic_duelistoath): 정예/보스 상대로만 가하는 피해 보너스.
+    if(enemy && (enemy.isElite || enemy.isBoss)) mult *= (1 + getRelicSum('eliteBossDmgPctMult'));
     mult *= getLowHpScalingMult();
     mult *= getHourglassMult();
     mult *= getEmptySackMult();

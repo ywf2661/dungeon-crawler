@@ -498,6 +498,8 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
   }
 
   function grantExp(amount){
+    // 정체된 맹세(relic_frozenvow): 경험치 획득 자체를 완전히 무효화한다.
+    if(hasRelicFlag('noExpGain')) return [];
     // 오프닝 심리테스트(origin.js) "진실" 기질 — 경험치 획득 +8%.
     const expBonus = (player.originBonuses && player.originBonuses.truth) || 0;
     if(expBonus>0) amount = Math.round(amount*(1+expBonus));

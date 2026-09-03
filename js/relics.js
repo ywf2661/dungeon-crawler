@@ -105,6 +105,19 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
 
     relic_voidtome:    {type:'contract', name:'공허의 서',   desc:'<span class="relic-neg">최대 MP -50%.</span> <span class="relic-pos">대신 모든 스킬 피해 +35%.</span> (일반 공격에는 적용되지 않는다)', effect:{maxmpPct:-0.5, skillDmgPctMult:0.35}},
 
+    // 신규 계약형 유물 2종(사용자 요청 — 재미 기획 라운드, 수치까지 확정).
+    // 정체된 맹세: atkPct/defPct/magPct/maxhpPct/maxmpPct/spdFlat은 relics.js가
+    // 이미 "획득 즉시 반영 + relicAppliedDeltas에 기록 + 제단에서 교체 시 자동
+    // 역산"하는 기존 인프라를 그대로 쓴다(applyRelicEffect/removeRelic 참고) —
+    // 즉 유물을 내려놓는 순간 스탯 보너스도 정확히 함께 사라진다(사용자가
+    // 명시적으로 요구한 부분). noExpGain은 combat/battle-end.js의 grantExp()
+    // 맨 앞에서 체크해 경험치 자체를 완전히 무효화한다.
+    relic_frozenvow:   {type:'contract', name:'정체된 맹세', desc:'<span class="relic-pos">모든 주요 능력치(공격력·방어력·마력·최대HP·최대MP·속도)가 즉시 큰 폭으로 오른다.</span> <span class="relic-neg">대신 더 이상 레벨업하지 않는다(경험치가 완전히 무효화된다).</span>', effect:{atkPct:0.18, defPct:0.18, magPct:0.18, maxhpPct:0.18, maxmpPct:0.18, spdFlat:4, noExpGain:true}},
+    // 결투자의 서약: "가하는 피해"는 eliteBossDmgPctMult(정예/보스 한정,
+    // data/equipment.js), "받는 피해"는 normalDmgTakenPctMult(일반 몬스터
+    // 한정, combat/enemy-turn.js)로 각각 조건부 분기해서 처리한다.
+    relic_duelistoath: {type:'contract', name:'결투자의 서약', desc:'<span class="relic-neg">일반 몬스터를 상대로 받는 피해가 50% 늘어난다.</span> <span class="relic-pos">대신 정예/보스를 상대로 가하는 피해가 30% 늘어난다.</span>', effect:{normalDmgTakenPctMult:0.50, eliteBossDmgPctMult:0.30}},
+
     relic_mirrorshard: {type:'wild', name:'거울의 파편',     desc:'받은 피해의 10%를 공격한 적에게 그대로 반사한다.', effect:{mirrorReflectPct:0.10}},
     relic_dice:        {type:'wild', name:'불확실성의 주사위', desc:'전투 시작 시 공격력/마력/방어력/최대HP +30%, 속도 +10, 받는 피해 +30% 중 하나가 무작위로 선택되어 전투가 끝날 때까지 유지된다.', effect:{diceRoll:true}},
     relic_flask:       {type:'wild', name:'연금술사의 플라스크', desc:'포션을 사용할 때마다 다음 공격의 피해가 +20%씩 늘어난다(최대 3스택, 최대 +60%). 공격 시 스택을 모두 소모한다.', effect:{flaskPotionBoost:true}},
