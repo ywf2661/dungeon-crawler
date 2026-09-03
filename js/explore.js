@@ -165,6 +165,14 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     // 스탯이 없다 — 목록에 그냥 추가하면 된다.
     player.relics.push('relic_hilt', 'relic_blade');
 
+    // 포션류도 최대치로 채운다(사용자 요청). shop.js의 CONSUMABLE_CAPS를
+    // 그대로 참조 — 상점 판매 상한과 항상 같은 값을 쓰게 되어, 상한이
+    // 나중에 바뀌어도 여기 따로 손댈 필요가 없다.
+    if(typeof CONSUMABLE_CAPS!=='undefined'){
+      player.inv = player.inv || {};
+      Object.keys(CONSUMABLE_CAPS).forEach(key=>{ player.inv[key] = CONSUMABLE_CAPS[key]; });
+    }
+
     // "고요한 제단"(tierIndex===5) — 준비 노드(1번)는 이미 통과한 것으로
     // 두고, 나아가면 곧바로 보스 노드(진 최종보스)만 남긴다.
     player.tierIndex = 5;
