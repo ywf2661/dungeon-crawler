@@ -82,6 +82,10 @@ export(전역): heroBossSvg, svgMonster
     tome: 'images/monsters/tome.png',
     tailor: 'images/monsters/tailor.png',
     hornbeast: 'images/monsters/hornbeast.png',
+    // 진 최종보스 "회랑의 시조"(사용자 요청 — 왕관 쓴 슬픈 거인, 좁은 전장이라
+    // 웅크린 채 플레이어를 내려다보는 구도). 다른 몬스터들과는 화풍이 다른
+    // (사실적 렌더 톤) 별도 제공 이미지라는 점 참고.
+    progenitor: 'images/monsters/progenitor.png',
   };
 
   // PNG 몬스터 그림 하단의 투명 여백을 자동으로 감지해 보정한다(사용자 피드백
