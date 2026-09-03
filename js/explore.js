@@ -114,17 +114,23 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     showOriginQuiz();
   }
 
-  // [디버그 전용] 진 최종보스("회랑의 시조") 테스트용 셋업. 레벨20 + 직업
+  // [디버그 전용] 진 최종보스("회랑의 시조") 테스트용 셋업. 레벨17 + 직업
   // 맞춤 에픽 풀템(딜 극대화 강화 포함) + 회랑자의 칼날/칼자루 유물을 갖춘
   // 채로 "고요한 제단"(tierIndex===5) 준비 노드를 이미 통과한 상태로
   // 시작한다 — 나아가면 곧바로 진 최종보스 노드다. player.deathCount는
   // newPlayer()의 기본값(0) 그대로 절대 건드리지 않는다(0이어야 진
   // 최종보스가 실제로 등장하는 조건 — combat/battle-setup.js 참고).
   function setupAdmin2TrueFinalBossTest(){
-    // 레벨 20까지 실제 레벨업 로직(combat/battle-end.js의 applyLevelUpEffects,
+    // 레벨 17까지 실제 레벨업 로직(combat/battle-end.js의 applyLevelUpEffects,
     // 스탯 성장/스킬 습득 공식 그대로)을 반복 호출해 재사용한다 — 수치를
     // 손으로 다시 베끼면 나중에 공식이 바뀔 때 여기만 어긋나기 쉽다.
-    while(player.level < 20){
+    // 17이라는 값은 임의가 아니라, "정상적으로 노드맵을 밟아 진 최종보스
+    // 직전(고요한 제단)까지 도달했을 때 자연스럽게 도달하는 평균 레벨"을
+    // Python Monte Carlo로 시뮬레이션(5000회, 구간별 전투/정예 조우 확률과
+    // 실제 몬스터 exp 공식 반영)해서 나온 값이다(평균 16.7, 중앙값 17,
+    // 난이도별 차이 거의 없음 — exp량 자체는 난이도 영향을 안 받아서).
+    // 기존 20은 이보다 살짝 후하게 잡혀 있었다(사용자 확인 후 수정).
+    while(player.level < 17){
       applyLevelUpEffects();
     }
     // 2차 전직/세분화는 레벨10 이상이므로 정상적으로 직접 골라야 한다 —
@@ -173,7 +179,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
-    renderExplore(['[관리자 테스트] 레벨20 · 직업 맞춤 에픽 풀템 · 회랑자의 칼날/칼자루 장착 완료. 나아가면 곧바로 진 최종보스와 마주한다.']);
+    renderExplore(['[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 회랑자의 칼날/칼자루 장착 완료. 나아가면 곧바로 진 최종보스와 마주한다.']);
     saveGame();
   }
 
