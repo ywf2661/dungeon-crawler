@@ -425,6 +425,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   }
   function enemyAction(){
     setTimeout(()=>{
+      // 회랑의 시조 포즈 리셋(사용자 요청) — 이번 턴 판정 결과(예고/즉시발동/
+      // 평범한 공격)에 따라 아래에서 다시 telegraph/slam으로 바뀔 수 있다.
+      // 다른 몬스터는 setBossPoseImage() 안에서 type 체크로 즉시 무시된다.
+      if(typeof setBossPoseImage==='function') setBossPoseImage('idle');
       let skillKey = null;
       // 보스 예고 스킬(사용자 요청 — 어떤 스킬이든 매번 예고). 예고했던 다음
       // 턴이면 그 스킬을 강제로 확정 발동한다.
@@ -434,6 +438,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         enemy.telegraphed = false;
         enemy.pendingSkillKey = null;
         if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+        if(typeof setBossPoseImage==='function') setBossPoseImage('slam');
       } else if(enemy.skills.length && Math.random()<(enemy.skillChance||0.4)){
         const chosen = enemy.skills[Math.floor(Math.random()*enemy.skills.length)];
         // 보스이고 치유가 아닌 스킬이면 즉시 쓰지 않고 한 턴 예고부터 한다.
@@ -445,6 +450,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           setBattleMsg(`${enemy.name}이(가) 힘을 끌어모은다…`, `⚠ 다음 턴 [${BOSS_SKILL_LABELS[chosen]||'강공격'}]이(가) 발동한다!`);
           showToast(`<h3>⚠ 예고</h3><p><b>[${BOSS_SKILL_LABELS[chosen]||'강공격'}]</b> — 다음 턴 발동!</p>`, '#ff4a3a');
           if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+          if(typeof setBossPoseImage==='function') setBossPoseImage('telegraph');
           finishEnemyTurn();
           return;
         }

@@ -5,7 +5,7 @@
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, playComboFinish, playStatusFx, playCastBurst, playBanner,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
-              checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea
+              checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
      보일러 압력이 100에서 방출되지 않고 넘어갔을 때의 자동 폭주를 처리하고,
      updatePressureGauge()는 #bt-pressure 요소에 압력 수치를 표시한다. 둘 다
@@ -113,6 +113,24 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const bar = document.getElementById('statusbar');
     if(!bar) return;
     bar.classList.remove('player-hit'); void bar.offsetWidth; bar.classList.add('player-hit');
+  }
+
+  // 회랑의 시조 전용 스킬 예고/임팩트 포즈 전환(사용자 요청 — 손을 들어
+  // 힘을 모았다가 손바닥으로 내려찍는 연출). #bt-stage 안의 <img> src만
+  // 바꿔치기한다(innerHTML을 통째로 다시 그리면 hit/dying 등 클래스 상태가
+  // 꼬일 수 있어 src만 교체하는 쪽이 안전 — battle-setup.js가 전투 시작 때
+  // 딱 한 번만 innerHTML을 채우는 것과 같은 이유). monster-visuals.js의
+  // PROGENITOR_POSE_IMG를 사용한다. 다른 몬스터는 pose별 그림이 아예 없으므로
+  // enemy.type이 'progenitor'가 아니면 즉시 아무 일도 하지 않는다 — 매 턴
+  // 무조건 호출해도 안전(enemy-turn.js 참고).
+  function setBossPoseImage(poseKey){
+    if(!enemy || enemy.type!=='progenitor') return;
+    if(typeof PROGENITOR_POSE_IMG==='undefined') return;
+    const src = PROGENITOR_POSE_IMG[poseKey] || PROGENITOR_POSE_IMG.idle;
+    const img = document.querySelector('#bt-stage img');
+    if(!img || img.src.endsWith(src)) return;
+    img.src = src;
+    if(typeof fixMonsterImageGrounding==='function') fixMonsterImageGrounding(img); // 그림마다 여백이 달라 포즈 바뀔 때마다 다시 보정
   }
 
   function spawnSlashMark(seed){

@@ -83,9 +83,19 @@ export(전역): heroBossSvg, svgMonster
     tailor: 'images/monsters/tailor.png',
     hornbeast: 'images/monsters/hornbeast.png',
     // 진 최종보스 "회랑의 시조"(사용자 요청 — 왕관 쓴 슬픈 거인, 좁은 전장이라
-    // 웅크린 채 플레이어를 내려다보는 구도). 다른 몬스터들과는 화풍이 다른
-    // (사실적 렌더 톤) 별도 제공 이미지라는 점 참고.
+    // 웅크린 채 플레이어를 내려다보는 구도). 처음 받은 이미지는 화풍이 달라서
+    // 다른 몬스터들과 맞는 화풍(굵은 검은 윤곽선)으로 재교체됨.
     progenitor: 'images/monsters/progenitor.png',
+  };
+
+  // 회랑의 시조 전용 스킬 예고/임팩트 포즈 3장(평상시/예고/내려찍기) 경로.
+  // 실제로 #bt-stage의 <img> src를 갈아치우는 함수(setBossPoseImage)는 전역
+  // 상태(enemy)와 DOM을 참조하므로, 이 파일(순수 함수 전용)이 아니라
+  // combat/battle-fx.js에 있다 — 그쪽의 다른 #bt-stage 연출 함수들과 같은 자리.
+  const PROGENITOR_POSE_IMG = {
+    idle: 'images/monsters/progenitor.png',
+    telegraph: 'images/monsters/progenitor_telegraph.png',
+    slam: 'images/monsters/progenitor_slam.png',
   };
 
   // PNG 몬스터 그림 하단의 투명 여백을 자동으로 감지해 보정한다(사용자 피드백
