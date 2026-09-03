@@ -617,7 +617,21 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
         <button class="btn btn-danger" id="final-step-next">계속 나아간다</button>
       </div>`;
     overlay.appendChild(panel);
-    panel.querySelector('#final-step-back').addEventListener('click', ()=> overlay.remove());
+    panel.querySelector('#final-step-back').addEventListener('click', ()=>{
+      overlay.remove();
+      // 버그 수정(사용자 리포트) — pickNode()가 이 확인창을 띄우기 전에 이미
+      // nodeRow/nodeCurrentId/nodeVisited를 보스 노드로 진행시켜놓은 상태라,
+      // '물러난다'가 창만 닫고 끝나면 보스 노드가 "이미 지나온 자리"로 남아
+      // 다시는 선택할 수 없게 되어버렸다. 그래서 여기서 진행을 실제로
+      // 되돌려야 한다 — nodeVisited는 [..., 이전노드id, 보스노드id] 순서로
+      // 쌓여 있으므로, 마지막(보스) 것만 pop하면 그 앞이 자동으로 이전 노드다.
+      player.nodeVisited.pop();
+      player.nodeRow = Math.max(0, player.nodeRow-1);
+      player.nodeCurrentId = player.nodeVisited[player.nodeVisited.length-1];
+      depth = getVirtualDepth();
+      saveGame();
+      renderExplore(['물러났다. 아직 마음의 준비가 되지 않았다.']);
+    });
     panel.querySelector('#final-step-next').addEventListener('click', ()=>{
       overlay.remove();
       renderFinalFloorGrasp(flawless);
