@@ -322,11 +322,11 @@
        보정이 필요 없는 그림은 아무 영향 없다. */
     transform:translateY(var(--ground-offset, 0px));
   }
-   .enemy-stage.hit svg, .enemy-stage.hit img{animation:hitshake .32s;}
+   .enemy-stage.hit:not(.dying) svg, .enemy-stage.hit:not(.dying) img{animation:hitshake .32s;}
    .enemy-stage.dying svg, .enemy-stage.dying img{animation:diefade .6s forwards;}
    /* 적 공격 연출(사용자 요청) — 앞으로 살짝 튀어나왔다 돌아오는 동작.
       --ground-offset(PNG 보정치)는 기존 hitshake 패턴과 동일하게 calc()로 얹는다. */
-   .enemy-stage.attacking svg, .enemy-stage.attacking img{animation:enemyLunge .38s ease;}
+   .enemy-stage.attacking:not(.dying) svg, .enemy-stage.attacking:not(.dying) img{animation:enemyLunge .38s ease;}
    @keyframes enemyLunge{
      0%{ transform:translateY(var(--ground-offset,0px)) scale(1); }
      35%{ transform:translateY(calc(var(--ground-offset,0px) + 8px)) scale(1.08); }
@@ -425,7 +425,7 @@
   /* 떠 있는 컨셉의 보스 전용 부유 애니메이션(사용자 요청, 해당되는 보스에만
      JS에서 클래스 부여). --ground-offset(PNG 보정치)이 있는 img도 안전하게
      같은 규칙을 쓸 수 있도록 calc()로 기존 보정값에 얹는다. */
-  .enemy-stage.boss-float svg, .enemy-stage.boss-float img{
+  .enemy-stage.boss-float:not(.dying) svg, .enemy-stage.boss-float:not(.dying) img{
     animation: bossfloat 3.2s ease-in-out infinite;
   }
   @keyframes bossfloat{
