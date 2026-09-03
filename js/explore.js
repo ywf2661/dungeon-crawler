@@ -108,6 +108,14 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       setupAdmin2TrueFinalBossTest();
       return;
     }
+    // [디버그 전용 — 진 최종보스 테스트용, admin2의 변형] admin2와 완전히
+    // 동일한 조건(레벨17/에픽풀템/포션 최대)이되, 유물만 회랑자의 칼날/
+    // 칼자루 고정 조합이 아니라 난이도별 개수(쉬움2/보통3/하드코어4 —
+    // 실제 게임의 relicSlots과 동일한 값)만큼 무작위로 지급한다.
+    if(player.name && player.name.trim().toLowerCase()==='admin3'){
+      setupAdmin2TrueFinalBossTest({randomRelics:true});
+      return;
+    }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
     // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
     // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
@@ -120,7 +128,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   // 시작한다 — 나아가면 곧바로 진 최종보스 노드다. player.deathCount는
   // newPlayer()의 기본값(0) 그대로 절대 건드리지 않는다(0이어야 진
   // 최종보스가 실제로 등장하는 조건 — combat/battle-setup.js 참고).
-  function setupAdmin2TrueFinalBossTest(){
+  function setupAdmin2TrueFinalBossTest(opts){
+    opts = opts || {};
     // 레벨 17까지 실제 레벨업 로직(combat/battle-end.js의 applyLevelUpEffects,
     // 스탯 성장/스킬 습득 공식 그대로)을 반복 호출해 재사용한다 — 수치를
     // 손으로 다시 베끼면 나중에 공식이 바뀔 때 여기만 어긋나기 쉽다.
@@ -160,10 +169,45 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     player.equipEnhancements[armorId] = ['emergency','undyingarmor','bloodarmor'];
     gear.forEach(id=> equipItem(id));
 
-    // 유물: 회랑자의 칼날 + 칼자루 — 함께 지니면 모든 스킬 피해 2배(relics.js).
-    // 둘 다 effect가 비어 있어(단독 무효) applyRelicEffect로 딱히 반영할
-    // 스탯이 없다 — 목록에 그냥 추가하면 된다.
-    player.relics.push('relic_hilt', 'relic_blade');
+    // 유물(사용자 요청 — admin3은 admin2와 달리 무작위 유물).
+    // admin2: 회랑자의 칼날 + 칼자루 고정 — 함께 지니면 모든 스킬 피해 2배.
+    //   둘 다 effect가 비어 있어(단독 무효) applyRelicEffect로 딱히 반영할
+    //   스탯이 없다 — 목록에 그냥 추가하면 된다.
+    // admin3: relicSlots(난이도별 쉬움2/보통3/하드코어4 — 실제 게임의
+    //   getRelicSlotUsage 상한과 동일한 값)만큼, RELIC_ALTAR_POOL(제단에서
+    //   정상적으로 뜨는 유물 전체 — 저주 제외)에서 무작위로 뽑는다. 칼날/
+    //   칼자루는 애초에 이 풀에 없어 자동으로 제외되고, 추가로 "MP가 0이
+    //   되는 유물"(빈 그릇 — effect.mpZero)만 사용자 요청으로 명시 제외한다
+    //   (스킬을 아예 못 쓰게 되어 딜사이클 테스트 목적과 안 맞기 때문).
+    if(opts.randomRelics){
+      const relicSlotsByDiff = {easy:2, normal:3, hardcore:4};
+      const n = relicSlotsByDiff[player.difficulty] || 2;
+      const pool = (typeof RELIC_ALTAR_POOL!=='undefined' ? RELIC_ALTAR_POOL : Object.keys(RELICS))
+        .filter(id=>{
+          const r = RELICS[id];
+          return r && !r.effect.mpZero && !r.deprecated;
+        });
+      const shuffled = pool.slice();
+      for(let i=shuffled.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      shuffled.slice(0, n).forEach(id=>{
+        player.relics.push(id);
+        if(typeof applyRelicEffect==='function') applyRelicEffect(id);
+      });
+    } else {
+      player.relics.push('relic_hilt', 'relic_blade');
+    }
+
+    // 저주술사(mage_curseweaver)는 admin2/admin3 둘 다 "현실적인 저주
+    // 보유량"을 갖게 한다(사용자 요청) — 전체 5개 구간 중 저주 제단은
+    // 구간당 1번씩(총 5번) 뜨지만, 플레이어가 고른 한 경로가 그 노드를
+    // 매번 지나간다는 보장은 없어 5개를 다 모으진 못하는 게 자연스럽다.
+    // 그래서 5개 중 4개를 무작위로 지급한다(하나는 놓친 것으로 취급).
+    // resolveJobAdvancement()에서 2차 전직이 확정된 "이후"에만 의미가
+    // 있으므로 job-advancement.js 쪽에 별도로 붙인다(여기서는 아직 어떤
+    // 세분화를 고를지 알 수 없다).
 
     // 포션류도 최대치로 채운다(사용자 요청). shop.js의 CONSUMABLE_CAPS를
     // 그대로 참조 — 상점 판매 상한과 항상 같은 값을 쓰게 되어, 상한이
@@ -187,7 +231,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
-    renderExplore(['[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 회랑자의 칼날/칼자루 장착 완료. 나아가면 곧바로 진 최종보스와 마주한다.']);
+    const relicMsg = opts.randomRelics ? '무작위 유물 지급' : '회랑자의 칼날/칼자루 장착';
+    renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · ${relicMsg} 완료. 나아가면 곧바로 진 최종보스와 마주한다.`]);
     saveGame();
   }
 

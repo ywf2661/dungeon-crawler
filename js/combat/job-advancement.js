@@ -142,14 +142,39 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     // (player.level<15가 처음부터 거짓). 그래서 spec.skillLevels에 있는 레벨 중
     // 이미 지난 것들을 레벨업 없이 직접 지급한다 — exp/expNext는 건드리지
     // 않으므로 이후 정상적인 경험치 누적에 영향 없다. 이름이 "admin2"가 아닌
-    // 캐릭터에는 전혀 영향 없다.
-    if(player.name && player.name.trim().toLowerCase()==='admin2' && spec && spec.skillLevels){
+    // 캐릭터에는 전혀 영향 없다. (사용자 요청으로 admin3도 동일하게 적용)
+    const debugName = player.name && player.name.trim().toLowerCase();
+    const isAdminDebug2or3 = debugName==='admin2' || debugName==='admin3';
+    if(isAdminDebug2or3 && spec && spec.skillLevels){
       Object.keys(spec.skillLevels).forEach(lvKey=>{
         if(Number(lvKey) > player.level) return;
         const skillKey = spec.skillLevels[lvKey];
         if(skillKey && typeof SKILLDB!=='undefined' && SKILLDB[skillKey] && !player.skills.includes(skillKey)){
           player.skills.push(skillKey);
         }
+      });
+    }
+    // [디버그 전용] 저주술사(mage_curseweaver)는 admin2/admin3 둘 다 "현실적인
+    // 저주 보유량"을 갖게 한다(사용자 요청) — 유물처럼 처음부터 몰아주면
+    // 딜사이클이 실제 자연 진행과 안 맞기 때문. 구간마다 저주 제단이 1번씩
+    // (총 5번) 뜨지만 고른 경로가 매번 그 노드를 지나간다는 보장은 없어,
+    // 5개 중 4개만 무작위로 지급한다(하나는 놓친 것으로 취급). applyRelicEffect()
+    // 호출 시점이 마스터리(mastery_curseweaver, 위 grantKeys 루프에서 이미
+    // 지급됨) 지급 "이후"라 페널티 절반 감면 + 마력+4 보너스가 자동으로
+    // 정확히 반영된다.
+    if(isAdminDebug2or3 && specId==='mage_curseweaver'){
+      const cursePool = Object.keys(RELICS).filter(id=>{
+        const r = RELICS[id];
+        return r && r.type==='curse' && !r.deprecated;
+      });
+      const shuffled = cursePool.slice();
+      for(let i=shuffled.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      shuffled.slice(0, Math.min(4, shuffled.length)).forEach(id=>{
+        player.relics.push(id);
+        if(typeof applyRelicEffect==='function') applyRelicEffect(id);
       });
     }
     renderStatus();
