@@ -100,10 +100,81 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     depth = 0; town = true; enemy = null; battleOver = false; subMode = null;
     inBossDen = false; bossDenFloor = 0;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, rig:null};
+    // [디버그 전용 — 진 최종보스 테스트용] 이름이 정확히 "admin2"(대소문자
+    // 무관)면 오프닝 심리테스트를 건너뛰고 setupAdmin2TrueFinalBossTest()로
+    // 곧장 보낸다. 기존 "admin"(레벨9 시작, player.js)과는 별개의 독립된
+    // 디버그 경로 — 서로 전혀 간섭하지 않는다.
+    if(player.name && player.name.trim().toLowerCase()==='admin2'){
+      setupAdmin2TrueFinalBossTest();
+      return;
+    }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
     // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
     // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
     showOriginQuiz();
+  }
+
+  // [디버그 전용] 진 최종보스("회랑의 시조") 테스트용 셋업. 레벨20 + 직업
+  // 맞춤 에픽 풀템(딜 극대화 강화 포함) + 회랑자의 칼날/칼자루 유물을 갖춘
+  // 채로 "고요한 제단"(tierIndex===5) 준비 노드를 이미 통과한 상태로
+  // 시작한다 — 나아가면 곧바로 진 최종보스 노드다. player.deathCount는
+  // newPlayer()의 기본값(0) 그대로 절대 건드리지 않는다(0이어야 진
+  // 최종보스가 실제로 등장하는 조건 — combat/battle-setup.js 참고).
+  function setupAdmin2TrueFinalBossTest(){
+    // 레벨 20까지 실제 레벨업 로직(combat/battle-end.js의 applyLevelUpEffects,
+    // 스탯 성장/스킬 습득 공식 그대로)을 반복 호출해 재사용한다 — 수치를
+    // 손으로 다시 베끼면 나중에 공식이 바뀔 때 여기만 어긋나기 쉽다.
+    while(player.level < 20){
+      applyLevelUpEffects();
+    }
+    // 2차 전직/세분화는 레벨10 이상이므로 정상적으로 직접 골라야 한다 —
+    // scheduleJobAdvancementCheck()가 explore 화면 진입 시 자동으로 띄운다.
+    player.jobAdvancePending = true;
+
+    // 직업 맞춤 에픽 풀템(무기/방어구/장신구) 3종 지급 + 장착.
+    const EPIC_SET_BY_JOB = {
+      warrior:  ['w_giantslayer','a_giantheart','c_giantring'],
+      mage:     ['w_stardevourer','a_starrobe','c_voidcore'],
+      rogue:    ['w_nightblades','a_shadowcloak','c_assassineye'],
+      paladin:  ['w_judgmentblade','a_godplate','c_saintheart'],
+      mechanic: ['w_omegacannon','a_overloadarmor','c_omegareactor'],
+      jester:   ['w_fatedeck','a_jokertailcoat','c_lastjoker'],
+    };
+    const gear = EPIC_SET_BY_JOB[player.job] || EPIC_SET_BY_JOB.warrior;
+    const [weaponId, armorId, accId] = gear;
+    gear.forEach(id=>{ if(!player.equipOwned.includes(id)) player.equipOwned.push(id); });
+    // 강화는 장착(equipItem) 전에 먼저 새겨둬야 한다 — blacksmith.js의
+    // applyEnhancementStatBonuses(itemId)가 장착 시점에 player.equipEnhancements를
+    // 읽어 스탯형 보너스(피의 갑옷 최대HP+20% 등)까지 함께 적용하기 때문.
+    // 무기: 딜량이 가장 높은 조합(전부 피해 배율계) — 날카로운 칼날+무거운
+    // 일격+잔혹한 칼날. 장신구: 스킬피해/치명타/저HP공격력 위주. 방어구는
+    // 딜량 직결 강화가 아예 없어 생존 위주로 채운다(사용자에게 안내 완료).
+    player.equipEnhancements[weaponId] = ['sharp','heavy','brutal'];
+    player.equipEnhancements[accId] = ['manaring','luckcharm','berserkring'];
+    player.equipEnhancements[armorId] = ['emergency','undyingarmor','bloodarmor'];
+    gear.forEach(id=> equipItem(id));
+
+    // 유물: 회랑자의 칼날 + 칼자루 — 함께 지니면 모든 스킬 피해 2배(relics.js).
+    // 둘 다 effect가 비어 있어(단독 무효) applyRelicEffect로 딱히 반영할
+    // 스탯이 없다 — 목록에 그냥 추가하면 된다.
+    player.relics.push('relic_hilt', 'relic_blade');
+
+    // "고요한 제단"(tierIndex===5) — 준비 노드(1번)는 이미 통과한 것으로
+    // 두고, 나아가면 곧바로 보스 노드(진 최종보스)만 남긴다.
+    player.tierIndex = 5;
+    player.nodeMap = generateSilentAltarMap(5);
+    player.nodeRow = 0;
+    player.nodeCurrentId = player.nodeMap[0][0].id;
+    player.nodeVisited = [player.nodeCurrentId];
+    town = false;
+    depth = 55; // tierIndex 5 구간(가상 층수 50~60)의 대략치 — 전투 스케일링용
+
+    player.townCheckpoint = makeTownCheckpoint();
+    document.getElementById('statusbar').style.display='flex';
+    showScreen('explore');
+    renderStatus();
+    renderExplore(['[관리자 테스트] 레벨20 · 직업 맞춤 에픽 풀템 · 회랑자의 칼날/칼자루 장착 완료. 나아가면 곧바로 진 최종보스와 마주한다.']);
+    saveGame();
   }
 
   // 오프닝 심리테스트(origin.js) 완료 후 실제로 마을 화면을 여는 마무리 처리.
