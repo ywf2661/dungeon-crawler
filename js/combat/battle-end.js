@@ -414,6 +414,12 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
   // 선택이 끝나야 실제로 마을에 도착한다(town=true + 마을 체크포인트 저장은
   // 여기서 보상까지 반영한 뒤에 한다).
   function showBossRewardChoice(clearedTier, pendingPurifyIds){
+    // 층별보스 보상 강화(사용자 요청) — 6지선다 보상 선택과는 별개로, 층별보스를
+    // 잡을 때마다 정예의 인장을 1~2개 무작위로 그냥 더 준다(교환소에서 인장이
+    // 가장 아쉬운 자원이라는 피드백 반영). 아래 선택지 중 "정예의 증표"를
+    // 고르면 여기에 +1이 추가로 더 붙는다(둘은 서로 다른 지급 경로).
+    const bonusSeals = 1 + Math.floor(Math.random()*2); // 1 또는 2
+    player.eliteSeals = (player.eliteSeals||0) + bonusSeals;
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'boss-reward-overlay';
@@ -428,6 +434,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">보스를 물리쳤다!</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">마을로 향하기 전, 마지막으로 얻어갈 것을 하나 고른다.</p>
+      <p style="text-align:center;color:#ffd76a;font-size:12.5px;margin:-8px 0 14px;">🔱 정예의 인장 +${bonusSeals}개를 추가로 얻었다! (보유 ${player.eliteSeals}개)</p>
       <div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="reward-heal">💗 깊은 회복 — HP/MP 50% 회복</button>
         <button class="btn" id="reward-gold">💰 두둑한 보상 — 골드 +${goldReward}</button>
