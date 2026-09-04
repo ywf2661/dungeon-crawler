@@ -211,7 +211,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 반대편 슬롯의 다른 로봇은 그대로 보인다.
   function renderOneRigSlot(el, rig){
     if(!rig){
-      el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('rig-wide'); el.classList.remove('rig-top');
+      el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('rig-wide'); el.classList.remove('rig-top'); el.classList.remove('rig-shield');
       return;
     }
     el.innerHTML = svgRig(rig.kind) + `<div class="rig-turns">${rig.turnsLeft}턴</div>`;
@@ -220,6 +220,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     // 강철 군단장의 정찰/화력/방벽/긴급배치(필러) 로봇은 기존 포탑류(bottom:-100px,
     // 머리만 보이는 연출)와 달리 화면 위쪽 구석에 전체가 온전히 보이게 그린다.
     el.classList.toggle('rig-top', ['recon','firepower','shield','filler'].includes(rig.kind));
+    // 방벽 로봇은 다른 2종보다 살짝 작고 더 바깥쪽/위쪽에 오도록(사용자 요청).
+    el.classList.toggle('rig-shield', rig.kind==='shield');
   }
   // 메카닉 리뉴얼(사용자 요청) — 보일러 압력 폭주. 압력이 100에 도달한 채
   // 방출되지 않고 넘어가면, 내 턴이 돌아올 때 자동으로 터진다(20% 확률로
@@ -404,6 +406,27 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     }
   }
 
+  // 1차/2차 각성 스킬 구분(사용자 요청) — 기본 직업(job.skillLevels)에 속한
+  // 스킬이면 1차, 전직 특성(masterySkillId(s)/activeSkillId(s)/skillLevels
+  // 12·15)에 속하면 2차로 분류한다. 강철 군단장처럼 1차 레벨 슬롯 자체를
+  // 다른 스킬로 갈아끼운 특수 케이스는 spec.tier2ExtraSkillIds에 따로
+  // 나열해두면 여기서 함께 2차로 잡힌다.
+  function getSkillTier(k){
+    const job = getJob(player);
+    if(job && job.skillLevels && Object.values(job.skillLevels).includes(k)) return 1;
+    const spec = getSpecialization(player);
+    if(spec){
+      const specIds = [
+        ...(spec.masterySkillIds || (spec.masterySkillId ? [spec.masterySkillId] : [])),
+        ...(spec.activeSkillIds || (spec.activeSkillId ? [spec.activeSkillId] : [])),
+        ...(spec.skillLevels ? Object.values(spec.skillLevels) : []),
+        ...(spec.tier2ExtraSkillIds || []),
+      ];
+      if(specIds.includes(k)) return 2;
+    }
+    return 1;
+  }
+
   function openSub(mode){
     subMode = mode;
     document.getElementById('cmd-main').style.display='none';
@@ -413,6 +436,19 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     sub.innerHTML='';
     if(mode==='skill'){
       const avail = player.skills.filter(k=>SKILLDB[k]);
+      // 강철 군단장 전용 표시 순서(사용자 요청 — 2차 각성 후 스킬 목록이
+      // 뒤섞여 헷갈림). 목록에 없는 스킬(마스터리 "군단 편성" 등)은 맨 앞에
+      // 그대로 남긴다.
+      if(player.specialization==='mechanic_accumulator'){
+        const legionOrder = ['mechanicFocusFire','mechanicMark','legionMaintenance','mechanicDeployFirepower','mechanicDeployRecon','mechanicDeployShield','mechanicOverpressure','legionFullSquadSynergy','legionCommand'];
+        avail.sort((a,b)=>{
+          const ia = legionOrder.indexOf(a), ib = legionOrder.indexOf(b);
+          if(ia===-1 && ib===-1) return 0;
+          if(ia===-1) return -1;
+          if(ib===-1) return 1;
+          return ia-ib;
+        });
+      }
       if(avail.length===0){ sub.innerHTML = '<div class="sub-item disabled">배운 스킬이 없다</div>'; return; }
       // 토글형 스킬(arm/elementpact)은 가로 한 줄로 묶어서 맨 위에 먼저 그린다 —
       // 화염/빙결/번개계약처럼 토글이 여러 개라도 세로 목록이 길어지지 않는다.
@@ -438,7 +474,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
             ? (battleFlags && battleFlags.elementPact === s.pactElement)
             : !!player[s.armFlag];
           const btn = document.createElement('div');
-          btn.className = 'toggle-btn'+(isActive?' active':'');
+          btn.className = 'toggle-btn'+(isActive?' active':'')+' skill-tier'+getSkillTier(k);
           btn.innerHTML = `<div>${s.name}</div>`;
           btn.title = s.desc;
           btn.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
@@ -453,7 +489,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         const cdLeft = (battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[k]) || 0;
         const canUse = player.mp>=mpCost && cdLeft<=0;
         const div = document.createElement('div');
-        div.className = 'sub-item'+(canUse?'':' disabled');
+        div.className = 'sub-item'+(canUse?'':' disabled')+' skill-tier'+getSkillTier(k);
         // 베팅/올인(goldbet 타입): 실제로 쓰면 판돈이 얼마가 될지 현재 소지 골드
         // 기준으로 미리 계산해 보여준다("전투 중 소지금액 확인" 요청에 맞춰,
         // 그냥 골드 숫자만 보여주는 것보다 "이 스킬을 쓰면 얼마를 거는지"가 더
