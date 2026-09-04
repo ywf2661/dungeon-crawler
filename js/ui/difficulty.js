@@ -29,6 +29,10 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
 
   function isDifficultyUnlocked(id){
     if(id==='easy') return true;
+    // admin/admin2/admin3 테스트 계정은 이름을 입력하는 즉시 보통/하드코어가
+    // 해금된 것처럼 취급한다(사용자 요청 — 매번 기록을 쌓아 해금할 필요 없이
+    // 바로 테스트할 수 있게). state.js의 isAdminNameEntered()를 그대로 재사용.
+    if((id==='normal' || id==='hardcore') && typeof isAdminNameEntered==='function' && isAdminNameEntered()) return true;
     if(id==='normal') return normalUnlocked;
     if(id==='hardcore') return hardcoreUnlocked;
     return false;

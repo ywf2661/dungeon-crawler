@@ -11,6 +11,9 @@ export(전역): player, enemy, depth, town, log, battleOver, subMode, battleFlag
      문제와는 별개로 임시 비공개 처리). renderJobSelect()가 #name-input의 현재
      값을 확인해 "admin"이 아니면 두 카드를 잠금 표시하고 클릭을 막는다. 이름
      입력칸에 input 이벤트를 걸어, 타이핑 중에도 실시간으로 잠금/해제가 반영된다.
+     isAdminNameEntered()는 admin/admin2/admin3 세 이름을 모두 인정한다(디버그
+     테스트 계정 공통 판별용 — ui/difficulty.js의 보통/하드코어 난이도 즉시 해금도
+     이 함수를 그대로 재사용한다).
 */
 
   /* ============ 게임 상태 ============ */
@@ -27,7 +30,7 @@ export(전역): player, enemy, depth, town, log, battleOver, subMode, battleFlag
   function isAdminNameEntered(){
     const input = document.getElementById('name-input');
     const raw = input ? input.value.trim().toLowerCase() : '';
-    return raw === 'admin';
+    return raw==='admin' || raw==='admin2' || raw==='admin3';
   }
 
   function renderJobSelect(){
@@ -60,4 +63,9 @@ export(전역): player, enemy, depth, town, log, battleOver, subMode, battleFlag
   // 이름 입력칸을 타이핑하는 즉시 admin 잠금 상태가 갱신되게 한다. 이 스크립트는
   // body 하단에서 로드되므로, 이 시점엔 이미 #name-input이 DOM에 존재한다.
   const __nameInputForLock = document.getElementById('name-input');
-  if(__nameInputForLock) __nameInputForLock.addEventListener('input', renderJobSelect);
+  if(__nameInputForLock) __nameInputForLock.addEventListener('input', ()=>{
+    renderJobSelect();
+    // admin/admin2/admin3 테스트 계정은 보통/하드코어 난이도도 타이핑 즉시
+    // 해금되어야 하므로(사용자 요청) 같은 이벤트에서 난이도 UI도 다시 그린다.
+    if(typeof renderDifficultySelect==='function') renderDifficultySelect();
+  });
