@@ -214,7 +214,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 스킬 쿨타임(사용자 요청 — 1차 직업 궁극기 로테이션 개선). 쿨타임이 남아
     // 있으면 MP가 충분해도 사용할 수 없다(스킬 메뉴에서도 비활성화되지만
     // 방어적으로 한 번 더 막는다).
-    if(s.cooldown && battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[key]>0) return;
+    // 버그 수정(사용자 제보 — 사기꾼): 쿨다운이 있는 스킬(예: 1차 궁극기)은
+    // 성공/실패와 무관하게 시전 즉시 쿨다운이 걸리는데, 손버릇(손버릇/
+    // checkGamblerRetry)의 무료 재시도 호출까지 여기 걸려 조용히 return되면
+    // setCommandsEnabled(true)/enemyTurn() 둘 다 못 불러 버튼이 영구히
+    // 비활성화됐다. 재시도(isRetry)는 쿨다운 검사를 건너뛴다.
+    if(!isRetry && s.cooldown && battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[key]>0) return;
     setCommandsEnabled(false);
 
     // 은신 연속 사용 방지: 은신이 아닌 스킬을 쓰면 쿨다운이 풀린다. 은신 자체는
