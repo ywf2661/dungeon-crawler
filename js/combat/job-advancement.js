@@ -72,6 +72,23 @@ export(전역): showJobAdvancement, resolveJobAdvancement
       if(msg) msg.remove();
     }, LOCK_MS);
   }
+  // 강철 군단장(mechanic_accumulator 리뉴얼) 전용 — 기본 기관사 스킬(1/3/7레벨:
+  // 보일러 점화/밸브 개방/안전밸브)을 로봇 테마 대체 스킬로 교체한다(5레벨
+  // 표적 마킹은 그대로 재사용 — combat/enemy-turn.js에서 로봇 사격에도 표식
+  // 보너스가 적용되도록 확장해뒀다). 멱등(idempotent)하게 짜여 있어 여러 번
+  // 호출해도 안전하다 — 그래서 신규 전직 시점(resolveJobAdvancement)뿐 아니라
+  // 이미 이 특성으로 전직을 마친 기존 세이브 캐릭터를 위해 combat/
+  // battle-setup.js의 startBattle()에서도 매 전투 시작 시 호출한다.
+  function migrateLegionBaseSkills(player){
+    if(player.specialization !== 'mechanic_accumulator') return;
+    const swapMap = {mechanicIgnite:'legionEmergencyDeploy', mechanicValve:'mechanicFocusFire', mechanicSafety:'legionMaintenance'};
+    Object.keys(swapMap).forEach(oldId=>{
+      const newId = swapMap[oldId];
+      const idx = player.skills.indexOf(oldId);
+      if(idx>=0) player.skills.splice(idx,1);
+      if(!player.skills.includes(newId)) player.skills.push(newId);
+    });
+  }
   function resolveJobAdvancement(specId){
     player.jobChosenAt10 = true;
     player.jobAdvancePending = false;
@@ -124,6 +141,10 @@ export(전역): showJobAdvancement, resolveJobAdvancement
         player.equipment.weapon = 'caliberx_1';
         if(!player.equipOwned.includes('caliberx_1')) player.equipOwned.push('caliberx_1');
       }
+      // 강철 군단장(mechanic_accumulator 리뉴얼) 베이스 스킬 교체 — 함수는
+      // 아래 migrateLegionBaseSkills()에 분리해뒀다(신규 전직 시점 + 기존
+      // 세이브 캐릭터의 전투 진입 시점, 총 두 곳에서 호출해야 하기 때문).
+      migrateLegionBaseSkills(player);
     }
     // [디버그 전용] 캐릭터 이름이 정확히 "admin"(대소문자 무관)이면, 전직 직후
     // 즉시 레벨 15까지 올려서 12/15레벨 스킬을 곧바로 테스트할 수 있게 한다.

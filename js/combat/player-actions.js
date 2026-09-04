@@ -706,6 +706,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         {kind:'recon', label:'정찰', rigMult:0.55, exposeTurns:3, exposePierce:0.25},
         {kind:'firepower', label:'화력', rigMult:0.95},
         {kind:'shield', label:'방벽', rigMult:0.45, shieldPct:0.2},
+        // 강철 군단장 레벨1 "긴급 배치" 전용 — 역할 효과 없는 저비용 필러.
+        {kind:'filler', label:'예비', rigMult:0.35},
       ];
       const role = s.roleKind ? roles.find(r=>r.kind===s.roleKind) : roles[Math.floor(Math.random()*roles.length)];
       const dmgPerTick = Math.max(1, Math.round(player.mag*role.rigMult));
@@ -755,6 +757,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const rigs = [];
       if(battleFlags.rig && battleFlags.rig.turnsLeft>0) rigs.push('rig');
       if(battleFlags.rig2 && battleFlags.rig2.turnsLeft>0) rigs.push('rig2');
+      // 강철 군단장은 오메가 전용 슬롯도 별도로 갖고 있으니, 집중 사격 명령이
+      // 오메가까지 포함해 전 슬롯을 지휘하도록 한다.
+      if(battleFlags.omegaRig && battleFlags.omegaRig.turnsLeft>0) rigs.push('omegaRig');
       let dmgBonusPct = 0, piercePct = 0, shieldTurns = 0, shieldMult = 1;
       const roleLabels = [];
       rigs.forEach(key=>{
@@ -822,6 +827,44 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         }
       };
       setTimeout(fireNext, 800);
+      return;
+    }
+
+    if(s.type==='legionmaintenance'){
+      // 강철 군단장 레벨7 "전체 정비": 가동 중인 로봇 전원(rig/rig2/오메가 전용
+      // 슬롯)의 지속시간을 s.extendTurns만큼 늘린다. 로봇이 하나도 없으면
+      // 그냥 아무 효과 없이 넘어간다(사용자에게 안내만).
+      const slots = ['rig','rig2','omegaRig'];
+      let extendedNames = [];
+      slots.forEach(key=>{
+        const r = battleFlags[key];
+        if(r && r.turnsLeft>0){
+          r.turnsLeft += s.extendTurns;
+          extendedNames.push(r.name);
+        }
+      });
+      renderStatus();
+      updateRigVisuals();
+      const msgM = extendedNames.length>0
+        ? `${extendedNames.join(', ')}의 가동 시간을 ${s.extendTurns}턴 늘렸다.`
+        : '가동 중인 로봇이 없어 정비할 대상이 없었다.';
+      setBattleMsg(`${player.name}의 ${s.name}!`, msgM);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='legioncommand'){
+      // 강철 군단장 레벨15 궁극기 "총사령관의 명령": 즉발 피해 없이, 몇 턴간
+      // 가동 중인 모든 로봇(rig/rig2/omegaRig)의 사격 위력을 강화하는 지속
+      // 버프를 건다. 실제 위력 보정은 combat/enemy-turn.js의 tickActiveRig()
+      // 데미지 계산에서 battleFlags.legionCommandTurns를 확인해 적용한다.
+      battleFlags.legionCommandTurns = s.buffTurns;
+      battleFlags.legionCommandMult = s.buffMult;
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${s.buffTurns}턴간 모든 로봇의 사격 위력이 ${Math.round(s.buffMult*100)}% 늘어난다.`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
       return;
     }
 
@@ -993,19 +1036,35 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(s.type==='overpressureult'){
       const edefU = getEffectiveEnemyDef(enemy.def);
       const dmgPerTick = Math.max(1, Math.round(player.mag*s.rigMult));
-      battleFlags.rig = {kind:s.rigKind, name:s.rigName, turnsLeft:s.rigTurns, dmgPerTick, shieldPct:s.shieldPct||0, pressurePerTick:s.rigPressurePerTick||0};
+      // 강철 군단장(mechanic_accumulator 리뉴얼)은 압력 게이지가 아예 없다.
+      // 같은 스킬(mechanicOverpressure)을 재사용하되, 이 특성이면 오메가를
+      // battleFlags.omegaRig 전용 고정 슬롯에 배치하고 압력 관련 처리를
+      // 전부 건너뛴다. 다른 특성(폭주 화부 등)은 기존 동작 그대로 유지된다.
+      const isLegion = player.specialization==='mechanic_accumulator';
+      const newOmegaRig = {kind:s.rigKind, name:s.rigName, turnsLeft:s.rigTurns, dmgPerTick, shieldPct:s.shieldPct||0, pressurePerTick: isLegion?0:(s.rigPressurePerTick||0)};
+      if(isLegion){ battleFlags.omegaRig = newOmegaRig; } else { battleFlags.rig = newOmegaRig; }
       updateRigVisuals();
-      battleFlags.pressure = 100;
       const markBonus = (enemy.markedTurns>0) ? (enemy.markBonus||0.25) : 0;
-      let dmg = Math.max(1, Math.round(player.mag*(s.mult + 100*s.dmgPerPressure)*(1+markBonus)) - Math.round(edefU*0.5));
-      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, pressureConsumed: 100});
+      let dmg;
+      if(isLegion){
+        dmg = Math.max(1, Math.round(player.mag*s.mult*(1+markBonus)) - Math.round(edefU*0.5));
+      } else {
+        battleFlags.pressure = 100;
+        dmg = Math.max(1, Math.round(player.mag*(s.mult + 100*s.dmgPerPressure)*(1+markBonus)) - Math.round(edefU*0.5));
+      }
+      dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, pressureConsumed: isLegion?0:100});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg,'crit');
       Sound.bomb();
-      battleFlags.pressure = 0;
-      if(typeof updatePressureGauge==='function') updatePressureGauge();
+      if(!isLegion){
+        battleFlags.pressure = 0;
+        if(typeof updatePressureGauge==='function') updatePressureGauge();
+      }
       renderStatus();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `오메가 유닛을 투입하며 압력을 강제로 끌어올려 ${dmg}의 대폭발을 일으켰다! 이후 오메가 유닛이 훨씬 빠르게 압력을 쌓는다.`);
+      const msgU = isLegion
+        ? `오메가 유닛을 전용 슬롯에 투입하며 ${dmg}의 대폭발을 일으켰다! 이후 오메가 유닛이 매 턴 강력하게 자동 사격한다.`
+        : `오메가 유닛을 투입하며 압력을 강제로 끌어올려 ${dmg}의 대폭발을 일으켰다! 이후 오메가 유닛이 훨씬 빠르게 압력을 쌓는다.`;
+      setBattleMsg(`${player.name}의 ${s.name}!`, msgU);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;

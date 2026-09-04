@@ -164,7 +164,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 예를 들어 3턴짜리 장치가 설치 직후 한 라운드 만에 3번 다 쏘고 소멸하는 버그가
   // 생긴다 — 실제로 발생했던 회귀였다.)
   function tickRigsThenProceed(){
-    tickRigSlotOnce('rig', ()=> tickRigSlotOnce('rig2', enemyTurnReal));
+    // 강철 군단장의 오메가 전용 슬롯(omegaRig)도 rig/rig2와 동일한 방식으로
+    // 라운드당 한 번씩 순서대로 틱한다(rig -> rig2 -> omegaRig -> 적 실제 턴).
+    tickRigSlotOnce('rig', ()=> tickRigSlotOnce('rig2', ()=> tickRigSlotOnce('omegaRig', enemyTurnReal)));
   }
   function tickRigSlotOnce(slotKey, next){
     if(battleFlags && battleFlags[slotKey] && battleFlags[slotKey].turnsLeft>0){
@@ -265,7 +267,22 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // pressureScaled 장치는 현재 쌓인 압력만큼 틱 데미지에 보너스가 붙는다
       // (마스터리로 상한이 150인 폭주 화부라면 그만큼 더 크게 붙는다).
       const pressureBonus = rig.pressureScaled ? Math.round((player.mag||0)*(battleFlags.pressure||0)*(rig.pressureScaleRate||0)) : 0;
-      const dmg = Math.max(1, rig.dmgPerTick + pressureBonus);
+      // 강철 군단장 전용 보너스 3종(다른 마스터리가 없으면 전부 0이라 다른
+      // 메카닉 특성에는 영향이 없다):
+      // 1) 취약점 분석(레벨5 표적 마킹)이 걸려 있으면 로봇 사격에도 markBonus 적용.
+      // 2) 풀편성 시너지(레벨12) — rig/rig2/omegaRig 3슬롯이 전부 가동 중일 때.
+      // 3) 총사령관의 명령(레벨15) — battleFlags.legionCommandTurns가 남아있는 동안.
+      let legionMult = 1;
+      if(enemy && enemy.markedTurns>0){ legionMult += (enemy.markBonus||0.25); }
+      if(player.skills && player.skills.includes('legionFullSquadSynergy')){
+        const allThree = battleFlags.rig && battleFlags.rig.turnsLeft>0
+          && battleFlags.rig2 && battleFlags.rig2.turnsLeft>0
+          && battleFlags.omegaRig && battleFlags.omegaRig.turnsLeft>0;
+        if(allThree) legionMult += (SKILLDB.legionFullSquadSynergy && SKILLDB.legionFullSquadSynergy.fullSquadDmgBonus) || 0.2;
+      }
+      if(battleFlags.legionCommandTurns>0){ legionMult += (battleFlags.legionCommandMult||0); }
+      const legionBonus = legionMult>1 ? Math.round(rig.dmgPerTick*(legionMult-1)) : 0;
+      const dmg = Math.max(1, rig.dmgPerTick + pressureBonus + legionBonus);
       enemy.hp = Math.max(0, enemy.hp - dmg);
       updateEnemyHpBar(); popDamage('-'+dmg, 'rig');
       Sound.hit();
@@ -312,6 +329,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     if(enemy && enemy.markedTurns>0){
       enemy.markedTurns -= 1;
       updateStatusBadges();
+    }
+    // 강철 군단장 "총사령관의 명령" 지속 버프 소진.
+    if(battleFlags && battleFlags.legionCommandTurns>0){
+      battleFlags.legionCommandTurns -= 1;
     }
     if(battleFlags){
       battleFlags.hourglassTurn = (battleFlags.hourglassTurn||0) + 1;
@@ -563,6 +584,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       if(battleFlags && battleFlags.rig2 && battleFlags.rig2.shieldPct){
         reduceMult -= battleFlags.rig2.shieldPct;
       }
+      if(battleFlags && battleFlags.omegaRig && battleFlags.omegaRig.shieldPct){
+        reduceMult -= battleFlags.omegaRig.shieldPct;
+      }
       reduceMult += getRelicSum('dmgTakenPctMult');
       // 결투자의 서약(relic_duelistoath): 일반 몬스터(정예/보스 아님) 상대로만
       // 받는 피해 증가.
@@ -738,6 +762,26 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     }
     playStatusFx(spec.type);
     Sound.statusApply(spec.type);
+    updateStatusBadges();
+  }
+  // 전염된 상처(relic_infectedwound): 공격 적중마다 확률로 감염 도트를 걸거나
+  // 중첩시킨다(최대 5중첩). 기존 applyDot()은 같은 종류 재적용 시 그냥
+  // 갱신(overwrite)만 하는 방식이라 "중첩"이 안 돼서 별도 함수로 뺐다.
+  // equipment.js의 consumeOnHitBonuses()(공격 행동 1회당 정확히 한 번 호출
+  // 보장)에서 호출한다.
+  function applyInfectedWoundOnHit(){
+    const chance = getRelicSum('infectedWoundChance');
+    if(chance<=0 || Math.random()>=chance || !enemy) return;
+    if(!enemy.dots) enemy.dots = [];
+    const existing = enemy.dots.find(d=>d.type==='infection');
+    const stacks = Math.min(5, (existing ? existing.stacks : 0) + 1);
+    const dmgPerTurn = Math.max(1, Math.round(effectiveAtk()*0.10*stacks));
+    if(existing){ existing.turns = 3; existing.dmgPerTurn = dmgPerTurn; existing.stacks = stacks; }
+    else { enemy.dots.push({type:'infection', turns:3, dmgPerTurn, stacks, label:'전염된 상처'}); }
+    // 전용 이펙트/사운드 자산이 없어 출혈(bleed) 것을 재사용한다(내부 type은
+    // 'infection'으로 별도 유지되어 뱃지/스택 로직엔 영향 없다).
+    playStatusFx('bleed');
+    Sound.statusApply('bleed');
     updateStatusBadges();
   }
   // 스킬에 정의된 단일 dot(s.dot) 또는 다중 dot(s.dots) 배열을 모두 함께 적용하고,

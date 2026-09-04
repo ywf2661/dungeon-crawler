@@ -593,6 +593,9 @@ export(전역): heroBossSvg, svgMonster
   const RIG_IMG = {
     turret: 'images/bot/autobot.png',
     omega:  'images/bot/omegabot.png',
+    shield: 'images/bot/shieldbot.png',
+    firepower: 'images/bot/firepowerbot.png',
+    recon: 'images/bot/reconbot.png',
   };
   function svgRig(kind){
     if(RIG_IMG[kind]){

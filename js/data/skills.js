@@ -597,8 +597,11 @@ export(전역): SKILLDB
     // 아예 선택할 수 없다(player-actions.js의 playerSkill() 진입부에서 차단 —
     // 기존 '자폭 기동' 등 detonaterig 타입 스킬 전부가 대상이며 이 스킬 하나에
     // 한정되지 않는다).
+    // 강철 군단장(mechanic_accumulator 재사용)에서 이 마스터리를 다시 쓴다.
+    // 예전 문구의 "폭발 계열 스킬 사용 불가" 절은 데토네이터와의 상호배제
+    // 규칙이었는데, 이제 데토네이터와 무관하게 재사용되므로 제거했다.
     mastery_multideploy: {name:'다중 전개', mp:0, type:'passive',
-      desc:'로봇(가동 장치)을 최대 2기까지 동시에 배치할 수 있게 된다. 대신 폭발 계열 스킬은 일절 사용할 수 없다.'},
+      desc:'정찰/화력/방벽 로봇을 최대 2기까지 동시에 배치할 수 있게 된다.'},
     mechanicRoleDeploy: {name:'역할 배치', mp:8, desc:'정찰/화력/방벽 중 하나의 역할을 무작위로 맡은 로봇 한 기를 즉시 배치한다. 이미 로봇이 2기 있다면 가장 먼저 배치된 로봇을 대신 교체한다',
       type:'legiondeploy', rigTurns:3},
     // [교체됨] 위 mechanicRoleDeploy(무작위 배정)는 사용자 피드백으로 폐기되고
@@ -687,6 +690,38 @@ export(전역): SKILLDB
     mechanicAccumOverflow: {name:'범람', mp:18, type:'pressureallocate', mode:'both', cooldown:3,
       minPressure:100, refundAmount:0, dmgBuffPerPressure:0.014, defReducePerPressure:0.007, defReduceCap:0.7,
       desc:'압력이 최대일 때만 사용 가능. 화력 강화와 보호막을 동시에 발동시키며 압력을 전량 소모한다(환급 없음).'},
+
+    // ---------- 강철 군단장(mechanic_accumulator 리뉴얼) ----------
+    // 축압 기술자를 완전히 갈아엎은 버전. 압력 게이지를 쓰지 않고, 로봇 3기
+    // (정찰/화력/방벽 중 2기 + 오메가 유닛 전용 고정 1자리)를 직접 지휘·관리하는
+    // 것이 핵심 루프다. 위 mechanicAccum* 항목들은 레거시로 남겨둔다(구버전
+    // 세이브 크래시 방지). id는 그대로 mechanic_accumulator를 재사용하므로
+    // 기존 캐릭터도 다음 레벨업/전투부터 자동으로 이 킷을 쓰게 된다.
+    // 수치(mp/피해 배율/지속시간 등)는 전부 시뮬레이션 전 임시값이다.
+    //
+    // 레벨1 베이스 스킬 오버라이드: "긴급 배치" — 역할 효과 없는 저비용 필러
+    // 로봇을 rig/rig2 풀에 배치한다(legiondeploy 타입을 그대로 쓰되 roleKind로
+    // 'filler'를 추가). 정찰/화력/방벽보다 화력이 낮은 대신 MP가 싸다.
+    legionEmergencyDeploy: {name:'긴급 배치', mp:4, type:'legiondeploy', roleKind:'filler', rigTurns:3,
+      desc:'역할 없는 저비용 로봇을 즉시 배치한다. 정찰/화력/방벽보다 약하지만 부담 없이 슬롯을 채울 수 있다. 이미 로봇이 2기 있다면 가장 먼저 배치된 로봇을 대신 교체한다.'},
+    // 레벨7 베이스 스킬 오버라이드: "전체 정비" — 가동 중인 로봇 전원(rig/rig2/
+    // 오메가 전용 슬롯)의 지속시간을 한꺼번에 늘린다. 새 타입 'legionmaintenance'.
+    legionMaintenance: {name:'전체 정비', mp:10, type:'legionmaintenance', extendTurns:3,
+      desc:'가동 중인 로봇 전원의 지속시간을 3턴 늘린다. 로봇이 하나도 없으면 효과가 없다.'},
+    // 레벨10 베이스 스킬(과압 각성/mechanicOverpressure)은 그대로 재사용한다 —
+    // combat/player-actions.js의 overpressureult 분기에서 specialization이
+    // mechanic_accumulator면 압력 관련 처리를 건너뛰고 battleFlags.omegaRig
+    // 전용 슬롯에 오메가 유닛을 배치하도록 분기했다(스킬 데이터 자체는 불변).
+    //
+    // 레벨12 패시브: "풀편성 시너지" — 정찰/화력/방벽(최대 2기) + 오메가(1기)
+    // 슬롯이 전부 가동 중일 때 모든 로봇의 사격 위력이 오른다. 실제 적용은
+    // combat/enemy-turn.js의 tickActiveRig() 데미지 계산에서 이뤄진다.
+    legionFullSquadSynergy: {name:'풀편성 시너지', mp:0, type:'passive', fullSquadDmgBonus:0.2,
+      desc:'로봇 3기(정찰/화력/방벽 중 2기 + 오메가)가 전부 가동 중일 때 모든 로봇의 사격 위력이 20% 늘어난다.'},
+    // 레벨15 궁극기: "총사령관의 명령" — 몇 턴간 전 로봇의 사격 위력을 강화하는
+    // 지속형 버프. 즉발 데미지 없음. 새 타입 'legioncommand'.
+    legionCommand: {name:'총사령관의 명령', mp:20, type:'legioncommand', buffTurns:3, buffMult:0.4, cooldown:4,
+      desc:'3턴간 가동 중인 모든 로봇의 사격 위력이 40% 늘어난다. 즉발 피해는 없다.'},
 
     // 도박사 - 운명의 반란자(jester_rebel)
     // 마스터리 "행운의 파도": 매 라운드(적의 실제 턴이 열릴 때, combat/enemy-turn.js의
