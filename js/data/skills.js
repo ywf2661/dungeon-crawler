@@ -647,10 +647,13 @@ export(전역): SKILLDB
     mastery_overheat: {name:'폭주 압력', mp:0, type:'passive',
       pressureCapBonus:50, overflowSelfDmgPerPoint:1.5, ventPowerBonusPerOverflow:0.0006,
       desc:'압력 상한이 150으로 늘어난다. 100을 넘는 압력은 매번 초과분만큼 자해 피해를 입히지만, 압력 방출 스킬의 위력도 초과분에 비례해 강해진다.'},
-    // 레벨10 액티브 "폭주 사출": 압력을 소모하지 않고 즉시 압력비례 피해를 준
-    // 뒤, 오히려 압력을 25 더 쌓는 스노우볼형 스킬(기존 밸브개방과 정반대 방향).
+    // 레벨10 액티브 "폭주 사출": 압력을 소모하지 않고 즉시 압력비례 피해를
+    // 준 뒤, 오히려 압력을 25 더 쌓는 스노우볼형 스킬(기존 밸브개방과 정반대
+    // 방향). 강철 군단장(구 축압 기술자) 리뉴얼 밸런스 시뮬레이션 결과, 자해
+    // 리스크가 있는데도 강철 군단장(리스크 없음)보다 총딜이 낮게 나와
+    // dmgPerPressure를 0.03→0.04로 상향(자해량은 그대로 유지).
     mechanicOverloadDischarge: {name:'폭주 사출', mp:6, type:'pressuresurge',
-      dmgPerPressure:0.03, pressureGainOnUse:25,
+      dmgPerPressure:0.04, pressureGainOnUse:25,
       desc:'압력을 소모하지 않고 즉시 압력량에 비례한 피해를 입힌다. 사용할 때마다 오히려 압력이 25 더 쌓인다.'},
     // 레벨12: 과부하 자해를 입을 때마다 회피 스택이 쌓이는 생존 보상 패시브.
     mechanicHeatResist: {name:'과열 내성', mp:0, type:'passive',
@@ -659,8 +662,10 @@ export(전역): SKILLDB
     // 레벨15 궁극기 "임계 폭주": 압력 100 이상일 때만 사용 가능. 현재 압력 전체를
     // 압도적 피해로 전환하고 최대HP 25%의 반동 피해를 입는다(다른 궁극기들과
     // 동일하게 반동으로 죽지는 않도록 player-actions.js에서 HP 1 클램프 처리).
+    // dmgPerPressure는 강철 군단장 리뉴얼 밸런스 시뮬레이션(자해량 유지, 딜만
+    // 상향)에 맞춰 0.04→0.06으로 상향.
     mechanicCriticalOverload: {name:'임계 폭주', mp:20, type:'criticaloverload', cooldown:4,
-      minPressure:100, dmgPerPressure:0.04, recoilHpCostPct:0.25,
+      minPressure:100, dmgPerPressure:0.06, recoilHpCostPct:0.25,
       desc:'상한을 완전히 무시하고 이번 압력 전체를 압도적 피해로 전환한다. 사용 후 최대HP 25%의 반동 피해를 입는다.'},
 
     // 메카닉 - 축압 기술자(mechanic_accumulator) — 압력을 함부로 흘려보내지
