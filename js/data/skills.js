@@ -722,7 +722,11 @@ export(전역): SKILLDB
     // 레벨15 궁극기 "올인": 소지 골드 전액을 건다. 성공 확률은 베팅보다 낮지만
     // (판돈이 훨씬 크므로) 기본 피해와 판돈 보너스 배율 모두 더 강하다. 베팅과
     // 동일한 'goldbet' 타입을 재사용하되 수치만 다르게 잡았다.
-    jesterAllIn: {name:'올인', mp:16, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
+    // 사용자 요청 — 정보료(+40%p)까지 합쳐도 최대 70%를 넘지 않도록 기본
+    // 성공확률을 0.45->0.30으로 낮췄다(0.30+0.40=0.70). 베팅 쪽 확률(0.5)은
+    // 건드리지 않았다 — chanceBonus가 두 스킬에 공용이라, 올인만 낮추려면
+    // 올인 자체의 successChance를 조정하는 쪽이 베팅에 영향이 없다.
+    jesterAllIn: {name:'올인', mp:16, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.30, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
       desc:'소지 골드 전액(최대 10000G)을 건다. 성공하면 강력한 피해와 함께 판돈의 2배를 돌려받지만, 실패하면 판돈만큼 잃는다. 골드가 없으면 그냥 평범한 강타가 나간다.'},
 
     // ---------- [교체됨] 외상 도박사(jester_debtor) → 불운의 채권자 ----------
