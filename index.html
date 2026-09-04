@@ -806,6 +806,14 @@
    원본 그림 기준 오른쪽(중앙/적 방향)이 아니라 왼쪽(마찬가지로 중앙 방향)을
    향하게 한다. 왼쪽 슬롯은 원본 그대로 둬도 이미 중앙 쪽을 향한다. */
 .rig-slot-right img, .rig-slot-right svg{ transform:scaleX(-1); }
+/* 강철 군단장의 정찰/화력/방벽/긴급배치 로봇 전용 — 기존 "자동포탑"(bottom:-100px,
+   머리만 빼꼼 보이는 연출)과 달리 이 4종은 전체가 다 보이는 드론 그림이라
+   화면 위쪽 좌/우 구석에 온전히 배치한다. 포탑류(다른 직업들의 rigKind:'turret')는
+   기존 bottom:-100px 그대로 유지된다(이 클래스가 안 붙으므로 영향 없음). */
+.rig-slot.rig-top{
+  bottom:auto; top:6px; width:150px; height:120px;
+}
+.rig-slot.rig-top img{ object-fit:contain; object-position:center top; }
 /* 오메가 유닛일 때는 좌/우 어느 슬롯에 들어있었든 화면 하단 중앙에 크게
    고정 배치한다(사용자 요청 — 참고 이미지처럼 양쪽 포신이 대칭으로 크게
    펼쳐져야 함). omegabot.png 자체가 이미 좌우대칭 구도(양쪽 포신+중앙
@@ -830,6 +838,9 @@
   font-family:'Cinzel'; font-size:9px; color:var(--parchment-dim);
   background:#1a130cd0; padding:1px 5px; border-radius:6px; white-space:nowrap;
 }
+/* rig-top(정찰/화력/방벽/긴급배치)은 박스 자체가 훨씬 작아서 위 top:108px이
+   박스 밖으로 벗어난다 — 박스 하단 안쪽에 오도록 별도 지정. */
+.rig-slot.rig-top .rig-turns{ top:auto; bottom:2px; }
 .rig-fire{ animation:rigfire .35s ease-out; }
 @keyframes rigfire{
   0%{ filter:drop-shadow(0 0 0 #fff0) brightness(1); }

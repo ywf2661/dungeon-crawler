@@ -211,12 +211,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 반대편 슬롯의 다른 로봇은 그대로 보인다.
   function renderOneRigSlot(el, rig){
     if(!rig){
-      el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('rig-wide');
+      el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('rig-wide'); el.classList.remove('rig-top');
       return;
     }
     el.innerHTML = svgRig(rig.kind) + `<div class="rig-turns">${rig.turnsLeft}턴</div>`;
     el.style.display = 'block';
     el.classList.toggle('rig-wide', rig.kind==='omega');
+    // 강철 군단장의 정찰/화력/방벽/긴급배치(필러) 로봇은 기존 포탑류(bottom:-100px,
+    // 머리만 보이는 연출)와 달리 화면 위쪽 구석에 전체가 온전히 보이게 그린다.
+    el.classList.toggle('rig-top', ['recon','firepower','shield','filler'].includes(rig.kind));
   }
   // 메카닉 리뉴얼(사용자 요청) — 보일러 압력 폭주. 압력이 100에 도달한 채
   // 방출되지 않고 넘어가면, 내 턴이 돌아올 때 자동으로 터진다(20% 확률로
