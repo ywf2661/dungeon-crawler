@@ -376,16 +376,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.title = '이번 전투에서 잔영이 발동한 누적 횟수 — 백귀야행이 이 횟수만큼 분신을 동시에 몰아친다.';
       box.appendChild(b);
     }
-    // 채무 스택(불운의 채권자, mastery_luckdebt) — 운 스킬이 실패할 때마다
-    // 쌓이는 battleFlags.jesterDebtStacks를 화면에 노출한다(사용자 요청).
-    // 시간 조각(mastery_timewarp) 배지와 동일한 패턴 — 아이콘 반복 + 수치.
-    if(player.skills && player.skills.includes('mastery_luckdebt') && battleFlags && (battleFlags.jesterDebtStacks||0) > 0){
-      const b = document.createElement('div');
-      b.className = 'status-badge player-badge';
-      b.textContent = '⛓️'.repeat(battleFlags.jesterDebtStacks) + ` 채무 ${battleFlags.jesterDebtStacks}/5`;
-      b.title = '운 스킬이 실패할 때마다 쌓이는 채무. 청산/파산 선언으로 한꺼번에 갚아내면 그만큼 강력한 확정 크리티컬이 터진다.';
-      box.appendChild(b);
-    }
+    // (구) 채무 스택 배지 — 사기꾼 리뉴얼로 mastery_luckdebt가 더 이상 스택을
+    // 쌓지 않아(손버릇으로 재설계) 이 배지는 제거했다.
     // 빚(외상 도박사): 전투 중에도 항상 남은 빚과 대략적인 상환율을 확인할 수
     // 있게 한다. 빚이 없으면(player.debt<=0) 표시하지 않는다. 사용자 피드백
     // "버프가 언제까지 적용되는지 모호하다"에 따라, 대출로 얻은 버프(영구
@@ -480,7 +472,9 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         const s = SKILLDB[k];
         const mpCost = s.mp;
         const cdLeft = (battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[k]) || 0;
-        const canUse = player.mp>=mpCost && cdLeft<=0;
+        // 사기꾼 "운명 뒤바꾸기"(hpswap)는 전투당 1회 제한 — 이미 썼으면 비활성화.
+        const usedOnce = s.type==='hpswap' && battleFlags && battleFlags.fateSwapUsed;
+        const canUse = !usedOnce && player.mp>=mpCost && cdLeft<=0;
         const div = document.createElement('div');
         const tierClsN = getSkillTier(k);
         div.className = 'sub-item'+(canUse?'':' disabled')+(tierClsN?' skill-tier'+tierClsN:'');
@@ -501,7 +495,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
           const count = (player.loanCounts && player.loanCounts[s.loanKey]) || 0;
           extraInfo = `<div class="si-desc" style="color:var(--gold-bright); margin-top:2px;">📒 지금까지 ${count}회 대출 · 빌리면 빚 ${(player.debt||0)+loan.amount}G</div>`;
         }
-        const costBadge = cdLeft>0 ? `쿨타임 ${cdLeft}턴` : `MP ${mpCost}`;
+        const costBadge = usedOnce ? '전투당 1회' : (cdLeft>0 ? `쿨타임 ${cdLeft}턴` : `MP ${mpCost}`);
         div.innerHTML = `<div class="si-info"><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div>${extraInfo}</div><div class="si-cost">${costBadge}</div>`;
         if(canUse) div.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
         sub.appendChild(div);

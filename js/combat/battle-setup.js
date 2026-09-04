@@ -348,8 +348,39 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return scaleEnemyForDifficulty(built);
   }
 
+  // 사기꾼(jesterRiggedTable) "조작된 도박판" — 전투 시작 시 내 무작위
+  // 스탯(공/마/방/속) 하나를 +12%, 적의 무작위 스탯(공/방/속) 하나를 -12%
+  // 적용한다. 플레이어 쪽만 델타를 저장해뒀다가 되돌려야 한다(적은 전투마다
+  // 새로 생성되므로 별도 복구 불필요) — 불확실성의 주사위 revertDiceDelta()와
+  // 동일한 설계 원칙, 필드만 별도(player.riggedTableDelta)로 서로 안 겹치게.
+  function revertRiggedTableDelta(){
+    const d = player.riggedTableDelta;
+    if(!d) return;
+    if(d.atk) player.atk -= d.atk;
+    if(d.def) player.def -= d.def;
+    if(d.mag) player.mag -= d.mag;
+    if(d.spd) player.spd -= d.spd;
+    player.riggedTableDelta = null;
+  }
+  function applyRiggedTable(){
+    if(!(player.skills && player.skills.includes('jesterRiggedTable'))) return null;
+    const STAT_LABEL = {atk:'공격력', mag:'마력', def:'방어력', spd:'속도'};
+    const playerStats = ['atk','mag','def','spd'];
+    const enemyStats = ['atk','def','spd'];
+    const pStat = playerStats[Math.floor(Math.random()*playerStats.length)];
+    const eStat = enemyStats[Math.floor(Math.random()*enemyStats.length)];
+    const before = player[pStat];
+    player[pStat] = Math.round(player[pStat]*1.12);
+    player.riggedTableDelta = {[pStat]: player[pStat]-before};
+    if(enemy){
+      enemy[eStat] = Math.max(0, Math.round(enemy[eStat]*0.88));
+    }
+    return {pStat, eStat, label:{p:STAT_LABEL[pStat], e:STAT_LABEL[eStat]}};
+  }
+
   function startBattle(isBoss, isFinal, isTrueFinal){
     revertDiceDelta(); // 직전 전투의 불확실성의 주사위 효과가 남아있다면 먼저 되돌린다(안전망).
+    revertRiggedTableDelta(); // 사기꾼 "조작된 도박판"도 동일한 안전망.
     // 강철 군단장 리뉴얼 이전에 이미 축압 기술자로 전직했던 기존 세이브
     // 캐릭터도 여기서 자동으로 새 킷으로 마이그레이션된다(멱등 처리라 안전).
     if(typeof migrateLegionBaseSkills==='function') migrateLegionBaseSkills(player);
@@ -388,6 +419,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     }
     if(hasRelicFlag('diceRoll')) rollDiceEffectForBattle();
     checkPaladinAwoken();
+    // 사기꾼(jesterRiggedTable) "조작된 도박판" — 전투 시작 시 자동 발동.
+    // 실제 배너 연출(스핀 → 결과 두 줄)은 아래에서 showScreen('battle') 이후,
+    // enemy가 화면에 다 세팅된 뒤에 재생한다(riggedTableResult 변수에 잠깐
+    // 담아뒀다가 그 시점에 소비).
+    const riggedTableResult = applyRiggedTable();
     // 다중 전투 버프(사용자 요청 — 수수께끼의 마법사, 다음 3전투 지속)와 계약
     // 버프(악마의 계약, 마을 도착 전까지 지속)를 매 전투 시작 시 반영한다.
     // 둘 다 기존 buffAtkTurns/buffAtkMult·buffDefTurns/buffDefMult 필드를
@@ -462,6 +498,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // 불확실성의 주사위: 전투 시작 시 어떤 효과가 뽑혔는지 토스트로 알려준다.
     if(battleFlags.diceEffect){
       showToast(`<h3>🎲 불확실성의 주사위</h3><p>${DICE_EFFECT_LABELS[battleFlags.diceEffect]}</p>`, '#ffcf6a');
+    }
+    // 사기꾼 "조작된 도박판" — 룰렛이 돌아가는 느낌으로, 내 스탯 상승과 적
+    // 스탯 하락을 나란히 보여준다.
+    if(riggedTableResult){
+      showToast(`<h3>🎰 조작된 도박판</h3><p>당신의 ${riggedTableResult.label.p} +12%<br>${enemy.name}의 ${riggedTableResult.label.e} -12%</p>`, '#e6c34a');
     }
     if(battleFlags.creed){
       showToast(`<h3>📜 계율</h3><p>이번 전투의 계율: <b>${creedLabel}</b><br>유지할수록 공격력이 오르고, 어기면 즉시 상실한다.</p>`, '#d9c07a');

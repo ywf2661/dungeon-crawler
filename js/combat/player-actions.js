@@ -184,17 +184,18 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     renderStatus();
   }
 
-  // 불운의 채권자(mastery_luckdebt, 도박사 2차): 운 스킬이 실패할 때마다
-  // battleFlags.jesterDebtStacks를 쌓는다(최대 5, 전투 중 유지). 1차 스킬
-  // 로직 자체는 건드리지 않고 각 실패 분기에서 호출만 하는 훅이다.
-  function addLuckDebtStack(){
-    if(!(player.skills && player.skills.includes('mastery_luckdebt'))) return;
-    if(!battleFlags) return;
-    battleFlags.jesterDebtStacks = Math.min(5, (battleFlags.jesterDebtStacks||0)+1);
-    if(typeof updatePlayerStatusBadges==='function') updatePlayerStatusBadges();
+  // 사기꾼(mastery_luckdebt 재사용, 손버릇): 운 스킬이 실패하면 같은 스킬이
+  // 무료로 1회 자동 재시도된다. isRetry===true로 재귀 호출하면 playerSkill()
+  // 안에서 MP를 아예 안 건드리고, 이 함수도 isRetry일 땐 아예 호출되지 않게
+  // (각 실패 분기에서 !isRetry로 감싸) 재귀가 2번 이상 이어지지 않는다.
+  function checkGamblerRetry(key){
+    if(!(player.skills && player.skills.includes('mastery_luckdebt'))) return false;
+    if(battleOver) return false;
+    setTimeout(()=>{ if(!battleOver) playerSkill(key, true); }, 550);
+    return true;
   }
 
-  function playerSkill(key){
+  function playerSkill(key, isRetry){
     if(battleOver) return;
     // 저주술사(mastery_curseweaver)는 스킬 봉인(침묵의 서약)을 저주 개수만큼의 확률로
     // 뚫고 나올 수 있다 — isCurseSealActive()가 이 확률 판정과 배너 안내까지 처리한다.
@@ -209,7 +210,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     const mbb = player.multiBattleBuff;
     const mpCostMult = (mbb && mbb.type==='mpcost' && mbb.battlesLeft>0) ? (1-mbb.value) : 1;
     const mpCost = Math.max(0, Math.round(s.mp*mpCostMult));
-    if(player.mp < mpCost) return;
+    if(!isRetry && player.mp < mpCost) return;
     // 스킬 쿨타임(사용자 요청 — 1차 직업 궁극기 로테이션 개선). 쿨타임이 남아
     // 있으면 MP가 충분해도 사용할 수 없다(스킬 메뉴에서도 비활성화되지만
     // 방어적으로 한 번 더 막는다).
@@ -230,7 +231,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     const freeCast = mpCost>0 && hasRelicFlag('freeCastChance') && Math.random() < getRelicSum('freeCastChance');
-    if(freeCast){
+    if(isRetry){
+      // 손버릇(사기꾼) 재시도 — 완전 무료, MP를 아예 건드리지 않는다.
+    } else if(freeCast){
       playBanner('무한한 탄창!','def');
     } else {
       player.mp -= mpCost;
@@ -1805,7 +1808,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         renderStatus();
         setBattleMsg(`${player.name}의 ${s.name}!`, `승부에서 이겼다! ${enemy.name}에게 ${dmg}의 피해를 입혔다. 판돈 ${stake}G가 ${payout}G로 불어났다!`);
       } else {
-        addLuckDebtStack();
         popDamage('빗나감!', 'miss');
         Sound.fail();
         playBanner('실패...', 'luckbad');
@@ -1813,6 +1815,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         setBattleMsg(`${player.name}의 ${s.name}!`, `승부에서 졌다... 판돈 ${stake}G를 그대로 잃었다. 완전히 빗나갔다.`);
       }
       if(checkBattleEnd()) return;
+      if(!isRetry && checkGamblerRetry(key)) return;
       enemyTurn();
       return;
     }
@@ -1877,7 +1880,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(healed>0) msg2 += ` HP ${healed} 흡수.`;
         setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       } else {
-        addLuckDebtStack();
         epicLuckPost(false, epicLuck);
         popDamage('빗나감!', 'miss');
         Sound.fail();
@@ -1886,8 +1888,55 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         setBattleMsg(`${player.name}의 ${s.name}!`, '운이 따르지 않았다... 완전히 빗나갔다.');
       }
       if(checkBattleEnd()) return;
+      if(!isRetry && checkGamblerRetry(key)) return;
       enemyTurn();
       return;
+    }
+
+    if(s.type==='hpswap'){
+      // 사기꾼 레벨15 궁극기 "운명 뒤바꾸기": 성공 시 나와 적의 현재 HP를
+      // 완전히 맞바꾼다. 전투당 1회 제한 — battleFlags.fateSwapUsed로 체크
+      // (combat/battle-fx.js의 openSub()에서 목록 비활성화에도 같은 플래그
+      // 사용). 실패해도 손버릇(mastery_luckdebt)으로 1회 무료 재시도 가능.
+      if(battleFlags.fateSwapUsed){
+        setCommandsEnabled(true);
+        player.mp += mpCost;
+        setBattleMsg('운명은 두 번 흔들리지 않는다…', '이번 전투에서 이미 운명을 뒤바꿨다.');
+        return;
+      }
+      const epicLuck = epicLuckPre(s);
+      const chance = epicLuckApplyChance(s.chance||0.5, epicLuck);
+      const success = Math.random() < chance;
+      if(success){
+        battleFlags.fateSwapUsed = true;
+        // 퍼센트 기반 스왑(사용자 확정) — 절대치가 아니라 "각자 최대HP 대비
+        // 남은 비율"을 서로 맞바꾼다. 예: 적이 80% 남고 내가 10% 남았다면,
+        // 성공 시 나는 내 최대HP의 80%로, 적은 적 최대HP의 10%로 바뀐다.
+        const myPct = player.maxhp>0 ? player.hp/player.maxhp : 0;
+        const enemyMaxHp = enemy.maxhp || enemy.hp || 1;
+        const enemyPct = enemyMaxHp>0 ? enemy.hp/enemyMaxHp : 0;
+        const myPctLabel = Math.round(myPct*100), enemyPctLabel = Math.round(enemyPct*100);
+        player.hp = Math.max(1, Math.min(player.maxhp, Math.round(player.maxhp*enemyPct)));
+        enemy.hp = Math.max(0, Math.min(enemyMaxHp, Math.round(enemyMaxHp*myPct)));
+        updateEnemyHpBar(); renderStatus();
+        Sound.bomb();
+        playBanner('운명 역전!');
+        epicLuckPost(true, epicLuck);
+        setBattleMsg(`${player.name}의 ${s.name}!`, `운명의 저울이 뒤집혔다! 서로의 남은 체력 비율이 맞바뀌었다(나 ${myPctLabel}% ↔ ${enemy.name} ${enemyPctLabel}%).`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+        return;
+      } else {
+        epicLuckPost(false, epicLuck);
+        popDamage('빗나감!', 'miss');
+        Sound.fail();
+        playBanner('실패...', 'luckbad');
+        setBattleMsg(`${player.name}의 ${s.name}!`, '운명은 꿈쩍하지 않았다... 완전히 빗나갔다.');
+        if(checkBattleEnd()) return;
+        if(!isRetry && checkGamblerRetry(key)) return;
+        enemyTurn();
+        return;
+      }
     }
 
     if(s.type==='fateshift'){
@@ -1932,7 +1981,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         else outcome = 'great';
       }
       if(outcome==='miss'){
-        addLuckDebtStack();
         epicLuckPost(false, epicLuck);
         popDamage('빗나감!', 'miss');
         Sound.fail();
@@ -1940,6 +1988,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         renderStatus();
         setBattleMsg(`${player.name}의 ${s.name}!`, '컵을 잘못 짚었다... 완전히 허탕이다.');
         if(checkBattleEnd()) return;
+        if(!isRetry && checkGamblerRetry(key)) return;
         enemyTurn();
         return;
       }
@@ -1970,7 +2019,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='dicecast'){
-      const roll = 1 + Math.floor(Math.random()*6);
+      // 사기꾼(jesterRiggedDice) "속임수 주사위": 눈이 항상 4/5/6 중에서만 나온다.
+      const rigged = player.skills && player.skills.includes('jesterRiggedDice');
+      const roll = rigged ? (4 + Math.floor(Math.random()*3)) : (1 + Math.floor(Math.random()*6));
       const diceMults = s.diceMults || [0.6,1.1,1.7,2.4,3.2,4.5];
       const mult = diceMults[roll-1];
       const epicLuck = epicLuckPre(s);
@@ -2028,7 +2079,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         enemyTurn();
         return;
       } else {
-        addLuckDebtStack();
         epicLuckPost(false, epicLuck);
         const selfDmg = epicLuck.wasArmed ? 0 : Math.min(player.hp-1, Math.max(6, Math.round(staked*(s.selfMult||2.2))));
         if(selfDmg>0) player.hp -= selfDmg;
@@ -2038,6 +2088,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         playBanner('낭패...', 'luckbad');
         setBattleMsg(`${player.name}의 ${s.name}!`, selfDmg>0 ? `도박에 실패했다... MP ${staked}을(를) 잃고 반동으로 ${selfDmg}의 피해를 입었다.` : `도박에 실패했다... MP ${staked}을(를) 잃었지만 세계의 마지막 카드가 반동을 막아주었다.`);
         if(checkBattleEnd()) return;
+        if(!isRetry && checkGamblerRetry(key)) return;
         enemyTurn();
         return;
       }
@@ -2088,7 +2139,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         enemyTurn();
         return;
       } else {
-        addLuckDebtStack();
         epicLuckPost(false, epicLuck);
         const selfDmg = epicLuck.wasArmed ? 0 : Math.max(0, Math.min(player.hp-1, Math.round(player.maxhp*(s.failSelfRatio||0.08))));
         if(selfDmg>0) player.hp -= selfDmg;
@@ -2099,6 +2149,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         playBanner('패가 뒤집혔다...', 'luckbad');
         setBattleMsg(`${player.name}의 ${s.name}!`, selfDmg>0 ? `카드가 어긋났다... 반동으로 ${selfDmg}의 피해를 입었다.` : '카드가 어긋나 아무 일도 일어나지 않았다.');
         if(checkBattleEnd()) return;
+        if(!isRetry && checkGamblerRetry(key)) return;
         enemyTurn();
         return;
       }

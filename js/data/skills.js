@@ -767,31 +767,38 @@ export(전역): SKILLDB
     jesterAllIn: {name:'올인', mp:16, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
       desc:'소지 골드 전액(최대 10000G)을 건다. 성공하면 강력한 피해와 함께 판돈의 2배를 돌려받지만, 실패하면 판돈만큼 잃는다. 골드가 없으면 그냥 평범한 강타가 나간다.'},
 
-    // ---------- [교체됨] 외상 도박사(jester_debtor) → 불운의 채권자 ----------
-    // 사용자 요청으로 대출/이자 경제 시스템을 전면 폐기하고 전투 메커니즘으로
-    // 재설계했다. mastery_debtcycle/jesterLoanSmall 등 구버전 SKILLDB 항목은
-    // 삭제하지 않고 아래에 그대로 남겨둔다(레거시 세이브 크래시 방지) — 단지
-    // JOB_SPECIALIZATIONS 목록에서만 빠져 새 캐릭터는 더 이상 선택할 수 없다.
+    // ---------- [교체됨] 외상 도박사(jester_debtor) → 사기꾼(구 불운의 채권자) ----------
+    // 사용자 요청으로 "채무 스택" 시스템(운 실패 시 스택→한꺼번에 청산)을
+    // 전면 폐기하고, 사기도박(속임수) 컨셉으로 다시 리뉴얼했다. jesterSettle/
+    // jesterReceivable/jesterBankruptcy(옛 청산/미수금/파산 선언)는 삭제하지
+    // 않고 아래에 그대로 남겨둔다(레거시 세이브 크래시 방지) — 더 이상
+    // jobs.js에서 참조하지 않을 뿐이다.
     //
-    // 마스터리 "불운의 장부": 운 스킬(동전 던지기/야바위 완전실패/승부수/
-    // 마지막카드/베팅·올인)이 실패할 때마다 battleFlags.jesterDebtStacks가
-    // 쌓인다(최대 5, 전투 중 유지) — combat/player-actions.js의
-    // addLuckDebtStack()이 각 실패 분기에서 호출한다. 1차 스킬 로직 자체는
-    // 건드리지 않고 결과만 지켜보는 훅이라 호환성이 좋다(사용자 요청 반영).
-    mastery_luckdebt: {name:'불운의 장부', mp:0, type:'passive',
-      desc:'운 스킬이 실패할 때마다 "채무" 스택이 쌓인다(최대 5, 전투 중 유지). 청산/파산 선언으로 한꺼번에 갚아낼 수 있다.'},
-    // 레벨10 액티브 "청산": 쌓인 채무를 전량 소모해 스택 수에 비례한 확정
-    // 크리티컬을 꽂는다. 새 타입 'debtsettle'.
-    jesterSettle: {name:'청산', mp:7, type:'debtsettle', baseMult:0.4, stackMult:0.5, defPierce:0.15,
-      desc:'쌓인 채무를 한꺼번에 청산한다. 채무가 많이 쌓여 있을수록 훨씬 강력한 확정 크리티컬이 터진다.'},
-    // 레벨12 "미수금"(패시브): 채무를 들고 있는 동안 스택당 공격력 보너스.
-    // combat/enemy-turn.js의 effectiveAtk()에 getReceivableAtkBonus()로 훅.
-    jesterReceivable: {name:'미수금', mp:0, type:'passive', atkBonusPerStack:0.03,
-      desc:'채무를 짊어지고 있는 동안 오히려 이를 갈며 강해진다(스택 1당 공격력 +3%, 최대 +15%).'},
-    // 레벨15 궁극기 "파산 선언": 채무를 즉시 최대(5건)로 확정한 뒤 강화된
-    // 청산을 발동한다. 대신 스스로도 반동 피해를 입는다. 새 타입 'bankruptcy'.
-    jesterBankruptcy: {name:'파산 선언', mp:15, type:'bankruptcy', cooldown:4, forceStacks:5, baseMult:1.0, stackMult:0.7, defPierce:0.3, selfHpCostPct:0.12,
-      desc:'감당 못할 걸 알면서도 채무를 극한까지 밀어붙인다. 채무를 즉시 최대(5건)로 확정한 뒤 압도적으로 청산하지만, 스스로도 그 대가를 치른다.'},
+    // 마스터리 "손버릇": 운 스킬(coinflip/dicecast/shellgame/gamble 등
+    // luck:true 계열)이 실패하면 같은 스킬이 무료로 1회 자동 재시도된다.
+    // combat/player-actions.js의 checkGamblerRetry()가 각 실패 분기 끝에서
+    // 호출한다(!isRetry로 감싸 재귀 2회 이상 안 이어지게 방지) — 1차 스킬
+    // 로직 자체는 안 건드리고 결과만 지켜보는 훅이라 예전 방식과 동일한
+    // 호환 패턴이다.
+    mastery_luckdebt: {name:'손버릇', mp:0, type:'passive',
+      desc:'운 스킬이 실패하면 같은 스킬이 무료로 한 번 더 자동 발동된다(재시도가 또 실패하면 거기서 끝).'},
+    // 레벨10 "조작된 도박판"(자동 발동 패시브, 선택 UI 없음 — 계율/불확실성의
+    // 주사위와 동일한 방식): 전투 시작 시 내 스탯(공/마/방/속) 중 무작위 1개
+    // +12%, 적 스탯(공/방/속) 중 무작위 1개 -12%를 이번 전투 내내 적용한다.
+    // 실제 적용/연출은 combat/battle-setup.js의 startBattle()에서 처리.
+    jesterRiggedTable: {name:'조작된 도박판', mp:0, type:'passive', statBoostPct:0.12, statDebuffPct:0.12,
+      desc:'전투가 시작되면 도박판이 은밀히 조작된다. 내 무작위 능력치 하나가 12% 오르고, 적의 무작위 능력치 하나가 12% 떨어진다(이번 전투 내내 유지).'},
+    // 레벨12 "속임수 주사위"(패시브): 주사위류 스킬(dicecast 타입)의 눈이
+    // 항상 4/5/6 중에서만 나오게 조작한다. combat/player-actions.js의
+    // dicecast 분기에서 이 스킬 보유 여부를 확인해 굴림 범위를 좁힌다.
+    jesterRiggedDice: {name:'속임수 주사위', mp:0, type:'passive',
+      desc:'주사위류 스킬의 눈이 항상 4, 5, 6 중에서만 나온다.'},
+    // 레벨15 궁극기 "운명 뒤바꾸기": 성공 시 나와 적의 현재 HP를 완전히
+    // 맞바꾼다. 전투당 1회 제한(battleFlags.fateSwapUsed로 체크 — combat/
+    // battle-fx.js의 openSub()에서 스킬 목록의 사용 가능 여부에도 반영).
+    // 새 타입 'hpswap'. 실패해도 손버릇으로 1회 무료 재시도 가능(luck:true).
+    jesterFateSwap: {name:'운명 뒤바꾸기', mp:14, type:'hpswap', chance:0.5, luck:true,
+      desc:'운명의 저울을 조작해 나와 적의 "남은 체력 비율"을 서로 맞바꾼다(예: 적이 80% 남았으면 내가 내 최대HP의 80%가 되고, 적은 내가 남았던 비율만큼이 된다). 전투당 1회만 시도할 수 있다.'},
 
     // ---------- [레거시] 옛 외상 도박사(jester_debtor) — 더 이상 선택 불가 ----------
     // 실제 대출/이자/상환/봉인 로직은 relics.js에 헬퍼 함수로 구현했다

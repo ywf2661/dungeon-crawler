@@ -65,6 +65,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         battleOver = true;
         setCommandsEnabled(false);
         revertDiceDelta();
+        if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
         tickMultiBattleBuff();
         document.getElementById('bt-stage').classList.add('dying');
         const forgiven = Math.round((player.debt||0)*0.7);
@@ -86,6 +87,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       battleOver = true;
       setCommandsEnabled(false);
       revertDiceDelta();
+      if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
       tickMultiBattleBuff();
       document.getElementById('bt-stage').classList.add('dying');
       let g = enemy.gold[0]+Math.floor(Math.random()*(enemy.gold[1]-enemy.gold[0]+1));
@@ -277,6 +279,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         battleOver = true;
         setCommandsEnabled(false);
         revertDiceDelta();
+        if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
         tickMultiBattleBuff();
         player.hp = 1;
         const penalty = Math.max(1, Math.round((player.debt||0)*0.5));
@@ -296,6 +299,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       battleOver = true;
       setCommandsEnabled(false);
       revertDiceDelta();
+      if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
       setBattleMsg(`${player.name}은(는) 쓰러지고 말았다…`, '');
       Sound.gameOver();
       player.deathCount = (player.deathCount||0) + 1;

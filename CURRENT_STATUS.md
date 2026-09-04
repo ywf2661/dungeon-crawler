@@ -18,6 +18,29 @@
 
 ## 최근 작업
 
+### 광대 2차 전직 "불운의 채권자" → "사기꾼" 전면 리뉴얼
+- "채무 스택 쌓기→청산" 시스템을 폐기하고 사기도박(속임수) 컨셉으로 교체.
+  id는 `jester_debtcollector` 재사용(기존 세이브 자동 전환).
+- **마스터리 "손버릇"**(mastery_luckdebt 재사용): 운 스킬 실패 시 같은
+  스킬이 무료로 1회 자동 재시도. `player-actions.js`에 `checkGamblerRetry()`
+  신설, `playerSkill(key, isRetry)`로 시그니처 확장(재시도는 MP 무료).
+  운 실패 분기 5곳(goldbet/coinflip/shellgame/gamble/finalcard류) 전부 수정.
+- **Lv10 "조작된 도박판"**(자동 발동 패시브): 전투 시작 시 내 무작위 스탯
+  (공/마/방/속) +12%, 적 무작위 스탯(공/방/속) -12%. `battle-setup.js`에
+  `applyRiggedTable()`/`revertRiggedTableDelta()` 신설(불확실성의 주사위
+  `revertDiceDelta()`와 동일한 델타 저장/복구 패턴), 토스트로 결과 안내.
+- **Lv12 "속임수 주사위"**: dicecast 타입 굴림을 4/5/6로만 제한.
+- **Lv15 "운명 뒤바꾸기"**: 신규 `hpswap` 타입. 성공 시 나와 적의 "남은
+  체력 비율"을 서로 맞바꾼다(절대치 아님 — 예: 적 80%/나 10% → 성공 시
+  나는 내 최대HP의 80%, 적은 적 최대HP의 10%). 전투당 1회 제한
+  (`battleFlags.fateSwapUsed`), `openSub()`에서 1회 소진 시 비활성화 처리.
+  실패해도 손버릇으로 1회 무료 재시도 가능.
+- 옛 스킬(jesterSettle/jesterReceivable/jesterBankruptcy)은 레거시로 남겨둠.
+  이제 안 쓰는 채무 스택 상태 배지(battle-fx.js)는 제거.
+- `node --check` 전체 통과. 미검증: 브라우저 실전 테스트 전혀 안 함(손버릇
+  재시도 무한루프 여부, HP 스왑 비율 계산, 조작된 도박판 토스트 표시 등).
+  수치(12% 등)는 시뮬레이션 없이 사용자 지정값 그대로 반영.
+
 ### 방벽 로봇 크기/위치 원복
 - 정찰/화력 로봇 크기를 줄이면서(요청 범위) 방벽 로봇 수치도 같이 줄였었는데,
   이건 요청받지 않은 임의 변경이었음(사용자 지적) — 방벽 로봇은 원래 값

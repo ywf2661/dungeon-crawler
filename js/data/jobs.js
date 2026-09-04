@@ -249,14 +249,14 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // 세이브 크래시 방지) — 단지 JOB_SPECIALIZATIONS 목록에서만 빠져 새
       // 캐릭터는 더 이상 선택할 수 없다.
       //
-      // 불운의 채권자(jester_debtcollector): 운 스킬이 실패할 때마다 쌓이는
-      // "채무" 스택을 몰아서 청산하는 하이리스크 분기. 1차 스킬 로직은 건드리지
-      // 않고 결과만 지켜보는 훅(addLuckDebtStack)이라 1차 리뉴얼과 호환된다.
-      {id:'jester_debtcollector', name:'불운의 채권자', icon:'🩸',
-        desc:'운이 나쁠수록 오히려 반긴다. 실패는 그저 손해가 아니라, 몰아서 갚아낼 채무일 뿐이다.',
-        masteryName:'불운의 장부', masteryDesc:'운 스킬이 실패할 때마다 "채무" 스택이 쌓인다(최대 5, 전투 중 유지).', masterySkillId:'mastery_luckdebt',
-        activeName:'청산', activeDesc:'쌓인 채무를 전량 소모해, 채무 수에 비례한 확정 크리티컬을 꽂는다.', activeSkillId:'jesterSettle',
-        skillLevels: {12:'jesterReceivable', 15:'jesterBankruptcy'}},
+      // 사기꾼(id는 jester_debtcollector 재사용 — 기존 세이브 자동 전환):
+      // 운 실패를 "채무"로 쌓아두는 대신, 도박 자체를 조작하는 사기도박 컨셉으로
+      // 리뉴얼(사용자 요청 — "도박사인데 담보 대출은 도박이랑 상관없다").
+      {id:'jester_debtcollector', name:'사기꾼', icon:'🎲',
+        desc:'정직하게 걸지 않는다. 패를 조작하고, 주사위를 속이고, 실패해도 손을 한 번 더 놀린다.',
+        masteryName:'손버릇', masteryDesc:'운 스킬이 실패하면 같은 스킬이 무료로 한 번 더 자동 발동된다.', masterySkillId:'mastery_luckdebt',
+        activeName:'조작된 도박판', activeDesc:'전투 시작 시 내 무작위 능력치 하나가 오르고 적의 무작위 능력치 하나가 떨어진다(자동 발동, 선택 UI 없음).', activeSkillId:'jesterRiggedTable',
+        skillLevels: {12:'jesterRiggedDice', 15:'jesterFateSwap'}},
     ],
   };
   function getSpecialization(p){
