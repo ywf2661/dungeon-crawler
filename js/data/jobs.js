@@ -216,11 +216,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         desc:'압력 대신 로봇 군단을 직접 지휘한다. 배치하고, 사격을 명령하고, 정비하며 전장을 관리하는 지휘관.',
         masteryName:'군단 편성', masteryDesc:'정찰/화력/방벽 로봇을 최대 2기까지 동시에 배치할 수 있게 된다. 여기에 오메가 유닛 전용 고정 슬롯이 별도로 하나 더 있다.', masterySkillId:'mastery_multideploy',
         activeName:'로봇 배치', activeDesc:'정찰/화력/방벽 중 원하는 역할의 로봇을 직접 골라 배치한다. 이미 2기가 있으면 가장 먼저 배치된 로봇을 대신 교체한다.', activeSkillIds:['mechanicDeployRecon','mechanicDeployFirepower','mechanicDeployShield'],
-        skillLevels: {12:'legionFullSquadSynergy', 15:'legionCommand'},
-        // 스킬 목록 UI의 1차/2차 테두리 색 구분용(combat/battle-fx.js의
-        // getSkillTier()) — 1차 레벨 슬롯(3/7)을 갈아끼운 mechanicFocusFire/
-        // legionMaintenance는 이 특성에서만 쓰이므로 2차로 분류한다.
-        tier2ExtraSkillIds:['mechanicFocusFire','legionMaintenance']},
+        skillLevels: {12:'legionFullSquadSynergy', 15:'legionCommand'}},
     ],
     jester: [
       // [교체됨] 운명의 반란자(jester_rebel)는 사용자 요청으로 폐기되고 "황금

@@ -135,6 +135,24 @@ export(전역): showJobAdvancement, resolveJobAdvancement
           player.skills.push(skillKey);
         }
       });
+      // 버그 수정(사용자 제보 — admin2/admin3 디버그 계정) — 정상 플레이는
+      // 레벨10에 전직을 고르므로 이후 레벨업(11~15)마다 battle-end.js의
+      // applyLevelUpEffects()가 specialization.skillLevels[레벨]을 그때그때
+      // 지급한다. 그런데 admin2/admin3은 전직을 고르기도 전에 레벨업 루프를
+      // 17번 먼저 돌려버려서, 그 시점엔 specialization이 아직 null이라
+      // specKey 조회가 전부 빗나간다 — 레벨12/15 스킬(강철 군단장이면
+      // 풀편성 시너지/총사령관의 명령)이 영영 지급되지 않는 채로 남는다.
+      // 여기서 전직이 확정된 이 시점에, 이미 지난 레벨의 skillLevels를
+      // 놓친 게 있으면 소급 지급한다(멱등 — includes 체크로 중복 방지).
+      if(spec.skillLevels){
+        Object.keys(spec.skillLevels).forEach(lvKey=>{
+          const lv = parseInt(lvKey, 10);
+          const skillId = spec.skillLevels[lvKey];
+          if(player.level>=lv && skillId && typeof SKILLDB!=='undefined' && SKILLDB[skillId] && !player.skills.includes(skillId)){
+            player.skills.push(skillId);
+          }
+        });
+      }
       // 회랑의 기사(paladin_knight): 전직 확정 즉시 전용 무기 칼리버 X 1단계를
       // 강제로 장착한다. equipItem()을 거치지 않고 직접 처리한다 — equipItem()은
       // "이미 칼리버 X를 장착 중이면 무기 슬롯을 못 바꾼다"는 잠금이 걸려 있어서,

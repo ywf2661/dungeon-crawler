@@ -406,25 +406,17 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     }
   }
 
-  // 1차/2차 각성 스킬 구분(사용자 요청) — 기본 직업(job.skillLevels)에 속한
-  // 스킬이면 1차, 전직 특성(masterySkillId(s)/activeSkillId(s)/skillLevels
-  // 12·15)에 속하면 2차로 분류한다. 강철 군단장처럼 1차 레벨 슬롯 자체를
-  // 다른 스킬로 갈아끼운 특수 케이스는 spec.tier2ExtraSkillIds에 따로
-  // 나열해두면 여기서 함께 2차로 잡힌다.
+  // 1차/2차 "각성기" 스킬 테두리 색 구분(사용자 요청) — 스킬 전체가 아니라
+  // 딱 두 개: 기본 직업의 레벨10 궁극기(job.skillLevels[10] — 예: 과압각성/
+  // 메테오/심판의날 등, "1차 각성기") 하나와, 전직 특성의 레벨15 궁극기
+  // (spec.skillLevels[15], "2차 각성기") 하나만 표시한다. 그 외 스킬은 0을
+  // 반환해 기본 테두리 그대로 둔다.
   function getSkillTier(k){
     const job = getJob(player);
-    if(job && job.skillLevels && Object.values(job.skillLevels).includes(k)) return 1;
+    if(job && job.skillLevels && job.skillLevels[10]===k) return 1;
     const spec = getSpecialization(player);
-    if(spec){
-      const specIds = [
-        ...(spec.masterySkillIds || (spec.masterySkillId ? [spec.masterySkillId] : [])),
-        ...(spec.activeSkillIds || (spec.activeSkillId ? [spec.activeSkillId] : [])),
-        ...(spec.skillLevels ? Object.values(spec.skillLevels) : []),
-        ...(spec.tier2ExtraSkillIds || []),
-      ];
-      if(specIds.includes(k)) return 2;
-    }
-    return 1;
+    if(spec && spec.skillLevels && spec.skillLevels[15]===k) return 2;
+    return 0;
   }
 
   function openSub(mode){
@@ -474,7 +466,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
             ? (battleFlags && battleFlags.elementPact === s.pactElement)
             : !!player[s.armFlag];
           const btn = document.createElement('div');
-          btn.className = 'toggle-btn'+(isActive?' active':'')+' skill-tier'+getSkillTier(k);
+          const tierCls = getSkillTier(k);
+          btn.className = 'toggle-btn'+(isActive?' active':'')+(tierCls?' skill-tier'+tierCls:'');
           btn.innerHTML = `<div>${s.name}</div>`;
           btn.title = s.desc;
           btn.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
@@ -489,7 +482,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         const cdLeft = (battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[k]) || 0;
         const canUse = player.mp>=mpCost && cdLeft<=0;
         const div = document.createElement('div');
-        div.className = 'sub-item'+(canUse?'':' disabled')+' skill-tier'+getSkillTier(k);
+        const tierClsN = getSkillTier(k);
+        div.className = 'sub-item'+(canUse?'':' disabled')+(tierClsN?' skill-tier'+tierClsN:'');
         // 베팅/올인(goldbet 타입): 실제로 쓰면 판돈이 얼마가 될지 현재 소지 골드
         // 기준으로 미리 계산해 보여준다("전투 중 소지금액 확인" 요청에 맞춰,
         // 그냥 골드 숫자만 보여주는 것보다 "이 스킬을 쓰면 얼마를 거는지"가 더
