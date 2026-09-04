@@ -717,16 +717,14 @@ export(전역): SKILLDB
     // 내부적으로는 여전히 player.fateBoostChance/fateBoostMult를 세팅해
     // goldbet 타입이 그대로 소비하므로(위 jesterGoldBet 주석 참고) 소비 로직은
     // 손댈 필요가 없다.
-    jesterHunch: {name:'정보료', mp:3, type:'goldinfofee', goldCostPct:0.4, goldCostMin:20, chanceBonus:0.4, multBonus:0.5,
-      desc:'정보상에게 거금을 찔러준다(소지 골드의 40% 이상, 최소 20G). 다음 베팅/올인의 성공률이 사실상 확정에 가깝게 오르고, 판돈 보너스 배율도 함께 오른다.'},
+    // 사용자 요청 — 성공률 보너스를 +40%p에서 +30%p로 하향(베팅/올인 둘 다
+    // 공용으로 적용됨: 베팅 50%+30%=80%, 올인 45%+30%=75%).
+    jesterHunch: {name:'정보료', mp:3, type:'goldinfofee', goldCostPct:0.4, goldCostMin:20, chanceBonus:0.3, multBonus:0.5,
+      desc:'정보상에게 거금을 찔러준다(소지 골드의 40% 이상, 최소 20G). 다음 베팅/올인의 성공률이 크게 오르고, 판돈 보너스 배율도 함께 오른다.'},
     // 레벨15 궁극기 "올인": 소지 골드 전액을 건다. 성공 확률은 베팅보다 낮지만
     // (판돈이 훨씬 크므로) 기본 피해와 판돈 보너스 배율 모두 더 강하다. 베팅과
     // 동일한 'goldbet' 타입을 재사용하되 수치만 다르게 잡았다.
-    // 사용자 요청 — 정보료(+40%p)까지 합쳐도 최대 70%를 넘지 않도록 기본
-    // 성공확률을 0.45->0.30으로 낮췄다(0.30+0.40=0.70). 베팅 쪽 확률(0.5)은
-    // 건드리지 않았다 — chanceBonus가 두 스킬에 공용이라, 올인만 낮추려면
-    // 올인 자체의 successChance를 조정하는 쪽이 베팅에 영향이 없다.
-    jesterAllIn: {name:'올인', mp:16, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.30, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
+    jesterAllIn: {name:'올인', mp:16, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
       desc:'소지 골드 전액(최대 10000G)을 건다. 성공하면 강력한 피해와 함께 판돈의 2배를 돌려받지만, 실패하면 판돈만큼 잃는다. 골드가 없으면 그냥 평범한 강타가 나간다.'},
 
     // ---------- [교체됨] 외상 도박사(jester_debtor) → 불운의 채권자 ----------
