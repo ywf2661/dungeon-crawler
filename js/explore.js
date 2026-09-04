@@ -89,6 +89,35 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 새로 구현되어, 더 이상 10레벨 전직 선택 화면을 건너뛰지 않는다.
       if(player.level>=10 && !player.jobChosenAt10) player.jobAdvancePending = true;
       if(needsSpecializationMigration(player)) player.jobAdvancePending = true; // 레거시 하이브리드 → 재전직 필요
+      // 버그 수정(사용자 제보) — 보스 노드를 고른 직후(nodemap.js의 pickNode()가
+      // nodeRow/nodeCurrentId를 이미 보스 노드로 옮기고 saveGame()까지 마친 뒤,
+      // 실제 전투가 시작되기 전 그 짧은 틈)에 새로고침하면, 지도는 "이미 보스
+      // 노드가 현재 위치"인 채로 저장된다. 보스 행은 지도의 마지막 행이라 이
+      // 상태에서는 nodeRow===지도 마지막 행이 되어 더 이상 "다음 행"이 없고,
+      // 보스 노드 자신도 "과거(방문 완료)" 취급되어 클릭할 수 없다 — 즉 진행이
+      // 완전히 막힌다. 정상적으로 보스를 잡았다면 battle-end.js가 승리 즉시
+      // 다음 구간의 새 지도로 넘겨버리므로, 이 상태 그대로 저장에 남아 있다는
+      // 것 자체가 "전투가 중간에 끊겼다"는 신호다 — 감지되면 보스전을 다시 건다.
+      if(player.nodeMap && player.nodeRow===player.nodeMap.length-1){
+        const curRow = player.nodeMap[player.nodeRow];
+        const curNode = curRow && curRow.find(n=>n.id===player.nodeCurrentId);
+        if(curNode && curNode.type==='boss'){
+          document.getElementById('statusbar').style.display='flex';
+          showScreen('explore');
+          renderStatus();
+          depth = player.tierIndex*10 + 10;
+          renderExplore(['모험을 이어간다.']);
+          if(player.tierIndex===5 && !player.endingSeen){
+            // 최종보스 진입 확인창(고요한 제단)도 같은 이유로 중간에 끊길 수
+            // 있으니, 전투 대신 이 확인창을 다시 띄운다.
+            showFinalFloorConfirm();
+          } else {
+            addLog('중단됐던 보스전을 다시 시작한다!', 'warn');
+            setTimeout(()=>startBattle(true), 300);
+          }
+          return;
+        }
+      }
       document.getElementById('statusbar').style.display='flex';
       showScreen('explore');
       renderStatus();
