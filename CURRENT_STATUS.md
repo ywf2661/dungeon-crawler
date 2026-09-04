@@ -18,6 +18,23 @@
 
 ## 최근 작업
 
+### 스킬 목록 UI 개선 + 강철 군단장 킷 정리
+- **1차/2차 각성 스킬 테두리 색 구분**(전 직업 공통): `combat/battle-fx.js`에
+  `getSkillTier()` 추가 — 기본 직업(job.skillLevels) 소속이면 1차(테두리
+  #5a7a9c), 전직 특성(mastery/active/skillLevels12·15) 소속이면 2차(테두리
+  var(--violet))로 스킬 목록·토글 버튼에 클래스 부여. 강철 군단장처럼 1차
+  슬롯을 갈아끼운 특수 케이스는 spec에 `tier2ExtraSkillIds`로 별도 지정.
+- **강철 군단장 스킬 목록 정렬**: `player.specialization==='mechanic_accumulator'`면
+  집중사격명령→취약점분석→전체정비→화력/정찰/방벽 로봇배치→오메가유닛배치→
+  풀편성시너지→총사령관의명령 순으로 고정 정렬(사용자 지정 순서).
+- **긴급 배치(legionEmergencyDeploy) 완전 제거**: 2차 각성 시 1레벨 자리를
+  대체 스킬 없이 그냥 비운다(사용자 요청). `job-advancement.js`의
+  `migrateLegionBaseSkills()`에서 swapMap 값을 null로 바꾸고, 이미 지급됐던
+  캐릭터를 위한 정리 코드도 추가.
+- **방벽 로봇 위치/크기 조정**: 다른 2종(정찰/화력)보다 살짝 작게, 더
+  바깥쪽/위쪽으로(`.rig-shield` CSS 클래스 신설).
+- `node --check` 전체 통과. 미검증: 실제 화면에서 색/정렬/위치 확인 필요.
+
 ### 버그 수정 — 보스전 도중 새로고침 후 이어하기 시 보스 노드 선택 불가
 - 원인: `nodemap.js`의 `pickNode()`가 nodeRow/nodeCurrentId를 보스 노드로
   옮기고 `saveGame()`까지 마친 뒤에야 `startBattle()`을 호출한다. 그 사이

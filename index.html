@@ -594,6 +594,10 @@
   .sub-item .si-desc{color:var(--parchment-dim); font-size:12px; font-style:italic; display:block; margin-top:2px; white-space:normal; overflow-wrap:break-word; line-height:1.4;}
   .sub-item .si-cost{color:#8fb4e8; font-size:12px; flex-shrink:0; margin-left:8px; padding-top:1px;}
   .sub-item.disabled{opacity:.35; cursor:not-allowed;}
+  /* 1차/2차 각성 스킬 구분용 테두리 색(사용자 요청 — 2차 전직 후 스킬 목록이
+     뒤섞여 헷갈림). 1차=기본 직업 공용 스킬, 2차=전직으로 얻은 특성 전용 스킬. */
+  .sub-item.skill-tier1{ border-color:#5a7a9c; }
+  .sub-item.skill-tier2{ border-color:var(--violet); }
   /* ============================================================
    토글형 스킬(화염/빙결/번개계약, 혈서 등) 가로 배치용 CSS
    붙여넣을 위치: index.html의 <style> 안, 아래 두 규칙 바로 아래 아무 데나
@@ -618,6 +622,8 @@
   transition:all .12s;
 }
 .toggle-btn:hover{border-color:var(--gold);}
+.toggle-btn.skill-tier1{ border-color:#5a7a9c; }
+.toggle-btn.skill-tier2{ border-color:var(--violet); }
 .toggle-btn.active{
   border-color:var(--gold-bright); color:var(--gold-bright);
   background:#2c2013; box-shadow:0 0 10px #e6c34a44;
@@ -814,6 +820,12 @@
   bottom:auto; top:6px; width:150px; height:120px;
 }
 .rig-slot.rig-top img{ object-fit:contain; object-position:center top; }
+/* 방벽 로봇 전용(사용자 요청) — 다른 2종보다 살짝 작게, 더 바깥쪽/위쪽으로. */
+.rig-slot.rig-top.rig-shield{
+  top:-8px; width:120px; height:96px;
+}
+.rig-slot.rig-top.rig-shield.rig-slot-left{ left:-10px; }
+.rig-slot.rig-top.rig-shield.rig-slot-right{ right:-10px; }
 /* 오메가 유닛일 때는 좌/우 어느 슬롯에 들어있었든 화면 하단 중앙에 크게
    고정 배치한다(사용자 요청 — 참고 이미지처럼 양쪽 포신이 대칭으로 크게
    펼쳐져야 함). omegabot.png 자체가 이미 좌우대칭 구도(양쪽 포신+중앙
