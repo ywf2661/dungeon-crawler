@@ -209,6 +209,9 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     // 있으므로 job-advancement.js 쪽에 별도로 붙인다(여기서는 아직 어떤
     // 세분화를 고를지 알 수 없다).
 
+    // 소지금도 넉넉하게(사용자 요청 — 황금 도박사 등 골드 소모형 스킬 테스트용).
+    player.gold = 10000;
+
     // 포션류도 최대치로 채운다(사용자 요청). shop.js의 CONSUMABLE_CAPS를
     // 그대로 참조 — 상점 판매 상한과 항상 같은 값을 쓰게 되어, 상한이
     // 나중에 바뀌어도 여기 따로 손댈 필요가 없다.
