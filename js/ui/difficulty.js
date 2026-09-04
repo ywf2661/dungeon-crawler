@@ -43,13 +43,32 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
     if(id==='hardcore') return hardcoreFlawless;
     return false;
   }
+  // 토스트 겹침 버그 수정(사용자 제보) — 예전엔 showToast()를 연달아 부르면
+  // (예: 정예 몬스터 조우 시 불확실성의 주사위+조작된 도박판+계율+정예 특성이
+  // 한꺼번에 뜰 수 있음) 전부 화면 정중앙에 동시에 겹쳐 그려져서 뒤에 뜬
+  // 토스트에 앞엣것들이 가려 무슨 내용인지 읽을 수가 없었다. 이제 큐에 쌓아
+  // 하나씩 순서대로(각각 1.8초) 보여준다 — 호출부(showToast(...))는 그대로
+  // 두고 이 함수 내부만 큐잉하도록 바꿔서 다른 파일은 손댈 필요가 없다.
+  let toastQueue = [];
+  let toastShowing = false;
   function showToast(html, borderColor){
+    toastQueue.push({html, borderColor});
+    processToastQueue();
+  }
+  function processToastQueue(){
+    if(toastShowing || toastQueue.length===0) return;
+    toastShowing = true;
+    const {html, borderColor} = toastQueue.shift();
     const t = document.createElement('div');
     t.className = 'toast';
     if(borderColor) t.style.borderColor = borderColor;
     t.innerHTML = html;
     document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 1800);
+    setTimeout(()=>{
+      t.remove();
+      toastShowing = false;
+      processToastQueue();
+    }, 1800);
   }
   function renderDifficultySelect(){
     const wrap = document.getElementById('difficulty-select');
