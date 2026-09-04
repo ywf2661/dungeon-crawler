@@ -111,7 +111,7 @@ export(전역): renderRecords, getRelicDisplayDesc, showMyRelics
     }
     if(id==='relic_emptysack'){
       const inv = player.inv || {};
-      const isEmpty = (inv.potion||0)===0 && (inv.hipotion||0)===0 && (inv.ether||0)===0;
+      const isEmpty = (inv.potion||0)===0 && (inv.hipotion||0)===0 && (inv.ether||0)===0 && (inv.hiether||0)===0;
       return r.desc + (isEmpty
         ? ' <span class="relic-pos">(지금 발동 중!)</span>'
         : ' <span style="opacity:.7;">(포션류를 모두 소진하면 발동)</span>');

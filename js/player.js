@@ -16,7 +16,7 @@ export(전역): newPlayer
       maxhp:32+m.maxhp, hp:0, maxmp:12+m.maxmp, mp:0,
       atk:7+m.atk, def:3+m.def, mag:6+m.mag, spd:6+m.spd,
       gold:40,
-      inv:{ potion:3, hipotion:0, ether:1 },
+      inv:{ potion:3, hipotion:0, ether:1, hiether:0 },
       skills:[job.skillLevels[1]],
       buffAtkTurns:0, buffAtkMult:1, guardingNextHit:false,
       buffDefTurns:0, buffDefMult:1,

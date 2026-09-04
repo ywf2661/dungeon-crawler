@@ -505,6 +505,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         {key:'potion', name:'물약', desc:'HP 40 회복'},
         {key:'hipotion', name:'상급 물약', desc:'HP 110 회복'},
         {key:'ether', name:'에테르', desc:'MP 30 회복'},
+        {key:'hiether', name:'상급 에테르', desc:'MP 85 회복'},
       ];
       items.forEach(it=>{
         const count = player.inv[it.key]||0;

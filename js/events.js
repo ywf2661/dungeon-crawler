@@ -418,7 +418,7 @@ export(전역): showMysteryEvent
   // 랜덤 포션 1개 지급 — CONSUMABLE_CAPS(shop.js)에 도달한 종류는 후보에서
   // 제외하고, 전부 가득 찼으면 골드로 대체한다(사용자 확정).
   function grantRandomPotion(){
-    const available = ['potion','hipotion','ether'].filter(k=>(player.inv[k]||0) < CONSUMABLE_CAPS[k]);
+    const available = ['potion','hipotion','ether','hiether'].filter(k=>(player.inv[k]||0) < CONSUMABLE_CAPS[k]);
     if(!available.length){
       const g = 20 + Math.floor(Math.random()*20) + depth*2;
       player.gold += g;
@@ -827,7 +827,7 @@ export(전역): showMysteryEvent
 
   // 22) 부상당한 모험가 — 도움을 준 적이 있으면 나중에 showInjuredAdventurerReunionEvent로 이어진다.
   function showInjuredAdventurerEvent(){
-    const potionKeys = ['potion','hipotion','ether'].filter(k=>(player.inv[k]||0)>0);
+    const potionKeys = ['potion','hipotion','ether','hiether'].filter(k=>(player.inv[k]||0)>0);
     const {overlay, panel} = eventOverlay('부상당한 모험가',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"제발... 포션 하나만..."</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">

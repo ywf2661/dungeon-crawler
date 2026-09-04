@@ -2442,6 +2442,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(key==='potion'){ const h=Math.round(40*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`물약을 마셨다. HP ${h} 회복.`; }
     else if(key==='hipotion'){ const h=Math.round(110*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`상급 물약을 마셨다. HP ${h} 회복.`; }
     else if(key==='ether'){ const m=Math.round(30*potBoost); player.mp=Math.min(player.maxmp,player.mp+m); msg=`에테르를 마셨다. MP ${m} 회복.`; }
+    else if(key==='hiether'){ const m=Math.round(85*potBoost); player.mp=Math.min(player.maxmp,player.mp+m); msg=`상급 에테르를 마셨다. MP ${m} 회복.`; }
     if(hasRelicFlag('flaskPotionBoost') && battleFlags){
       battleFlags.flaskStacks = Math.min(3, (battleFlags.flaskStacks||0)+1);
       msg += ` (다음 공격 피해 +${battleFlags.flaskStacks*20}%)`;

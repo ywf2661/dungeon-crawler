@@ -18,6 +18,18 @@
 
 ## 최근 작업
 
+### 신규 소모품 "상급 에테르" 추가
+- `hiether` 키로 신규: MP 85 회복, 상점가 115G, 보유 상한 2개(상급 물약과
+  동일 패턴). 물약/상급물약/에테르와 동일한 비율로 스케일링(에테르 대비
+  약 2.75배 회복량, 2.6배 가격).
+- 반영 파일: `player.js`(기본 인벤토리), `shop.js`(SHOP_ITEMS/CONSUMABLE_CAPS/
+  재고 생성), `combat/player-actions.js`(아이템 사용 효과), `combat/battle-fx.js`
+  (전투 중 아이템 목록 UI), `events.js`(포션 지급/기부 이벤트 두 곳),
+  `records.js`(빈 자루 유물 발동 조건).
+- 저장 데이터는 `player.inv` 객체 전체를 그대로 직렬화하는 구조라 별도
+  마이그레이션 불필요(기존 세이브에 hiether 없어도 `||0` 기본값으로 안전).
+- `node --check` 전체 통과. 미검증: 브라우저 실전 확인 안 함.
+
 ### admin/admin2/admin3 테스트 계정 — 이름 입력 즉시 보통/하드코어 난이도 해금
 - `state.js`의 `isAdminNameEntered()`가 이제 admin/admin2/admin3 세 이름을
   모두 인정하도록 확장(기존엔 "admin"만).

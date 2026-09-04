@@ -24,22 +24,25 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
     {key:'potion', name:'물약', desc:'HP 40 회복', price:25},
     {key:'hipotion', name:'상급 물약', desc:'HP 110 회복', price:65},
     {key:'ether', name:'에테르', desc:'MP 30 회복', price:45},
+    {key:'hiether', name:'상급 에테르', desc:'MP 85 회복', price:115},
   ];
   // 소모품 최대 보유 개수(사용자 요청 — 난이도 무관 동일). 이 값을 넘어서는
   // 개수는 상점 구매/향후 다른 획득 경로 모두에서 막혀야 한다.
-  const CONSUMABLE_CAPS = { potion:3, hipotion:2, ether:3 };
+  const CONSUMABLE_CAPS = { potion:3, hipotion:2, ether:3, hiether:2 };
 
   // 상점 재고(사용자 요청 — 매 방문마다 소모품 3종 중 무작위 일부만, 한정
   // 수량으로 등장). 상급 HP 포션은 개인 보유 한도(2개)에 맞춰 재고도 더
   // 적게 나오도록 별도 범위를 둔다.
-  let shopStock = null; // {potion:n, hipotion:n, ether:n} 중 등장하는 키만 포함
+  let shopStock = null; // {potion:n, hipotion:n, ether:n, hiether:n} 중 등장하는 키만 포함
   function randInt(min, max){ return min + Math.floor(Math.random()*(max-min+1)); }
   function generateShopStock(){
     const keys = SHOP_ITEMS.map(it=>it.key).sort(()=>Math.random()-0.5);
     const showCount = randInt(1, keys.length); // 1~3종만 등장(전부 나오지 않을 수 있음)
     const stock = {};
     keys.slice(0, showCount).forEach(k=>{
-      stock[k] = k==='hipotion' ? randInt(1,2) : randInt(1,3);
+      // 상급 계열(상급 물약/상급 에테르)은 개인 보유 한도(2개)에 맞춰 재고도
+      // 더 적게 나오도록 별도 범위를 둔다.
+      stock[k] = (k==='hipotion' || k==='hiether') ? randInt(1,2) : randInt(1,3);
     });
     return stock;
   }
