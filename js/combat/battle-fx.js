@@ -227,7 +227,9 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   function updatePressureGauge(){
     const el = document.getElementById('bt-pressure');
     if(!el) return;
-    if(!player || player.job!=='mechanic' || !isBattleActive()){ el.style.display='none'; return; }
+    // 강철 군단장(mechanic_accumulator 리뉴얼)은 압력 게이지를 아예 쓰지 않으므로
+    // 다른 메카닉 특성과 달리 이 계기판 자체를 숨긴다.
+    if(!player || player.job!=='mechanic' || player.specialization==='mechanic_accumulator' || !isBattleActive()){ el.style.display='none'; return; }
     const p = (battleFlags && battleFlags.pressure) || 0;
     el.style.display = 'block';
     el.textContent = `🔥 압력 ${p}/100`;
@@ -242,12 +244,20 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const r2 = (battleFlags && battleFlags.rig2 && battleFlags.rig2.turnsLeft>0) ? battleFlags.rig2 : null;
     renderOneRigSlot(slot1, r1);
     renderOneRigSlot(slot2, r2);
+    // 강철 군단장 전용 오메가 고정 슬롯(#bt-rigomega, index.html에 존재할 때만).
+    // rig/rig2 풀과 완전히 분리되어 있어 정찰/화력/방벽 로봇은 절대 여기 오지 않는다.
+    const slotOmega = document.getElementById('bt-rigomega');
+    if(slotOmega){
+      const rO = (battleFlags && battleFlags.omegaRig && battleFlags.omegaRig.turnsLeft>0) ? battleFlags.omegaRig : null;
+      renderOneRigSlot(slotOmega, rO);
+    }
   }
   // 로봇이 사격한 순간 해당 슬롯을 짧게 번쩍여, "지금 이 로봇이 쐈다"는 게
   // 눈에 보이게 한다. slotKey는 battleFlags의 키('rig'|'rig2')를 그대로 받아
   // DOM id로 매핑한다.
   function flashRigSlot(slotKey){
-    const el = document.getElementById(slotKey==='rig' ? 'bt-rig1' : 'bt-rig2');
+    const id = slotKey==='rig' ? 'bt-rig1' : slotKey==='rig2' ? 'bt-rig2' : 'bt-rigomega';
+    const el = document.getElementById(id);
     if(!el) return;
     el.classList.remove('rig-fire'); void el.offsetWidth; el.classList.add('rig-fire');
   }

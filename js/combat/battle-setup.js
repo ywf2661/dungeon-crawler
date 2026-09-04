@@ -344,6 +344,9 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
 
   function startBattle(isBoss, isFinal, isTrueFinal){
     revertDiceDelta(); // 직전 전투의 불확실성의 주사위 효과가 남아있다면 먼저 되돌린다(안전망).
+    // 강철 군단장 리뉴얼 이전에 이미 축압 기술자로 전직했던 기존 세이브
+    // 캐릭터도 여기서 자동으로 새 킷으로 마이그레이션된다(멱등 처리라 안전).
+    if(typeof migrateLegionBaseSkills==='function') migrateLegionBaseSkills(player);
     enemy = pickEnemy(isBoss, isFinal, isTrueFinal);
     // 다음 전투 한정 적 공격력 감소(사용자 요청 — 이상한 촛불 이벤트 "촛불을 끈다").
     // 단발성이라 소비 즉시 되돌린다.
@@ -363,6 +366,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // (mastery_chaindetonate)의 기폭 스택 — 둘 다 매 전투 새로 초기화된다.
     battleFlags.rig2 = null;
     battleFlags.detonatorStacks = 0;
+    // 강철 군단장 오메가 전용 슬롯 + 총사령관의 명령 버프도 매 전투 새로 초기화.
+    battleFlags.omegaRig = null;
+    battleFlags.legionCommandTurns = 0;
+    battleFlags.legionCommandMult = 0;
     // 도박사 세분화(운명의 반란자/패의 마술사)용 필드 — 둘 다 매 전투 새로 초기화된다.
     battleFlags.luckGauge = 0;
     battleFlags.cardHand = [];

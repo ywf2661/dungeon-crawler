@@ -196,22 +196,27 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
     // 세이브 크래시 방지) — 단지 JOB_SPECIALIZATIONS 목록에서만 빠져 새 캐릭터는
     // 더 이상 선택할 수 없다.
     //
-    // 폭주 화부(mechanic_stoker) / 축압 기술자(mechanic_accumulator): 1차 기관사의
-    // 핵심 정체성(압력 축적/방출 타이밍 판단)을 두 방향으로 쪼갠 대칭 구도.
-    // 화부=상한 초과/자해 감수형 하이리스크, 축압=상한 고정/장치 강화형 안정형.
-    // 시뮬레이션(전사/마법사/도적/성기사 2차 기준, 5턴 실전 조건)으로 압력
-    // 증가율(폭주사출 +25, 압력 봉인 rigPressureTickBonus +9)까지 조정 완료.
+    // 폭주 화부(mechanic_stoker): 1차 기관사의 압력 축적/방출 정체성을 그대로
+    // 하이리스크 방향으로 밀어붙인 분기. 시뮬레이션(전사/마법사/도적/성기사
+    // 2차 기준, 5턴 실전 조건)으로 압력 증가율(폭주사출 +25)까지 조정 완료.
+    // 강철 군단장(mechanic_accumulator)은 원래 이 압력 축을 반대로 쪼갠 "축압
+    // 기술자"였으나 전면 리뉴얼되어 압력을 아예 쓰지 않는 별개 컨셉이 됐다
+    // (아래 정의 참고).
     mechanic: [
       {id:'mechanic_stoker', name:'폭주 화부', icon:'🔥',
         desc:'안전장치를 스스로 뜯어낸 화부. 압력 상한을 무시하고 오직 앞으로 나아간다. 위험할수록 강해진다.',
         masteryName:'폭주 압력', masteryDesc:'압력 상한이 150으로 늘어난다. 100을 넘는 압력은 초과분만큼 자해 피해를 입히지만, 압력 방출 스킬의 위력도 초과분에 비례해 강해진다.', masterySkillId:'mastery_overheat',
         activeName:'폭주 사출', activeDesc:'압력을 소모하지 않고 즉시 압력량에 비례한 피해를 입힌다. 사용할 때마다 오히려 압력이 더 쌓인다.', activeSkillId:'mechanicOverloadDischarge',
         skillLevels: {12:'mechanicHeatResist', 15:'mechanicCriticalOverload'}},
-      {id:'mechanic_accumulator', name:'축압 기술자', icon:'🔋',
-        desc:'압력을 함부로 흘려보내지 않는다. 100에 도달한 압력은 넘치지도, 터지지도 않고 그 자리에 그대로 쌓여 기다린다.',
-        masteryName:'압력 봉인', masteryDesc:'압력이 100에 도달하면 초과분 없이 그대로 고정 유지된다(과부하 자해 없음). 가동 중인 장치의 지속시간과 압력 축적 속도가 늘어난다.', masterySkillId:'mastery_pressureseal',
-        activeName:'정밀 배분', activeDesc:'현재 압력을 소모해 화력 강화 또는 보호막 중 하나를 선택한다. 사용 후 압력 일부를 돌려받는다.', activeSkillIds:['mechanicAccumFirepower','mechanicAccumShield'],
-        skillLevels: {12:'mechanicAccumEfficiency', 15:'mechanicAccumOverflow'}},
+      // 강철 군단장(id는 mechanic_accumulator 재사용 — 기존 세이브 자동 전환,
+      // combat/job-advancement.js의 migrateLegionBaseSkills() 참고): 압력
+      // 게이지를 아예 쓰지 않고, 로봇 3기(정찰/화력/방벽 중 최대 2기 + 오메가
+      // 전용 고정 1자리)를 직접 지휘·관리하는 게 핵심 루프인 순수 지속딜형.
+      {id:'mechanic_accumulator', name:'강철 군단장', icon:'🛡️',
+        desc:'압력 대신 로봇 군단을 직접 지휘한다. 배치하고, 사격을 명령하고, 정비하며 전장을 관리하는 지휘관.',
+        masteryName:'군단 편성', masteryDesc:'정찰/화력/방벽 로봇을 최대 2기까지 동시에 배치할 수 있게 된다. 여기에 오메가 유닛 전용 고정 슬롯이 별도로 하나 더 있다.', masterySkillId:'mastery_multideploy',
+        activeName:'로봇 배치', activeDesc:'정찰/화력/방벽 중 원하는 역할의 로봇을 직접 골라 배치한다. 이미 2기가 있으면 가장 먼저 배치된 로봇을 대신 교체한다.', activeSkillIds:['mechanicDeployRecon','mechanicDeployFirepower','mechanicDeployShield'],
+        skillLevels: {12:'legionFullSquadSynergy', 15:'legionCommand'}},
     ],
     jester: [
       // [교체됨] 운명의 반란자(jester_rebel)는 사용자 요청으로 폐기되고 "황금
