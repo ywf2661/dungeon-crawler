@@ -436,6 +436,31 @@
     0%,100%{ opacity:.55; transform:translate(-50%,-50%) scale(0.92); }
     50%{ opacity:.9; transform:translate(-50%,-50%) scale(1.05); }
   }
+  /* 진짜 최종보스 전용 후광(사용자 요청 — 정예/일반 층별보스 후광과는 확실히
+     다르게, 더 크고 더 강렬하게). isTrueFinal일 땐 위 .boss-halo 대신 이
+     클래스가 붙는다(둘이 같이 겹치지 않음). 반지름을 170px->260px로 키우고,
+     색을 더 쨍한 노랑(#ffe066)으로, 이중 링 구조(안쪽 코어+바깥 링)로
+     한층 화려하게 만들었다. */
+  .enemy-stage.true-boss-halo::before{
+    content:''; position:absolute; left:50%; top:46%; transform:translate(-50%,-50%);
+    width:260px; height:260px; border-radius:50%;
+    background:radial-gradient(circle, #fff4c2 0%, #ffe066cc 22%, #ffe06655 48%, transparent 72%);
+    animation:truebosshalo 1.8s ease-in-out infinite; pointer-events:none;
+  }
+  .enemy-stage.true-boss-halo::after{
+    content:''; position:absolute; left:50%; top:46%; transform:translate(-50%,-50%);
+    width:340px; height:340px; border-radius:50%;
+    border:2px solid #ffe06699; box-shadow:0 0 40px 6px #ffe06666;
+    animation:truebosshaloring 1.8s ease-in-out infinite; pointer-events:none;
+  }
+  @keyframes truebosshalo{
+    0%,100%{ opacity:.7; transform:translate(-50%,-50%) scale(0.94); }
+    50%{ opacity:1; transform:translate(-50%,-50%) scale(1.12); }
+  }
+  @keyframes truebosshaloring{
+    0%,100%{ opacity:.4; transform:translate(-50%,-50%) scale(0.96); }
+    50%{ opacity:.85; transform:translate(-50%,-50%) scale(1.08); }
+  }
   /* 떠 있는 컨셉의 보스 전용 부유 애니메이션(사용자 요청, 해당되는 보스에만
      JS에서 클래스 부여). --ground-offset(PNG 보정치)이 있는 img도 안전하게
      같은 규칙을 쓸 수 있도록 calc()로 기존 보정값에 얹는다. */

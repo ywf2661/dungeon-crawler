@@ -488,7 +488,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     const isFloatingBoss = ['watchertablet','hollowprophet','threadmannequin','sinlantern'].includes(enemy.type);
     document.getElementById('bt-stage').className='enemy-stage'
       + (enemy.isElite?' elite':'')
-      + (enemy.isBoss?' boss-halo':'')
+      + (enemy.isBoss && !isTrueFinal?' boss-halo':'')
+      + (isTrueFinal?' true-boss-halo':'')
       + (enemy.isBoss && isFloatingBoss?' boss-float':'');
     // PNG 몬스터 그림이 캔버스 안 투명 여백 때문에 "붕 떠 보이는" 문제를
     // 자동으로 보정한다(monster-visuals.js의 fixMonsterImageGrounding 참고).
