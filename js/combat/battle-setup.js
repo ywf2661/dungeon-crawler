@@ -105,12 +105,9 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     const d = player && player.difficulty;
     if(d==='hardcore') return {hp:1.28, atk:1.22, def:1.12};
     if(d==='normal') return {hp:1.12, atk:1.10, def:1.05};
-    // 쉬움(사용자 요청 — "게임 전체에서 1~2번 정도만 죽는 수준으로"):
-    // 기존엔 배율 없이 그냥 기본 스탯(보통/하드코어 강화의 기준점)을 그대로
-    // 썼는데, 그러면 "쉬움"인데도 실질적인 완화가 전혀 없는 셈이었다. 사망의
-    // 가장 큰 원인인 피격 데미지(atk)를 크게 줄이고, hp/def도 소폭 낮춰
-    // 전투가 더 빨리 끝나고 플레이어가 더 세게 때리는 것처럼 느껴지게 한다.
-    return {hp:0.9, atk:0.68, def:0.92};
+    // 쉬움(사용자 피드백 — 이전 수정치가 일반 몬스터에는 너무 약했음):
+    // atk 감소폭을 32%->20%로 완화하고 hp/def도 기본치에 더 가깝게 되돌렸다.
+    return {hp:0.95, atk:0.8, def:0.95};
   }
   function scaleEnemyForDifficulty(e){
     const m = getDifficultyMonsterMult();

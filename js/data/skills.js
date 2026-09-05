@@ -29,8 +29,12 @@ export(전역): SKILLDB
     judgment:       {name:'심판의 일격',   mp:4,  desc:'신성한 힘을 담아 적을 벌한다. 가한 피해의 일부를 흡수한다',   type:'phys',    mult:1.6, lifesteal:0.12},
     paladinblessing:{name:'축복의 인도',   mp:7,  desc:'성스러운 축복을 두른다. 3턴간 공격력이 오르고 받는 피해가 줄어든다',
       type:'dualbuff', turns:3, atkMult:1.25, defMult:0.8},
-    retributionoath:{name:'응징의 맹세',   mp:8,  desc:'3턴간 적의 공격을 받을 때마다 40% 확률로 즉시 반격한다',
-      type:'counterbuff', turns:3, chance:0.4},
+    // 응징의 일격(구 응징의 맹세) — 사용자 요청으로 "3턴간 피격시 40% 반격"
+    // 리액티브 버프에서 즉발 딜 스킬로 리뉴얼(A안). 실제 HP비례 보너스 배율
+    // 계산은 combat/player-actions.js의 범용 phys 분기 안, key==='retributionoath'
+    // 특례 처리에서 이뤄진다(mult는 기본값, maxBonusMult가 최대 추가 배율).
+    retributionoath:{name:'응징의 일격', mp:8, desc:'확정 히트. 잃은 HP 비율이 클수록 위력이 늘어난다(최대 +80%) — 고통받을수록 더 세게 되갚아준다.',
+      type:'phys', mult:1.5, maxBonusMult:0.8},
     holylight:      {name:'신성한 빛',     mp:11, desc:'성스러운 빛으로 크게 회복한다',            type:'heal',    mult:0.8},
     divinejudgment: {name:'심판의 빛',     mp:15, desc:'신성한 빛의 심판을 내려 적을 무찌른다. 상태이상에 걸린 적일수록 더 강력하며 피해의 일부를 흡수한다',
       type:'phys',    mult:3.0, statusSynergyBonus:0.18, lifesteal:0.2, cooldown:3},

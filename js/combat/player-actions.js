@@ -2306,6 +2306,19 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       player.martyrVowArmed = false;
     }
+    // 응징의 일격(retributionoath, 레벨5 성기사 — 사용자 요청으로 "3턴간
+    // 피격시 반격" 리액티브 버프에서 즉발 딜 스킬로 리뉴얼, A안). 잃은 HP
+    // 비율이 클수록 위력이 늘어난다(최대 +80%) — "고통받을수록 되갚아준다"는
+    // 기존 응징의 맹세 컨셉을 반격 방식 대신 즉발딜 방식으로 옮겨 유지했다.
+    let retributionMsg = '';
+    if(key==='retributionoath'){
+      const missingRatio = 1 - (player.hp/player.maxhp);
+      const bonus = missingRatio*(s.maxBonusMult||0.8);
+      if(bonus>0.001){
+        dmg = Math.round(dmg*(1+bonus));
+        retributionMsg = ` 쌓인 고통을 그대로 되갚아 위력이 ${Math.round(bonus*100)}% 더 늘어났다!`;
+      }
+    }
     // 칼리버 X: 종언(paladinCaliberXFinale, 레벨15 궁극기, 회랑의 기사): 사용하는
     // 순간 전투가 끝날 때까지 남는 회복 감소 저주를 건다(battleFlags.knightHealCurse
     // — playerItem()의 물약 회복량 계산에서 확인해 절반으로 줄인다). "검이 대가를
@@ -2388,6 +2401,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(mod.triggered) msg2 = '약점을 정확히 노렸다! '+msg2;
     if(bloodPactMsg) msg2 += bloodPactMsg;
     if(martyrVowMsg) msg2 += martyrVowMsg;
+    if(retributionMsg) msg2 += retributionMsg;
     if(lightningCritMsg2) msg2 += lightningCritMsg2;
     if(stealthDmgMsg2) msg2 += stealthDmgMsg2;
     if(elementMsg) msg2 += elementMsg;
