@@ -396,6 +396,47 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.title = '대출로 얻은 버프는 전투와 무관하게 상시 적용되며, 갚을 때까지 계속 유지된다. 갚은 비율만큼 페널티는 완화된다. 대출 후 일정 층 안에 못 갚으면 황금고블린이 찾아온다.';
       box.appendChild(b);
     }
+    // 버프류 스킬 잔여 턴수 표시(사용자 요청 — 검은 기도/총사령관의 명령처럼
+    // "몇 턴 남았는지 모호한" 버프들). warcry/paladinblessing 등 여러 스킬이
+    // 공유하는 범용 필드(buffAtkTurns/buffDefTurns/buffCounterTurns)부터
+    // 스킬 전용 필드(knightVulnTurns/legionCommandTurns)까지 전부 배지로 노출.
+    if(player.buffAtkTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      const pct = Math.round(((player.buffAtkMult||1)-1)*100);
+      b.textContent = `⚔️ 공격력 버프 ${player.buffAtkTurns}턴`;
+      b.title = pct>0 ? `공격력 +${pct}%` : '공격력이 오른 상태가 지속되고 있다.';
+      box.appendChild(b);
+    }
+    if(player.buffDefTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      const pct = Math.round((1-(player.buffDefMult||1))*100);
+      b.textContent = `🛡️ 방어 버프 ${player.buffDefTurns}턴`;
+      b.title = pct>0 ? `받는 피해 -${pct}%` : '방어 태세가 지속되고 있다.';
+      box.appendChild(b);
+    }
+    if(player.buffCounterTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      b.textContent = `⚡ 반격 태세 ${player.buffCounterTurns}턴`;
+      b.title = `피격 시 ${Math.round((player.buffCounterChance||0)*100)}% 확률로 즉시 반격한다.`;
+      box.appendChild(b);
+    }
+    if(player.knightVulnTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      b.textContent = `🩸 검은 기도 ${player.knightVulnTurns}턴`;
+      b.title = `공격력 +${player.knightVulnAtkBonus||0}, 방어력 -${player.knightVulnDefPenalty||0}가 남은 턴 동안 유지된다.`;
+      box.appendChild(b);
+    }
+    if(battleFlags && battleFlags.legionCommandTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      b.textContent = `📯 총사령관의 명령 ${battleFlags.legionCommandTurns}턴`;
+      b.title = `가동 중인 모든 로봇의 사격 위력이 ${Math.round((battleFlags.legionCommandMult||0)*100)}% 늘어난 상태가 지속되고 있다.`;
+      box.appendChild(b);
+    }
   }
 
   // 1차/2차 "각성기" 스킬 테두리 색 구분(사용자 요청) — 스킬 전체가 아니라
