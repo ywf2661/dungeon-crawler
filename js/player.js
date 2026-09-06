@@ -13,14 +13,17 @@ export(전역): newPlayer
     // 받게 한다. 레벨업 성장분도 동일 배율로 combat/battle-end.js에서 함께
     // 올린다(초기치만 올리면 레벨이 오를수록 상대적으로 희석되기 때문).
     const easyAtkMult = diff==='easy' ? 1.2 : 1;
-    // 쉬움 난이도 시작 장비(사용자 요청 — 골드 수급량 증가와 함께). 상점에서
-    // 살 수 있는 가장 기본 등급 무기/방어구를 그대로 재사용한다(물리 직업엔
-    // 낡은 단검 w_dagger, 마법 계열엔 견습생의 지팡이 w_staff, 방어구는 공통
-    // 가죽 갑옷 a_leather). 장비 소지 목록에도 넣어 상점에서 파는 것도 가능.
+    // 시작 장비(처음엔 쉬움 전용이었다가, 사용자 요청으로 모든 난이도 공통
+    // 지급으로 변경). 상점에서 살 수 있는 가장 기본 등급 무기/방어구를 그대로
+    // 재사용한다(물리 직업엔 낡은 단검 w_dagger, 마법 계열엔 견습생의 지팡이
+    // w_staff, 방어구는 공통 가죽 갑옷 a_leather). 장비 소지 목록에도 넣어
+    // 상점에서 파는 것도, 나중에 다른 장비로 교체하는 것도 가능.
     const easyWeaponId = (job.id==='mage' || job.id==='mechanic') ? 'w_staff' : 'w_dagger';
     const easyWeaponStats = easyWeaponId==='w_staff' ? {mag:5} : {atk:2};
     const easyArmorStats = {def:3, maxhp:8}; // a_leather
-    const startEquip = diff==='easy';
+    // 시작 장비는 난이도 무관하게 전부 지급한다(사용자 요청 — 처음엔 쉬움만
+    // 지급했었는데 보통/하드코어에도 기본 장비 정도는 있는 게 낫다는 판단).
+    const startEquip = true;
     const p = {
       name: name || '용사',
       difficulty: diff,
