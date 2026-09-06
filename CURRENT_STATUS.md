@@ -18,6 +18,21 @@
 
 ## 최근 작업
 
+### 버그 수정 — 난이도별 왕관(진 최종보스 무사망 클리어) 표시 안 되던 문제
+- 원인 2가지 모두 확인:
+  1. 엔딩→타이틀 복귀 시 저장되는 `record` 객체에애초에 `trueEnding` 필드가
+     없었음(records.js의 뱃지 표시는 이 필드를 읽는데 한 번도 채워진 적 없음).
+  2. `bootstrap.js`가 기록을 불러올 때 `normalUnlocked`/`hardcoreUnlocked`는
+     계산하면서 정작 `easyFlawless`/`normalFlawless`/`hardcoreFlawless`(왕관
+     표시용, `ui/difficulty.js`에 선언만 되고 대입되는 곳이 전혀 없었음)는
+     계산 로직 자체가 없었음.
+- 수정: `record`에 `trueEnding: !!player.trueEndingSeen` 추가, `bootstrap.js`
+  기록 로드 두 지점 모두에 `record.difficulty`+`trueEnding`+`deathCount===0`
+  기준으로 세 난이도 flawless 플래그 계산 추가.
+- 주의: 기존에 이미 저장된 과거 기록에는 `trueEnding` 필드가 없어 왕관이
+  소급 적용되지 않는다 — 이 수정 이후 새로 클리어한 기록부터 정상 표시됨.
+- `node --check` 전체 통과. 미검증: 실전(무사망 진엔딩 클리어) 확인 안 함.
+
 ### 2차 각성기(레벨15) 전부에 쿨다운 3턴 통일 적용
 - 기존엔 기관사 계열(폭주화부/강철군단장, 4턴)만 쿨다운이 있었고 나머지
   10개는 자체 HP비용/자원조건/1회제한 외엔 매턴 스팸 가능했음.

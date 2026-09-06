@@ -79,6 +79,10 @@ export(전역): init, showMaintenanceModal, isAdminName
         name: player.name, jobLabel, level: player.level,
         deathCount: player.deathCount||0, ts: Date.now(),
         difficulty: player.difficulty||'easy',
+        // 난이도별 왕관 표시(사용자 제보 — 원래 되던 게 안 보임)의 근거 필드.
+        // records.js의 renderRecords()도 이 필드(r.trueEnding)를 읽어 뱃지를
+        // 붙이는데, 정작 이 record 객체엔 한 번도 채워진 적이 없었다.
+        trueEnding: !!player.trueEndingSeen,
         // 일반 최종보스("잠식된 OO 용사")가 이 기록의 이름/직업을 따르게
         // 하려면 원문 job id가 필요하다(jobLabel은 이미 아이콘까지 붙은
         // 표시용 문자열이라 역으로 파싱하기엔 부적합).
@@ -96,6 +100,12 @@ export(전역): init, showMaintenanceModal, isAdminName
         renderRecords(records);
         normalUnlocked = records.length > 0;
         hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
+        // 난이도별 왕관 표시(사용자 제보로 원인 확인 — record 객체에 trueEnding
+        // 필드가 아예 없었고, 여기서도 계산을 안 하고 있었다) — 해당 난이도에서
+        // 한 번도 안 죽고(deathCount 0) 진 최종보스를 본 기록이 있으면 표시.
+        easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0);
+        normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0);
+        hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0);
         renderDifficultySelect();
       });
     });
@@ -136,6 +146,9 @@ export(전역): init, showMaintenanceModal, isAdminName
       renderRecords(records);
       normalUnlocked = records.length > 0;
       hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
+      easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0);
+      normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0);
+      hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0);
       renderDifficultySelect();
     }).catch(e=>{ console.warn('기록 불러오기 실패(무시):', e); });
   }
