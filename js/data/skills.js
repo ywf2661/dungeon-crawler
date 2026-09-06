@@ -560,6 +560,18 @@ export(전역): SKILLDB
       desc:'다음 심판의 빛 사용 시 최대HP 8%를 영구히 깎는 대신 공격력을 영구히 3 올릴지 여부를 켜고 끈다.'},
     paladinJudgmentLight: {name:'심판의 빛', mp:7, desc:'적을 강타하고 그 힘의 일부로 소량 회복한다. 희생의 맹세가 켜져 있다면 최대HP를 영구히 깎는 대신 영구히 강해진다',
       type:'phys', mult:1.6, lifesteal:0.2},
+    // 레벨12 패시브 "순교자의 인장"(신규 기획 — 순교자에 12/15가 아예 없었음):
+    // 희생의 맹세 누적 발동 횟수(player.martyrSacrificeCount)만큼 방어력이
+    // 영구히 오른다(1회당 +2, 최대 10회분=+20). 실제 적용은
+    // combat/enemy-turn.js의 getMartyrSealDefBonus()에서 매 피격마다 계산.
+    paladinMartyrSeal: {name:'순교자의 인장', mp:0, type:'passive', defPerSacrifice:2, maxSacrificeCount:10,
+      desc:'지금까지 희생의 맹세로 제물을 바친 횟수만큼 방어력이 영구히 오른다(1회당 +2, 최대 +20). 고통을 이겨낼수록 더 단단해진다.'},
+    // 레벨15 궁극기 "불멸의 순교"(신규): 누적 희생 횟수에 비례해 압도적인
+    // 확정 피해를 입힌다. 사용 시 최대HP 15%를 추가로 소모하는데, 이 반동
+    // 때문에 죽게 되는 경우 전투당 1회 HP1로 버틴다(battleFlags.martyrReviveUsed).
+    paladinMartyrUltimate: {name:'불멸의 순교', mp:18, cooldown:3, type:'martyrultimate',
+      baseMult:2.0, countBonusMult:0.35, maxSacrificeCount:10, selfHpCostPct:0.15,
+      desc:'지금까지 영구히 바쳐온 희생을 전부 힘으로 되돌려 압도적인 피해를 입힌다. 사용 시 최대HP 15%를 추가로 소모하지만, 이로 인해 쓰러지게 되는 경우 전투당 1회 HP 1로 버텨낸다.'},
 
     // 성기사 - 계율의 파수꾼(paladin_creed)
     // 마스터리 "계율": 전투 시작 시 두 계율(물약 사용 금지 / 기본 공격 금지) 중 하나를

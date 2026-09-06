@@ -1953,6 +1953,35 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
     }
 
+    if(s.type==='martyrultimate'){
+      // 순교자 레벨15 궁극기 "불멸의 순교"(신규): 누적 희생 횟수(마스터리
+      // 발동 횟수)에 비례해 확정 피해를 입힌다. 사용 시 최대HP 15%를 추가로
+      // 소모하는 반동이 있는데, 이걸로 죽게 되면 전투당 1회 HP1로 버틴다.
+      const count = Math.min(s.maxSacrificeCount||10, player.martyrSacrificeCount||0);
+      const mult = (s.baseMult||2.0) + count*(s.countBonusMult||0.35);
+      const edefM = getEffectiveEnemyDef(enemy.def);
+      let dmg = Math.max(1, Math.round(player.atk*mult) - Math.round(edefM*0.5));
+      dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+      const selfCost = Math.round(player.maxhp*(s.selfHpCostPct||0.15));
+      let reviveMsg = '';
+      if(player.hp - selfCost <= 0 && !battleFlags.martyrReviveUsed){
+        battleFlags.martyrReviveUsed = true;
+        player.hp = 1;
+        reviveMsg = ' 반동으로 쓰러질 뻔했지만, 순교자는 죽음조차 넘어섰다!';
+      } else {
+        player.hp = Math.max(0, player.hp - selfCost);
+      }
+      renderStatus();
+      Sound.bomb();
+      playBanner('불멸의 순교!');
+      setBattleMsg(`${player.name}의 ${s.name}!`, `그동안 바쳐온 희생(${count}회)을 전부 힘으로 되돌려 ${enemy.name}에게 ${dmg}의 피해를 입혔다!${reviveMsg}`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='fateshift'){
       player.fateBoostChance = s.chanceBonus||0.3;
       player.fateBoostMult = s.multBonus||0.5;
@@ -2311,6 +2340,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         player.maxhp -= hpLoss;
         player.hp = Math.min(player.hp, player.maxhp);
         player.atk += 3;
+        // 순교자 레벨12/15 신규 스킬(순교자의 인장/불멸의 순교)이 참조하는
+        // 누적 희생 횟수. 이 마스터리가 실제로 발동한 순간에만 늘어난다.
+        player.martyrSacrificeCount = (player.martyrSacrificeCount||0) + 1;
         martyrVowMsg = ` 순교자의 맹세로 최대HP ${hpLoss}을(를) 영구히 바쳐 공격력이 영구히 3 올랐다!`;
       }
       player.martyrVowArmed = false;

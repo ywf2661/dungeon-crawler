@@ -559,7 +559,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         return;
       }
 
-      let mitigated = Math.max(1, dmg - player.def);
+      let mitigated = Math.max(1, dmg - player.def - getMartyrSealDefBonus());
       if(player.buffDefTurns > 0){
         mitigated = Math.max(1, Math.round(mitigated * player.buffDefMult));
         player.buffDefTurns -= 1;
@@ -900,6 +900,16 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     if(!(player.skills && player.skills.includes('jesterReceivable'))) return 0;
     if(!battleFlags || !battleFlags.jesterDebtStacks) return 0;
     return Math.min(5, battleFlags.jesterDebtStacks) * 0.03;
+  }
+  // 순교자의 인장(paladinMartyrSeal, 순교자 레벨12): 희생의 맹세 누적 발동
+  // 횟수 1회당 방어력 +2(최대 10회분=+20). 영구 스탯이 아니라 매 피격마다
+  // 계산해서 더하는 방식이라(effectiveAtk 같은 별도 스탯 필드를 새로 두지
+  // 않고) 이 함수 하나만 고치면 수치 조정이 끝난다.
+  function getMartyrSealDefBonus(){
+    if(!(player.skills && player.skills.includes('paladinMartyrSeal'))) return 0;
+    const cap = (SKILLDB.paladinMartyrSeal && SKILLDB.paladinMartyrSeal.maxSacrificeCount) || 10;
+    const per = (SKILLDB.paladinMartyrSeal && SKILLDB.paladinMartyrSeal.defPerSacrifice) || 2;
+    return Math.min(cap, player.martyrSacrificeCount||0) * per;
   }
   // 행운의 파도(mastery_luckwave): 운 게이지(-3~+3)를 공격력 배율로 환산한다
   // (게이지 1당 ±7%, 최대 ±21%).

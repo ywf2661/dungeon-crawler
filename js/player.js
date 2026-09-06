@@ -41,6 +41,10 @@ export(전역): newPlayer
       buffDefTurns:0, buffDefMult:1,
       buffCounterTurns:0, buffCounterChance:0,
       fateBoostChance:0, fateBoostMult:0,
+      // 순교자(paladin_martyr) 레벨12/15 신설 스킬용 카운터 — 희생의 맹세
+      // (mastery_martyrvow)가 발동할 때마다 1씩 늘어난다. 다른 스펙 캐릭터는
+      // 그냥 0으로 유지되며 아무 영향 없음.
+      martyrSacrificeCount:0,
       equipment: startEquip ? {weapon:easyWeaponId, armor:'a_leather', accessory:null} : {weapon:null, armor:null, accessory:null},
       equipOwned: startEquip ? [easyWeaponId, 'a_leather'] : [],
       relics:[], relicSlots: diff==='hardcore'?4:(diff==='normal'?3:2), relicAltarsSeen:[], curseAltarsSeen:[], relicSkipsUsed:0, relicSkipsMax:2, ledgerStack:0, relicAppliedDeltas:{},

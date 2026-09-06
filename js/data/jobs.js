@@ -172,7 +172,11 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       {id:'paladin_martyr', name:'순교자', icon:'✝',
         desc:'자신의 생명력을 제물로 바쳐 영원한 힘을 얻는 순교자. 대가를 두려워하지 않는다.',
         masteryName:'희생의 맹세', masteryDesc:'특정 스킬 사용 시 최대HP를 영구히 깎는 대신 영구 스탯을 얻는 선택지가 상시 열림.', masterySkillId:'mastery_martyrvow',
-        activeName:'심판의 빛', activeDesc:'공격 + 소량 자힐 복합기.', activeSkillId:'paladinJudgmentLight'},
+        activeName:'심판의 빛', activeDesc:'공격 + 소량 자힐 복합기.', activeSkillId:'paladinJudgmentLight',
+        // 신규 기획(사용자 요청 — 순교자에 레벨12/15가 아예 없었음). 둘 다
+        // 희생의 맹세(mastery_martyrvow)가 실제로 발동한 누적 횟수
+        // (player.martyrSacrificeCount)를 그대로 힘으로 바꾸는 방향으로 통일.
+        skillLevels: {12:'paladinMartyrSeal', 15:'paladinMartyrUltimate'}},
       // [교체됨] 계율의 파수꾼(paladin_creed)은 사용자 요청으로 폐기되고 "회랑의
       // 기사"로 대체되었다. mastery_creed/paladinBlessedWall 등 구버전 SKILLDB
       // 항목은 삭제하지 않고 남겨둔다(레거시 세이브 크래시 방지) — 단지
