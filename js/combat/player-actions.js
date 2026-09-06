@@ -208,7 +208,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 비용 감소). player.multiBattleBuff는 event.js에서 세팅되고
     // combat/battle-end.js의 checkBattleEnd()가 전투마다 battlesLeft를 깎는다.
     const mbb = player.multiBattleBuff;
-    const mpCostMult = (mbb && mbb.type==='mpcost' && mbb.battlesLeft>0) ? (1-mbb.value) : 1;
+    const mbbMult = (mbb && mbb.type==='mpcost' && mbb.battlesLeft>0) ? (1-mbb.value) : 1;
+    // 쉬움 난이도 전용 마나 소모량 감소(사용자 요청 — 적 강화를 되돌리는 대신
+    // 플레이어 쪽 자원 부담을 줄이는 방식). 다른 배율(마나의 축복 등)과
+    // 곱연산으로 함께 적용된다.
+    const easyMpMult = player.difficulty==='easy' ? 0.8 : 1;
+    const mpCostMult = mbbMult * easyMpMult;
     const mpCost = Math.max(0, Math.round(s.mp*mpCostMult));
     if(!isRetry && player.mp < mpCost) return;
     // 스킬 쿨타임(사용자 요청 — 1차 직업 궁극기 로테이션 개선). 쿨타임이 남아

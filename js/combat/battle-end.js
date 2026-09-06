@@ -561,9 +561,13 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     if(!(player.specialization === 'warrior_purist')){
       player.maxmp += applyOriginGrowth(4, 'spirit', 'mp');
     }
-    player.atk += applyOriginGrowth(2, 'strength', 'atk');
+    // 쉬움 난이도 전용 공격력 보너스(사용자 요청 — player.js의 초기치 보너스와
+    // 동일 배율 20%). 레벨업할 때마다도 같이 적용해야 레벨이 오를수록 초기
+    // 보너스가 희석되지 않는다.
+    const easyGrowthMult = player.difficulty==='easy' ? 1.2 : 1;
+    player.atk += Math.round(applyOriginGrowth(2, 'strength', 'atk') * easyGrowthMult);
     player.def += applyOriginGrowth(1, 'atonement', 'def');
-    player.mag += 2;
+    player.mag += Math.round(2 * easyGrowthMult);
     player.spd += applyOriginGrowth(1, 'swiftness', 'spd');
     // 저주술사(mastery_curseweaver)는 레벨업 시 무회복 저주도 저주 개수만큼의
     // 확률로 뚫을 수 있다(레벨업이 한 번에 여러 번 처리될 수 있어, 매번 배너가

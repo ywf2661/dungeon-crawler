@@ -105,9 +105,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     const d = player && player.difficulty;
     if(d==='hardcore') return {hp:1.28, atk:1.22, def:1.12};
     if(d==='normal') return {hp:1.12, atk:1.10, def:1.05};
-    // 쉬움(사용자 피드백 — 이전 수정치가 일반 몬스터에는 너무 약했음):
-    // atk 감소폭을 32%->20%로 완화하고 hp/def도 기본치에 더 가깝게 되돌렸다.
-    return {hp:0.95, atk:0.8, def:0.95};
+    // 쉬움(사용자 요청 — atk 감소는 너프 전(1.0)으로 되돌리고, 대신 플레이어
+    // 쪽 공격력을 올리고 마나 소모를 줄이는 방식으로 접근을 바꿨다. hp/def는
+    // 기존 소폭 완화(0.95)를 유지한다).
+    return {hp:0.95, atk:1, def:0.95};
   }
   function scaleEnemyForDifficulty(e){
     const m = getDifficultyMonsterMult();

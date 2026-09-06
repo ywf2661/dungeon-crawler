@@ -8,13 +8,18 @@ export(전역): newPlayer
     const job = JOBS.find(j=>j.id===jobId) || JOBS[0];
     const m = job.statMods;
     const diff = difficulty || 'easy';
+    // 쉬움 난이도 전용 공격력 보너스(사용자 요청 — 적 강화를 되돌리는 대신
+    // 플레이어를 세게). atk/mag 둘 다 20% 올려서 물리/마법 직업 모두 혜택을
+    // 받게 한다. 레벨업 성장분도 동일 배율로 combat/battle-end.js에서 함께
+    // 올린다(초기치만 올리면 레벨이 오를수록 상대적으로 희석되기 때문).
+    const easyAtkMult = diff==='easy' ? 1.2 : 1;
     const p = {
       name: name || '용사',
       difficulty: diff,
       job: job.id, job2: null, specialization: null, jobChosenAt10:false,
       level:1, exp:0, expNext:24,
       maxhp:32+m.maxhp, hp:0, maxmp:12+m.maxmp, mp:0,
-      atk:7+m.atk, def:3+m.def, mag:6+m.mag, spd:6+m.spd,
+      atk:Math.round((7+m.atk)*easyAtkMult), def:3+m.def, mag:Math.round((6+m.mag)*easyAtkMult), spd:6+m.spd,
       gold:40,
       inv:{ potion:3, hipotion:0, ether:1, hiether:0 },
       skills:[job.skillLevels[1]],
