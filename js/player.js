@@ -13,13 +13,24 @@ export(전역): newPlayer
     // 받게 한다. 레벨업 성장분도 동일 배율로 combat/battle-end.js에서 함께
     // 올린다(초기치만 올리면 레벨이 오를수록 상대적으로 희석되기 때문).
     const easyAtkMult = diff==='easy' ? 1.2 : 1;
+    // 쉬움 난이도 시작 장비(사용자 요청 — 골드 수급량 증가와 함께). 상점에서
+    // 살 수 있는 가장 기본 등급 무기/방어구를 그대로 재사용한다(물리 직업엔
+    // 낡은 단검 w_dagger, 마법 계열엔 견습생의 지팡이 w_staff, 방어구는 공통
+    // 가죽 갑옷 a_leather). 장비 소지 목록에도 넣어 상점에서 파는 것도 가능.
+    const easyWeaponId = (job.id==='mage' || job.id==='mechanic') ? 'w_staff' : 'w_dagger';
+    const easyWeaponStats = easyWeaponId==='w_staff' ? {mag:5} : {atk:2};
+    const easyArmorStats = {def:3, maxhp:8}; // a_leather
+    const startEquip = diff==='easy';
     const p = {
       name: name || '용사',
       difficulty: diff,
       job: job.id, job2: null, specialization: null, jobChosenAt10:false,
       level:1, exp:0, expNext:24,
-      maxhp:32+m.maxhp, hp:0, maxmp:12+m.maxmp, mp:0,
-      atk:Math.round((7+m.atk)*easyAtkMult), def:3+m.def, mag:Math.round((6+m.mag)*easyAtkMult), spd:6+m.spd,
+      maxhp:32+m.maxhp+(startEquip?easyArmorStats.maxhp:0), hp:0, maxmp:12+m.maxmp, mp:0,
+      atk:Math.round((7+m.atk)*easyAtkMult)+(startEquip?(easyWeaponStats.atk||0):0),
+      def:3+m.def+(startEquip?easyArmorStats.def:0),
+      mag:Math.round((6+m.mag)*easyAtkMult)+(startEquip?(easyWeaponStats.mag||0):0),
+      spd:6+m.spd,
       gold:40,
       inv:{ potion:3, hipotion:0, ether:1, hiether:0 },
       skills:[job.skillLevels[1]],
@@ -27,8 +38,8 @@ export(전역): newPlayer
       buffDefTurns:0, buffDefMult:1,
       buffCounterTurns:0, buffCounterChance:0,
       fateBoostChance:0, fateBoostMult:0,
-      equipment:{weapon:null, armor:null, accessory:null},
-      equipOwned:[],
+      equipment: startEquip ? {weapon:easyWeaponId, armor:'a_leather', accessory:null} : {weapon:null, armor:null, accessory:null},
+      equipOwned: startEquip ? [easyWeaponId, 'a_leather'] : [],
       relics:[], relicSlots: diff==='hardcore'?4:(diff==='normal'?3:2), relicAltarsSeen:[], curseAltarsSeen:[], relicSkipsUsed:0, relicSkipsMax:2, ledgerStack:0, relicAppliedDeltas:{},
       candleUsed:false, diceDelta:null,
       endingSeen:false, deathCount:0,

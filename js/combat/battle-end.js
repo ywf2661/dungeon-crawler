@@ -97,7 +97,9 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       const goldSenseBonus = (player.skills && player.skills.includes('mastery_goldsense')) ? 0.2 : 0;
       // 오프닝 심리테스트(origin.js) "황금" 기질 — 승리 골드 +8%.
       const originGoldBonus = (player.originBonuses && player.originBonuses.gold) || 0;
-      const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult + goldSenseBonus + originGoldBonus;
+      // 쉬움 난이도 전용 골드 수급량 증가(사용자 요청).
+      const easyGoldBonus = (player.difficulty==='easy') ? 0.25 : 0;
+      const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult + goldSenseBonus + originGoldBonus + easyGoldBonus;
       if(goldBoost>0) g = Math.round(g*(1+goldBoost));
       player.gold += g;
       // 강화석 드랍(사용자 요청 — 등급별 확률/개수 차등, 상점 판매는 절대 금지).
@@ -428,7 +430,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 보상 수치는 "이제 막 넘어갈 다음 구간" 기준(기존과 동일한 값)으로 계산한다
     // — tierIndex 자체는 아직 증가시키지 않았으므로 +1을 명시적으로 더한다.
     const nextTier = clearedTier + 1;
-    const goldReward = 100 + nextTier*60;
+    const goldReward = Math.round((100 + nextTier*60) * (player.difficulty==='easy' ? 1.25 : 1));
     const expReward = Math.round(player.expNext*0.25);
     const stoneReward = 4 + nextTier*2;
     panel.innerHTML = `
