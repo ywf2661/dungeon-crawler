@@ -54,7 +54,18 @@ export(전역): SKILLDB
     mechanicSafety: {name:'안전밸브', mp:6, desc:'쌓인 압력을 전부 소모해, 다음 피격 시 받는 피해를 압력량에 비례해 크게 줄인다',
       type:'pressurevent', ventMode:'defense', minPressure:10, defReducePerPressure:0.006, defReduceCap:0.6},
     mechanicOverpressure: {name:'과압 각성', mp:16, desc:'오메가 유닛을 투입하며 압력을 강제로 최대까지 끌어올려 그 자리에서 안전하게 전량 방출한다. 이후 오메가 유닛은 평소보다 훨씬 빠르게 압력을 만들어낸다',
-      type:'overpressureult', mult:1.2, rigKind:'omega', rigName:'오메가 유닛', rigTurns:4, rigMult:0.4, rigPressurePerTick:30, shieldPct:0.3, dmgPerPressure:0.03, cooldown:3},
+      // 밸런스 수정(사용자 제보 — 강철 군단장 기준 오메가가 화력 로봇보다도
+      // 총딜이 낮았음: 기존 mult1.2/rigMult0.4 그대로 쓰면 4턴 합계 119 vs
+      // 화력 132). 이 스킬은 폭주 화부의 "과압 각성"과 완전히 공유되는
+      // 데이터라 mult/rigMult를 직접 올리면 폭주 화부까지 같이 세져버린다
+      // (요청 범위 밖) — 그래서 강철 군단장 전용 legionBurstMult/legionRigMult를
+      // 새로 두고, combat/player-actions.js의 isLegion 분기에서만 이 값을
+      // 쓰도록 분리했다. 레벨17 mag46 기준 합계 197, 턴당평균 49.2로 화력의
+      // 132/44.0을 확실히 상회하도록 조정(폭주 화부 쪽 mult/rigMult는 원래
+      // 그대로 유지되어 영향 없음).
+      type:'overpressureult', mult:1.2, rigKind:'omega', rigName:'오메가 유닛', rigTurns:4, rigMult:0.4,
+      legionBurstMult:1.5, legionRigMult:0.75,
+      rigPressurePerTick:30, shieldPct:0.3, dmgPerPressure:0.03, cooldown:3},
     // ---- 이하 구 메카닉 스킬(리뉴얼로 미사용, 참고용 보존) ----
     deployturret:   {name:'자동 포탑 설치', mp:6,  desc:'소형 포탑을 설치한다. 설치와 동시에 첫 사격을 가하고, 이후 3턴간 무엇을 하든 매 턴 자동으로 사격한다. 이미 가동 중인 장치가 있다면 교체된다',
       type:'deployrig', mult:1.0, rigKind:'turret', rigName:'자동 포탑', rigTurns:3, rigMult:0.85},

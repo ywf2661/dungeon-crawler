@@ -1048,19 +1048,23 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 한 번에 처리한다.
     if(s.type==='overpressureult'){
       const edefU = getEffectiveEnemyDef(enemy.def);
-      const dmgPerTick = Math.max(1, Math.round(player.mag*s.rigMult));
+      const isLegion = player.specialization==='mechanic_accumulator';
+      // 강철 군단장 전용 배율(legionBurstMult/legionRigMult)이 있으면 그걸
+      // 쓰고, 없으면(폭주 화부 등 다른 특성) 기존 공용 mult/rigMult 그대로.
+      const rigMultUsed = isLegion ? (s.legionRigMult||s.rigMult) : s.rigMult;
+      const dmgPerTick = Math.max(1, Math.round(player.mag*rigMultUsed));
       // 강철 군단장(mechanic_accumulator 리뉴얼)은 압력 게이지가 아예 없다.
       // 같은 스킬(mechanicOverpressure)을 재사용하되, 이 특성이면 오메가를
       // battleFlags.omegaRig 전용 고정 슬롯에 배치하고 압력 관련 처리를
       // 전부 건너뛴다. 다른 특성(폭주 화부 등)은 기존 동작 그대로 유지된다.
-      const isLegion = player.specialization==='mechanic_accumulator';
       const newOmegaRig = {kind:s.rigKind, name:s.rigName, turnsLeft:s.rigTurns, dmgPerTick, shieldPct:s.shieldPct||0, pressurePerTick: isLegion?0:(s.rigPressurePerTick||0)};
       if(isLegion){ battleFlags.omegaRig = newOmegaRig; } else { battleFlags.rig = newOmegaRig; }
       updateRigVisuals();
       const markBonus = (enemy.markedTurns>0) ? (enemy.markBonus||0.25) : 0;
       let dmg;
       if(isLegion){
-        dmg = Math.max(1, Math.round(player.mag*s.mult*(1+markBonus)) - Math.round(edefU*0.5));
+        const burstMultUsed = s.legionBurstMult||s.mult;
+        dmg = Math.max(1, Math.round(player.mag*burstMultUsed*(1+markBonus)) - Math.round(edefU*0.5));
       } else {
         battleFlags.pressure = 100;
         dmg = Math.max(1, Math.round(player.mag*(s.mult + 100*s.dmgPerPressure)*(1+markBonus)) - Math.round(edefU*0.5));
