@@ -249,7 +249,7 @@ export(전역): SKILLDB
       type:'phys', mult:2.2, hpCostPct:0.12, dot:{type:'bleed', basis:'atk', ratio:0.35, turns:3, label:'출혈'}},
     // 레벨15 궁극기 "혈옥쇄": 최대HP의 50%를 제물로 바치는 필살기(HP 1은 항상 남도록
     // player-actions.js에서 방어적으로 클램프한다).
-    warriorBloodpactUltimate: {name:'혈옥쇄', mp:14, desc:'자신의 생명력 절반을 제물로 바쳐 필멸의 일격을 꽂는다. 최대HP의 50%를 소모하는 대신(HP 1은 항상 남는다) 압도적인 피해를 입힌다',
+    warriorBloodpactUltimate: {name:'혈옥쇄', mp:14, cooldown:3, desc:'자신의 생명력 절반을 제물로 바쳐 필멸의 일격을 꽂는다. 최대HP의 50%를 소모하는 대신(HP 1은 항상 남는다) 압도적인 피해를 입힌다',
       type:'phys', mult:4.5, defPierce:0.35, hpCostPct:0.5},
 
     // 전사 - 인내의 파훼자(warrior_endurance) — [삭제됨, 레거시 호환용으로만 유지]
@@ -343,7 +343,7 @@ export(전역): SKILLDB
     // 원소 폭풍(레벨15 궁극기): 화염=초강력 화상+큰 피해, 빙결=방어 완전 무시
     // 초고배율 강타, 번개=3연속 타격(관통 있음). 계약 없으면 여전히 약함(궁극기까지
     // 계약 없이 쓰는 것을 강하게 억제). 새 타입 'elementstorm'.
-    mageElementStorm: {name:'원소 폭풍', mp:16, type:'elementstorm',
+    mageElementStorm: {name:'원소 폭풍', mp:16, cooldown:3, type:'elementstorm',
       desc:'계약한 원소의 힘을 폭풍처럼 몰아친다. 화염은 압도적인 화상과 피해, 빙결은 방어를 완전히 무시하는 필살의 일격, 번개는 방어를 꿰뚫는 3연속 타격. 계약이 없으면 궁극기라 하기 민망할 정도로 약하다.'},
 
     // 마법사 - 시간술사(mage_time)
@@ -364,7 +364,7 @@ export(전역): SKILLDB
     // 레벨15 궁극기 "시간의 역설": 쌓인 시간 조각을 전부 소비해 조각 수에 비례한
     // 폭딜을 넣는다(풀스택 5개면 마력 4.0배 — 저주술사/전사의 다른 궁극기와
     // 비슷한 급의 위력). 조각이 없으면 기본 배율(1.0배)만 나온다.
-    mageTimeParadox: {name:'시간의 역설', mp:18, type:'timeparadox', baseMult:1.0, stackMult:0.6,
+    mageTimeParadox: {name:'시간의 역설', mp:18, cooldown:3, type:'timeparadox', baseMult:1.0, stackMult:0.6,
       desc:'쌓아온 시간 조각을 모두 소비해 그 힘을 한꺼번에 무너뜨려 적을 덮친다. 조각이 많을수록(최대 5개) 압도적으로 강력하다.'},
 
     // 마법사 - 저주술사(mage_curseweaver) — 마법사의 3번째 분기. JOB_SPECIALIZATIONS는
@@ -430,7 +430,7 @@ export(전역): SKILLDB
     // 그대로 재사용). "각인으로 심고, 만개로 거둔다"는 실제 콤보가 생기지만,
     // 각인 없이 바로 써도(내 저주 개수만으로) 준수한 위력은 나온다. 새 타입
     // 'cursebloom'으로 처리한다.
-    mageCurseBloom: {name:'저주 만개', mp:17, type:'cursebloom', baseMult:1.6, curseCountBonus:0.3,
+    mageCurseBloom: {name:'저주 만개', mp:17, cooldown:3, type:'cursebloom', baseMult:1.6, curseCountBonus:0.3,
       desc:'짊어진 저주를 한꺼번에 만개시켜 적을 덮친다. 저주를 많이 짊어질수록 폭발적으로 강력하며, 저주 각인으로 새겨둔 저주가 남아있다면 그 힘까지 함께 터진다.'},
 
     // 도적 - 환영검사(rogue_phantom)
@@ -477,7 +477,7 @@ export(전역): SKILLDB
     // 기준으로 세는 것이라 "운"이 아니라 "이번 전투에서 얼마나 적극적으로
     // 싸웠는가(+분신 배가를 잘 활용했는가)"에 정직하게 비례한다. 사용 후 카운트는
     // 0으로 초기화된다. 새 타입 'nightparade'로 처리한다.
-    rogueUndeadParade: {name:'백귀야행', mp:20, type:'nightparade',
+    rogueUndeadParade: {name:'백귀야행', mp:20, cooldown:3, type:'nightparade',
       desc:'이번 전투에서 쌓아온 잔영의 흔적을 모두 불러내, 그 횟수만큼 분신 군단이 동시에 적을 몰아친다. 오래, 적극적으로 싸울수록(분신 배가를 잘 활용했을수록) 압도적으로 강력해진다.'},
 
     // 도적 - 맹독 연금술사(rogue_alchemist)
@@ -592,7 +592,7 @@ export(전역): SKILLDB
     // "회복 감소 저주"(battleFlags.knightHealCurse)뿐이며, 이건 player-actions.js
     // 하단 범용 phys 분기에서 key==='paladinCaliberXFinale'로 특정해 건다(순교자의
     // paladinJudgmentLight와 동일한 패턴) — 물약 회복량이 이후 절반으로 줄어든다.
-    paladinCaliberXFinale: {name:'칼리버 X: 종언', mp:20, type:'phys', mult:4.2, defPierce:0.5, hpCostPct:0.3, lifesteal:0.6,
+    paladinCaliberXFinale: {name:'칼리버 X: 종언', mp:20, cooldown:3, type:'phys', mult:4.2, defPierce:0.5, hpCostPct:0.3, lifesteal:0.6,
       desc:'억눌려 있던 칼리버 X의 봉인이 풀린다. 검이 적의 생명을 빼앗아 자신의 주인에게 돌려준다 — 그 대가로, 전투가 끝날 때까지 그 어떤 회복도 온전하지 못하게 된다.'},
 
     // 메카닉 - 로봇군단장(mechanic_legion)
@@ -671,7 +671,7 @@ export(전역): SKILLDB
     // 동일하게 반동으로 죽지는 않도록 player-actions.js에서 HP 1 클램프 처리).
     // dmgPerPressure는 강철 군단장 리뉴얼 밸런스 시뮬레이션(자해량 유지, 딜만
     // 상향)에 맞춰 0.04→0.06으로 상향.
-    mechanicCriticalOverload: {name:'임계 폭주', mp:20, type:'criticaloverload', cooldown:4,
+    mechanicCriticalOverload: {name:'임계 폭주', mp:20, type:'criticaloverload', cooldown:3,
       minPressure:100, dmgPerPressure:0.06, recoilHpCostPct:0.25,
       desc:'상한을 완전히 무시하고 이번 압력 전체를 압도적 피해로 전환한다. 사용 후 최대HP 25%의 반동 피해를 입는다.'},
 
@@ -732,7 +732,7 @@ export(전역): SKILLDB
       desc:'로봇 3기(정찰/화력/방벽 중 2기 + 오메가)가 전부 가동 중일 때 모든 로봇의 사격 위력이 20% 늘어난다.'},
     // 레벨15 궁극기: "총사령관의 명령" — 몇 턴간 전 로봇의 사격 위력을 강화하는
     // 지속형 버프. 즉발 데미지 없음. 새 타입 'legioncommand'.
-    legionCommand: {name:'총사령관의 명령', mp:20, type:'legioncommand', buffTurns:3, buffMult:0.4, cooldown:4,
+    legionCommand: {name:'총사령관의 명령', mp:20, type:'legioncommand', buffTurns:3, buffMult:0.4, cooldown:3,
       desc:'3턴간 가동 중인 모든 로봇의 사격 위력이 40% 늘어난다. 즉발 피해는 없다.'},
 
     // 도박사 - 운명의 반란자(jester_rebel)
@@ -771,7 +771,7 @@ export(전역): SKILLDB
     // 레벨15 궁극기 "올인": 소지 골드 전액을 건다. 성공 확률은 베팅보다 낮지만
     // (판돈이 훨씬 크므로) 기본 피해와 판돈 보너스 배율 모두 더 강하다. 베팅과
     // 동일한 'goldbet' 타입을 재사용하되 수치만 다르게 잡았다.
-    jesterAllIn: {name:'올인', mp:16, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
+    jesterAllIn: {name:'올인', mp:16, cooldown:3, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
       desc:'소지 골드 전액(최대 10000G)을 건다. 성공하면 강력한 피해와 함께 판돈의 2배를 돌려받지만, 실패하면 판돈만큼 잃는다. 골드가 없으면 그냥 평범한 강타가 나간다.'},
 
     // ---------- [교체됨] 외상 도박사(jester_debtor) → 사기꾼(구 불운의 채권자) ----------
@@ -804,7 +804,7 @@ export(전역): SKILLDB
     // 맞바꾼다. 전투당 1회 제한(battleFlags.fateSwapUsed로 체크 — combat/
     // battle-fx.js의 openSub()에서 스킬 목록의 사용 가능 여부에도 반영).
     // 새 타입 'hpswap'. 실패해도 손버릇으로 1회 무료 재시도 가능(luck:true).
-    jesterFateSwap: {name:'운명 뒤바꾸기', mp:14, type:'hpswap', chance:0.5, luck:true,
+    jesterFateSwap: {name:'운명 뒤바꾸기', mp:14, cooldown:3, chance:0.5, type:'hpswap', luck:true,
       desc:'운명의 저울을 조작해 나와 적의 "남은 체력 비율"을 서로 맞바꾼다(예: 적이 80% 남았으면 내가 내 최대HP의 80%가 되고, 적은 내가 남았던 비율만큼이 된다). 전투당 1회만 시도할 수 있다.'},
 
     // ---------- [레거시] 옛 외상 도박사(jester_debtor) — 더 이상 선택 불가 ----------
