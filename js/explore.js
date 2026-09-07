@@ -766,7 +766,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(!isTrueFinal){
         try{
           const records = await loadRecords();
-          recentRunRecord = records.length ? records[records.length-1] : null;
+          // 무결 클리어(진엔딩을 보고 한 번도 안 죽은 기록)는 "잠식된 용사"
+          // 후보에서 제외한다(사용자 요청) — 한 번도 무릎 꿇지 않은 자가
+          // 타락한 모습으로 나타나는 건 서사적으로 안 맞는다는 판단. 가장
+          // 최근의 "무결이 아닌" 기록을 뒤에서부터 찾는다.
+          const nonFlawless = records.filter(r=> !(r.trueEnding && (r.deathCount||0)===0));
+          recentRunRecord = nonFlawless.length ? nonFlawless[nonFlawless.length-1] : null;
         }catch(e){ recentRunRecord = null; }
       }
       setTimeout(()=>startBattle(true, true, isTrueFinal), 400);
