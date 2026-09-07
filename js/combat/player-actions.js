@@ -268,6 +268,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   function getPressureCap(){
     return (player.skills && player.skills.includes('mastery_overheat')) ? 150 : 100;
   }
+  // 폭주 가속 각인(me_pressurerush)의 압력 증가율 상향(25->35) 적용 헬퍼.
+  function getPressureGainUsed(s){
+    const wIdPR2 = player.equipment && player.equipment.weapon;
+    const hasPressureRush2 = !!(wIdPR2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdPR2).includes('me_pressurerush'));
+    return hasPressureRush2 ? 35 : s.pressureGainOnUse;
+  }
   // 폭주 화부(mastery_overheat) 전용 — 압력이 100을 넘긴 초과분만큼 즉시 자해
   // 피해를 입힌다(다른 궁극기 hpCostPct들과 동일하게 HP 1은 항상 남도록 클램프
   // — 자해 자체로는 전투불능이 되지 않는다). 과열 내성(mechanicHeatResist)이
@@ -278,7 +284,29 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(!player.skills || !player.skills.includes('mastery_overheat')) return;
     const overflow = Math.max(0, currentPressure-100);
     if(overflow<=0) return;
-    const selfDmg = Math.round(overflow*1.5);
+    // 폭주 가속 각인(me_pressurerush, 폭주 화부 무기 각인 — 사용자 요청):
+    // 압력 초과분 자해 배율이 1.5배/점 -> 2.0배/점으로 커진다(압력 자체를
+    // 더 빨리 쌓는 대가는 pressuresurge 핸들러 쪽 pressureGainOnUse에서 처리).
+    const wIdPR = player.equipment && player.equipment.weapon;
+    const hasPressureRush = !!(wIdPR && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdPR).includes('me_pressurerush'));
+    const selfDmg = Math.round(overflow*(hasPressureRush?2.0:1.5));
+    // 불사조의 재 각인(me_phoenixash, 폭주 화부 방어구 각인 — 사용자 요청):
+    // 이 자해로 죽을 뻔하면 전투당 1회, 압력을 0으로 리셋하고 회피 스택을
+    // 최대치로 채운 채 살아남는다.
+    const aIdPA = player.equipment && player.equipment.armor;
+    const hasPhoenixAsh = !!(aIdPA && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdPA).includes('me_phoenixash'));
+    if(hasPhoenixAsh && selfDmg>=player.hp && battleFlags && !battleFlags.phoenixAshUsed){
+      battleFlags.phoenixAshUsed = true;
+      player.hp = 1;
+      battleFlags.pressure = 0;
+      if(typeof updatePressureGauge==='function') updatePressureGauge();
+      if(player.skills.includes('mechanicHeatResist')){
+        battleFlags.overheatDodgeStacks = 10;
+      }
+      playBanner('불사조!', 'phoenix');
+      renderStatus();
+      return;
+    }
     player.hp = Math.max(1, player.hp-selfDmg);
     if(player.skills.includes('mechanicHeatResist') && battleFlags){
       battleFlags.overheatDodgeStacks = Math.min(10, (battleFlags.overheatDodgeStacks||0)+2);
@@ -290,15 +318,34 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   // 무료로 1회 자동 재시도된다. isRetry===true로 재귀 호출하면 playerSkill()
   // 안에서 MP를 아예 안 건드리고, 이 함수도 isRetry일 땐 아예 호출되지 않게
   // (각 실패 분기에서 !isRetry로 감싸) 재귀가 2번 이상 이어지지 않는다.
-  function checkGamblerRetry(key){
+  function checkGamblerRetry(key, isRetry){
     if(!(player.skills && player.skills.includes('mastery_luckdebt'))) return false;
     if(battleOver) return false;
+    // 이중 손버릇 각인(ju_doubleluck, 사기꾼 방어구 각인 — 사용자 요청):
+    // 재시도(1회)마저 실패했을 때, 한 번 더(총 3연속 시도) 기회를 준다.
+    // 그 마지막(3번째) 시도까지 실패하면 이번 턴 방어력이 사실상 무의미해질
+    // 만큼(받는 피해 3배) 무너진다.
+    const aIdDL = player.equipment && player.equipment.armor;
+    const hasDoubleLuck = !!(aIdDL && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdDL).includes('ju_doubleluck'));
+    if(isRetry){
+      if(!hasDoubleLuck || battleFlags.doubleLuckUsedThisCast){
+        if(hasDoubleLuck){
+          player.buffDefTurns = Math.max(player.buffDefTurns||0, 1);
+          player.buffDefMult = Math.max(player.buffDefMult||1, 3);
+        }
+        return false;
+      }
+      battleFlags.doubleLuckUsedThisCast = true;
+    }
     setTimeout(()=>{ if(!battleOver) playerSkill(key, true); }, 550);
     return true;
   }
 
   function playerSkill(key, isRetry){
     if(battleOver) return;
+    // 이중 손버릇 각인: 새로운(재시도가 아닌) 캐스팅마다 보너스 재시도
+    // 사용 여부를 초기화한다.
+    if(!isRetry && battleFlags) battleFlags.doubleLuckUsedThisCast = false;
     // 공명 각인(we_resonance): 스킬을 쓰면 기본 공격 공명 체인이 끊긴다.
     player.lastBasicAtkDmg = 0;
     // 무한 가속 각인(me_infiniteaccel): 가속 주문이 아닌 다른 스킬을 쓰면
@@ -320,7 +367,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 플레이어 쪽 자원 부담을 줄이는 방식). 다른 배율(마나의 축복 등)과
     // 곱연산으로 함께 적용된다.
     const easyMpMult = player.difficulty==='easy' ? 0.8 : 1;
-    const mpCostMult = mbbMult * easyMpMult;
+    // 속임수 폭로 각인(ju_dicereveal, 사기꾼 장신구 각인)의 페널티 — 들통난
+    // 뒤 2턴간 모든 스킬 MP 소모 +20%.
+    const dicerevealMult = (battleFlags && battleFlags.dicerevealPenaltyTurns>0) ? 1.2 : 1;
+    const mpCostMult = mbbMult * easyMpMult * dicerevealMult;
     const mpCost = Math.max(0, Math.round(s.mp*mpCostMult));
     if(!isRetry && player.mp < mpCost) return;
     // 스킬 쿨타임(사용자 요청 — 1차 직업 궁극기 로테이션 개선). 쿨타임이 남아
@@ -910,6 +960,23 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       } else {
         battleFlags.rig = newRig; slotMsg = '이미 2기가 있어 가장 먼저 배치된 로봇을 교체했다.';
       }
+      // 증축 각인(me_fortify, 강철 군단장 무기 각인 — 사용자 요청): 화력
+      // 로봇 배치 시, 남은 빈 슬롯이 있으면 그 자리에도 화력 로봇을 하나 더
+      // 즉석 배치한다(2기 동시 편성). 대신 방금 배치한 로봇(newRig)과 이번에
+      // 추가되는 로봇 둘 다 지속시간이 1턴 짧다.
+      let fortifyMsg = '';
+      if(key==='mechanicDeployFirepower'){
+        const wIdFo = player.equipment && player.equipment.weapon;
+        if(wIdFo && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdFo).includes('me_fortify')){
+          newRig.turnsLeft = Math.max(1, newRig.turnsLeft-1);
+          const emptySlotKey = (battleFlags.rig!==newRig && (!battleFlags.rig || battleFlags.rig.turnsLeft<=0)) ? 'rig'
+            : (battleFlags.rig2!==newRig && (!battleFlags.rig2 || battleFlags.rig2.turnsLeft<=0)) ? 'rig2' : null;
+          if(emptySlotKey){
+            battleFlags[emptySlotKey] = {kind:newRig.kind, name:newRig.name, turnsLeft:newRig.turnsLeft, dmgPerTick:newRig.dmgPerTick, shieldPct:newRig.shieldPct};
+            fortifyMsg = ' 증축 각인이 남은 자리에 화력 로봇을 하나 더 세웠다!';
+          }
+        }
+      }
       if(role.kind==='recon'){
         enemy.exposedTurns = role.exposeTurns;
         enemy.exposePierce = role.exposePierce||0;
@@ -922,7 +989,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       Sound.magic();
       renderStatus();
       updateRigVisuals();
-      let msg2 = `${role.label} 역할의 로봇을 배치했다! 첫 사격으로 ${dmg}의 피해를 입혔다. ${slotMsg}`;
+      let msg2 = `${role.label} 역할의 로봇을 배치했다! 첫 사격으로 ${dmg}의 피해를 입혔다. ${slotMsg}${fortifyMsg}`;
       if(role.kind==='recon') msg2 += ' 적의 급소가 드러나 받는 피해가 늘어난다.';
       if(role.kind==='shield') msg2 += ` 가동 중엔 받는 피해의 ${Math.round((role.shieldPct||0)*100)}%를 대신 막아준다.`;
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
@@ -1024,20 +1091,31 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 강철 군단장 레벨7 "전체 정비": 가동 중인 로봇 전원(rig/rig2/오메가 전용
       // 슬롯)의 지속시간을 s.extendTurns만큼 늘린다. 로봇이 하나도 없으면
       // 그냥 아무 효과 없이 넘어간다(사용자에게 안내만).
+      // 총력 재정비 각인(me_totalrefit, 강철 군단장 방어구 각인 — 사용자
+      // 요청): 로봇 지속시간 연장과 동시에 오메가 유닛(mechanicOverpressure)
+      // 쿨다운도 1턴 줄여준다. 대신 연장 턴수 자체는 3턴→2턴으로 줄어든다.
+      const aIdTR = player.equipment && player.equipment.armor;
+      const hasTotalRefit = !!(aIdTR && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdTR).includes('me_totalrefit'));
+      const extendTurnsUsed = hasTotalRefit ? 2 : s.extendTurns;
       const slots = ['rig','rig2','omegaRig'];
       let extendedNames = [];
-      slots.forEach(key=>{
-        const r = battleFlags[key];
+      slots.forEach(slotKey=>{
+        const r = battleFlags[slotKey];
         if(r && r.turnsLeft>0){
-          r.turnsLeft += s.extendTurns;
+          r.turnsLeft += extendTurnsUsed;
           extendedNames.push(r.name);
         }
       });
+      let refitMsg = '';
+      if(hasTotalRefit && battleFlags.skillCooldowns && battleFlags.skillCooldowns.mechanicOverpressure>0){
+        battleFlags.skillCooldowns.mechanicOverpressure = Math.max(0, battleFlags.skillCooldowns.mechanicOverpressure-1);
+        refitMsg = ' 총력 재정비 각인이 오메가 유닛의 쿨다운도 1턴 앞당겼다!';
+      }
       renderStatus();
       updateRigVisuals();
-      const msgM = extendedNames.length>0
-        ? `${extendedNames.join(', ')}의 가동 시간을 ${s.extendTurns}턴 늘렸다.`
-        : '가동 중인 로봇이 없어 정비할 대상이 없었다.';
+      const msgM = (extendedNames.length>0
+        ? `${extendedNames.join(', ')}의 가동 시간을 ${extendTurnsUsed}턴 늘렸다.`
+        : '가동 중인 로봇이 없어 정비할 대상이 없었다.') + refitMsg;
       setBattleMsg(`${player.name}의 ${s.name}!`, msgM);
       if(checkBattleEnd()) return;
       enemyTurn();
@@ -1049,10 +1127,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 가동 중인 모든 로봇(rig/rig2/omegaRig)의 사격 위력을 강화하는 지속
       // 버프를 건다. 실제 위력 보정은 combat/enemy-turn.js의 tickActiveRig()
       // 데미지 계산에서 battleFlags.legionCommandTurns를 확인해 적용한다.
-      battleFlags.legionCommandTurns = s.buffTurns;
+      // 불멸의 명령 각인(me_undyingcommand)을 꼈다면(자동 리스폰 기능),
+      // 대신 버프 지속시간이 3턴→2턴으로 줄어든다.
+      const cIdUC2 = player.equipment && player.equipment.accessory;
+      const hasUndyingCommand = !!(cIdUC2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdUC2).includes('me_undyingcommand'));
+      const buffTurnsUsed = hasUndyingCommand ? Math.max(1, s.buffTurns-1) : s.buffTurns;
+      battleFlags.legionCommandTurns = buffTurnsUsed;
       battleFlags.legionCommandMult = s.buffMult;
       renderStatus();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `${s.buffTurns}턴간 모든 로봇의 사격 위력이 ${Math.round(s.buffMult*100)}% 늘어난다.`);
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${buffTurnsUsed}턴간 모든 로봇의 사격 위력이 ${Math.round(s.buffMult*100)}% 늘어난다.${hasUndyingCommand ? ' (불멸의 명령 각인 — 로봇이 만료돼도 자동 재배치된다)' : ''}`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -1332,7 +1415,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
       Sound.magic();
-      battleFlags.pressure = Math.min(getPressureCap(), pressure + s.pressureGainOnUse);
+      battleFlags.pressure = Math.min(getPressureCap(), pressure + (typeof getPressureGainUsed==='function' ? getPressureGainUsed(s) : s.pressureGainOnUse));
       applyOverheatOverflowDamage(battleFlags.pressure);
       if(typeof updatePressureGauge==='function') updatePressureGauge();
       renderStatus();
@@ -1358,12 +1441,28 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg,'crit');
       Sound.bomb();
+      // 돌이킬 수 없는 각인(me_permanentcost, 폭주 화부 장신구 각인 —
+      // 사용자 요청): 일시적 반동(HP)이 사라지는 대신, 최대HP가 영구히
+      // 줄어든다(반동의 30% 만큼). "쓸수록 몸이 작아지지만 전투 중엔
+      // 훨씬 안정적"이라는 컨셉.
+      const cIdPC = player.equipment && player.equipment.accessory;
+      const hasPermanentCost = !!(cIdPC && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdPC).includes('me_permanentcost'));
       const recoil = Math.round(player.maxhp*s.recoilHpCostPct);
-      player.hp = Math.max(1, player.hp-recoil);
+      let permanentCostMsg = '';
+      if(hasPermanentCost){
+        const permLoss = Math.max(1, Math.round(recoil*0.3));
+        if(player.maxhp > permLoss + 10){
+          player.maxhp -= permLoss;
+          player.hp = Math.min(player.hp, player.maxhp);
+          permanentCostMsg = ` 돌이킬 수 없는 각인이 반동 대신 최대HP ${permLoss}을(를) 영구히 앗아갔다.`;
+        }
+      } else {
+        player.hp = Math.max(1, player.hp-recoil);
+      }
       battleFlags.pressure = 0;
       if(typeof updatePressureGauge==='function') updatePressureGauge();
       renderStatus();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `압력 ${pressureCO} 전체를 쏟아부어 ${dmg}의 대폭발을 일으켰다! 반동으로 HP ${recoil}을(를) 잃었다.`);
+      setBattleMsg(`${player.name}의 ${s.name}!`, `압력 ${pressureCO} 전체를 쏟아부어 ${dmg}의 대폭발을 일으켰다!${hasPermanentCost ? permanentCostMsg : ` 반동으로 HP ${recoil}을(를) 잃었다.`}`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -2068,7 +2167,20 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
       const edefBet = getEffectiveEnemyDef(enemy.def);
       const onHitMultBet = consumeOnHitBonuses();
-      const stake = Math.min(s.stakeCap||Infinity, Math.round((player.gold||0) * s.stakePct));
+      // 몰빵 각인(ju_bigbet, 황금 도박사 무기 각인 — 사용자 요청): 베팅의
+      // 판돈 상한이 늘어난다(stakeCap 1.5배). 실패하면 이후 이번 전투에서
+      // 얻는 골드가 반토막난다.
+      const wIdBB = player.equipment && player.equipment.weapon;
+      const hasBigBet = !!(key==='jesterGoldBet' && wIdBB && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdBB).includes('ju_bigbet'));
+      const stakeCapUsed = hasBigBet ? Math.round((s.stakeCap||Infinity)*1.5) : (s.stakeCap||Infinity);
+      // 빚투 각인(ju_debtbet, 황금 도박사 장신구 각인 — 사용자 요청): 올인
+      // 한정으로, 가진 골드의 150%까지 판돈으로 걸 수 있다(부족분은 빚처럼
+      // 즉시 골드 0으로 클램프). 실패하면 판돈 크기와 무관하게 최대HP 15%
+      // 고정 피해(너무 크게 걸어도 즉사하지 않도록).
+      const cIdDB = player.equipment && player.equipment.accessory;
+      const hasDebtBet = !!(key==='jesterAllIn' && cIdDB && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdDB).includes('ju_debtbet'));
+      const stakeBase = hasDebtBet ? Math.round((player.gold||0)*1.5) : Math.round((player.gold||0)*s.stakePct);
+      const stake = Math.min(stakeCapUsed, stakeBase);
 
       if(stake<=0){
         // 골드가 없으면 판돈 없이 그냥 평범한 일격.
@@ -2084,7 +2196,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         return;
       }
 
-      player.gold -= stake;
+      player.gold = Math.max(0, (player.gold||0) - stake);
       const chance = Math.min(0.95, s.successChance + fateChance);
       const success = Math.random() < chance;
       if(success){
@@ -2104,11 +2216,21 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         popDamage('빗나감!', 'miss');
         Sound.fail();
         playBanner('실패...', 'luckbad');
+        let failExtraMsg = '';
+        if(hasBigBet){
+          battleFlags.goldbetGoldPenalty = true;
+          failExtraMsg += ' 몰빵이 실패해 이후 얻는 골드가 반토막난다.';
+        }
+        if(hasDebtBet){
+          const debtDmg = Math.max(1, Math.round(player.maxhp*0.15));
+          player.hp = Math.max(1, player.hp-debtDmg);
+          failExtraMsg += ` 빚투가 무너져 최대HP 15%(${debtDmg})의 피해를 입었다.`;
+        }
         renderStatus();
-        setBattleMsg(`${player.name}의 ${s.name}!`, `승부에서 졌다... 판돈 ${stake}G를 그대로 잃었다. 완전히 빗나갔다.`);
+        setBattleMsg(`${player.name}의 ${s.name}!`, `승부에서 졌다... 판돈 ${stake}G를 그대로 잃었다. 완전히 빗나갔다.${failExtraMsg}`);
       }
       if(checkBattleEnd()) return;
-      if(!isRetry && checkGamblerRetry(key)) return;
+      if(checkGamblerRetry(key, isRetry)) return;
       enemyTurn();
       return;
     }
@@ -2118,7 +2240,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // goldbet 타입이 위에서 이미 이 필드를 소비하도록 되어 있어 신규 소비
     // 로직은 필요 없다).
     if(s.type==='goldinfofee'){
-      const cost = Math.max(s.goldCostMin||0, Math.round((player.gold||0)*(s.goldCostPct||0.4)));
+      // 사기 정보 각인(ju_infoscam, 황금 도박사 방어구 각인 — 사용자 요청):
+      // 정보료로 얻는 성공률/배율 보너스가 2배가 되는 대신, 비용 자체도
+      // 2배가 된다.
+      const aIdIS = player.equipment && player.equipment.armor;
+      const hasInfoScam = !!(aIdIS && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdIS).includes('ju_infoscam'));
+      const costMultUsed = hasInfoScam ? 2 : 1;
+      const cost = Math.max(s.goldCostMin||0, Math.round((player.gold||0)*(s.goldCostPct||0.4)*costMultUsed));
       if((player.gold||0) < cost){
         setCommandsEnabled(true);
         player.mp += mpCost;
@@ -2126,12 +2254,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         return;
       }
       player.gold -= cost;
-      player.fateBoostChance = s.chanceBonus||0.4;
-      player.fateBoostMult = s.multBonus||0.5;
+      player.fateBoostChance = (s.chanceBonus||0.4) * costMultUsed;
+      player.fateBoostMult = (s.multBonus||0.5) * costMultUsed;
       renderStatus();
       playCastBurst();
       Sound.buff();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `정보상에게 ${cost}G를 찔러줬다. 다음 베팅의 성공률과 배율이 크게 오른다.`);
+      setBattleMsg(`${player.name}의 ${s.name}!`, `정보상에게 ${cost}G를 찔러줬다. 다음 베팅의 성공률과 배율이 ${hasInfoScam ? '평소보다 두 배로 ' : ''}크게 오른다.`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -2181,27 +2309,30 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         setBattleMsg(`${player.name}의 ${s.name}!`, '운이 따르지 않았다... 완전히 빗나갔다.');
       }
       if(checkBattleEnd()) return;
-      if(!isRetry && checkGamblerRetry(key)) return;
+      if(checkGamblerRetry(key, isRetry)) return;
       enemyTurn();
       return;
     }
 
     if(s.type==='hpswap'){
       // 사기꾼 레벨15 궁극기 "운명 뒤바꾸기": 성공 시 나와 적의 현재 HP를
-      // 완전히 맞바꾼다. 전투당 1회 제한 — battleFlags.fateSwapUsed로 체크
-      // (combat/battle-fx.js의 openSub()에서 목록 비활성화에도 같은 플래그
-      // 사용). 실패해도 손버릇(mastery_luckdebt)으로 1회 무료 재시도 가능.
-      if(battleFlags.fateSwapUsed){
+      // 완전히 맞바꾼다. 전투당 1회 제한 — battleFlags.fateSwapUsedCount로
+      // 체크(겹패 각인이 있으면 상한이 2가 된다). 실패해도 손버릇
+      // (mastery_luckdebt)으로 1회 무료 재시도 가능.
+      const wIdDS = player.equipment && player.equipment.weapon;
+      const hasDoubleSwap = !!(wIdDS && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdDS).includes('ju_doubleswap'));
+      const fateSwapMax = hasDoubleSwap ? 2 : 1;
+      if((battleFlags.fateSwapUsedCount||0) >= fateSwapMax){
         setCommandsEnabled(true);
         player.mp += mpCost;
-        setBattleMsg('운명은 두 번 흔들리지 않는다…', '이번 전투에서 이미 운명을 뒤바꿨다.');
+        setBattleMsg('운명은 두 번 흔들리지 않는다…', '이번 전투에서 더 이상 운명을 뒤바꿀 수 없다.');
         return;
       }
       const epicLuck = epicLuckPre(s);
       const chance = epicLuckApplyChance(s.chance||0.5, epicLuck);
       const success = Math.random() < chance;
       if(success){
-        battleFlags.fateSwapUsed = true;
+        battleFlags.fateSwapUsedCount = (battleFlags.fateSwapUsedCount||0) + 1;
         // 퍼센트 기반 스왑(사용자 확정) — 절대치가 아니라 "각자 최대HP 대비
         // 남은 비율"을 서로 맞바꾼다. 예: 적이 80% 남고 내가 10% 남았다면,
         // 성공 시 나는 내 최대HP의 80%로, 적은 적 최대HP의 10%로 바뀐다.
@@ -2226,7 +2357,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         playBanner('실패...', 'luckbad');
         setBattleMsg(`${player.name}의 ${s.name}!`, '운명은 꿈쩍하지 않았다... 완전히 빗나갔다.');
         if(checkBattleEnd()) return;
-        if(!isRetry && checkGamblerRetry(key)) return;
+        if(checkGamblerRetry(key, isRetry)) return;
         enemyTurn();
         return;
       }
@@ -2327,7 +2458,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         renderStatus();
         setBattleMsg(`${player.name}의 ${s.name}!`, '컵을 잘못 짚었다... 완전히 허탕이다.');
         if(checkBattleEnd()) return;
-        if(!isRetry && checkGamblerRetry(key)) return;
+        if(checkGamblerRetry(key, isRetry)) return;
         enemyTurn();
         return;
       }
@@ -2360,7 +2491,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(s.type==='dicecast'){
       // 사기꾼(jesterRiggedDice) "속임수 주사위": 눈이 항상 4/5/6 중에서만 나온다.
       const rigged = player.skills && player.skills.includes('jesterRiggedDice');
-      const roll = rigged ? (4 + Math.floor(Math.random()*3)) : (1 + Math.floor(Math.random()*6));
+      // 속임수 폭로 각인(ju_dicereveal, 사기꾼 장신구 각인 — 사용자 요청):
+      // 주사위가 항상 6만 나오도록 더 노골적으로 조작한다. 대신 들통난
+      // 대가로 이후 2턴간 모든 스킬 MP 소모가 +20%(위쪽 mpCostMult 계산에
+      // 이미 반영됨 — 여기서는 페널티를 "거는" 시점만 처리).
+      const cIdDR = player.equipment && player.equipment.accessory;
+      const hasDiceReveal = !!(cIdDR && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdDR).includes('ju_dicereveal'));
+      const roll = hasDiceReveal ? 6 : (rigged ? (4 + Math.floor(Math.random()*3)) : (1 + Math.floor(Math.random()*6)));
+      if(hasDiceReveal) battleFlags.dicerevealPenaltyTurns = 2;
       const diceMults = s.diceMults || [0.6,1.1,1.7,2.4,3.2,4.5];
       const mult = diceMults[roll-1];
       const epicLuck = epicLuckPre(s);
@@ -2427,7 +2565,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         playBanner('낭패...', 'luckbad');
         setBattleMsg(`${player.name}의 ${s.name}!`, selfDmg>0 ? `도박에 실패했다... MP ${staked}을(를) 잃고 반동으로 ${selfDmg}의 피해를 입었다.` : `도박에 실패했다... MP ${staked}을(를) 잃었지만 세계의 마지막 카드가 반동을 막아주었다.`);
         if(checkBattleEnd()) return;
-        if(!isRetry && checkGamblerRetry(key)) return;
+        if(checkGamblerRetry(key, isRetry)) return;
         enemyTurn();
         return;
       }
@@ -2488,7 +2626,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         playBanner('패가 뒤집혔다...', 'luckbad');
         setBattleMsg(`${player.name}의 ${s.name}!`, selfDmg>0 ? `카드가 어긋났다... 반동으로 ${selfDmg}의 피해를 입었다.` : '카드가 어긋나 아무 일도 일어나지 않았다.');
         if(checkBattleEnd()) return;
-        if(!isRetry && checkGamblerRetry(key)) return;
+        if(checkGamblerRetry(key, isRetry)) return;
         enemyTurn();
         return;
       }

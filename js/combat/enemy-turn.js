@@ -307,7 +307,19 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       flashRigSlot(slotKey);
       setBattleMsg(`${rig.name}이(가) 자동으로 사격한다!`, `${dmg}의 추가 피해!${pressureMsg}`);
       rig.turnsLeft -= 1;
-      const expired = rig.turnsLeft<=0;
+      let expired = rig.turnsLeft<=0;
+      // 불멸의 명령 각인(me_undyingcommand, 강철 군단장 장신구 각인 —
+      // 사용자 요청): 총사령관의 명령이 지속되는 동안은, 로봇이 만료돼도
+      // 즉시 같은 종류로 무료 재배치된다(자동 리스폰 — 화력/능력치 동일,
+      // 지속시간만 원래 기본값으로 초기화). battleFlags[slotKey]를 null로
+      // 만들지 않고 그대로 유지한다.
+      if(expired && battleFlags.legionCommandTurns>0){
+        const cIdUC = player.equipment && player.equipment.accessory;
+        if(cIdUC && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdUC).includes('me_undyingcommand')){
+          rig.turnsLeft = (slotKey==='omegaRig') ? 4 : 3;
+          expired = false;
+        }
+      }
       if(expired) battleFlags[slotKey] = null;
       renderStatus();
       updateRigVisuals();
@@ -339,6 +351,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     // 강철 군단장 "총사령관의 명령" 지속 버프 소진.
     if(battleFlags && battleFlags.legionCommandTurns>0){
       battleFlags.legionCommandTurns -= 1;
+    }
+    // 속임수 폭로 각인(ju_dicereveal, 사기꾼) MP 소모 증가 페널티 소진.
+    if(battleFlags && battleFlags.dicerevealPenaltyTurns>0){
+      battleFlags.dicerevealPenaltyTurns -= 1;
     }
     if(battleFlags){
       battleFlags.hourglassTurn = (battleFlags.hourglassTurn||0) + 1;

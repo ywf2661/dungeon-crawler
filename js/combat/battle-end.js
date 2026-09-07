@@ -101,6 +101,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       const easyGoldBonus = (player.difficulty==='easy') ? 0.25 : 0;
       const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult + goldSenseBonus + originGoldBonus + easyGoldBonus;
       if(goldBoost>0) g = Math.round(g*(1+goldBoost));
+      // 몰빵 각인(ju_bigbet, 황금 도박사) 실패 페널티 — 이번 전투에서 얻는
+      // 골드가 반토막난다(battleFlags는 이번 전투 한정이라 자연히 다음
+      // 전투로는 안 넘어간다).
+      if(battleFlags && battleFlags.goldbetGoldPenalty) g = Math.round(g*0.5);
       player.gold += g;
       // 강화석 드랍(사용자 요청 — 등급별 확률/개수 차등, 상점 판매는 절대 금지).
       const stonesGained = (typeof rollReinforceStoneDrop==='function') ? rollReinforceStoneDrop() : 0;

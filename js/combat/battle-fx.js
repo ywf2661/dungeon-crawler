@@ -513,8 +513,12 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         const s = SKILLDB[k];
         const mpCost = s.mp;
         const cdLeft = (battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[k]) || 0;
-        // 사기꾼 "운명 뒤바꾸기"(hpswap)는 전투당 1회 제한 — 이미 썼으면 비활성화.
-        const usedOnce = s.type==='hpswap' && battleFlags && battleFlags.fateSwapUsed;
+        // 사기꾼 "운명 뒤바꾸기"(hpswap)는 전투당 1회 제한(겹패 각인이 있으면
+        // 2회) — 상한에 도달했으면 비활성화.
+        const wIdDS2 = player.equipment && player.equipment.weapon;
+        const hasDoubleSwap2 = !!(wIdDS2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdDS2).includes('ju_doubleswap'));
+        const fateSwapMax2 = hasDoubleSwap2 ? 2 : 1;
+        const usedOnce = s.type==='hpswap' && battleFlags && (battleFlags.fateSwapUsedCount||0) >= fateSwapMax2;
         const canUse = !usedOnce && player.mp>=mpCost && cdLeft<=0;
         const div = document.createElement('div');
         const tierClsN = getSkillTier(k);
