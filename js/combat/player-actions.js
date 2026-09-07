@@ -1943,18 +1943,23 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(hasTrinity){
         const edefT = getEffectiveEnemyDef(enemy.def);
         const onHitMultT = consumeOnHitBonuses();
+        // 밸런스 수정(제보 — 3원소를 전부 온전한 위력으로 때리다 보니 단일
+        // 원소 대비 +170%로 다른 각인들(+40~100%대)에 비해 압도적으로
+        // 강했음). 각 원소 배율에 0.7을 곱해 최종 상승폭을 +75% 선으로
+        // 맞췄다(시뮬레이션으로 확인).
+        const trinityScale = 0.7;
         let totalDmg = 0;
         // 화염
-        let fireDmg = Math.max(1, Math.round(effectiveMag()*2.4) - Math.round(edefT*0.5));
+        let fireDmg = Math.max(1, Math.round(effectiveMag()*2.4*trinityScale) - Math.round(edefT*0.5));
         fireDmg = applyOutgoingDamageMods(fireDmg, {type:'magicskill', mpCost, onHitMult:onHitMultT});
         totalDmg += fireDmg;
-        applyDot({type:'burn', basis:'mag', ratio:0.7, turns:4, label:'원소 폭풍: 화염'});
+        applyDot({type:'burn', basis:'mag', ratio:0.7*trinityScale, turns:4, label:'원소 폭풍: 화염'});
         // 빙결(방어 완전 무시)
-        let iceDmg = Math.max(1, Math.round(effectiveMag()*3.2));
+        let iceDmg = Math.max(1, Math.round(effectiveMag()*3.2*trinityScale));
         iceDmg = applyOutgoingDamageMods(iceDmg, {type:'magicskill', mpCost, onHitMult:onHitMultT});
         totalDmg += iceDmg;
         // 번개(3연속의 총합만 반영, 연출은 생략하고 합산 피해로 처리)
-        const perL = Math.max(1, Math.round(effectiveMag()*1.1) - Math.round(edefT*0.65));
+        const perL = Math.max(1, Math.round(effectiveMag()*1.1*trinityScale) - Math.round(edefT*0.65));
         let lightningDmg = applyOutgoingDamageMods(perL*3, {type:'magicskill', mpCost, onHitMult:onHitMultT});
         totalDmg += lightningDmg;
         enemy.hp = Math.max(0, enemy.hp - totalDmg);

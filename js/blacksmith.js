@@ -124,7 +124,7 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
     me_betrayal: {slot:'armor', specId:'mage_pact', name:'배신의 계약 각인', prefix:'배신의',
       desc:'계약 원소가 적중할 때마다 20% 확률로 다른 원소로 강제 전환되며, 전환되는 순간 추가 폭발 피해가 터진다.'},
     me_trinity: {slot:'accessory', specId:'mage_pact', name:'삼위일체 각인', prefix:'삼위일체의',
-      desc:'원소 폭풍이 계약 원소와 무관하게 화염+빙결+번개를 전부 발동시킨다. 대신 쿨다운이 2배가 된다.'},
+      desc:'원소 폭풍이 계약 원소와 무관하게 화염+빙결+번개를 전부 발동시킨다(각 원소 위력은 70%). 대신 쿨다운이 2배가 된다.'},
     me_regression: {slot:'armor', specId:'mage_time', name:'역행의 각인', prefix:'역행하는',
       desc:'시간 왜곡의 발동 확률이 20%→35%로 오른다. 대신 이 각인으로 발동한 추가 행동에서는 가속 주문의 위력이 20% 낮아진다.'},
     me_infiniteaccel: {slot:'weapon', specId:'mage_time', name:'무한 가속 각인', prefix:'무한 가속의',
