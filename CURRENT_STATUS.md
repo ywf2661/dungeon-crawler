@@ -18,6 +18,18 @@
 
 ## 최근 작업
 
+### 밸런스 수정 — "공격력 버프"류가 마력 기반 직업엔 전혀 안 먹히던 공백 해소
+- 사용자 제보로 확인: `buffAtkMult`(명상/각성/저주 등 "공격력 버프")가
+  `effectiveAtk()` 안에서만 적용되는데, 이 함수는 물리(atk) 스킬만 쓰고
+  마법 계열(마법사/기관사/도박사 등)은 전부 `player.mag`를 생으로 써서
+  이 버프의 혜택을 전혀 못 받고 있었음.
+- `effectiveMag()` 신설(`effectiveAtk()`와 동일한 구조 — buffAtkMult뿐
+  아니라 계율/미수금/행운의 파도/광전사의 반지 보너스까지 동일하게 반영).
+  `player-actions.js`/`enemy-turn.js`의 마법 피해 계산 49곳 전부
+  `player.mag` → `effectiveMag()`로 일괄 치환.
+- `node --check` 전체 통과, assignment-target 오염(`effectiveMag() = ...`
+  형태) 없음을 별도 확인. 미검증: 브라우저 실전 확인 안 함.
+
 ### 상태창 — 정확도 개선 + 발견성(discoverability) 개선
 - **자연 능력치 정확도 개선**: `player.originGrowthRemainder`(이월 잔량)가
   실제로 저장돼 있는 값이라는 걸 확인하고, 이를 직접 활용해 역산하도록

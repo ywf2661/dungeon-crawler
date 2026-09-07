@@ -272,7 +272,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 1차 스킬 버프(사용자 요청 — "영리한 버프" A안) — 압력 연동 포탑 화력.
       // pressureScaled 장치는 현재 쌓인 압력만큼 틱 데미지에 보너스가 붙는다
       // (마스터리로 상한이 150인 폭주 화부라면 그만큼 더 크게 붙는다).
-      const pressureBonus = rig.pressureScaled ? Math.round((player.mag||0)*(battleFlags.pressure||0)*(rig.pressureScaleRate||0)) : 0;
+      const pressureBonus = rig.pressureScaled ? Math.round((effectiveMag()||0)*(battleFlags.pressure||0)*(rig.pressureScaleRate||0)) : 0;
       // 강철 군단장 전용 보너스 3종(다른 마스터리가 없으면 전부 0이라 다른
       // 메카닉 특성에는 영향이 없다):
       // 1) 취약점 분석(레벨5 표적 마킹)이 걸려 있으면 로봇 사격에도 markBonus 적용.
@@ -813,7 +813,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
 
   function applyDot(spec){
     if(!spec) return;
-    const basisVal = spec.basis==='atk' ? effectiveAtk() : player.mag;
+    const basisVal = spec.basis==='atk' ? effectiveAtk() : effectiveMag();
     let dmgPerTurn = Math.max(1, Math.round(basisVal*spec.ratio));
     const boost = getDotBoostRatio(spec.type);
     if(boost>0) dmgPerTurn = Math.round(dmgPerTurn*(1+boost));
@@ -899,6 +899,24 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
     a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus() + getReceivableAtkBonus()));
     // 광전사의 반지(사용자 요청 — 장비 강화): HP 40% 이하일 때 공격력 +30%.
+    if(typeof getEnhancementsFor==='function' && player.equipment && player.equipment.accessory){
+      const accId = player.equipment.accessory;
+      if(getEnhancementsFor(accId).includes('berserkring') && player.maxhp>0 && (player.hp/player.maxhp)<=0.4){
+        a = Math.round(a*1.30);
+      }
+    }
+    return a;
+  }
+  // effectiveMag() — 사용자 제보: "공격력 버프"류(명상/계율/미수금/행운의
+  // 파도/광전사의 반지 등, 전부 "atk" 이름이 붙어 있지만 실제로는 "지금 쓰는
+  // 주력 공격 스탯"을 올려주려는 의도)가 마력(mag) 기반 직업(마법사/기관사/
+  // 도박사 계열)에는 전혀 적용되지 않고 있었다. effectiveAtk()와 완전히
+  // 동일한 보너스들을 player.mag 기준으로 다시 계산한다 — 이제 player-actions.js
+  // /enemy-turn.js의 마법 피해 계산은 전부 player.mag 대신 이 함수를 쓴다.
+  function effectiveMag(){
+    let a = player.mag;
+    if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
+    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus() + getReceivableAtkBonus()));
     if(typeof getEnhancementsFor==='function' && player.equipment && player.equipment.accessory){
       const accId = player.equipment.accessory;
       if(getEnhancementsFor(accId).includes('berserkring') && player.maxhp>0 && (player.hp/player.maxhp)<=0.4){

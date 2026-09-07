@@ -236,7 +236,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     const newPact = others[Math.floor(Math.random()*others.length)];
     battleFlags.elementPact = newPact;
     const edefBt = getEffectiveEnemyDef(enemy.def);
-    const burstDmg = Math.max(1, Math.round(player.mag*1.0) - Math.round(edefBt*0.5));
+    const burstDmg = Math.max(1, Math.round(effectiveMag()*1.0) - Math.round(edefBt*0.5));
     enemy.hp = Math.max(0, enemy.hp-burstDmg);
     updateEnemyHpBar(); popDamage('-'+burstDmg, 'crit');
     const ELEMENT_LABEL_BT = {fire:'화염', ice:'빙결', lightning:'번개'};
@@ -668,7 +668,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         battleFlags.timeRegressionActive = false;
         regressionMsg = ' (역행의 각인 — 위력 20% 감소)';
       }
-      let hasteDmg = Math.max(1, Math.round(player.mag*hasteMultUsed) - Math.round(edefHaste*0.5));
+      let hasteDmg = Math.max(1, Math.round(effectiveMag()*hasteMultUsed) - Math.round(edefHaste*0.5));
       const onHitMultHaste = consumeOnHitBonuses();
       hasteDmg = applyOutgoingDamageMods(hasteDmg, {type:'magicskill', mpCost, onHitMult:onHitMultHaste});
       enemy.hp = Math.max(0, enemy.hp-hasteDmg);
@@ -772,7 +772,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // (cursereap)에서 나온다. battleFlags.curseMarkStacks는 전투마다 새로
       // 생성되는 battleFlags에 저장되므로 전투가 바뀌면 자연히 리셋된다.
       const edefMark = getEffectiveEnemyDef(enemy.def);
-      let markDmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edefMark*0.5));
+      let markDmg = Math.max(1, Math.round(effectiveMag()*s.mult) - Math.round(edefMark*0.5));
       const onHitMultMark = consumeOnHitBonuses();
       markDmg = applyOutgoingDamageMods(markDmg, {type:'magicskill', mpCost, onHitMult:onHitMultMark});
       enemy.hp = Math.max(0, enemy.hp-markDmg);
@@ -796,7 +796,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const reapMult = s.baseMult + s.stackMult*stacks;
       const edefReap = Math.round(getEffectiveEnemyDef(enemy.def)*(1-(s.defPierce||0)));
       const onHitMultReap = consumeOnHitBonuses();
-      let reapDmg = Math.max(1, Math.round(player.mag*reapMult) - edefReap);
+      let reapDmg = Math.max(1, Math.round(effectiveMag()*reapMult) - edefReap);
       reapDmg = applyOutgoingDamageMods(reapDmg, {type:'magicskill', mpCost, onHitMult:onHitMultReap});
       enemy.hp = Math.max(0, enemy.hp-reapDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+reapDmg, stacks>0?'crit':undefined);
@@ -822,7 +822,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const curses = (typeof getCombatCurseCount === 'function') ? getCombatCurseCount() : ((typeof getCurseCount === 'function') ? getCurseCount() : 0);
       const edefBrand = getEffectiveEnemyDef(enemy.def);
       const onHitMultBrand = consumeOnHitBonuses();
-      let brandDmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edefBrand*0.5));
+      let brandDmg = Math.max(1, Math.round(effectiveMag()*s.mult) - Math.round(edefBrand*0.5));
       if(curses>0) brandDmg = Math.round(brandDmg*(1+curses*s.curseCountBonus));
       // 겹저주 각인(me_doublecurse, 저주술사 방어구 각인 — 사용자 요청): 이미
       // 도트가 걸려있는 적에게 다시 걸면, 남은 도트를 즉시 30% 만큼 미리
@@ -873,7 +873,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const cIdCC = player.equipment && player.equipment.accessory;
       const hasCurseCycle = !!(cIdCC && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdCC).includes('me_curseCycle'));
       const curseCountBonusUsed = hasCurseCycle ? s.curseCountBonus*0.8 : s.curseCountBonus;
-      let bloomDmg = Math.max(1, Math.round(player.mag*s.baseMult) - edefBloom);
+      let bloomDmg = Math.max(1, Math.round(effectiveMag()*s.baseMult) - edefBloom);
       bloomDmg = Math.round(bloomDmg*(1+curses*curseCountBonusUsed));
       const curseDot = (enemy.dots||[]).find(d=>d.type==='poison' && d.turns>0);
       let detonateMsg = '';
@@ -950,7 +950,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         {kind:'filler', label:'예비', rigMult:0.35},
       ];
       const role = s.roleKind ? roles.find(r=>r.kind===s.roleKind) : roles[Math.floor(Math.random()*roles.length)];
-      const dmgPerTick = Math.max(1, Math.round(player.mag*role.rigMult));
+      const dmgPerTick = Math.max(1, Math.round(effectiveMag()*role.rigMult));
       const newRig = {kind:role.kind, name:`역할 로봇(${role.label})`, turnsLeft: s.rigTurns, dmgPerTick, shieldPct: role.shieldPct||0};
       let slotMsg;
       if(!battleFlags.rig || battleFlags.rig.turnsLeft<=0){
@@ -1028,7 +1028,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       });
       const edefFF = Math.round(getEffectiveEnemyDef(enemy.def)*(1-piercePct));
       const onHitMultFF = consumeOnHitBonuses();
-      let totalDmg = Math.max(1, Math.round(player.mag*(s.baseMult+dmgBonusPct)) - edefFF);
+      let totalDmg = Math.max(1, Math.round(effectiveMag()*(s.baseMult+dmgBonusPct)) - edefFF);
       totalDmg = applyOutgoingDamageMods(totalDmg, {type:'magicskill', mpCost, onHitMult:onHitMultFF});
 
       // 사격 주체 = 가동 중인 로봇들 + 플레이어 자신(항상 마지막 한 발을 더한다).
@@ -1151,7 +1151,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 축압 기술자(mastery_pressureseal) — 장치 지속시간 +2턴, 압력 축적 속도 +9/틱.
       const hasPressureSeal = !!(player.skills && player.skills.includes('mastery_pressureseal'));
       if(hasPressureSeal) turns += 2;
-      const dmgPerTick = Math.max(1, Math.round(player.mag*tickMult));
+      const dmgPerTick = Math.max(1, Math.round(effectiveMag()*tickMult));
       const newRig = {
         kind: s.rigKind, name: s.rigName, turnsLeft: turns, dmgPerTick,
         shieldPct: s.shieldPct||0,
@@ -1203,7 +1203,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         applyOverheatOverflowDamage(battleFlags.pressure);
         if(typeof updatePressureGauge==='function') updatePressureGauge();
       }
-      let dmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edef*0.5));
+      let dmg = Math.max(1, Math.round(effectiveMag()*s.mult) - Math.round(edef*0.5));
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, s.rigKind==='omega'?'crit':undefined);
@@ -1217,7 +1217,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(s.instantFirstTick && newRig.turnsLeft>0){
         const targetRig = (battleFlags.rig===newRig) ? battleFlags.rig : (battleFlags.rig2===newRig ? battleFlags.rig2 : null);
         if(targetRig){
-          const pressureBonus = targetRig.pressureScaled ? Math.round(player.mag*(battleFlags.pressure||0)*targetRig.pressureScaleRate) : 0;
+          const pressureBonus = targetRig.pressureScaled ? Math.round(effectiveMag()*(battleFlags.pressure||0)*targetRig.pressureScaleRate) : 0;
           // 자동틱(enemy-turn.js의 tickActiveRig)이 방어력을 아예 무시하는
           // 것과 동일하게, 즉시 첫틱도 방어 감산을 빼서 일관되게 맞췄다
           // (사용자 요청 — 틱딜 위주 버프, "포탑은 방어 무시"라는 특성을
@@ -1263,7 +1263,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const markBonus = (enemy.markedTurns>0) ? (enemy.markBonus||0.25) : 0;
       if(s.ventMode==='attack'){
         const edefV = getEffectiveEnemyDef(enemy.def);
-        let dmg = Math.max(1, Math.round(player.mag*pressure*s.dmgPerPressure*(1+markBonus)) - Math.round(edefV*0.5));
+        let dmg = Math.max(1, Math.round(effectiveMag()*pressure*s.dmgPerPressure*(1+markBonus)) - Math.round(edefV*0.5));
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, pressureConsumed: pressure});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -1312,7 +1312,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 강철 군단장 전용 배율(legionBurstMult/legionRigMult)이 있으면 그걸
       // 쓰고, 없으면(폭주 화부 등 다른 특성) 기존 공용 mult/rigMult 그대로.
       const rigMultUsed = isLegion ? (s.legionRigMult||s.rigMult) : s.rigMult;
-      const dmgPerTick = Math.max(1, Math.round(player.mag*rigMultUsed));
+      const dmgPerTick = Math.max(1, Math.round(effectiveMag()*rigMultUsed));
       // 강철 군단장(mechanic_accumulator 리뉴얼)은 압력 게이지가 아예 없다.
       // 같은 스킬(mechanicOverpressure)을 재사용하되, 이 특성이면 오메가를
       // battleFlags.omegaRig 전용 고정 슬롯에 배치하고 압력 관련 처리를
@@ -1324,10 +1324,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       let dmg;
       if(isLegion){
         const burstMultUsed = s.legionBurstMult||s.mult;
-        dmg = Math.max(1, Math.round(player.mag*burstMultUsed*(1+markBonus)) - Math.round(edefU*0.5));
+        dmg = Math.max(1, Math.round(effectiveMag()*burstMultUsed*(1+markBonus)) - Math.round(edefU*0.5));
       } else {
         battleFlags.pressure = 100;
-        dmg = Math.max(1, Math.round(player.mag*(s.mult + 100*s.dmgPerPressure)*(1+markBonus)) - Math.round(edefU*0.5));
+        dmg = Math.max(1, Math.round(effectiveMag()*(s.mult + 100*s.dmgPerPressure)*(1+markBonus)) - Math.round(edefU*0.5));
       }
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, pressureConsumed: isLegion?0:100});
       enemy.hp = Math.max(0, enemy.hp-dmg);
@@ -1351,7 +1351,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       let burstDmg = 0;
       if(s.burstMult){
         const edefB = getEffectiveEnemyDef(enemy.def);
-        burstDmg = Math.max(1, Math.round(player.mag*s.burstMult) - Math.round(edefB*0.5));
+        burstDmg = Math.max(1, Math.round(effectiveMag()*s.burstMult) - Math.round(edefB*0.5));
         burstDmg = applyOutgoingDamageMods(burstDmg, {type:'magicskill', mpCost});
         enemy.hp = Math.max(0, enemy.hp-burstDmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+burstDmg);
@@ -1410,7 +1410,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const pressure = battleFlags.pressure||0;
       const overflow = Math.max(0, pressure-100);
       const effRate = s.dmgPerPressure + overflow*0.0006; // mastery_overheat의 초과분 보너스
-      let dmg = Math.max(1, Math.round(player.mag*pressure*effRate) - Math.round(edefS*0.5));
+      let dmg = Math.max(1, Math.round(effectiveMag()*pressure*effRate) - Math.round(edefS*0.5));
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -1436,7 +1436,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         return;
       }
       const edefCO = getEffectiveEnemyDef(enemy.def);
-      let dmg = Math.max(1, Math.round(player.mag*pressureCO*s.dmgPerPressure) - Math.round(edefCO*0.5));
+      let dmg = Math.max(1, Math.round(effectiveMag()*pressureCO*s.dmgPerPressure) - Math.round(edefCO*0.5));
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, pressureConsumed: pressureCO});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg,'crit');
@@ -1537,18 +1537,18 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         msg2 = `${rig.name}을(를) 자폭시켰다! 남은 가동력이 한꺼번에 터지며 ${dmg}의 피해를 입혔다!`;
         battleFlags.rig = null;
         if(s.guaranteedRedeploy){
-          battleFlags.rig = {kind:'turret', name: s.redeployRigName||'자동 포탑', turnsLeft: s.redeployRigTurns||3, dmgPerTick: Math.max(1, Math.round(player.mag*(s.redeployRigMult||0.85)))};
+          battleFlags.rig = {kind:'turret', name: s.redeployRigName||'자동 포탑', turnsLeft: s.redeployRigTurns||3, dmgPerTick: Math.max(1, Math.round(effectiveMag()*(s.redeployRigMult||0.85)))};
           msg2 += ` ${battleFlags.rig.name}이(가) 즉시 재전개된다!`;
         } else if(epicSetTier('mechanic')>=3){
           // 종말기계 Mk.Ω(에픽 3세트) 재전개는 이제 평범한 '자동 포탑'이 아니라
           // 세트 이름 그대로 '오메가 유닛'(kind:'omega')으로 나온다 — 좌우로
           // 긴 이중 포신 비주얼이 전용으로 뜬다(combat/battle-fx.js의
           // updateRigVisuals(), data/monster-visuals.js의 svgRig('omega') 참고).
-          battleFlags.rig = {kind:'omega', name:'오메가 유닛', turnsLeft:3, dmgPerTick: Math.max(1, Math.round(player.mag*0.85*1.2))};
+          battleFlags.rig = {kind:'omega', name:'오메가 유닛', turnsLeft:3, dmgPerTick: Math.max(1, Math.round(effectiveMag()*0.85*1.2))};
           msg2 += ' 종말기계의 힘으로 오메가 유닛이 즉시 재전개된다!';
         }
       } else {
-        dmg = Math.max(1, Math.round(player.mag*s.noRigMult) - Math.round(edef*0.5));
+        dmg = Math.max(1, Math.round(effectiveMag()*s.noRigMult) - Math.round(edef*0.5));
         dmg = Math.round(dmg*chainMult);
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
         msg2 = `가동 중인 장치가 없어 예비 폭발물을 투척했다. ${dmg}의 피해!`;
@@ -1659,7 +1659,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='heal'){
-      const heal = Math.round(player.maxhp*s.mult*0.6 + player.mag*0.5);
+      const heal = Math.round(player.maxhp*s.mult*0.6 + effectiveMag()*0.5);
       player.hp = Math.min(player.maxhp, player.hp+heal);
       renderStatus();
       popDamageOnPlayerArea();
@@ -1679,7 +1679,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const hasDoubleStrike = !!(key==='rogueShadowStrike' && wIdDS && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdDS).includes('re_doublestrike'));
       if(hasDoubleStrike) player.doubleImageArmed = true;
       const magicBased = !!s.magic;
-      const atkBase = magicBased ? player.mag : effectiveAtk();
+      const atkBase = magicBased ? effectiveMag() : effectiveAtk();
       const edef = getEffectiveEnemyDef(enemy.def);
       const defFactor = magicBased ? Math.round(edef*0.5) : edef;
       const rawParts = [];
@@ -1769,7 +1769,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       activeDots.forEach(d=>{ dotPotential += d.dmgPerTurn * d.turns; });
       const edefCollapse = Math.round(getEffectiveEnemyDef(enemy.def)*0.5);
       const onHitMultCollapse = consumeOnHitBonuses();
-      let collapseDmg = Math.max(1, Math.round(player.mag*s.baseMult) + Math.round(dotPotential*s.dotMult) - edefCollapse);
+      let collapseDmg = Math.max(1, Math.round(effectiveMag()*s.baseMult) + Math.round(dotPotential*s.dotMult) - edefCollapse);
       collapseDmg = applyOutgoingDamageMods(collapseDmg, {type:'magicskill', mpCost, onHitMult:onHitMultCollapse});
       enemy.hp = Math.max(0, enemy.hp-collapseDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+collapseDmg, activeDots.length>0?'crit':undefined);
@@ -1802,9 +1802,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         const secondPact = othersDP[Math.floor(Math.random()*othersDP.length)];
         const ELEMENT_LABEL_DP = {fire:'화염', ice:'빙결', lightning:'번개'};
         const elementBaseDmg = (el)=>{
-          if(el==='fire') return Math.max(1, Math.round(player.mag*1.5) - Math.round(edefDP*0.5));
-          if(el==='ice') return Math.max(1, Math.round(player.mag*2.6) - edefDP);
-          return Math.max(1, Math.round(player.mag*1.0) - Math.round(edefDP*0.85)) * 2;
+          if(el==='fire') return Math.max(1, Math.round(effectiveMag()*1.5) - Math.round(edefDP*0.5));
+          if(el==='ice') return Math.max(1, Math.round(effectiveMag()*2.6) - edefDP);
+          return Math.max(1, Math.round(effectiveMag()*1.0) - Math.round(edefDP*0.85)) * 2;
         };
         const dmgDP = applyOutgoingDamageMods(
           Math.round(elementBaseDmg(primaryPact)*0.7) + Math.round(elementBaseDmg(secondPact)*0.7),
@@ -1831,7 +1831,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const onHitMult = consumeOnHitBonuses();
       let msg2 = '';
       if(pact==='fire'){
-        let dmg = Math.max(1, Math.round(player.mag*1.5) - Math.round(edef*0.5));
+        let dmg = Math.max(1, Math.round(effectiveMag()*1.5) - Math.round(edef*0.5));
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -1839,14 +1839,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         applyDot({type:'burn', basis:'mag', ratio:0.5, turns:3, label:'원소 각인: 화염'});
         msg2 = `화염 각인이 ${enemy.name}에게 ${dmg}의 피해를 입히고 짙은 화상을 남겼다!`;
       } else if(pact==='ice'){
-        let dmg = Math.max(1, Math.round(player.mag*2.6) - edef);
+        let dmg = Math.max(1, Math.round(effectiveMag()*2.6) - edef);
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         Sound.magic(); playStatusFx('pact-ice');
         msg2 = `빙결 각인이 ${enemy.name}에게 ${dmg}의 강력한 피해를 입혔다!`;
       } else if(pact==='lightning'){
-        const per = Math.max(1, Math.round(player.mag*1.0) - Math.round(edef*0.85));
+        const per = Math.max(1, Math.round(effectiveMag()*1.0) - Math.round(edef*0.85));
         const totalRaw = per*2;
         const total = applyOutgoingDamageMods(totalRaw, {type:'magicskill', mpCost, onHitMult});
         const scale = total/totalRaw;
@@ -1857,7 +1857,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         parts.forEach((d,i)=>{ setTimeout(()=>{ spawnSlashMark(i); popDamage('-'+d); }, i*180); });
         msg2 = `번개 각인이 두 번 연속 꽂혀 ${parts.join(' + ')}의 피해를 입혔다!`;
       } else {
-        let dmg = Math.max(1, Math.round(player.mag*1.1) - Math.round(edef*0.5));
+        let dmg = Math.max(1, Math.round(effectiveMag()*1.1) - Math.round(edef*0.5));
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -1894,7 +1894,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
           Sound.magic(); playStatusFx('burn');
           msg2 = `타오르던 화상을 한꺼번에 터뜨려 ${enemy.name}에게 ${dmg}의 폭발적인 피해를 입혔다!`;
         } else {
-          let dmg = Math.max(1, Math.round(player.mag*1.0) - Math.round(edef*0.5));
+          let dmg = Math.max(1, Math.round(effectiveMag()*1.0) - Math.round(edef*0.5));
           dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
           enemy.hp = Math.max(0, enemy.hp-dmg);
           updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -1902,7 +1902,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
           msg2 = `타오르는 화상이 없어 터뜨릴 것이 없다. 대신 ${dmg}의 피해를 입혔다.`;
         }
       } else if(pact==='ice'){
-        let dmg = Math.max(1, Math.round(player.mag*0.8) - Math.round(edef*0.5));
+        let dmg = Math.max(1, Math.round(effectiveMag()*0.8) - Math.round(edef*0.5));
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -1910,7 +1910,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         player.buffDefTurns = 2; player.buffDefMult = 0.7;
         msg2 = `얼음 장벽을 두르며 ${dmg}의 피해를 입혔다. 2턴간 받는 피해가 줄어든다.`;
       } else if(pact==='lightning'){
-        let dmg = Math.max(1, Math.round(player.mag*0.9) - Math.round(edef*0.6));
+        let dmg = Math.max(1, Math.round(effectiveMag()*0.9) - Math.round(edef*0.6));
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -1918,7 +1918,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         player.lightningCritArmed = true;
         msg2 = `번개의 기운을 벼려 ${dmg}의 피해를 입혔다. 다음 공격은 반드시 급소에 꽂힌다.`;
       } else {
-        let dmg = Math.max(1, Math.round(player.mag*0.9) - Math.round(edef*0.5));
+        let dmg = Math.max(1, Math.round(effectiveMag()*0.9) - Math.round(edef*0.5));
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -1945,16 +1945,16 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         const onHitMultT = consumeOnHitBonuses();
         let totalDmg = 0;
         // 화염
-        let fireDmg = Math.max(1, Math.round(player.mag*2.4) - Math.round(edefT*0.5));
+        let fireDmg = Math.max(1, Math.round(effectiveMag()*2.4) - Math.round(edefT*0.5));
         fireDmg = applyOutgoingDamageMods(fireDmg, {type:'magicskill', mpCost, onHitMult:onHitMultT});
         totalDmg += fireDmg;
         applyDot({type:'burn', basis:'mag', ratio:0.7, turns:4, label:'원소 폭풍: 화염'});
         // 빙결(방어 완전 무시)
-        let iceDmg = Math.max(1, Math.round(player.mag*3.2));
+        let iceDmg = Math.max(1, Math.round(effectiveMag()*3.2));
         iceDmg = applyOutgoingDamageMods(iceDmg, {type:'magicskill', mpCost, onHitMult:onHitMultT});
         totalDmg += iceDmg;
         // 번개(3연속의 총합만 반영, 연출은 생략하고 합산 피해로 처리)
-        const perL = Math.max(1, Math.round(player.mag*1.1) - Math.round(edefT*0.65));
+        const perL = Math.max(1, Math.round(effectiveMag()*1.1) - Math.round(edefT*0.65));
         let lightningDmg = applyOutgoingDamageMods(perL*3, {type:'magicskill', mpCost, onHitMult:onHitMultT});
         totalDmg += lightningDmg;
         enemy.hp = Math.max(0, enemy.hp - totalDmg);
@@ -1976,7 +1976,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const onHitMult = consumeOnHitBonuses();
       let msg2 = '';
       if(pact==='fire'){
-        let dmg = Math.max(1, Math.round(player.mag*2.4) - Math.round(edef*0.5));
+        let dmg = Math.max(1, Math.round(effectiveMag()*2.4) - Math.round(edef*0.5));
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
@@ -1984,14 +1984,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         applyDot({type:'burn', basis:'mag', ratio:0.7, turns:4, label:'원소 폭풍: 화염'});
         msg2 = `대화염이 ${enemy.name}을(를) 집어삼켜 ${dmg}의 피해를 입히고 격렬한 화상을 남겼다!`;
       } else if(pact==='ice'){
-        let dmg = Math.max(1, Math.round(player.mag*3.2)); // 방어 완전 무시(edef 차감 없음)
+        let dmg = Math.max(1, Math.round(effectiveMag()*3.2)); // 방어 완전 무시(edef 차감 없음)
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         Sound.magic(); playStatusFx('pact-ice');
         msg2 = `절대영도의 빙결이 방어를 완전히 무시하고 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`;
       } else if(pact==='lightning'){
-        const per = Math.max(1, Math.round(player.mag*1.1) - Math.round(edef*0.65));
+        const per = Math.max(1, Math.round(effectiveMag()*1.1) - Math.round(edef*0.65));
         const totalRaw = per*3;
         const total = applyOutgoingDamageMods(totalRaw, {type:'magicskill', mpCost, onHitMult});
         const scale = total/totalRaw;
@@ -2002,7 +2002,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         parts.forEach((d,i)=>{ setTimeout(()=>{ spawnSlashMark(i); popDamage('-'+d, 'crit'); }, i*180); });
         msg2 = `벼락이 세 번 연속으로 방어를 꿰뚫으며 ${parts.join(' + ')}의 피해를 입혔다!`;
       } else {
-        let dmg = Math.max(1, Math.round(player.mag*1.3) - Math.round(edef*0.5));
+        let dmg = Math.max(1, Math.round(effectiveMag()*1.3) - Math.round(edef*0.5));
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
@@ -2057,7 +2057,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const mult = (s.baseMult||1.0) + (s.stackMult||0.6)*stacks;
       const edef = getEffectiveEnemyDef(enemy.def);
       const onHitMult = consumeOnHitBonuses();
-      let dmg = Math.max(1, Math.round(player.mag*mult) - edef);
+      let dmg = Math.max(1, Math.round(effectiveMag()*mult) - edef);
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
@@ -2125,7 +2125,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
 
     if(s.type==='drain'){
       const atkBased = s.basis==='atk';
-      const basisVal = atkBased ? effectiveAtk() : player.mag;
+      const basisVal = atkBased ? effectiveAtk() : effectiveMag();
       const edef = getEffectiveEnemyDef(enemy.def);
       let dmg = Math.max(1, Math.round(basisVal*s.mult) - Math.round(edef*0.5));
       const onHitMult = consumeOnHitBonuses();
@@ -2272,7 +2272,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const chance = epicLuckApplyChance(Math.min(0.95, (s.chance||0.5) + fateChance), epicLuck);
       const success = Math.random() < chance;
       const magicBased = !!s.magic;
-      const base = magicBased ? player.mag : effectiveAtk();
+      const base = magicBased ? effectiveMag() : effectiveAtk();
       const edef = getEffectiveEnemyDef(enemy.def);
       const defMitigation = magicBased ? Math.round(edef*0.5) : Math.round(edef*(1-(s.defPierce||0)));
       if(!magicBased) consumeAtkBuff();
@@ -2581,7 +2581,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const success = Math.random() < chance;
       const magicBased = !!s.magic;
       if(!magicBased) consumeAtkBuff();
-      const base = magicBased ? player.mag : effectiveAtk();
+      const base = magicBased ? effectiveMag() : effectiveAtk();
       const edef = getEffectiveEnemyDef(enemy.def);
       const defMitigation = magicBased ? Math.round(edef*0.5) : Math.round(edef*(1-(s.defPierce||0.2)));
       const onHitMult = consumeOnHitBonuses();
@@ -2684,7 +2684,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     // phys or magic damage skill
-    const base = s.type==='magic' ? player.mag : effectiveAtk();
+    const base = s.type==='magic' ? effectiveMag() : effectiveAtk();
     const edef = getEffectiveEnemyDef(enemy.def);
     const defMitigation = s.type==='magic'
       ? Math.round(edef*0.5)
