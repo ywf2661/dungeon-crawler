@@ -1030,6 +1030,15 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       const hasVenomBurst2 = !!(aIdVB2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdVB2).includes('re_venomburst'));
       per *= hasVenomBurst2 ? 1.15 : 1.3;
     }
+    // 고독 각인(re_solovenom, 독사 장신구 — 밸런스 재설계): 원래는 스택 상한만
+    // 10->7로 줄이고 스택당 피해는 그대로였는데, 피해 공식이 "스택 수 × 스택당
+    // 피해"로 선형이라 상한을 낮추는 순간 데미지 상한선 자체가 낮아져 사실상
+    // 죽은 각인이었다(시뮬레이션으로 확인). 상한 감소폭을 10->6으로 완화하고,
+    // 대신 스택당 피해 자체에 +25%를 곱해 "그릇은 작지만 안에 든 독이 더
+    // 진하다"는 컨셉을 실제 수치로 구현했다.
+    const cIdSV2 = player.equipment && player.equipment.accessory;
+    const hasSoloVenom2 = !!(cIdSV2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdSV2).includes('re_solovenom'));
+    if(hasSoloVenom2) per *= 1.25;
     const boost = getDotBoostRatio('poison');
     if(boost>0) per *= (1+boost);
     return per;

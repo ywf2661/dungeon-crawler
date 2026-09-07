@@ -148,7 +148,7 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
     re_venomburst: {slot:'armor', specId:'rogue_alchemist', name:'폭발 정제 각인', prefix:'폭발하는',
       desc:'독 스택이 최대치에 도달한 라운드엔 평소 틱딜 대신 스택을 전부 소모하는 큰 폭발 피해로 터진다. 대신 정제의 지속피해 보너스가 30%→15%로 줄어든다.'},
     re_solovenom: {slot:'accessory', specId:'rogue_alchemist', name:'고독 각인', prefix:'고독한',
-      desc:'맹독 주입의 자기 전용 스택 보너스가 한 번 더 2배가 된다(삼중 주입과 겹치면 3개→12개). 대신 독 스택 상한이 10→7로 줄어든다.'},
+      desc:'맹독 주입의 자기 전용 스택 보너스가 한 번 더 2배가 된다(삼중 주입과 겹치면 3개→12개). 독 스택 상한이 10→6으로 줄어드는 대신, 스택 하나하나의 매 라운드 피해량이 +25% 늘어난다.'},
     pa_instantmartyr: {slot:'weapon', specId:'paladin_martyr', name:'즉각 순교 각인', prefix:'즉각 순교의',
       desc:'심판의 빛에서 희생의 맹세가 실제로 발동하면 이번 피해(흡혈 포함)가 +50%. 발동하지 않으면 오히려 -10%.'},
     pa_thornseal: {slot:'armor', specId:'paladin_martyr', name:'가시 갑옷 각인', prefix:'가시 인장의',

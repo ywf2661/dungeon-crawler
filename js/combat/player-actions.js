@@ -586,12 +586,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       Sound.slash(); playStatusFx('poison');
       rogueRegisterHit(true);
       // 폭주 주입 각인(re_venomrush, 독사 무기)과 고독 각인(re_solovenom,
-      // 독사 장신구 — 사용자 요청): 둘 다 자기 전용 스택 보너스를 2배로
-      // 만드는데, 고독 각인은 그 대신 스택 상한이 10->7로 줄어든다(더 빨리
-      // 차지만 그릇이 작아짐). 폭주 주입 각인은 상한 그대로(10) 두는 대신,
-      // 상한을 넘긴 만큼 자신도 반동 피해를 입는다. 두 각인은 서로 다른
-      // 부위(무기/장신구)라 동시에 낄 수 있다 — 그러면 보너스가 한 번 더
-      // 곱해져(예: 삼중 주입까지 있으면 3->6->12) 상한(7) 초과분 반동도
+      // 독사 장신구): 둘 다 자기 전용 스택 보너스를 2배로 만드는데, 고독
+      // 각인은 그 대신 스택 상한이 10->6으로 줄어든다(밸런스 재설계 —
+      // 스택딜 자체는 enemy-turn.js의 getVenomDmgPerStack()에서 +25%
+      // 별도 보상. 원래 상한만 7로 줄이고 보상이 없던 버전은 시뮬레이션상
+      // 사실상 죽은 각인이었다). 폭주 주입 각인은 상한 그대로(10) 두는
+      // 대신, 상한을 넘긴 만큼 자신도 반동 피해를 입는다. 두 각인은 서로
+      // 다른 부위(무기/장신구)라 동시에 낄 수 있다 — 그러면 보너스가 한 번
+      // 더 곱해져(예: 삼중 주입까지 있으면 3->6->12) 상한(6) 초과분 반동도
       // 그만큼 커진다.
       const wIdVR = player.equipment && player.equipment.weapon;
       const hasVenomRush = !!(wIdVR && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdVR).includes('re_venomrush'));
@@ -600,7 +602,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       let venomGain = (player.skills && player.skills.includes('rogueVenomTriple')) ? 3 : 1;
       if(hasVenomRush) venomGain *= 2;
       if(hasSoloVenom) venomGain *= 2;
-      const venomCap = hasSoloVenom ? 7 : 10;
+      const venomCap = hasSoloVenom ? 6 : 10;
       const rawStacks = (enemy.venomStacks||0) + venomGain;
       enemy.venomStacks = Math.min(venomCap, rawStacks);
       let venomOverflowMsg = '';
