@@ -31,6 +31,22 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     }
   }
 
+  // "다음 전투 한정" 버프 정리(사용자 제보 — 명상 등에서 얻은 버프가 "99턴"
+  // 으로 표시되고, 실제로도 여러 전투에 걸쳐 안 사라지는 문제였음). 명상
+  // (explore.js)/"다음 전투 한정" 저주(events.js applyNextBattleCurse)/보스
+  // 보상 "각성"(battle-end.js)이 전부 buffAtkTurns/buffDefTurns=99라는 관례적
+  // 표현을 재활용하는데, 원래 라운드당 1씩만 깎이는 구조라 한 전투 안에서
+  // 자연 소멸하지 않았다 — 그래서 전투가 끝나는 시점에 여기서 명시적으로
+  // 0으로 되돌린다.
+  // 수수께끼의 마법사(다중 전투 버프)/악마의 계약은 같은 필드를 재사용하지만
+  // battle-setup.js의 startBattle()이 매 전투 시작마다 조건(battlesLeft>0
+  // 또는 contractBuff 존재)이 유지되는 한 다시 세팅해주므로, 여기서 그냥
+  // 초기화해도 그 두 버프는 다음 전투 시작 시 정상적으로 되살아나 안전하다.
+  function clearOneBattleBuffs(){
+    player.buffAtkTurns = 0; player.buffAtkMult = 1;
+    player.buffDefTurns = 0; player.buffDefMult = 1;
+  }
+
   function checkBattleEnd(){
     if(enemy.hp<=0){
       if(canEnrage(enemy)){
@@ -66,6 +82,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         setCommandsEnabled(false);
         revertDiceDelta();
         if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
+      if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
         tickMultiBattleBuff();
         document.getElementById('bt-stage').classList.add('dying');
         const forgiven = Math.round((player.debt||0)*0.7);
@@ -88,6 +105,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       setCommandsEnabled(false);
       revertDiceDelta();
       if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
+      if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
       tickMultiBattleBuff();
       document.getElementById('bt-stage').classList.add('dying');
       let g = enemy.gold[0]+Math.floor(Math.random()*(enemy.gold[1]-enemy.gold[0]+1));
@@ -286,6 +304,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         setCommandsEnabled(false);
         revertDiceDelta();
         if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
+      if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
         tickMultiBattleBuff();
         player.hp = 1;
         const penalty = Math.max(1, Math.round((player.debt||0)*0.5));
@@ -306,6 +325,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       setCommandsEnabled(false);
       revertDiceDelta();
       if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
+      if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
       setBattleMsg(`${player.name}은(는) 쓰러지고 말았다…`, '');
       Sound.gameOver();
       player.deathCount = (player.deathCount||0) + 1;
