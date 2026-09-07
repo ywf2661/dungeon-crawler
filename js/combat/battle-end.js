@@ -467,7 +467,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         <button class="btn" id="reward-exp">📖 정진 — 경험치 +${expReward}</button>
         <button class="btn" id="reward-seal">🔱 정예의 증표 — 정예의 인장 +1</button>
         <button class="btn" id="reward-stone">🔶 강화석 조달 — 강화석 +${stoneReward}</button>
-        <button class="btn" id="reward-awaken">⚡ 각성 — 다음 전투 공격력 +20%</button>
+        <button class="btn" id="reward-awaken">⚡ 각성 — 앞으로 3전투 공격력 +20%</button>
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
@@ -529,8 +529,14 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       finish(`강화석을 조달했다. 강화석 +${stoneReward}개를 얻었다. (보유 ${player.reinforceStones}개)`);
     });
     panel.querySelector('#reward-awaken').addEventListener('click', ()=>{
-      player.buffAtkTurns = 99; player.buffAtkMult = 1.2;
-      finish('각성을 선택했다. 다음 전투에서 공격력이 20% 상승한다.');
+      // 사용자 요청 — 원래 "다음 전투 1회" 한정이었는데 "다음 세 번의 전투"로
+      // 변경. 기존 buffAtkTurns=99 관례(라운드당 1씩만 깎여 부정확) 대신,
+      // 수수께끼의 마법사 이벤트와 동일한 다중 전투 버프 시스템
+      // (player.multiBattleBuff, battle-setup.js가 매 전투 시작마다 재적용,
+      // tickMultiBattleBuff()가 전투 종료마다 battlesLeft를 정확히 깎음)을
+      // 그대로 재사용한다.
+      player.multiBattleBuff = {type:'atk', value:0.2, battlesLeft:3};
+      finish('각성을 선택했다. 앞으로 3번의 전투 동안 공격력이 20% 상승한다.');
     });
   }
 
