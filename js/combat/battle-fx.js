@@ -404,7 +404,12 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       const b = document.createElement('div');
       b.className = 'status-badge player-badge';
       const pct = Math.round(((player.buffAtkMult||1)-1)*100);
-      b.textContent = `⚔️ 공격력 버프 ${player.buffAtkTurns}턴`;
+      // 명상/유물/계약 등 장기 지속형 버프는 관례적으로 buffAtkTurns=99
+      // (큰 숫자)로 표현한다 — 라운드당 1씩만 깎여서 실제로는 여러 전투에
+      // 걸쳐 유지될 수 있다("다음 전투까지"라고 단정할 수 없어 그냥 "지속
+      // 중"으로 표시).
+      const turnLabel = player.buffAtkTurns>=90 ? '지속 중' : `${player.buffAtkTurns}턴`;
+      b.textContent = `⚔️ 공격력 버프 ${turnLabel}`;
       b.title = pct>0 ? `공격력 +${pct}%` : '공격력이 오른 상태가 지속되고 있다.';
       box.appendChild(b);
     }
@@ -412,7 +417,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       const b = document.createElement('div');
       b.className = 'status-badge player-badge';
       const pct = Math.round((1-(player.buffDefMult||1))*100);
-      b.textContent = `🛡️ 방어 버프 ${player.buffDefTurns}턴`;
+      const turnLabel = player.buffDefTurns>=90 ? '지속 중' : `${player.buffDefTurns}턴`;
+      b.textContent = `🛡️ 방어 버프 ${turnLabel}`;
       b.title = pct>0 ? `받는 피해 -${pct}%` : '방어 태세가 지속되고 있다.';
       box.appendChild(b);
     }
