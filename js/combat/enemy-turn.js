@@ -736,6 +736,20 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
             extraMsg += ` 가시 갑옷이 ${thornDmg}의 피해를 반사했다!`;
           }
         }
+        // 가시 갑옷 각인(pa_thornseal, 순교자 방어구 각인 — 사용자 요청):
+        // 순교자의 인장(방어력 보너스)은 그대로 유지되면서, 추가로 누적
+        // 희생 횟수 1회당 소량의 반사 피해가 함께 나간다.
+        const aIdTS = player.equipment && player.equipment.armor;
+        if(aIdTS && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdTS).includes('pa_thornseal')){
+          const sacCount = Math.min(10, player.martyrSacrificeCount||0);
+          if(sacCount>0){
+            const sealThornDmg = Math.max(0, sacCount*3);
+            enemy.hp = Math.max(0, enemy.hp-sealThornDmg);
+            updateEnemyHpBar();
+            popDamage('-'+sealThornDmg,'counter');
+            extraMsg += ` 가시 갑옷 각인이 희생의 무게(${sacCount}회)만큼 ${sealThornDmg}의 피해를 반사했다!`;
+          }
+        }
         // 반격의 갑옷(사용자 요청 — 장비 강화): 다음 공격 강화 예약.
         if(hasSpecial('counterOnHit') && battleFlags){
           battleFlags.revengeArmed = true;

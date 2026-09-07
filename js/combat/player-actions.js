@@ -1495,23 +1495,30 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 매 라운드 카운트다운에서 정확히 그 값만큼만 되돌린다(다른 원인으로 공/방이
       // 바뀌어도 서로 간섭하지 않도록 델타를 직접 추적 — 불확실성의 주사위
       // revertDiceDelta()와 동일한 설계 원칙).
+      // 순교자의 서약(pa_knight_a, 회랑의 기사 방어구 각인 — 택1 A안): 공격력
+      // 보너스/지속시간을 더 극단적으로 올리는 대신 방어 감소 페널티도 커진다.
+      const aIdKA = player.equipment && player.equipment.armor;
+      const hasKnightA = !!(aIdKA && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdKA).includes('pa_knight_a'));
+      const atkBonusUsed = hasKnightA ? 0.8 : s.atkBonus;
+      const defPenaltyUsed = hasKnightA ? 0.55 : s.defPenaltyPct;
+      const turnsUsed = hasKnightA ? 3 : s.turns;
       const hpCost = Math.max(1, Math.round(player.maxhp*s.hpCostPct));
       let costMsg = '';
       if(player.hp > hpCost){
         player.hp -= hpCost;
         costMsg = ` 생명력 ${hpCost}을(를) 바쳤다.`;
       }
-      const atkAdd = Math.max(1, Math.round(player.atk*s.atkBonus));
-      const defSub = Math.max(0, Math.round(player.def*s.defPenaltyPct));
+      const atkAdd = Math.max(1, Math.round(player.atk*atkBonusUsed));
+      const defSub = Math.max(0, Math.round(player.def*defPenaltyUsed));
       player.atk += atkAdd;
       player.def -= defSub;
-      player.knightVulnTurns = s.turns;
+      player.knightVulnTurns = turnsUsed;
       player.knightVulnAtkBonus = atkAdd;
       player.knightVulnDefPenalty = defSub;
       renderStatus();
       playCastBurst();
       Sound.buff();
-      setBattleMsg('"...기도를 올렸다."', `"...무언가가 응답했다."${costMsg} ${s.turns}턴간 공격력이 크게 오르지만, 방어가 허술해진다.`);
+      setBattleMsg('"...기도를 올렸다."', `"...무언가가 응답했다."${costMsg} ${turnsUsed}턴간 공격력이 크게 오르지만, 방어가 허술해진다.`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -2237,8 +2244,25 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
       const selfCost = Math.round(player.maxhp*(s.selfHpCostPct||0.15));
+      // 영겁 회귀의 각인(pa_eternalreturn, 순교자 장신구 각인 — 사용자 요청):
+      // "처치 시" 조건은 1:1 전투 구조상 성립이 안 돼(처치=즉시 전투 종료라
+      // 재발동할 다음 적이 없음) "최대HP 30% 이상 피해"로 고쳐서 적용한다
+      // (전사 각인들과 동일한 수정 기준). 조건 충족 시 반동 HP를 되돌리고
+      // 쿨다운을 초기화한다.
+      const cIdER = player.equipment && player.equipment.accessory;
+      let eternalReturnMsg = '';
+      let skipSelfCost = false;
+      if(cIdER && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdER).includes('pa_eternalreturn')){
+        if(enemy.hp>0 && dmg >= Math.round(enemy.maxhp*0.3)){
+          skipSelfCost = true;
+          if(battleFlags.skillCooldowns) battleFlags.skillCooldowns[key] = 0;
+          eternalReturnMsg = ' 영겁 회귀의 각인이 반동을 되돌리고 쿨다운을 초기화했다!';
+        }
+      }
       let reviveMsg = '';
-      if(player.hp - selfCost <= 0 && !battleFlags.martyrReviveUsed){
+      if(skipSelfCost){
+        // 반동 자체를 안 받는다.
+      } else if(player.hp - selfCost <= 0 && !battleFlags.martyrReviveUsed){
         battleFlags.martyrReviveUsed = true;
         player.hp = 1;
         reviveMsg = ' 반동으로 쓰러질 뻔했지만, 순교자는 죽음조차 넘어섰다!';
@@ -2248,7 +2272,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       renderStatus();
       Sound.bomb();
       playBanner('불멸의 순교!');
-      setBattleMsg(`${player.name}의 ${s.name}!`, `그동안 바쳐온 희생(${count}회)을 전부 힘으로 되돌려 ${enemy.name}에게 ${dmg}의 피해를 입혔다!${reviveMsg}`);
+      setBattleMsg(`${player.name}의 ${s.name}!`, `그동안 바쳐온 희생(${count}회)을 전부 힘으로 되돌려 ${enemy.name}에게 ${dmg}의 피해를 입혔다!${reviveMsg}${eternalReturnMsg}`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -2590,6 +2614,22 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       playStatusFx('pact-ice');
       tripleElementMsg = ` 빙결로 위력이 15% 오르고, 번개로 방어를 ${pierced2}만큼 꿰뚫었다!`;
     }
+    // 성좌의 가호(pa_knight_b, 회랑의 기사 방어구 각인 — 택1 B안): 안정적으로
+    // 버티는 방향. 이 스킬 자체의 즉발 피해는 10% 줄어드는 대신, 흡혈이
+    // 2배가 되고(아래 lifesteal 처리부에서 추가 회복으로 반영) 적중 시
+    // 2턴간 받는 피해가 10% 줄어드는 배리어가 추가로 걸린다.
+    let knightBMsg = '';
+    let knightBExtraLifesteal = 0;
+    if(key==='paladinHolyRend'){
+      const aIdKB = player.equipment && player.equipment.armor;
+      if(aIdKB && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdKB).includes('pa_knight_b')){
+        dmg = Math.round(dmg*0.9);
+        knightBExtraLifesteal = s.lifesteal||0;
+        player.buffDefTurns = Math.max(player.buffDefTurns||0, 2);
+        player.buffDefMult = Math.min(player.buffDefMult||1, 0.9);
+        knightBMsg = ' 성좌의 가호가 몸을 감싸 2턴간 받는 피해가 줄어든다.';
+      }
+    }
     // 혈서(mastery_bloodpact)가 켜져 있으면, 스킬을 쓸 때마다 HP를 태워 위력을
     // 증폭시킨다. 사용자 요청으로 "한 번 쓰면 자동으로 꺼지는" 기존 방식에서
     // "직접 끌 때까지(또는 전투가 끝날 때까지) 계속 유지"되는 방식으로 바뀌었다
@@ -2608,6 +2648,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 발동한다(혈서와 달리 모든 스킬이 아니라 "특정 스킬"에 한정 — JOB_SPECIALIZATIONS
     // 설명 그대로). 최대HP를 영구히 깎는 대신 공격력을 영구히 올린다.
     let martyrVowMsg = '';
+    let instantMartyrTriggered = false;
     if(key==='paladinJudgmentLight' && player.martyrVowArmed){
       const hpLoss = Math.max(1, Math.round(player.maxhp*0.08));
       if(player.maxhp > hpLoss + 10){
@@ -2618,8 +2659,24 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         // 누적 희생 횟수. 이 마스터리가 실제로 발동한 순간에만 늘어난다.
         player.martyrSacrificeCount = (player.martyrSacrificeCount||0) + 1;
         martyrVowMsg = ` 순교자의 맹세로 최대HP ${hpLoss}을(를) 영구히 바쳐 공격력이 영구히 3 올랐다!`;
+        instantMartyrTriggered = true;
       }
       player.martyrVowArmed = false;
+    }
+    // 즉각 순교 각인(pa_instantmartyr, 순교자 무기 각인 — 사용자 요청): 희생의
+    // 맹세가 실제로 발동하면 이번 심판의 빛 피해(→흡혈도 비례해 함께 상승)가
+    // +50%. 발동하지 않았다면(안 켰거나 조건 미달로 무산) 오히려 -10%.
+    if(key==='paladinJudgmentLight'){
+      const wIdIM = player.equipment && player.equipment.weapon;
+      const hasInstantMartyr = !!(wIdIM && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdIM).includes('pa_instantmartyr'));
+      if(hasInstantMartyr){
+        if(instantMartyrTriggered){
+          dmg = Math.round(dmg*1.5);
+          martyrVowMsg += ' 즉각 순교 각인이 위력을 크게 증폭시켰다!';
+        } else {
+          dmg = Math.round(dmg*0.9);
+        }
+      }
     }
     // 응징의 일격(retributionoath, 레벨5 성기사 — 사용자 요청으로 "3턴간
     // 피격시 반격" 리액티브 버프에서 즉발 딜 스킬로 리뉴얼, A안). 잃은 HP
@@ -2641,6 +2698,21 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 그림자를 드리우는 방식으로 표현했다.
     if(key==='paladinCaliberXFinale' && battleFlags){
       battleFlags.knightHealCurse = true;
+    }
+    // 종언을 넘어서(pa_transcend, 회랑의 기사 장신구 각인 — 사용자 요청):
+    // "처치 시" 조건은 1:1 전투 구조상 성립이 안 돼(순교자/전사와 동일한
+    // 이유) "최대HP 30% 이상 피해"로 고쳐서 적용한다. 조건 충족 시 반동
+    // HP와 쿨다운을 즉시 되돌린다.
+    let transcendMsg = '';
+    if(key==='paladinCaliberXFinale'){
+      const cIdTr = player.equipment && player.equipment.accessory;
+      if(cIdTr && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdTr).includes('pa_transcend')){
+        if(enemy.hp>0 && dmg >= Math.round(enemy.maxhp*0.3)){
+          if(hpSacActualCost>0) player.hp = Math.min(player.maxhp, player.hp + hpSacActualCost);
+          if(battleFlags.skillCooldowns) battleFlags.skillCooldowns[key] = 0;
+          transcendMsg = ' 종언을 넘어서는 각인이 대가를 되돌리고 쿨다운을 초기화했다!';
+        }
+      }
     }
     // 번개계약 파동(mageElementWave)이 남긴 "다음 공격 확정 치명타" 소모(범용
     // phys/magic 분기 전체에 적용 — 기본 공격은 위 playerAttack()에서 별도 처리).
@@ -2729,6 +2801,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       healed2 = Math.min(player.maxhp-player.hp, Math.round(dmg*s.lifesteal*epicLifestealMult()));
       player.hp = Math.min(player.maxhp, player.hp+healed2);
     }
+    if(knightBExtraLifesteal>0){
+      const extraHeal = Math.min(player.maxhp-player.hp, Math.round(dmg*knightBExtraLifesteal*epicLifestealMult()));
+      player.hp = Math.min(player.maxhp, player.hp+extraHeal);
+      healed2 += extraHeal;
+    }
     healed2 += applyPassiveLifesteal(dmg);
     renderStatus();
     let msg2 = `${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
@@ -2736,6 +2813,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(bloodPactMsg) msg2 += bloodPactMsg;
     if(martyrVowMsg) msg2 += martyrVowMsg;
     if(retributionMsg) msg2 += retributionMsg;
+    if(knightBMsg) msg2 += knightBMsg;
+    if(transcendMsg) msg2 += transcendMsg;
     if(lightningCritMsg2) msg2 += lightningCritMsg2;
     if(stealthDmgMsg2) msg2 += stealthDmgMsg2;
     if(elementMsg) msg2 += elementMsg;

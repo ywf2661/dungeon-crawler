@@ -149,6 +149,18 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
       desc:'독 스택이 최대치에 도달한 라운드엔 평소 틱딜 대신 스택을 전부 소모하는 큰 폭발 피해로 터진다. 대신 정제의 지속피해 보너스가 30%→15%로 줄어든다.'},
     re_solovenom: {slot:'accessory', specId:'rogue_alchemist', name:'고독 각인', prefix:'고독한',
       desc:'맹독 주입의 자기 전용 스택 보너스가 한 번 더 2배가 된다(삼중 주입과 겹치면 3개→12개). 대신 독 스택 상한이 10→7로 줄어든다.'},
+    pa_instantmartyr: {slot:'weapon', specId:'paladin_martyr', name:'즉각 순교 각인', prefix:'즉각 순교의',
+      desc:'심판의 빛에서 희생의 맹세가 실제로 발동하면 이번 피해(흡혈 포함)가 +50%. 발동하지 않으면 오히려 -10%.'},
+    pa_thornseal: {slot:'armor', specId:'paladin_martyr', name:'가시 갑옷 각인', prefix:'가시 인장의',
+      desc:'순교자의 인장(방어력 보너스)은 그대로 유지되면서, 추가로 피격 시 누적 희생 횟수 1회당 소량의 반사 피해가 함께 나간다.'},
+    pa_eternalreturn: {slot:'accessory', specId:'paladin_martyr', name:'영겁 회귀의 각인', prefix:'영겁의',
+      desc:'불멸의 순교로 적 최대HP의 30% 이상을 깎으면, 반동 HP와 쿨다운이 즉시 되돌아온다.'},
+    pa_knight_a: {slot:'armor', specId:'paladin_knight', name:'순교자의 서약', prefix:'서약의', exclusiveGroup:'knight_armor',
+      desc:'검은 기도의 공격력 보너스가 +50%→+80%, 지속시간이 2턴→3턴으로 늘어난다. 대신 방어력 감소 페널티도 35%→55%로 커진다. (방어구 각인은 이것과 성좌의 가호 중 하나만 고를 수 있다)'},
+    pa_knight_b: {slot:'armor', specId:'paladin_knight', name:'성좌의 가호', prefix:'가호받은', exclusiveGroup:'knight_armor',
+      desc:'성휘참의 피해가 10% 줄어드는 대신 흡혈이 2배가 되고, 적중 시 2턴간 받는 피해가 10% 줄어드는 배리어가 함께 걸린다. (방어구 각인은 이것과 순교자의 서약 중 하나만 고를 수 있다)'},
+    pa_transcend: {slot:'accessory', specId:'paladin_knight', name:'종언을 넘어서', prefix:'초월한',
+      desc:'칼리버 X: 종언으로 적 최대HP의 30% 이상을 깎으면, 반동 HP와 쿨다운이 즉시 되돌아온다.'},
   };
   Object.assign(ENHANCEMENTS, EPIC_JOB_ENCHANTS);
 
