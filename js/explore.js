@@ -185,17 +185,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       jester:   ['w_fatedeck','a_jokertailcoat','c_lastjoker'],
     };
     const gear = EPIC_SET_BY_JOB[player.job] || EPIC_SET_BY_JOB.warrior;
-    const [weaponId, armorId, accId] = gear;
     gear.forEach(id=>{ if(!player.equipOwned.includes(id)) player.equipOwned.push(id); });
-    // 강화는 장착(equipItem) 전에 먼저 새겨둬야 한다 — blacksmith.js의
-    // applyEnhancementStatBonuses(itemId)가 장착 시점에 player.equipEnhancements를
-    // 읽어 스탯형 보너스(피의 갑옷 최대HP+20% 등)까지 함께 적용하기 때문.
-    // 무기: 딜량이 가장 높은 조합(전부 피해 배율계) — 날카로운 칼날+무거운
-    // 일격+잔혹한 칼날. 장신구: 스킬피해/치명타/저HP공격력 위주. 방어구는
-    // 딜량 직결 강화가 아예 없어 생존 위주로 채운다(사용자에게 안내 완료).
-    player.equipEnhancements[weaponId] = ['sharp','heavy','brutal'];
-    player.equipEnhancements[accId] = ['manaring','luckcharm','berserkring'];
-    player.equipEnhancements[armorId] = ['emergency','undyingarmor','bloodarmor'];
+    // 사용자 요청 — 예전엔 여기서 딜 위주 강화를 미리 새겨줬는데, 이제
+    // 에픽 직업 각인을 대장간에서 직접 골라 테스트할 수 있어야 하므로
+    // 강화 없이 순수 장비만 지급/장착한다(강화석 100개는 아래에서 그대로
+    // 지급되니 원하는 강화를 직접 새기면 된다).
     gear.forEach(id=> equipItem(id));
 
     // 유물(사용자 요청 — admin3은 admin2와 달리 무작위 유물).
