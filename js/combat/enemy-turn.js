@@ -420,8 +420,22 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     // 않으므로, 라운드가 끝날 때 enemy.dots를 정리하는 로직(processDotsSequentially
     // 내부)의 영향을 받지 않고 다음 라운드에도 다시 새로 계산된다.
     if(enemy && (enemy.venomStacks||0) > 0){
-      const venomTickDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack()));
-      activeDots.push({type:'poison', turns:1, dmgPerTurn:venomTickDmg, label:`맹독(${enemy.venomStacks}중첩)`});
+      // 폭발 정제 각인(re_venomburst, 독사 방어구 각인 — 사용자 요청): 독
+      // 스택이 최대(10)에 도달한 라운드엔, 평소처럼 틱딜 대신 스택을 전부
+      // 소모하는 큰 폭발 피해로 터뜨리고 0으로 리셋한다. 대신 스택당 지속
+      // 피해 자체는 낮다(getVenomDmgPerStack()에서 정제 보너스를 1.3배가
+      // 아니라 1.15배로 낮춰서 반영).
+      const aIdVB = player.equipment && player.equipment.armor;
+      const hasVenomBurst = !!(aIdVB && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdVB).includes('re_venomburst'));
+      if(hasVenomBurst && enemy.venomStacks>=10){
+        const burstDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack() * 3));
+        activeDots.push({type:'poison', turns:1, dmgPerTurn:burstDmg, label:`맹독 폭발(${enemy.venomStacks}중첩 전량 소모)`});
+        enemy.venomStacks = 0;
+        updateStatusBadges();
+      } else {
+        const venomTickDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack()));
+        activeDots.push({type:'poison', turns:1, dmgPerTurn:venomTickDmg, label:`맹독(${enemy.venomStacks}중첩)`});
+      }
     }
     if(activeDots.length){
       processDotsSequentially(activeDots, 0);
@@ -963,7 +977,11 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     // 마력이 아니라 effectiveAtk() 기준(도적은 mag에 페널티가 있어 atk가
     // 실제 투자 스탯이므로).
     let per = Math.max(0.01, effectiveAtk() * 0.09);
-    if(player.skills.includes('rogueVenomRefine')) per *= 1.3;
+    if(player.skills.includes('rogueVenomRefine')){
+      const aIdVB2 = player.equipment && player.equipment.armor;
+      const hasVenomBurst2 = !!(aIdVB2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdVB2).includes('re_venomburst'));
+      per *= hasVenomBurst2 ? 1.15 : 1.3;
+    }
     const boost = getDotBoostRatio('poison');
     if(boost>0) per *= (1+boost);
     return per;

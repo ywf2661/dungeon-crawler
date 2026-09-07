@@ -9,6 +9,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   function playerAttack(){
     if(battleOver) return;
     setCommandsEnabled(false);
+    // 무한 가속 각인(me_infiniteaccel): 기본 공격도 가속 주문 연쇄를 끊는다.
+    if(battleFlags) battleFlags.hasteCastCount = 0;
     // 은신 연속 사용 방지: 기본 공격을 포함해 은신이 아닌 어떤 행동을 해도 쿨다운이
     // 풀린다(다시 은신을 쓸 수 있게 된다).
     if(battleFlags) battleFlags.stealthOnCooldown = false;
@@ -208,6 +210,23 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   // 확률로 계약 원소가 강제로 바뀌면서 추가 폭발 피해가 터진다. 삼위일체
   // 각인(위쪽 elementstorm 분기)이 이미 소비한 턴에는 겹치지 않도록, 그
   // 분기는 이 함수를 부르지 않는다(따로 처리됨).
+  // 잔상 각인(re_afterimage_extend, 환영검사 방어구 각인 — 사용자 요청):
+  // 분신 배가가 소모되는 순간, 이 각인의 "1회 연장"을 아직 안 썼다면 끄지
+  // 않고 한 번 더 유지한다(대신 다음 배가 강화폭이 줄어든다). 두 소비 지점
+  // (multihit/phys·magic 공용 분기)이 전부 이 헬퍼를 통해서만 끈다.
+  function consumeDoubleImageArmed(){
+    const aIdAE = player.equipment && player.equipment.armor;
+    const hasAfterimageExtend = !!(aIdAE && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdAE).includes('re_afterimage_extend'));
+    if(hasAfterimageExtend && !player.doubleImageArmedExtraUsed){
+      player.doubleImageArmedExtraUsed = true;
+      player.doubleImageBoostRatio = Math.max(0.3, (player.doubleImageBoostRatio||0.65) - 0.15);
+      return;
+    }
+    player.doubleImageArmed = false;
+    player.doubleImageBoostRatio = 0;
+    player.doubleImageArmedExtraUsed = false;
+  }
+
   function checkPactBetrayal(){
     const aIdBt = player.equipment && player.equipment.armor;
     if(!(aIdBt && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdBt).includes('me_betrayal'))) return '';
@@ -282,6 +301,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(battleOver) return;
     // 공명 각인(we_resonance): 스킬을 쓰면 기본 공격 공명 체인이 끊긴다.
     player.lastBasicAtkDmg = 0;
+    // 무한 가속 각인(me_infiniteaccel): 가속 주문이 아닌 다른 스킬을 쓰면
+    // 가속 주문의 연쇄 카운트가 끊긴다.
+    if(key!=='mageHaste' && battleFlags) battleFlags.hasteCastCount = 0;
     // 저주술사(mastery_curseweaver)는 스킬 봉인(침묵의 서약)을 저주 개수만큼의 확률로
     // 뚫고 나올 수 있다 — isCurseSealActive()가 이 확률 판정과 배너 안내까지 처리한다.
     if(isCurseSealActive('skillLocked', '저주를 찢고 목소리를 되찾았다!')){
@@ -403,6 +425,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 여기서는 예약 플래그와 배율만 걸어둔다.
       player.doubleImageArmed = true;
       player.doubleImageBoostRatio = s.boostedRatio || 0.65;
+      player.doubleImageArmedExtraUsed = false;
       renderStatus();
       updatePlayerStatusBadges();
       Sound.buff();
@@ -512,11 +535,36 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+venomDmg);
       Sound.slash(); playStatusFx('poison');
       rogueRegisterHit(true);
-      const venomGain = (player.skills && player.skills.includes('rogueVenomTriple')) ? 3 : 1;
-      enemy.venomStacks = Math.min(10, (enemy.venomStacks||0)+venomGain);
+      // 폭주 주입 각인(re_venomrush, 독사 무기)과 고독 각인(re_solovenom,
+      // 독사 장신구 — 사용자 요청): 둘 다 자기 전용 스택 보너스를 2배로
+      // 만드는데, 고독 각인은 그 대신 스택 상한이 10->7로 줄어든다(더 빨리
+      // 차지만 그릇이 작아짐). 폭주 주입 각인은 상한 그대로(10) 두는 대신,
+      // 상한을 넘긴 만큼 자신도 반동 피해를 입는다. 두 각인은 서로 다른
+      // 부위(무기/장신구)라 동시에 낄 수 있다 — 그러면 보너스가 한 번 더
+      // 곱해져(예: 삼중 주입까지 있으면 3->6->12) 상한(7) 초과분 반동도
+      // 그만큼 커진다.
+      const wIdVR = player.equipment && player.equipment.weapon;
+      const hasVenomRush = !!(wIdVR && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdVR).includes('re_venomrush'));
+      const cIdSV = player.equipment && player.equipment.accessory;
+      const hasSoloVenom = !!(cIdSV && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdSV).includes('re_solovenom'));
+      let venomGain = (player.skills && player.skills.includes('rogueVenomTriple')) ? 3 : 1;
+      if(hasVenomRush) venomGain *= 2;
+      if(hasSoloVenom) venomGain *= 2;
+      const venomCap = hasSoloVenom ? 7 : 10;
+      const rawStacks = (enemy.venomStacks||0) + venomGain;
+      enemy.venomStacks = Math.min(venomCap, rawStacks);
+      let venomOverflowMsg = '';
+      if(hasVenomRush && rawStacks>venomCap){
+        const overflow = rawStacks - venomCap;
+        const selfDmg = Math.min(player.hp-1, overflow*2);
+        if(selfDmg>0){
+          player.hp -= selfDmg;
+          venomOverflowMsg = ` 독이 역류해 스스로 ${selfDmg}의 피해를 입었다!`;
+        }
+      }
       updateStatusBadges();
       renderStatus();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `${enemy.name}에게 ${venomDmg}의 피해를 입히고 맹독을 주입했다! (독중첩 ${enemy.venomStacks}/10)`);
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${enemy.name}에게 ${venomDmg}의 피해를 입히고 맹독을 주입했다! (독중첩 ${enemy.venomStacks}/${venomCap})${venomOverflowMsg}`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -538,7 +586,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 불어나는 방식으로 막는다. battleFlags.hasteCastCount는 전투마다 새로
       // 생성되는 battleFlags에 저장되므로 전투가 바뀌면 자연히 0으로 리셋된다.
       const castNum = battleFlags.hasteCastCount || 0;
-      const comboMult = s.comboCostMult || 1.8;
+      // 무한 가속 각인(me_infiniteaccel, 시간술사 무기 각인 — 사용자 요청):
+      // 연쇄 시전 시 MP 증가율이 절반으로 줄어든다(예: 1.8배 -> 1.4배). 대신
+      // 다른 스킬/아이템을 한 번이라도 쓰면 연쇄가 끊긴다(플레이어 액션
+      // 공용 지점인 playerSkill()/playerItem() 시작부에서 hasteCastCount를
+      // 리셋 — 아래 참고).
+      const wIdIA = player.equipment && player.equipment.weapon;
+      const hasInfiniteAccel = !!(wIdIA && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdIA).includes('me_infiniteaccel'));
+      const comboMult = hasInfiniteAccel ? (1 + ((s.comboCostMult||1.8)-1)*0.5) : (s.comboCostMult || 1.8);
       const extraCost = castNum>0 ? Math.round(s.mp * (Math.pow(comboMult, castNum) - 1)) : 0;
       if(extraCost>0){
         if(player.mp < extraCost){
@@ -1510,6 +1565,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='multihit'){
+      // 이중 쇄도 각인(re_doublestrike, 환영검사 무기 각인 — 사용자 요청):
+      // 그림자 쇄도를 쓰면 분신 배가가 자동으로 걸린 것처럼 처리되어, 아래
+      // 잔영 예약이 곧바로 배가 상태로 나간다. 대신 이 스킬 자체의 즉발
+      // 피해가 15% 줄어든다.
+      const wIdDS = player.equipment && player.equipment.weapon;
+      const hasDoubleStrike = !!(key==='rogueShadowStrike' && wIdDS && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdDS).includes('re_doublestrike'));
+      if(hasDoubleStrike) player.doubleImageArmed = true;
       const magicBased = !!s.magic;
       const atkBase = magicBased ? player.mag : effectiveAtk();
       const edef = getEffectiveEnemyDef(enemy.def);
@@ -1521,6 +1583,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const baseRawTotal = rawParts.reduce((a,b)=>a+b,0);
       const onHitMult = consumeOnHitBonuses();
       let boostedTotal = applyOutgoingDamageMods(baseRawTotal, {type: magicBased?'magicskill':'physkill', mpCost, onHitMult});
+      if(hasDoubleStrike) boostedTotal = Math.round(boostedTotal*0.85);
       // 은신(stealth)이 걸어둔 "다음 공격 피해 +30%" 소모(연속 공격형 스킬에도 적용).
       let stealthDmgMsgMulti = '';
       if(player.stealthDmgBonusArmed){
@@ -1558,8 +1621,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
           : ` 그림자 속에서 '${s.name}'의 잔영이 어른거린다…`;
         battleFlags.afterimageTriggerCount = Math.min(8, (battleFlags.afterimageTriggerCount||0) + (doubledMulti?2:1));
         if(doubledMulti){
-          player.doubleImageArmed = false;
-          player.doubleImageBoostRatio = 0;
+          consumeDoubleImageArmed();
         }
       }
       // 한 타씩 순차적으로 베어내는 연출
@@ -1878,7 +1940,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 소비해 조각 수에 비례한 폭딜을 넣는다. 인내의 파훼자/저주 회수와 동일한
       // baseMult+stackMult*stacks 패턴 — 풀스택(5개)이면 마력 4.0배.
       const stacks = battleFlags.timeStacks || 0;
-      battleFlags.timeStacks = 0;
+      // 시간 정지 각인(me_timestop, 시간술사 장신구 각인 — 사용자 요청):
+      // 조각이 최대(5개)일 때 사용하면 조각이 소비되지 않고 그대로 유지된다
+      // — 조건만 맞으면 궁극기를 연속으로 꽂을 수 있다.
+      const cIdTS = player.equipment && player.equipment.accessory;
+      const hasTimeStop = !!(cIdTS && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdTS).includes('me_timestop'));
+      const timeStopKept = hasTimeStop && stacks>=5;
+      if(!timeStopKept) battleFlags.timeStacks = 0;
       updatePlayerStatusBadges();
       const mult = (s.baseMult||1.0) + (s.stackMult||0.6)*stacks;
       const edef = getEffectiveEnemyDef(enemy.def);
@@ -1889,9 +1957,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
       Sound.magic(); playCastBurst();
       renderStatus();
-      const msg2 = stacks>0
+      const msg2 = (stacks>0
         ? `쌓아온 시간 조각(${stacks}개)이 한꺼번에 무너지며 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`
-        : `쌓인 시간 조각이 없어 기본 위력으로 ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+        : `쌓인 시간 조각이 없어 기본 위력으로 ${enemy.name}에게 ${dmg}의 피해를 입혔다.`)
+        + (timeStopKept ? ' 시간 정지 각인이 조각을 그대로 지켜냈다!' : '');
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
       enemyTurn();
@@ -1907,7 +1976,17 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 못 쓴다). 사용 후 카운트는 0으로 초기화된다.
       const hits = Math.max(1, battleFlags.afterimageTriggerCount||0);
       const hadCount = (battleFlags.afterimageTriggerCount||0) > 0;
-      battleFlags.afterimageTriggerCount = 0;
+      // 불멸 군단 각인(re_immortallegion, 환영검사 장신구 각인 — 사용자
+      // 요청): 사용해도 잔영 누적 횟수가 초기화되지 않고 그대로 유지된다.
+      // 대신 쿨다운이 3턴→5턴으로 늘어난다(생성 시점에 이미 걸린 기본
+      // 쿨다운을 여기서 덮어쓴다).
+      const cIdIL = player.equipment && player.equipment.accessory;
+      const hasImmortalLegion = !!(cIdIL && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdIL).includes('re_immortallegion'));
+      if(!hasImmortalLegion){
+        battleFlags.afterimageTriggerCount = 0;
+      } else if(battleFlags.skillCooldowns){
+        battleFlags.skillCooldowns[key] = 5;
+      }
       updatePlayerStatusBadges();
       const edefParade = getEffectiveEnemyDef(enemy.def);
       const onHitMultParade = consumeOnHitBonuses();
@@ -2641,8 +2720,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 걸린 공격은 잔영이 실제로 2번 나타나는 것이므로 2씩 누적한다.
       battleFlags.afterimageTriggerCount = Math.min(8, (battleFlags.afterimageTriggerCount||0) + (doubled?2:1));
       if(doubled){
-        player.doubleImageArmed = false;
-        player.doubleImageBoostRatio = 0;
+        consumeDoubleImageArmed();
         updatePlayerStatusBadges();
       }
     }
@@ -2695,6 +2773,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if((player.inv[key]||0)<=0) return;
     // 공명 각인(we_resonance): 아이템을 쓰면 기본 공격 공명 체인이 끊긴다.
     player.lastBasicAtkDmg = 0;
+    // 무한 가속 각인(me_infiniteaccel): 아이템을 써도 가속 주문 연쇄가 끊긴다.
+    if(battleFlags) battleFlags.hasteCastCount = 0;
     // 저주술사(mastery_curseweaver)는 물약 봉인(굶주린 회랑)도 저주 개수만큼의
     // 확률로 뚫고 나올 수 있다. 외상 도박사(거액 대출)의 회복 봉인도 여기서
     // 함께 확인한다 — 서로 다른 시스템이지만 "물약을 못 마신다"는 결과는 같다.
