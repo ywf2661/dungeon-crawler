@@ -460,21 +460,37 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
 
   // 자연 능력치 근사 계산(사용자 요청 — 상태창에 "공격력 40 (+25)"처럼
   // 순수 레벨업 성장분과 장비/스킬/유물 등에서 온 보너스를 나눠서 보여주기
-  // 위함). 오프닝 심리테스트 성장 보정은 매 레벨 나머지를 이월시켜 정확히
-  // 정수로 떨어뜨리는 방식(applyOriginGrowth)이라, 그 이월분까지 완벽히
-  // 재현하진 않고 근사치로 계산한다(레벨이 아주 높지 않으면 오차가 거의
-  // 없다) — 실제 전투 계산에는 전혀 안 쓰이고 오직 이 화면 표시 전용이다.
+  // 위함). player.originGrowthRemainder(레벨업 시 나머지를 이월시키는 실제
+  // 저장값)를 직접 활용해 대부분의 경우 완전히 정확하게 역산한다 —
+  // "지금까지 지급된 정수 총합 = 정확한 소수 총합 - 현재 이월 잔량"이라는
+  // 이월 누적 구조의 성질을 이용한다. 방어력/속도/마력은 항상 정확하고,
+  // 공격력은 "쉬움 난이도 + 오프닝 근력 보정"이 둘 다 있는 경우에만 근사치로
+  // 남는다(그 조합에선 매 레벨 origin 성장값에 쉬움 배율 반올림이 한 번 더
+  // 얹히는 이중 반올림이라, 정확히 재현하려면 레벨별 재시뮬레이션이 필요해
+  // 화면 표시 하나 때문에 그렇게까지는 하지 않았다). 실제 전투 계산에는
+  // 전혀 안 쓰이는 표시 전용 함수다.
   function computeNaturalStats(){
     const job = getJob(player);
     const m = job.statMods;
     const ob = player.originBonuses || {};
+    const rem = player.originGrowthRemainder || {};
     const easyMult = player.difficulty==='easy' ? 1.2 : 1;
     const levelsGained = Math.max(0, (player.level||1)-1);
     const specBonus = player.specialization ? 3 : 0;
-    const natAtk = Math.round((7+m.atk)*easyMult) + Math.round(levelsGained*2*(1+(ob.strength||0))*easyMult) + specBonus;
-    const natMag = Math.round((6+m.mag)*easyMult) + Math.round(levelsGained*2*easyMult) + specBonus;
-    const natDef = (3+m.def) + Math.round(levelsGained*1*(1+(ob.atonement||0))) + specBonus;
-    const natSpd = (6+m.spd) + Math.round(levelsGained*1*(1+(ob.swiftness||0))) + specBonus;
+
+    const defExactTotal = levelsGained*1*(1+(ob.atonement||0));
+    const natDef = (3+m.def) + Math.round(defExactTotal - (rem.def||0)) + specBonus;
+
+    const spdExactTotal = levelsGained*1*(1+(ob.swiftness||0));
+    const natSpd = (6+m.spd) + Math.round(spdExactTotal - (rem.spd||0)) + specBonus;
+
+    const natMag = Math.round((6+m.mag)*easyMult) + levelsGained*Math.round(2*easyMult) + specBonus;
+
+    const atkExactTotal = levelsGained*2*(1+(ob.strength||0));
+    const atkOriginWhole = Math.round(atkExactTotal - (rem.atk||0));
+    const natAtkGrowth = (easyMult===1) ? atkOriginWhole : Math.round(atkOriginWhole*easyMult);
+    const natAtk = Math.round((7+m.atk)*easyMult) + natAtkGrowth + specBonus;
+
     return {atk:natAtk, mag:natMag, def:natDef, spd:natSpd};
   }
 

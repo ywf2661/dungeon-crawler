@@ -279,7 +279,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     player.townCheckpoint = makeTownCheckpoint();
     showScreen('explore');
     renderStatus();
-    renderExplore(['회랑 어귀에 첫 발을 내디뎠다.']);
+    renderExplore(['회랑 어귀에 첫 발을 내디뎠다.', {text:'💡 상단의 이름과 레벨을 누르면 언제든 상태창(능력치·스킬 목록)을 볼 수 있다.', cls:'warn'}]);
     saveGame();
   }
 
