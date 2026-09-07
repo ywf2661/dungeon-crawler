@@ -203,6 +203,27 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   // 무한 메아리 각인(we_infechoic) 전용 재귀 헬퍼 — 매번 50% 확률로 한 번 더
   // 이어지며, 이어질 때마다 위력이 0.1배씩 줄어든다(최저 0.1배). 실패하면
   // 거기서 멈추고 정상적으로 적 턴으로 넘어간다.
+  // 배신의 계약 각인(me_betrayal, 계약술사 방어구 각인 — 사용자 요청): 원소
+  // 계약 스킬(원소 각인/파동/폭풍) 3개 전부가 공유하는 헬퍼. 적중마다 20%
+  // 확률로 계약 원소가 강제로 바뀌면서 추가 폭발 피해가 터진다. 삼위일체
+  // 각인(위쪽 elementstorm 분기)이 이미 소비한 턴에는 겹치지 않도록, 그
+  // 분기는 이 함수를 부르지 않는다(따로 처리됨).
+  function checkPactBetrayal(){
+    const aIdBt = player.equipment && player.equipment.armor;
+    if(!(aIdBt && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdBt).includes('me_betrayal'))) return '';
+    if(!battleFlags.elementPact) return '';
+    if(Math.random()>=0.2) return '';
+    const others = ['fire','ice','lightning'].filter(e=>e!==battleFlags.elementPact);
+    const newPact = others[Math.floor(Math.random()*others.length)];
+    battleFlags.elementPact = newPact;
+    const edefBt = getEffectiveEnemyDef(enemy.def);
+    const burstDmg = Math.max(1, Math.round(player.mag*1.0) - Math.round(edefBt*0.5));
+    enemy.hp = Math.max(0, enemy.hp-burstDmg);
+    updateEnemyHpBar(); popDamage('-'+burstDmg, 'crit');
+    const ELEMENT_LABEL_BT = {fire:'화염', ice:'빙결', lightning:'번개'};
+    return ` 배신의 계약이 발동해 갑자기 ${ELEMENT_LABEL_BT[newPact]}로 전환되며 추가로 ${burstDmg}의 폭발 피해를 입혔다!`;
+  }
+
   function tryInfiniteEcho(chainMult){
     if(battleOver) return;
     if(enemy.hp<=0 || Math.random()>=0.5){
@@ -1571,6 +1592,40 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='elementstrike'){
+      // 이중 계약 각인(me_dualpact, 계약술사 무기 각인 — 사용자 요청): 계약한
+      // 원소 + 무작위로 고른 다른 원소 하나의 피해를 동시에 터뜨린다. 대신
+      // 두 효과 모두 위력이 70%로 줄어든다. 기존 4분기(화염/빙결/번개/미계약)
+      // 코드는 건드리지 않고, 이 각인이 있을 때만 완전히 별도 경로로 처리한다.
+      const wIdDP = player.equipment && player.equipment.weapon;
+      const hasDualPact = !!(wIdDP && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdDP).includes('me_dualpact'));
+      if(hasDualPact && battleFlags.elementPact){
+        const edefDP = getEffectiveEnemyDef(enemy.def);
+        const onHitMultDP = consumeOnHitBonuses();
+        const primaryPact = battleFlags.elementPact;
+        const othersDP = ['fire','ice','lightning'].filter(e=>e!==primaryPact);
+        const secondPact = othersDP[Math.floor(Math.random()*othersDP.length)];
+        const ELEMENT_LABEL_DP = {fire:'화염', ice:'빙결', lightning:'번개'};
+        const elementBaseDmg = (el)=>{
+          if(el==='fire') return Math.max(1, Math.round(player.mag*1.5) - Math.round(edefDP*0.5));
+          if(el==='ice') return Math.max(1, Math.round(player.mag*2.6) - edefDP);
+          return Math.max(1, Math.round(player.mag*1.0) - Math.round(edefDP*0.85)) * 2;
+        };
+        const dmgDP = applyOutgoingDamageMods(
+          Math.round(elementBaseDmg(primaryPact)*0.7) + Math.round(elementBaseDmg(secondPact)*0.7),
+          {type:'magicskill', mpCost, onHitMult:onHitMultDP}
+        );
+        enemy.hp = Math.max(0, enemy.hp-dmgDP);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmgDP, 'crit');
+        if(primaryPact==='fire' || secondPact==='fire'){
+          applyDot({type:'burn', basis:'mag', ratio:0.35, turns:3, label:'원소 각인: 화염(이중 계약)'});
+        }
+        Sound.magic(); playBanner(`${ELEMENT_LABEL_DP[primaryPact]}+${ELEMENT_LABEL_DP[secondPact]}!`, 'pact-lightning'); playStatusFx('pact-ice');
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `이중 계약 각인이 ${ELEMENT_LABEL_DP[primaryPact]}과 ${ELEMENT_LABEL_DP[secondPact]}를 동시에 터뜨려 ${dmgDP}의 피해를 입혔다!`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+        return;
+      }
       // 원소 각인(mageElementStrike, 레벨10 액티브): 계약한 원소에 따라 완전히
       // 다르게 동작한다. 화염=화상 부여+중간 피해, 빙결=방어 무시 없는 고배율
       // 단일 강타, 번개=2연속 타격(관통은 약함). 미계약 시 위력이 눈에 띄게
@@ -1613,6 +1668,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         Sound.magic();
         msg2 = `계약 없이 평범한 마력탄을 날려 ${dmg}의 피해를 입혔다. (원소와 계약하면 훨씬 강력해진다)`;
       }
+      msg2 += checkPactBetrayal();
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
@@ -1673,6 +1729,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         Sound.magic();
         msg2 = `계약 없이 평범한 파동을 날려 ${dmg}의 피해를 입혔다.`;
       }
+      msg2 += checkPactBetrayal();
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
@@ -1681,6 +1738,40 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='elementstorm'){
+      // 삼위일체 각인(me_trinity, 계약술사 장신구 각인 — 사용자 요청): 계약
+      // 원소와 무관하게 화염+빙결+번개를 전부 발동시킨다. 기존 3분기 코드를
+      // 건드리지 않기 위해, 이 각인이 있을 때만 완전히 별도 경로로 처리하고
+      // 없으면 아래 기존 로직으로 그대로 흘러간다(회귀 위험 최소화).
+      const cIdTri = player.equipment && player.equipment.accessory;
+      const hasTrinity = !!(cIdTri && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdTri).includes('me_trinity'));
+      if(hasTrinity){
+        const edefT = getEffectiveEnemyDef(enemy.def);
+        const onHitMultT = consumeOnHitBonuses();
+        let totalDmg = 0;
+        // 화염
+        let fireDmg = Math.max(1, Math.round(player.mag*2.4) - Math.round(edefT*0.5));
+        fireDmg = applyOutgoingDamageMods(fireDmg, {type:'magicskill', mpCost, onHitMult:onHitMultT});
+        totalDmg += fireDmg;
+        applyDot({type:'burn', basis:'mag', ratio:0.7, turns:4, label:'원소 폭풍: 화염'});
+        // 빙결(방어 완전 무시)
+        let iceDmg = Math.max(1, Math.round(player.mag*3.2));
+        iceDmg = applyOutgoingDamageMods(iceDmg, {type:'magicskill', mpCost, onHitMult:onHitMultT});
+        totalDmg += iceDmg;
+        // 번개(3연속의 총합만 반영, 연출은 생략하고 합산 피해로 처리)
+        const perL = Math.max(1, Math.round(player.mag*1.1) - Math.round(edefT*0.65));
+        let lightningDmg = applyOutgoingDamageMods(perL*3, {type:'magicskill', mpCost, onHitMult:onHitMultT});
+        totalDmg += lightningDmg;
+        enemy.hp = Math.max(0, enemy.hp - totalDmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+totalDmg, 'crit');
+        Sound.magic(); playBanner('🔥❄⚡ 삼위일체!', 'pact-lightning'); playStatusFx('pact-ice');
+        // 쿨다운 2배(사용자 확정 — 세 원소를 동시에 부르는 대가).
+        if(battleFlags.skillCooldowns) battleFlags.skillCooldowns[key] = (s.cooldown||3)*2;
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `삼위일체 각인이 화염·빙결·번개를 동시에 불러내 ${totalDmg}의 압도적인 피해를 입혔다!`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+        return;
+      }
       // 원소 폭풍(mageElementStorm, 레벨15 궁극기): 화염=초강력 화상+큰 피해,
       // 빙결=방어 완전 무시 초고배율 강타, 번개=3연속 타격(관통 있음). 미계약
       // 시에도 여전히 약하다(궁극기까지 계약 없이 쓰는 것을 강하게 억제).
@@ -1722,6 +1813,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         Sound.magic();
         msg2 = `계약 없이 궁극의 파동을 날려 ${dmg}의 피해를 입혔다. (원소와 계약했다면 훨씬 강력했을 것이다)`;
       }
+      msg2 += checkPactBetrayal();
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
