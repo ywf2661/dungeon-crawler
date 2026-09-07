@@ -6,6 +6,17 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         combat/battle-end.js, combat/enemy-turn.js(적 턴 호출)
 */
 
+  // 독사(rogue_alchemist) 독 스택 상한 — 고독 각인(re_solovenom, 장신구)을
+  // 꼈으면 6, 아니면 기본 10. 맹독 주입 전용 로직뿐 아니라 기본 공격 등
+  // 범용 독중첩 훅에서도 동일하게 참조해야 한다(예전엔 범용 훅 3곳이 상한을
+  // 10으로 하드코딩해둬서, 고독 각인을 꼈어도 기본 공격 등으로 쌓은 스택은
+  // 상한6을 무시하고 10까지 차던 버그가 있었다).
+  function getVenomStackCap(){
+    const cId = player.equipment && player.equipment.accessory;
+    const hasSolo = !!(cId && typeof getEnhancementsFor==='function' && getEnhancementsFor(cId).includes('re_solovenom'));
+    return hasSolo ? 6 : 10;
+  }
+
   function playerAttack(){
     if(battleOver) return;
     setCommandsEnabled(false);
@@ -107,7 +118,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 보너스(+1 또는 +3)와는 별개로, 이 범용 훅은 모든 공격 행동에 공통으로
     // +1만 준다.
     if(player.skills && player.skills.includes('mastery_venomstacks')){
-      enemy.venomStacks = Math.min(10, (enemy.venomStacks||0)+1);
+      enemy.venomStacks = Math.min(getVenomStackCap(), (enemy.venomStacks||0)+1);
       updateStatusBadges();
     }
     const healed = applyPassiveLifesteal(dmg);
@@ -602,7 +613,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       let venomGain = (player.skills && player.skills.includes('rogueVenomTriple')) ? 3 : 1;
       if(hasVenomRush) venomGain *= 2;
       if(hasSoloVenom) venomGain *= 2;
-      const venomCap = hasSoloVenom ? 6 : 10;
+      const venomCap = getVenomStackCap();
       const rawStacks = (enemy.venomStacks||0) + venomGain;
       enemy.venomStacks = Math.min(venomCap, rawStacks);
       let venomOverflowMsg = '';
@@ -1709,7 +1720,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 쇄도 등)도 독을 남긴다. 여러 타를 때려도 이 스킬 사용 1회당 +1만
       // 준다(개별 타격마다 주면 스택이 지나치게 빨리 차오르기 때문).
       if(player.skills && player.skills.includes('mastery_venomstacks')){
-        enemy.venomStacks = Math.min(10, (enemy.venomStacks||0)+1);
+        enemy.venomStacks = Math.min(getVenomStackCap(), (enemy.venomStacks||0)+1);
       }
       // 잔영(mastery_afterimage): 연속 공격형 스킬도 확정 발동 대상이다(범용
       // phys/magic 분기와 동일한 조건). 몇 타짜리 스킬이었는지·최종 합산 피해가
@@ -2913,7 +2924,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 분기를 타는 모든 스킬(백스탭/암살 등)도 독을 남긴다. 맹독 주입 자신은
     // 별도의 전용 타입('venominject')이라 이 훅을 타지 않는다 — 중복 없음.
     if(player.skills && player.skills.includes('mastery_venomstacks')){
-      enemy.venomStacks = Math.min(10, (enemy.venomStacks||0)+1);
+      enemy.venomStacks = Math.min(getVenomStackCap(), (enemy.venomStacks||0)+1);
       updateStatusBadges();
     }
     let afterimageMsg2 = '';
