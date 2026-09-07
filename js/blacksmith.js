@@ -127,6 +127,12 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
       desc:'원소 폭풍이 계약 원소와 무관하게 화염+빙결+번개를 전부 발동시킨다. 대신 쿨다운이 2배가 된다.'},
     me_regression: {slot:'armor', specId:'mage_time', name:'역행의 각인', prefix:'역행하는',
       desc:'시간 왜곡의 발동 확률이 20%→35%로 오른다. 대신 이 각인으로 발동한 추가 행동에서는 가속 주문의 위력이 20% 낮아진다.'},
+    me_tempcurse: {slot:'weapon', specId:'mage_curseweaver', name:'임시 계약 각인', prefix:'임시 계약의',
+      desc:'전투당 1회, 저주 폭발/저주 각인/저주 만개 중 먼저 쓰는 스킬이 저주를 1개 더 짊어진 것처럼 계산된다(실제 유물창엔 안 남는 가짜 저주).'},
+    me_doublecurse: {slot:'armor', specId:'mage_curseweaver', name:'겹저주 각인', prefix:'겹겹의',
+      desc:'저주 각인을 걸린 적에게 다시 쓰면, 남은 저주를 미리 30% 터뜨린 뒤 새로 건다. 새로 거는 저주 자체는 20% 약해진다.'},
+    me_curseCycle: {slot:'accessory', specId:'mage_curseweaver', name:'만개 순환 각인', prefix:'순환하는',
+      desc:'저주 만개가 저주 각인의 잔여 도트를 흡수하지 않고 그대로 유지한 채(계속 틱딜) 발동한다. 대신 만개의 저주 개수 보너스가 20% 줄어든다.'},
   };
   Object.assign(ENHANCEMENTS, EPIC_JOB_ENCHANTS);
 

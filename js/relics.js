@@ -151,6 +151,22 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   function getCurseCount(){
     return (player.relics||[]).filter(id=>{ const r=RELICS[id]; return r && r.type==='curse'; }).length;
   }
+  // 임시 계약 각인(me_tempcurse, 저주술사 무기 각인 — 사용자 요청): 전투당
+  // 1회, 저주 폭발/각인/만개 세 스킬 전부가 이번 전투 한정으로 저주를 1개
+  // 더 짊어진 것처럼 계산하게 해준다(실제 유물창엔 안 남는 가짜 저주).
+  // getCurseCount() 자체를 바꾸면 보상 배율(getCurseRewardMult 등) 같은
+  // 무관한 시스템까지 같이 부풀려지므로, 전투 데미지 계산 전용으로 별도
+  // 함수를 둔다.
+  function getCombatCurseCount(){
+    const base = getCurseCount();
+    const wIdTC = player.equipment && player.equipment.weapon;
+    const hasTempCurse = wIdTC && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdTC).includes('me_tempcurse');
+    if(hasTempCurse && battleFlags && !battleFlags.tempCurseUsed){
+      battleFlags.tempCurseUsed = true;
+      return base + 1;
+    }
+    return base;
+  }
   function getCurseRewardMult(){
     const c = getCurseCount();
     if(c>=2) return 0.25;

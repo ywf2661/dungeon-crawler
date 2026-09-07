@@ -714,21 +714,38 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // applyDot()/enemy.dots 파이프라인을 그대로 재사용해 신규 애니메이션
       // 코드가 필요 없다(맹독 연금술사의 독 중첩과 달리, 이건 일반 도트라
       // 턴이 다 되면 자연히 사라진다 — 전투 끝까지 지속되는 게 아님).
-      const curses = (typeof getCurseCount === 'function') ? getCurseCount() : 0;
+      const curses = (typeof getCombatCurseCount === 'function') ? getCombatCurseCount() : ((typeof getCurseCount === 'function') ? getCurseCount() : 0);
       const edefBrand = getEffectiveEnemyDef(enemy.def);
       const onHitMultBrand = consumeOnHitBonuses();
       let brandDmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edefBrand*0.5));
       if(curses>0) brandDmg = Math.round(brandDmg*(1+curses*s.curseCountBonus));
+      // 겹저주 각인(me_doublecurse, 저주술사 방어구 각인 — 사용자 요청): 이미
+      // 도트가 걸려있는 적에게 다시 걸면, 남은 도트를 즉시 30% 만큼 미리
+      // 터뜨린 뒤 새 도트를 건다(완전 중첩은 기존 도트 시스템이 "같은 종류는
+      // 덮어쓰기"만 지원해 위험 부담이 있어, 대신 "먼저 터뜨리고 새로 건다"는
+      // 더 단순하고 안전한 방식으로 구현). 새 도트 자체는 20% 약해진다.
+      const aIdDC = player.equipment && player.equipment.armor;
+      const hasDoubleCurse = !!(aIdDC && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdDC).includes('me_doublecurse'));
+      let doubleCurseMsg = '';
+      let dotRatioBrand = (s.dotBaseRatio||0.25) + curses*(s.dotRatioPerCurse||0.08);
+      if(hasDoubleCurse){
+        const existingBrandDot = (enemy.dots||[]).find(d=>d.type==='poison' && d.turns>0);
+        if(existingBrandDot){
+          const earlyBurst = Math.max(1, Math.round(existingBrandDot.dmgPerTurn * existingBrandDot.turns * 0.3));
+          brandDmg += earlyBurst;
+          doubleCurseMsg = ` 남아있던 저주를 미리 30% 터뜨렸다(+${earlyBurst})!`;
+        }
+        dotRatioBrand = Math.round(dotRatioBrand*0.8*100)/100;
+      }
       brandDmg = applyOutgoingDamageMods(brandDmg, {type:'magicskill', mpCost, onHitMult:onHitMultBrand});
       enemy.hp = Math.max(0, enemy.hp-brandDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+brandDmg, curses>0?'crit':undefined);
       Sound.magic(); playStatusFx('poison');
-      const dotRatio = (s.dotBaseRatio||0.25) + curses*(s.dotRatioPerCurse||0.08);
-      applyDot({type:'poison', basis:'mag', ratio:dotRatio, turns:s.dotTurns||4, label:'저주 각인'});
+      applyDot({type:'poison', basis:'mag', ratio:dotRatioBrand, turns:s.dotTurns||4, label:'저주 각인'});
       renderStatus();
-      const brandMsg = curses>0
+      const brandMsg = (curses>0
         ? `짊어진 저주(${curses}개)의 힘으로 낙인이 짙게 새겨졌다! ${enemy.name}에게 ${brandDmg}의 피해를 입히고 강한 저주를 남겼다.`
-        : `${enemy.name}에게 ${brandDmg}의 피해를 입히고 저주를 남겼다.`;
+        : `${enemy.name}에게 ${brandDmg}의 피해를 입히고 저주를 남겼다.`) + doubleCurseMsg;
       setBattleMsg(`${player.name}의 ${s.name}!`, brandMsg);
       if(checkBattleEnd()) return;
       enemyTurn();
@@ -741,19 +758,30 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 잔여 피해량(dmgPerTurn×turns — 계약술사 원소 붕괴와 동일한 계산 방식
       // 재사용)까지 한꺼번에 터뜨리고 제거한다. 각인 없이 바로 써도 저주 개수만
       // 으로 준수한 위력이 나오지만, 먼저 각인을 심어두면 더 강해지는 콤보 구조.
-      const curses = (typeof getCurseCount === 'function') ? getCurseCount() : 0;
+      const curses = (typeof getCombatCurseCount === 'function') ? getCombatCurseCount() : ((typeof getCurseCount === 'function') ? getCurseCount() : 0);
       const edefBloom = getEffectiveEnemyDef(enemy.def);
       const onHitMultBloom = consumeOnHitBonuses();
+      // 만개 순환 각인(me_curseCycle, 저주술사 장신구 각인 — 사용자 요청):
+      // 원래는 저주 각인의 잔여 도트를 흡수(제거)해서 터뜨리는데, 이 각인이
+      // 있으면 도트를 지우지 않고 그대로 유지한 채(계속 틱딜) 만개 효과만
+      // 발동한다. 대신 만개의 저주 개수 보너스가 20% 줄어든다.
+      const cIdCC = player.equipment && player.equipment.accessory;
+      const hasCurseCycle = !!(cIdCC && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdCC).includes('me_curseCycle'));
+      const curseCountBonusUsed = hasCurseCycle ? s.curseCountBonus*0.8 : s.curseCountBonus;
       let bloomDmg = Math.max(1, Math.round(player.mag*s.baseMult) - edefBloom);
-      bloomDmg = Math.round(bloomDmg*(1+curses*s.curseCountBonus));
+      bloomDmg = Math.round(bloomDmg*(1+curses*curseCountBonusUsed));
       const curseDot = (enemy.dots||[]).find(d=>d.type==='poison' && d.turns>0);
       let detonateMsg = '';
       if(curseDot){
         const detonateBonus = Math.max(1, curseDot.dmgPerTurn * curseDot.turns);
         bloomDmg += detonateBonus;
-        enemy.dots = enemy.dots.filter(d=>d!==curseDot);
-        updateStatusBadges();
-        detonateMsg = ' 새겨져 있던 저주까지 한꺼번에 만개시켰다!';
+        if(hasCurseCycle){
+          detonateMsg = ' 저주를 그대로 유지한 채 만개시켰다(도트 지속)!';
+        } else {
+          enemy.dots = enemy.dots.filter(d=>d!==curseDot);
+          updateStatusBadges();
+          detonateMsg = ' 새겨져 있던 저주까지 한꺼번에 만개시켰다!';
+        }
       }
       bloomDmg = applyOutgoingDamageMods(bloomDmg, {type:'magicskill', mpCost, onHitMult:onHitMultBloom});
       enemy.hp = Math.max(0, enemy.hp-bloomDmg);

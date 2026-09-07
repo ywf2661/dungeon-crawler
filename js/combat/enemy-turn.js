@@ -837,7 +837,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     // 저주 폭발(mageCurseNova, 저주술사): statusSynergyBonus와 동일한 패턴으로, 보유한
     // 저주 개수만큼 곱연산 배율이 붙는다(relics.js의 getCurseCount() 재사용).
     if(s.curseCountBonus){
-      const curses = (typeof getCurseCount === 'function') ? getCurseCount() : 0;
+      const curses = (typeof getCombatCurseCount === 'function') ? getCombatCurseCount() : ((typeof getCurseCount === 'function') ? getCurseCount() : 0);
       if(curses > 0){
         d = Math.round(d * (1 + curses*s.curseCountBonus));
         triggered = true;
