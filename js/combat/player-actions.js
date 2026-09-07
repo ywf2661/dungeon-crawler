@@ -469,7 +469,16 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.hasteCastCount = castNum + 1;
 
       const edefHaste = getEffectiveEnemyDef(enemy.def);
-      let hasteDmg = Math.max(1, Math.round(player.mag*s.mult) - Math.round(edefHaste*0.5));
+      // 역행의 각인(me_regression): 방금 그 추가 행동이 이 각인으로 발동한
+      // 것이었다면, 이번 가속 주문 위력이 20% 낮아진다(1회 한정, 여기서 소모).
+      let hasteMultUsed = s.mult;
+      let regressionMsg = '';
+      if(battleFlags.timeRegressionActive){
+        hasteMultUsed = s.mult * 0.8;
+        battleFlags.timeRegressionActive = false;
+        regressionMsg = ' (역행의 각인 — 위력 20% 감소)';
+      }
+      let hasteDmg = Math.max(1, Math.round(player.mag*hasteMultUsed) - Math.round(edefHaste*0.5));
       const onHitMultHaste = consumeOnHitBonuses();
       hasteDmg = applyOutgoingDamageMods(hasteDmg, {type:'magicskill', mpCost, onHitMult:onHitMultHaste});
       enemy.hp = Math.max(0, enemy.hp-hasteDmg);

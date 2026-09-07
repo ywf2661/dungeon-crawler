@@ -94,6 +94,42 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
   const ENHANCE_MAX = {normal:1, rare:2, epic:3};
   const ENHANCE_COST = {normal:3, rare:5, epic:8};
 
+  /* ============ 에픽 직업 각인(사용자 요청) ============
+     일반 강화와 완전히 같은 테이블(ENHANCEMENTS)에 합쳐 넣는다 — 그래야
+     getEnhancedDisplayName/getEquippedEnhancementSpecials 등 기존 함수를
+     전혀 안 건드리고도 표시/장착/저장이 그대로 동작한다. 구분은 두 필드로:
+     - specId: 이 값이 있으면 "그 특성으로 전직한 캐릭터가, 그 직업의 에픽
+       장비를 강화할 때만" 후보로 뜬다(renderBlacksmithChoice에서 필터링).
+     - exclusiveGroup: 같은 그룹끼리는 하나를 고르면 나머지가 후보에서
+       완전히 사라진다(회랑의 기사 방어구 "택1"용 — 이번 세션엔 아직 없음).
+     주의: 데이터는 아래처럼 정의돼 있어도, 실제 전투 로직 연결은 아직
+     일부(전사 2종 + 마법사 계약술사/시간술사)만 되어 있다. 나머지는 다음
+     작업에서 이어서 붙일 예정 — 골라도 당장은 효과가 안 나갈 수 있다.
+  */
+  const EPIC_JOB_ENCHANTS = {
+    we_chainexec: {slot:'weapon', specId:'warrior_bloodpact', name:'연쇄 처형', prefix:'처형자의',
+      desc:'저돌로 적을 처치하면 HP 소모 없이 즉시 재발동한다. 처치하지 못하면 다음 턴 방어력이 20% 낮아진다.'},
+    we_madimmortal: {slot:'armor', specId:'warrior_bloodpact', name:'불사의 광기', prefix:'광기의',
+      desc:'전투당 1회, 쓰러질 위기에서 HP 1로 버틴다. 이후로는 받는 피해가 25% 늘어난다.'},
+    we_bloodrevive: {slot:'accessory', specId:'warrior_bloodpact', name:'부활하는 각인', prefix:'불멸의',
+      desc:'혈옥쇄로 적을 처치하면 쿨다운과 소모한 HP가 즉시 되돌아온다.'},
+    we_puresword: {slot:'weapon', specId:'warrior_purist', name:'일섬의 각인', prefix:'일섬의',
+      desc:'기본 공격이 항상 확정 크리티컬(2배)로 터진다. 대신 명중률이 70%로 떨어진다.'},
+    we_resonance: {slot:'armor', specId:'warrior_purist', name:'공명 각인', prefix:'공명하는',
+      desc:'직전 기본 공격 피해의 20%를 이번 공격에 그대로 증폭해 물려받는다. 스킬/아이템을 쓰면 끊긴다.'},
+    we_infechoic: {slot:'accessory', specId:'warrior_purist', name:'무한 메아리 각인', prefix:'메아리치는',
+      desc:'쌍격의 파문 2타 이후 50% 확률로 위력이 줄어든 추가 타격이 계속 이어진다.'},
+    me_dualpact: {slot:'weapon', specId:'mage_pact', name:'이중 계약 각인', prefix:'이중 계약의',
+      desc:'원소 각인이 미계약 원소 효과도 함께 발동시킨다. 대신 두 효과 모두 위력이 70%로 줄어든다.'},
+    me_betrayal: {slot:'armor', specId:'mage_pact', name:'배신의 계약 각인', prefix:'배신의',
+      desc:'계약 원소가 적중할 때마다 20% 확률로 다른 원소로 강제 전환되며, 전환되는 순간 추가 폭발 피해가 터진다.'},
+    me_trinity: {slot:'accessory', specId:'mage_pact', name:'삼위일체 각인', prefix:'삼위일체의',
+      desc:'원소 폭풍이 계약 원소와 무관하게 화염+빙결+번개를 전부 발동시킨다. 대신 쿨다운이 2배가 된다.'},
+    me_regression: {slot:'armor', specId:'mage_time', name:'역행의 각인', prefix:'역행하는',
+      desc:'시간 왜곡의 발동 확률이 20%→35%로 오른다. 대신 이 각인으로 발동한 추가 행동에서는 가속 주문의 위력이 20% 낮아진다.'},
+  };
+  Object.assign(ENHANCEMENTS, EPIC_JOB_ENCHANTS);
+
   function isEnhanceable(id){
     // 칼리버 X(성기사 전용 스토리 무기)는 강화 대상에서 제외.
     if(id && id.indexOf('caliberx_')===0) return false;
@@ -302,7 +338,20 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
   }
   function renderBlacksmithChoice(panel, slot, id, grade){
     const already = getEnhancementsFor(id);
-    const pool = Object.keys(ENHANCEMENTS).filter(eid=> ENHANCEMENTS[eid].slot===slot && !already.includes(eid));
+    const pool = Object.keys(ENHANCEMENTS).filter(eid=>{
+      const def = ENHANCEMENTS[eid];
+      if(def.slot!==slot || already.includes(eid)) return false;
+      // 직업 각인(specId 있음)은 에픽 등급 + 실제로 그 특성으로 전직했을
+      // 때만 후보로 나온다(사용자 요청 — 강화 슬롯 하나를 그대로 차지).
+      if(def.specId){
+        if(grade!=='epic' || player.specialization!==def.specId) return false;
+      }
+      // exclusiveGroup(택1류): 이미 같은 그룹의 다른 각인을 골랐다면 제외.
+      if(def.exclusiveGroup && already.some(aid=> ENHANCEMENTS[aid] && ENHANCEMENTS[aid].exclusiveGroup===def.exclusiveGroup)){
+        return false;
+      }
+      return true;
+    });
     const shuffled = pool.slice().sort(()=>Math.random()-0.5);
     const candidates = shuffled.slice(0, 3);
     if(!candidates.length){

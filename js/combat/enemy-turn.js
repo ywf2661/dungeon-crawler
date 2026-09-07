@@ -126,6 +126,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         // 만으로 발동했을 때는 조각이 쌓이지 않는다 — 마스터리를 보유했을 때만.
         if(player.skills && player.skills.includes('mastery_timewarp')){
           battleFlags.timeStacks = Math.min(5, (battleFlags.timeStacks||0)+1);
+          // 역행의 각인(me_regression)으로 발동한 추가 행동이면 표시해둔다
+          // (mageHaste가 이번 턴 한정으로 위력 -20%를 적용할 때 확인).
+          const armorIdRg = player.equipment && player.equipment.armor;
+          if(armorIdRg && typeof getEnhancementsFor==='function' && getEnhancementsFor(armorIdRg).includes('me_regression')){
+            battleFlags.timeRegressionActive = true;
+          }
         }
         resetCommandUI();
         popDamage('추가 행동!', 'heal');
@@ -888,7 +894,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 장치(battleFlags.witchClockUsedThisTurn)를 공유하는 고정 20% 확률 추가 행동.
   function getTimeWarpExtraChance(){
     if(!(player.skills && player.skills.includes('mastery_timewarp'))) return 0;
-    return 0.20;
+    // 역행의 각인(me_regression, 시간술사 방어구 각인 — 사용자 요청): 발동
+    // 확률 20%->35%. 대신 이걸로 터진 추가 행동에서 가속 주문 위력이 20%
+    // 낮아지는데, 그 표시는 enemyTurn()의 발동 지점에서 battleFlags에 심는다.
+    const armorId = player.equipment && player.equipment.armor;
+    const hasRegression = armorId && typeof getEnhancementsFor==='function' && getEnhancementsFor(armorId).includes('me_regression');
+    return hasRegression ? 0.35 : 0.20;
   }
   // 계율(mastery_creed): 계율을 유지한 스택 수만큼 공격력이 오른다(스택당 +5%, 최대 +25%).
   function getCreedAtkBonus(){
