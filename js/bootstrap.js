@@ -117,6 +117,10 @@ export(전역): init, showMaintenanceModal, isAdminName
     document.getElementById('btn-blacksmith').addEventListener('click', openBlacksmith);
     document.getElementById('cmd-attack').addEventListener('click', ()=>{ Sound.click(); playerAttack(); });
     document.getElementById('cmd-skill').addEventListener('click', ()=>{ Sound.click(); openSub('skill'); });
+    // 상태창(사용자 요청) — 상단 이름/레벨 영역을 누르면 언제든(전투 중이든
+    // 마을이든) 열 수 있다.
+    const namewrapEl = document.getElementById('namewrap-status');
+    if(namewrapEl) namewrapEl.addEventListener('click', ()=>{ if(typeof openStatusSheet==='function') openStatusSheet(); });
     document.getElementById('cmd-item').addEventListener('click', ()=>{ Sound.click(); openSub('item'); });
     document.getElementById('cmd-run').addEventListener('click', ()=>{ Sound.click(); playerRun(); });
     document.getElementById('cmd-back').addEventListener('click', ()=>{ Sound.click(); closeSub(); });

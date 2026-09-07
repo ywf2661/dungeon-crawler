@@ -458,6 +458,71 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     return 0;
   }
 
+  // 자연 능력치 근사 계산(사용자 요청 — 상태창에 "공격력 40 (+25)"처럼
+  // 순수 레벨업 성장분과 장비/스킬/유물 등에서 온 보너스를 나눠서 보여주기
+  // 위함). 오프닝 심리테스트 성장 보정은 매 레벨 나머지를 이월시켜 정확히
+  // 정수로 떨어뜨리는 방식(applyOriginGrowth)이라, 그 이월분까지 완벽히
+  // 재현하진 않고 근사치로 계산한다(레벨이 아주 높지 않으면 오차가 거의
+  // 없다) — 실제 전투 계산에는 전혀 안 쓰이고 오직 이 화면 표시 전용이다.
+  function computeNaturalStats(){
+    const job = getJob(player);
+    const m = job.statMods;
+    const ob = player.originBonuses || {};
+    const easyMult = player.difficulty==='easy' ? 1.2 : 1;
+    const levelsGained = Math.max(0, (player.level||1)-1);
+    const specBonus = player.specialization ? 3 : 0;
+    const natAtk = Math.round((7+m.atk)*easyMult) + Math.round(levelsGained*2*(1+(ob.strength||0))*easyMult) + specBonus;
+    const natMag = Math.round((6+m.mag)*easyMult) + Math.round(levelsGained*2*easyMult) + specBonus;
+    const natDef = (3+m.def) + Math.round(levelsGained*1*(1+(ob.atonement||0))) + specBonus;
+    const natSpd = (6+m.spd) + Math.round(levelsGained*1*(1+(ob.swiftness||0))) + specBonus;
+    return {atk:natAtk, mag:natMag, def:natDef, spd:natSpd};
+  }
+
+  // 상태창(사용자 요청) — 초상화는 이번엔 제외하고 능력치+스킬 목록만.
+  // 상단 이름/레벨 영역(#namewrap-status)을 누르면 언제든 열 수 있다.
+  function openStatusSheet(){
+    const existing = document.getElementById('status-sheet-overlay');
+    if(existing){ existing.remove(); return; }
+    const nat = computeNaturalStats();
+    const statRow = (label, cur, natVal)=>{
+      const bonus = cur - natVal;
+      const bonusStr = bonus===0 ? '' : ` <span style="color:${bonus>0?'var(--forest-bright)':'var(--rust-bright)'};">(${bonus>0?'+':''}${bonus})</span>`;
+      return `<div class="shop-item"><span class="si-info"><b>${label}</b></span><span>${natVal}${bonusStr}</span></div>`;
+    };
+    const skillsHtml = (player.skills||[]).filter(k=>SKILLDB[k]).map(k=>{
+      const sk = SKILLDB[k];
+      const tier = getSkillTier(k);
+      const borderColor = tier===1 ? '#5a7a9c' : (tier===2 ? 'var(--violet)' : '#3a2c1c');
+      return `<div class="shop-item" style="border-left:3px solid ${borderColor}; padding-left:8px;">
+        <span class="si-info"><span class="si-name"><b>${sk.name}</b></span><br>
+        <span style="font-size:12px; color:var(--parchment-dim);">${sk.desc||''}</span></span>
+      </div>`;
+    }).join('');
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'status-sheet-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `<h3>📜 ${player.name}의 상태창</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 12px;">Lv.${player.level} · ${getJobLabel(player)}</p>
+      <div style="display:flex; flex-direction:column; margin-bottom:12px;">
+        <div class="shop-item"><span class="si-info"><b>HP</b></span><span>${Math.max(0,player.hp)}/${player.maxhp}</span></div>
+        <div class="shop-item"><span class="si-info"><b>MP</b></span><span>${Math.max(0,player.mp)}/${player.maxmp}</span></div>
+        ${statRow('공격력', player.atk, nat.atk)}
+        ${statRow('마력', player.mag, nat.mag)}
+        ${statRow('방어력', player.def, nat.def)}
+        ${statRow('속도', player.spd, nat.spd)}
+      </div>
+      <p style="color:var(--parchment-dim); font-size:12px; text-align:center; margin:-4px 0 8px;">괄호 안 수치는 장비/강화/스킬/유물 등에서 온 보너스(근사치)</p>
+      <h3 style="font-size:15px; margin-top:6px;">보유 스킬</h3>
+      <div style="display:flex; flex-direction:column;">${skillsHtml || '<p style="text-align:center;color:var(--parchment-dim);">보유한 스킬이 없다.</p>'}</div>
+      <div style="text-align:center; margin-top:12px;"><button class="btn" id="status-sheet-close">닫기</button></div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    panel.querySelector('#status-sheet-close').addEventListener('click', ()=> overlay.remove());
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.remove(); });
+  }
+
   function openSub(mode){
     subMode = mode;
     document.getElementById('cmd-main').style.display='none';
