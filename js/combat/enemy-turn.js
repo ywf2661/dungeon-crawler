@@ -598,6 +598,8 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 받는 피해 증가.
       if(!(enemy && (enemy.isElite || enemy.isBoss))) reduceMult += getRelicSum('normalDmgTakenPctMult');
       if(battleFlags && battleFlags.diceEffect==='dmgtaken') reduceMult += 0.3;
+      // 불사의 광기(we_madimmortal) 발동 이후로는 이번 전투 내내 받는 피해 +25%.
+      if(battleFlags && battleFlags.madImmortalTriggered) reduceMult += 0.25;
       // 중액 대출(외상 도박사)의 페널티 — 상환율만큼 완화되는 받는 피해 증가.
       // getDebtorDmgTakenMult()는 대출이 없으면 1을 반환하므로 reduceMult에
       // 곱해도 다른 직업에는 전혀 영향이 없다.
@@ -656,6 +658,19 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         mitigated = player.hp - 1;
         playBanner('불굴!','guardian');
         extraMsg += ' 불굴의 갑옷이 치명적인 피해를 버텨냈다!';
+      } else if(mitigated >= player.hp && battleFlags && !battleFlags.madImmortalUsed && (()=>{
+          const aIdMI = player.equipment && player.equipment.armor;
+          return aIdMI && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdMI).includes('we_madimmortal');
+        })()){
+        // 불사의 광기(we_madimmortal, 혈맹의 검투사 방어구 각인 — 사용자 요청).
+        // 불굴의 갑옷과 같은 자리(치명적 피해 1회 방지)지만, 대신 발동 이후로는
+        // 이번 전투 내내 받는 피해가 25% 늘어난다(battleFlags.madImmortalTriggered
+        // 로 표시 — 아래 reduceMult 계산부에서 확인).
+        battleFlags.madImmortalUsed = true;
+        battleFlags.madImmortalTriggered = true;
+        mitigated = player.hp - 1;
+        playBanner('광기!','guardian');
+        extraMsg += ' 광기가 죽음을 밀어내지만, 그 대가로 앞으로 더 크게 얻어맞게 된다!';
       }
 
       player.hp = Math.max(0, player.hp - mitigated);

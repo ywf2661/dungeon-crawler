@@ -384,6 +384,9 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   function startBattle(isBoss, isFinal, isTrueFinal){
     revertDiceDelta(); // 직전 전투의 불확실성의 주사위 효과가 남아있다면 먼저 되돌린다(안전망).
     revertRiggedTableDelta(); // 사기꾼 "조작된 도박판"도 동일한 안전망.
+    // 공명 각인(we_resonance): 이전 전투의 마지막 기본 공격 피해가 이번
+    // 전투로 넘어오지 않도록 초기화.
+    player.lastBasicAtkDmg = 0;
     // 강철 군단장 리뉴얼 이전에 이미 축압 기술자로 전직했던 기존 세이브
     // 캐릭터도 여기서 자동으로 새 킷으로 마이그레이션된다(멱등 처리라 안전).
     if(typeof migrateLegionBaseSkills==='function') migrateLegionBaseSkills(player);

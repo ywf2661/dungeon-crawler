@@ -108,11 +108,11 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
   */
   const EPIC_JOB_ENCHANTS = {
     we_chainexec: {slot:'weapon', specId:'warrior_bloodpact', name:'연쇄 처형', prefix:'처형자의',
-      desc:'저돌로 적을 처치하면 HP 소모 없이 즉시 재발동한다. 처치하지 못하면 다음 턴 방어력이 20% 낮아진다.'},
+      desc:'저돌로 적 최대HP의 30% 이상을 깎으면 HP 소모 없이 즉시 재발동한다. 못 채우면 다음 턴 방어력이 20% 낮아진다.'},
     we_madimmortal: {slot:'armor', specId:'warrior_bloodpact', name:'불사의 광기', prefix:'광기의',
       desc:'전투당 1회, 쓰러질 위기에서 HP 1로 버틴다. 이후로는 받는 피해가 25% 늘어난다.'},
     we_bloodrevive: {slot:'accessory', specId:'warrior_bloodpact', name:'부활하는 각인', prefix:'불멸의',
-      desc:'혈옥쇄로 적을 처치하면 쿨다운과 소모한 HP가 즉시 되돌아온다.'},
+      desc:'혈옥쇄로 적 최대HP의 30% 이상을 깎으면 쿨다운과 소모한 HP가 즉시 되돌아온다.'},
     we_puresword: {slot:'weapon', specId:'warrior_purist', name:'일섬의 각인', prefix:'일섬의',
       desc:'기본 공격이 항상 확정 크리티컬(2배)로 터진다. 대신 명중률이 70%로 떨어진다.'},
     we_resonance: {slot:'armor', specId:'warrior_purist', name:'공명 각인', prefix:'공명하는',

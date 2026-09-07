@@ -25,7 +25,33 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
     const onHitMult = consumeOnHitBonuses();
     const edef = getEffectiveEnemyDef(enemy.def);
+    // 일섬의 각인(we_puresword, 일격의 구도자 무기): 기본 공격이 확정 크리
+    // (2배)로 터지는 대신 명중률이 70%로 떨어진다(사용자 요청). 미스면 다른
+    // 데미지 계산을 전부 건너뛰고 여기서 바로 끝낸다.
+    const wIdPS = player.equipment && player.equipment.weapon;
+    const hasPureSword = !!(wIdPS && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdPS).includes('we_puresword'));
+    if(hasPureSword && Math.random() >= 0.7){
+      renderStatus();
+      popDamage('빗나감!', 'miss');
+      Sound.fail();
+      setBattleMsg(`${player.name}의 공격!`, '일섬이 허공을 갈랐다... 완전히 빗나갔다.');
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
     let dmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edef);
+    if(hasPureSword) dmg = Math.round(dmg*2);
+    // 공명 각인(we_resonance, 일격의 구도자 방어구): 직전 기본 공격 피해의 20%를
+    // 이번 공격에 그대로 증폭해 물려받는다. 스킬/아이템을 쓰면 끊긴다(각각
+    // playerSkill()/playerItem() 맨 앞에서 player.lastBasicAtkDmg를 0으로 리셋).
+    const aIdRS = player.equipment && player.equipment.armor;
+    const hasResonance = !!(aIdRS && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdRS).includes('we_resonance'));
+    let resonanceMsgAtk = '';
+    if(hasResonance && (player.lastBasicAtkDmg||0)>0){
+      const bonus = Math.round(player.lastBasicAtkDmg*0.2);
+      dmg += bonus;
+      resonanceMsgAtk = ` 공명이 이어져 위력이 ${bonus} 늘어났다!`;
+    }
     // 은신(stealth)이 걸어둔 "다음 공격 피해 +30%"를 기본 공격에도 적용한다(예전엔
     // 소비 코드 자체가 없어 죽어있던 효과였다).
     let stealthDmgMsgAtk = '';
@@ -92,6 +118,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(echoMsg) msg2 += echoMsg;
     if(lightningCritMsgAtk) msg2 += lightningCritMsgAtk;
     if(stealthDmgMsgAtk) msg2 += stealthDmgMsgAtk;
+    if(resonanceMsgAtk) msg2 += resonanceMsgAtk;
+    // 공명 각인 상속용 — 이번 기본 공격의 최종 피해를 저장해둔다(다음 기본
+    // 공격에서 20%만큼 물려받는다. 스킬/아이템 사용 시 0으로 리셋됨).
+    player.lastBasicAtkDmg = dmg;
 
     if(enemy.hp>0 && maybeWarriorExtraHit()){
       const edef3 = getEffectiveEnemyDef(enemy.def);
@@ -149,6 +179,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         let msg3 = `번개처럼 한 번 더 베어 ${dmg2}의 피해를 입혔다!`;
         if(healed2>0) msg3 += ` HP ${healed2} 흡수.`;
         setBattleMsg(`${player.name}의 연속 공격!`, msg3);
+        // 무한 메아리 각인(we_infechoic, 일격의 구도자 장신구): 확정 2타 이후,
+        // 50% 확률로 위력이 줄어든 추가 타격이 계속 이어진다(성공할 때마다
+        // 다시 50%로 재도전, 매번 위력만 0.1씩 감소, 최저 0.1배).
+        const cIdIE = player.equipment && player.equipment.accessory;
+        const hasInfEcho = guaranteedSecondHit && cIdIE && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdIE).includes('we_infechoic');
+        if(hasInfEcho){
+          setTimeout(()=> tryInfiniteEcho(0.4), 260);
+          return;
+        }
         if(checkBattleEnd()) return;
         enemyTurn();
       }, 260);
@@ -159,6 +198,29 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     setBattleMsg(`${player.name}의 공격!`, msg2);
     if(checkBattleEnd()) return;
     enemyTurn();
+  }
+
+  // 무한 메아리 각인(we_infechoic) 전용 재귀 헬퍼 — 매번 50% 확률로 한 번 더
+  // 이어지며, 이어질 때마다 위력이 0.1배씩 줄어든다(최저 0.1배). 실패하면
+  // 거기서 멈추고 정상적으로 적 턴으로 넘어간다.
+  function tryInfiniteEcho(chainMult){
+    if(battleOver) return;
+    if(enemy.hp<=0 || Math.random()>=0.5){
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+    const edefIE = getEffectiveEnemyDef(enemy.def);
+    let dmgIE = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edefIE);
+    dmgIE = applyOutgoingDamageMods(dmgIE, {type:'basic'});
+    dmgIE = Math.max(1, Math.round(dmgIE*chainMult));
+    enemy.hp = Math.max(0, enemy.hp-dmgIE);
+    updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmgIE);
+    Sound.slash();
+    renderStatus();
+    setBattleMsg(`${player.name}의 무한 메아리!`, `메아리가 계속 이어져 ${dmgIE}의 추가 피해!`);
+    if(checkBattleEnd()) return;
+    setTimeout(()=> tryInfiniteEcho(Math.max(0.1, chainMult-0.1)), 260);
   }
 
   // 메카닉 - 폭주 화부/축압 기술자 공용 헬퍼: 압력 상한을 마스터리에 따라 계산.
@@ -197,6 +259,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
 
   function playerSkill(key, isRetry){
     if(battleOver) return;
+    // 공명 각인(we_resonance): 스킬을 쓰면 기본 공격 공명 체인이 끊긴다.
+    player.lastBasicAtkDmg = 0;
     // 저주술사(mastery_curseweaver)는 스킬 봉인(침묵의 서약)을 저주 개수만큼의 확률로
     // 뚫고 나올 수 있다 — isCurseSealActive()가 이 확률 판정과 배너 안내까지 처리한다.
     if(isCurseSealActive('skillLocked', '저주를 찢고 목소리를 되찾았다!')){
@@ -2269,11 +2333,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 때마다 최대HP의 s.hpCostPct 비율만큼 피를 바친다. HP 1은 항상 남기도록
     // 클램프한다(즉사 방지).
     let hpSacMsg = '';
+    let hpSacActualCost = 0;
     if(s.hpCostPct){
       const desiredCost = Math.max(1, Math.round(player.maxhp*s.hpCostPct));
       const actualCost = Math.min(desiredCost, player.hp-1);
       if(actualCost>0){
         player.hp -= actualCost;
+        hpSacActualCost = actualCost;
         hpSacMsg = ` 스스로의 피 ${actualCost}을(를) 대가로 바쳤다.`;
       }
     }
@@ -2407,6 +2473,26 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
     if(s.type==='magic') Sound.magic(); else Sound.slash();
+    // 연쇄 처형(we_chainexec, 혈맹의 검투사 무기 각인) / 불사의 광기
+    // (we_madimmortal, 방어구 각인): 1:1 전투라 "처치하면 재발동"은 성립이
+    // 안 돼서(처치=즉시 승리, 다음 적이 없음), 조건을 "최대HP의 30% 이상을
+    // 이 한 방으로 깎았는가"로 바꿨다(사용자 확정).
+    let chainExecMsg = '';
+    let chainExecRetriggered = false;
+    if(key==='warriorBloodpactActive' && !isRetry){
+      const wIdCE = player.equipment && player.equipment.weapon;
+      if(wIdCE && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdCE).includes('we_chainexec')){
+        if(enemy.hp>0 && dmg >= Math.round(enemy.maxhp*0.3)){
+          chainExecMsg = ' 처형의 기세를 몰아 즉시 다시 벤다!';
+          chainExecRetriggered = true;
+          setTimeout(()=>{ if(!battleOver) playerSkill(key, true); }, 550);
+        } else {
+          player.buffDefTurns = Math.max(player.buffDefTurns||0, 1);
+          player.buffDefMult = Math.max(player.buffDefMult||1, 1.2);
+          chainExecMsg = ' 크게 베지 못해 자세가 무너졌다(다음 턴 방어력 하락).';
+        }
+      }
+    }
     // 독 중첩(mastery_venomstacks, 독사): 기본 공격뿐 아니라 이 범용 phys/magic
     // 분기를 타는 모든 스킬(백스탭/암살 등)도 독을 남긴다. 맹독 주입 자신은
     // 별도의 전용 타입('venominject')이라 이 훅을 타지 않는다 — 중복 없음.
@@ -2458,11 +2544,23 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(tripleElementMsg) msg2 += tripleElementMsg;
     if(hpSacMsg) msg2 += hpSacMsg;
     if(afterimageMsg2) msg2 += afterimageMsg2;
+    if(key==='warriorBloodpactUltimate'){
+      const cIdBR = player.equipment && player.equipment.accessory;
+      if(cIdBR && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdBR).includes('we_bloodrevive')){
+        if(enemy.hp>0 && dmg >= Math.round(enemy.maxhp*0.3)){
+          if(hpSacActualCost>0) player.hp = Math.min(player.maxhp, player.hp + hpSacActualCost);
+          if(battleFlags.skillCooldowns) battleFlags.skillCooldowns[key] = 0;
+          chainExecMsg += ' 부활하는 각인이 대가를 되돌리고 쿨다운을 초기화했다!';
+        }
+      }
+    }
+    if(chainExecMsg) msg2 += chainExecMsg;
     const dotLabels3 = applySkillDots(s);
     if(dotLabels3) msg2 += ` ${dotLabels3} 효과 부여!`;
     if(healed2>0){ msg2 += ` HP ${healed2} 흡수.`; }
     setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, msg2);
     if(checkBattleEnd()) return;
+    if(chainExecRetriggered) return; // 연쇄 처형 재발동 예약됨 — 적 턴 넘기지 않는다.
     enemyTurn();
   }
 
@@ -2475,6 +2573,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   function playerItem(key){
     if(battleOver) return;
     if((player.inv[key]||0)<=0) return;
+    // 공명 각인(we_resonance): 아이템을 쓰면 기본 공격 공명 체인이 끊긴다.
+    player.lastBasicAtkDmg = 0;
     // 저주술사(mastery_curseweaver)는 물약 봉인(굶주린 회랑)도 저주 개수만큼의
     // 확률로 뚫고 나올 수 있다. 외상 도박사(거액 대출)의 회복 봉인도 여기서
     // 함께 확인한다 — 서로 다른 시스템이지만 "물약을 못 마신다"는 결과는 같다.
