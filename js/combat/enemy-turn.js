@@ -1011,20 +1011,24 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 아이템과 자연스럽게 시너지)이 곱연산으로 붙는다. 최종 틱 피해 = 이 값 ×
   // 현재 스택 수(최대 10) — 오래 끄는 전투일수록 강력해진다.
   //
-  // 밸런스 조정(사용자 요청 — 코드 기반 시뮬레이션으로 확인): 도적의 다른
-  // 전직(환영검사)/마법사 2차 전직들과 비교했을 때 독사가 맨몸 기준 2.4배,
-  // 중독 강화 무기 착용 시 3배 가까이 압도적으로 강했다. 스택 상한/삼중주입
-  // 보너스 등 다른 손잡이는 아무리 깎아도 격차를 크게 못 줄여서(구조적으로
-  // "매 라운드 자동 발동, 자원 소모 없음"이라 기본 로테이션 위에 통째로
-  // 얹히는 보너스이기 때문), 근본 배율 두 개를 함께 낮췄다 — 기본 비율
-  // 0.18→0.09(절반), 독성 정제 +90%→+30%. 조정 후 시뮬레이션: 맨몸 기준
-  // 환영검사 대비 1.22배, 도적의 단검 착용 시 1.40배(다른 전직들의 정상
-  // 편차 범위 안으로 들어옴).
+  // 밸런스 조정 이력:
+  // 1) (과거) 맨몸 기준 "단발/평균" 비교 방식으로 환영검사 대비 2.4배 압도적으로
+  //    강하다고 판단 → 기본 비율 0.18→0.09로 절반 삭감.
+  // 2) (이번 세션) 실제 처치까지 걸리는 멀티턴 Monte Carlo로 재검증한 결과 정반대
+  //    결론(전사 일격의 구도자/저주 미투자 저주술사 대비 보스전 기준 약 20~25%
+  //    낮은 화력)이 나왔다. 원인은 "죽지 않는 더미" 기준 순수 화력 자체는 결코
+  //    낮지 않았고(오히려 더 높았음), 독사 특유의 구조적 손실 — 직접타로 적을
+  //    끝내버리면 checkBattleEnd()가 그 즉시 발동해 그 턴에 쌓여있던 독틱 피해가
+  //    통째로 증발하는 문제 — 때문이었다. 이 손실 자체는 전투 흐름을 바꿔야 해서
+  //    (checkBattleEnd 호출 시점 변경 금지) 이번엔 건드리지 않고, 대신 기본 비율을
+  //    0.09→0.13으로 다시 올려 격차만 메웠다(0.18로 되돌리면 과거 1)의 문제가
+  //    재발할 수 있어, 그 절반 지점에 가까운 값으로 절충). 조정 후 보스전 기준
+  //    5턴→4턴으로 단축되어 전사/저주술사(미투자) 기준선과 맞춰짐.
   function getVenomDmgPerStack(){
     if(!(player.skills && player.skills.includes('mastery_venomstacks'))) return 0;
     // 마력이 아니라 effectiveAtk() 기준(도적은 mag에 페널티가 있어 atk가
     // 실제 투자 스탯이므로).
-    let per = Math.max(0.01, effectiveAtk() * 0.09);
+    let per = Math.max(0.01, effectiveAtk() * 0.13);
     if(player.skills.includes('rogueVenomRefine')){
       const aIdVB2 = player.equipment && player.equipment.armor;
       const hasVenomBurst2 = !!(aIdVB2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdVB2).includes('re_venomburst'));
