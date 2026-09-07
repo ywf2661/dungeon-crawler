@@ -256,15 +256,22 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     player.nodeRow = 0;
     player.nodeCurrentId = player.nodeMap[0][0].id;
     player.nodeVisited = [player.nodeCurrentId];
-    town = false;
+    // 사용자 요청 — "최종보스 노드맵 입장 직전, 마을에서" 시작하도록 변경.
+    // town=true로 두되 nodeMap은 미리 만들어둔 채로 시작하면, explore.js의
+    // onAdvance()가 "마을을 나설 때 지도가 없으면 새로 생성, 있으면 그대로
+    // 재사용"하는 기존 로직을 그대로 타서 별도 분기가 필요 없다 — 마을에서
+    // "나아가기"를 누르는 순간 곧바로 이 지도(진 최종보스 직전)로 들어간다.
+    town = true;
     depth = 55; // tierIndex 5 구간(가상 층수 50~60)의 대략치 — 전투 스케일링용
+    // 강화석도 넉넉하게(사용자 요청 — 에픽 각인 테스트용).
+    player.reinforceStones = 100;
 
     player.townCheckpoint = makeTownCheckpoint();
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
     const relicMsg = opts.randomRelics ? '무작위 유물 지급' : '회랑자의 칼날/칼자루 장착';
-    renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · ${relicMsg} 완료. 나아가면 곧바로 진 최종보스와 마주한다.`]);
+    renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 강화석 100개 · ${relicMsg} 완료. 마을에서 "나아가기"를 누르면 곧바로 진 최종보스 직전 구간으로 들어간다.`]);
     saveGame();
   }
 
