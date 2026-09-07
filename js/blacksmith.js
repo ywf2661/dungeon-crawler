@@ -372,7 +372,11 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
         <div class="si-info">
           <span class="si-name" style="font-family:Cinzel;color:var(--parchment);">[${SLOT_LABELS[slot]}] ${getEnhancedDisplayName(id)}</span>
           <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">
-            ${enhList.length ? enhList.map(eid=>`✦ ${ENHANCEMENTS[eid].name}: ${ENHANCEMENTS[eid].desc}`).join('<br>') : '강화된 적 없음'}
+            ${enhList.length ? enhList.map(eid=>{
+              const isJob = !!(ENHANCEMENTS[eid] && ENHANCEMENTS[eid].specId);
+              const mark = isJob ? '<span style="color:var(--violet);">✨</span>' : '✦';
+              return `${mark} ${ENHANCEMENTS[eid].name}: ${ENHANCEMENTS[eid].desc}`;
+            }).join('<br>') : '강화된 적 없음'}
             <br>강화 ${enhList.length}/${max}
           </span>
         </div>
@@ -421,11 +425,19 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
     panel.innerHTML = `<h3>🔨 대장간 — 강화 선택</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">${getEnhancedDisplayName(id)}에 무엇을 새길지 고른다.</p>
       <div style="display:flex; flex-direction:column; gap:8px;">
-        ${candidates.map(eid=>`
-        <button class="btn enhance-pick" data-eid="${eid}" style="text-align:left; padding:10px 12px;">
-          <b>${ENHANCEMENTS[eid].prefix} — ${ENHANCEMENTS[eid].name}</b><br>
-          <span style="font-size:12px; color:var(--parchment-dim); font-weight:normal;">${ENHANCEMENTS[eid].desc}</span>
-        </button>`).join('')}
+        ${candidates.map(eid=>{
+          const def = ENHANCEMENTS[eid];
+          // 직업 각인(specId 있음)은 일반 강화와 확실히 구분되도록 보라색
+          // 테두리 + "✨ 직업 각인" 배지를 붙인다(사용자 요청).
+          const isJobEnchant = !!def.specId;
+          const borderStyle = isJobEnchant ? `border-color:var(--violet); box-shadow:0 0 8px #7a5a9c66;` : '';
+          const badge = isJobEnchant ? `<span style="display:inline-block; font-size:10.5px; color:var(--violet); border:1px solid var(--violet); border-radius:4px; padding:1px 5px; margin-right:6px; vertical-align:middle;">✨ 직업 각인</span>` : '';
+          return `
+        <button class="btn enhance-pick" data-eid="${eid}" style="text-align:left; padding:10px 12px; ${borderStyle}">
+          <b>${badge}${def.prefix} — ${def.name}</b><br>
+          <span style="font-size:12px; color:var(--parchment-dim); font-weight:normal;">${def.desc}</span>
+        </button>`;
+        }).join('')}
       </div>
       <div style="text-align:center; margin-top:10px;"><button class="btn" id="blacksmith-cancel">취소</button></div>`;
     panel.querySelectorAll('.enhance-pick').forEach(b=>{
