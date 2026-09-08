@@ -35,6 +35,11 @@ export(전역): const Sound
       witchboss: ['audio/bgm/witchboss.mp3'],
     };
     let bgmAudioEl = null, bgmPlaylist = [], bgmPlaylistIdx = 0;
+    // 모드별로 "마지막에 재생하던 트랙 인덱스"를 기억한다(사용자 요청 —
+    // 전투 갔다가 돌아왔다고 곡이 바뀌면 안 됨. 같은 모드로 돌아오면 그
+    // 모드에서 재생 중이던 곡을 그대로 이어간다. 새로 그 모드에 처음
+    // 진입할 때만 무작위로 한 곡을 고른다).
+    let bgmPlaylistIdxByMode = {};
 
     try{
       const saved = window.localStorage ? window.localStorage.getItem('lc_muted') : null;
@@ -47,10 +52,11 @@ export(전역): const Sound
       bgmAudioEl.preload = 'auto';
       bgmAudioEl.volume = muted ? 0 : 0.5;
       bgmAudioEl.addEventListener('ended', ()=>{
-        // 트랙이 2개 이상인 모드(dungeon)만 플레이리스트처럼 다음 곡으로 순환.
+        // 트랙이 2개 이상인 모드만 플레이리스트처럼 다음 곡으로 순환.
         // 1개뿐인 모드는 loop=true로 두므로 이 리스너 자체가 발동하지 않는다.
         if(bgmPlaylist.length>1){
           bgmPlaylistIdx = (bgmPlaylistIdx+1) % bgmPlaylist.length;
+          bgmPlaylistIdxByMode[bgmMode] = bgmPlaylistIdx; // 자연스러운 순환도 기억해둔다
           playBgmTrack(bgmPlaylist[bgmPlaylistIdx]);
         }
       });
@@ -60,9 +66,16 @@ export(전역): const Sound
     function playBgmTrack(src){
       const el = ensureBgmAudioEl();
       el.loop = bgmPlaylist.length<=1;
+      // 이미 그 트랙이 로드돼 있으면(전투 등으로 잠시 다른 모드에 갔다가
+      // 같은 모드로 돌아온 경우) 처음부터 다시 틀지 않고 그대로 이어 재생한다.
+      const fullSrc = new URL(src, window.location.href).href;
+      if(el.src === fullSrc){
+        if(!muted) el.play().catch(()=>{});
+        return;
+      }
       el.src = src;
       el.currentTime = 0;
-      if(!muted) el.play().catch(()=>{}); // 브라우저 자동재생 정책상 실패할 수 있음 — ensureBgmRunning()에서 재시도
+      if(!muted) el.play().catch(()=>{});
     }
     function stopBgmAudioEl(){
       if(bgmAudioEl) bgmAudioEl.pause();
@@ -326,7 +339,12 @@ export(전역): const Sound
         stopDrone();
         if(bgmTimer) clearTimeout(bgmTimer);
         bgmPlaylist = files;
-        bgmPlaylistIdx = Math.floor(Math.random()*files.length);
+        // 이 모드에서 마지막에 틀던 곡이 있으면 그걸 이어서(무작위 재추첨
+        // 없이), 이 모드에 처음 들어온 것이면 그때만 무작위로 한 곡을 고른다.
+        if(bgmPlaylistIdxByMode[mode]===undefined || bgmPlaylistIdxByMode[mode]>=files.length){
+          bgmPlaylistIdxByMode[mode] = Math.floor(Math.random()*files.length);
+        }
+        bgmPlaylistIdx = bgmPlaylistIdxByMode[mode];
         playBgmTrack(bgmPlaylist[bgmPlaylistIdx]);
         return;
       }
