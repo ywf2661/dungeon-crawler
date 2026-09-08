@@ -1,20 +1,64 @@
 "use strict";
 /*
-사운드 엔진 — Web Audio API 실시간 합성 BGM/SFX.
+사운드 엔진 — Web Audio API 실시간 합성 BGM/SFX + 실제 음원 파일 BGM(하이브리드).
 완전히 캡슐화된 Sound 모듈(IIFE)만 정의. 외부 의존성 없음.
 export(전역): const Sound
 */
 
-  /* ============ 사운드 엔진 (Web Audio API로 실시간 합성 — 외부 음원 파일 없음) ============ */
+  /* ============ 사운드 엔진 ============
+     SFX와, 음원 파일이 없는 BGM 모드는 여전히 Web Audio 실시간 합성.
+     사용자가 제공한 실제 음원 파일이 있는 모드(BGM_FILES에 등록된 모드)는
+     <audio> 엘리먼트로 재생한다(합성 BGM은 그 모드 동안 꺼둠). 두 시스템은
+     setBgmMode() 안에서 배타적으로 전환된다. */
   const Sound = (function(){
     let ctx = null, master = null, bgmGain = null, sfxGain = null;
     let muted = false;
-    let bgmTimer = null, bgmStep = 0, bgmMode = 'explore'; // 'explore' | 'battle' | 'dread' | 'finalboss' | 'off'
+    let bgmTimer = null, bgmStep = 0, bgmMode = 'explore'; // 'explore' | 'dungeon' | 'battle' | 'dread' | 'finalboss' | 'truefinalboss' | 'off'
+
+    // 사용자 제공 실제 음원(60초 트림, mp3 128kbps) — 모드별 트랙 목록.
+    // 목록이 2개 이상이면 순서대로(무작위 시작 후 순환) 재생해 플레이리스트처럼 돈다.
+    // 여기 없는 모드('explore'=마을/타이틀, 'battle'=일반 전투)는 기존 합성 BGM을 그대로 쓴다
+    // (사용자가 해당 모드용 음원을 추가로 구하면 여기에 등록만 하면 됨).
+    const BGM_FILES = {
+      dungeon: ['audio/bgm/dungeon1.mp3','audio/bgm/dungeon2.mp3','audio/bgm/dungeon3.mp3','audio/bgm/dungeon4.mp3','audio/bgm/dungeon5.mp3'],
+      dread: ['audio/bgm/dread.mp3'],
+      finalboss: ['audio/bgm/finalboss.mp3'],
+      truefinalboss: ['audio/bgm/truefinalboss.mp3'],
+    };
+    let bgmAudioEl = null, bgmPlaylist = [], bgmPlaylistIdx = 0;
 
     try{
       const saved = window.localStorage ? window.localStorage.getItem('lc_muted') : null;
       if(saved === '1') muted = true;
     }catch(e){ /* ignore */ }
+
+    function ensureBgmAudioEl(){
+      if(bgmAudioEl) return bgmAudioEl;
+      bgmAudioEl = document.createElement('audio');
+      bgmAudioEl.preload = 'auto';
+      bgmAudioEl.volume = muted ? 0 : 0.5;
+      bgmAudioEl.addEventListener('ended', ()=>{
+        // 트랙이 2개 이상인 모드(dungeon)만 플레이리스트처럼 다음 곡으로 순환.
+        // 1개뿐인 모드는 loop=true로 두므로 이 리스너 자체가 발동하지 않는다.
+        if(bgmPlaylist.length>1){
+          bgmPlaylistIdx = (bgmPlaylistIdx+1) % bgmPlaylist.length;
+          playBgmTrack(bgmPlaylist[bgmPlaylistIdx]);
+        }
+      });
+      document.body.appendChild(bgmAudioEl);
+      return bgmAudioEl;
+    }
+    function playBgmTrack(src){
+      const el = ensureBgmAudioEl();
+      el.loop = bgmPlaylist.length<=1;
+      el.src = src;
+      el.currentTime = 0;
+      if(!muted) el.play().catch(()=>{}); // 브라우저 자동재생 정책상 실패할 수 있음 — ensureBgmRunning()에서 재시도
+    }
+    function stopBgmAudioEl(){
+      if(bgmAudioEl) bgmAudioEl.pause();
+      bgmPlaylist = [];
+    }
 
     function ensureCtx(){
       if(!ctx){
@@ -267,6 +311,18 @@ export(전역): const Sound
     function setBgmMode(mode){
       if(bgmMode === mode) return;
       bgmMode = mode;
+      const files = BGM_FILES[mode];
+      if(files){
+        // 실제 음원 파일이 있는 모드 — 합성 BGM은 끄고 파일 재생으로 전환.
+        stopDrone();
+        if(bgmTimer) clearTimeout(bgmTimer);
+        bgmPlaylist = files;
+        bgmPlaylistIdx = Math.floor(Math.random()*files.length);
+        playBgmTrack(bgmPlaylist[bgmPlaylistIdx]);
+        return;
+      }
+      // 파일 없는 모드 — 기존 합성 BGM('explore'=마을/타이틀, 'battle'=일반 전투 등).
+      stopBgmAudioEl();
       const c = ensureCtx(); if(!c) return;
       if(mode==='off'){
         stopDrone();
@@ -278,8 +334,13 @@ export(전역): const Sound
       scheduleBgmStep();
     }
     function ensureBgmRunning(){
-      // 최초 사용자 입력 시 AudioContext를 깨우고 현재 모드에 맞는 BGM을 시작한다
+      // 최초 사용자 입력 시 오디오를 깨운다(합성 BGM용 AudioContext + 파일 BGM
+      // <audio> 재생 둘 다 브라우저 자동재생 정책의 영향을 받는다).
       const c = ensureCtx(); if(!c) return;
+      if(BGM_FILES[bgmMode]){
+        if(bgmAudioEl && bgmAudioEl.paused && !muted) bgmAudioEl.play().catch(()=>{});
+        return;
+      }
       if(droneOsc.length===0 && bgmMode!=='off') startDrone();
       if(!bgmTimer && bgmMode!=='off') scheduleBgmStep();
     }
@@ -287,6 +348,10 @@ export(전역): const Sound
     function setMuted(v){
       muted = v;
       if(master) master.gain.value = muted ? 0 : 1;
+      if(bgmAudioEl){
+        if(muted) bgmAudioEl.pause();
+        else { bgmAudioEl.volume = 0.5; bgmAudioEl.play().catch(()=>{}); }
+      }
       try{ if(window.localStorage) window.localStorage.setItem('lc_muted', muted?'1':'0'); }catch(e){}
     }
     function toggleMuted(){ setMuted(!muted); return muted; }
