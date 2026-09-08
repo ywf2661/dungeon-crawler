@@ -441,7 +441,14 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   // 쪽과 같은 전투에서 중복으로 겹쳐 뜨는 것을 막기 위한 신호용).
   // 시간술사(mage_time)는 "회랑의 ○○" 몬스터를 개인적 인연이 아니라 "빌린
   // 힘의 동질감"으로 인식한다 — 회랑의 기사와 같은 카운터/확률을 공유한다.
-  const TIME_MAGE_CORRIDOR_LINE = ['...그 기운, 익숙하군.', '너도, 빌린 것이었나.'];
+  // 사용자 요청 — 런당 최대 2회 발동인데 대사가 하나뿐이면 똑같은 말을
+  // 두 번 듣게 되어 어색함. 첫 발동/두 번째 발동에 각각 다른 대사가
+  // 나오도록 2종으로 분리(무작위가 아니라 순서 고정 — 같은 대사가 연속
+  // 두 번 나오는 걸 원천 차단).
+  const TIME_MAGE_CORRIDOR_LINES = [
+    ['...그 기운, 익숙하군.', '너도, 빌린 것이었나.'],
+    ['...너에게서도 그 냄새가 난다.', '빌린 시간은, 언젠가 반드시 돌려줘야 하는 법인데.'],
+  ];
   function maybeShowCorridorEncounterDialogue(){
     const isKnight = player.specialization === 'paladin_knight';
     const isTimeMage = player.specialization === 'mage_time';
@@ -458,7 +465,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         lines = CORRIDOR_NPC_LINES[enemy.type];
       }
     } else {
-      lines = TIME_MAGE_CORRIDOR_LINE;
+      lines = TIME_MAGE_CORRIDOR_LINES[player.corridorDialogueCount||0] || TIME_MAGE_CORRIDOR_LINES[TIME_MAGE_CORRIDOR_LINES.length-1];
     }
     if(Math.random() >= 0.5) return false; // 만날 때마다 50%만 -> 런 전체에서 자연스럽게 1~2회로 수렴
     player.corridorDialogueCount = (player.corridorDialogueCount||0) + 1;
