@@ -31,7 +31,7 @@ export(전역): showMysteryEvent
       showAlchemistBagEvent, showBloodAltarEvent, showMadAlchemistEvent, showBloodyChallengerEvent,
       showSuspiciousWeaponEvent, showCorpsePileEvent, showStrangeCandleEvent, showDemonContractEvent,
       showLostWalletEvent, showMysteriousMageEvent, showInjuredAdventurerEvent, showSealedDoorEvent,
-      showBloodThirstyStatueEvent, showDevilsDiceEvent,
+      showBloodThirstyStatueEvent, showDevilsDiceEvent, showFrozenClockmakerEvent,
     ];
     // "그때 그 모험가"(재회)는 이전에 부상당한 모험가를 도와준 적이 있을 때만
     // 이벤트 풀에 포함된다 — 안 만난 적 없는 상태에서 재회가 뜨면 앞뒤가 안
@@ -1010,6 +1010,60 @@ export(전역): showMysteryEvent
     });
     panel.querySelector('#me-skip').addEventListener('click', ()=>{
       addLog('주사위를 거절하고 떠났다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 26) 멈춘 시계공방 — 아이온(시간의 마녀) 테마 전용. 마녀의 시계 보유 시에만
+  // 4번째 선택지가 나타난다(기존 균등 확률 이벤트 풀에 그대로 합류).
+  function showFrozenClockmakerEvent(){
+    const hasClock = (player.relics||[]).includes('relic_witchclock');
+    const {overlay, panel} = eventOverlay('멈춘 시계공방',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        낡은 시계공방이 있다. 벽에 걸린 시계들은 전부 같은 시각에 멈춰 있다. 작업대 위엔, 완성되다 만 회중시계 하나가 놓여 있다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-inspect">시계를 살펴본다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-take">시계를 챙긴다 (골드 획득, 대신 다음 전투에서 저주)</button>
+        ${hasClock ? '<button class="btn" id="me-clock">품 안의 시계를 꺼내본다</button>' : ''}
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    panel.querySelector('#me-inspect').addEventListener('click', ()=>{
+      const expGain = 10 + depth*3;
+      const leveled = grantExp(expGain);
+      renderStatus();
+      addLog(`멈춘 시계들을 살펴봤다. 아무 일도 일어나지 않았다. (EXP +${expGain})`, 'gold');
+      saveGame();
+      overlay.remove();
+      if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+      renderExplore([]);
+    });
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      const g = 20 + Math.floor(Math.random()*20) + depth*3;
+      player.gold += g;
+      applyNextBattleCurse();
+      renderStatus();
+      addLog(`미완성 회중시계를 챙겼다. 골드 +${g}G. 불길한 기운이 스며든다(다음 전투 받는 피해 +15%).`, 'warn');
+      saveGame();
+      closeMysteryEvent(overlay);
+    });
+    if(hasClock){
+      panel.querySelector('#me-clock').addEventListener('click', ()=>{
+        overlay.remove();
+        showDialogueSequence(
+          ['품 안의 시계가 미세하게 떨린다.', '작업대 위 미완성 시계가, 그 떨림에 응답하듯 희미하게 빛난다.'],
+          {onDone: ()=>{
+            const msg = grantRareOrGold(25);
+            renderStatus();
+            addLog(`두 시계가 서로에게 반응했다. ${msg}`, 'gold');
+            saveGame();
+            renderExplore([]);
+          }}
+        );
+      });
+    }
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('시계공방을 지나쳤다.');
       closeMysteryEvent(overlay);
     });
   }
