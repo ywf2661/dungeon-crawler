@@ -27,7 +27,7 @@ export(전역): showMysteryEvent
   function showMysteryEvent(){
     const handlers = [
       showAltarEvent, showSpringEvent, showCoffinEvent, showMerchantEvent, showTrainingEvent, showMemoryEvent,
-      showObservationDoorsEvent, showCurseEchoEvent, showShadowDuelEvent, showOldLibraryEvent, showMapFragmentEvent,
+      showCurseEchoEvent, showShadowDuelEvent, showOldLibraryEvent, showMapFragmentEvent,
       showAlchemistBagEvent, showBloodAltarEvent, showMadAlchemistEvent, showBloodyChallengerEvent,
       showSuspiciousWeaponEvent, showCorpsePileEvent, showStrangeCandleEvent, showDemonContractEvent,
       showLostWalletEvent, showMysteriousMageEvent, showInjuredAdventurerEvent, showSealedDoorEvent,
@@ -267,38 +267,6 @@ export(전역): showMysteryEvent
   // 7) 두 개의 문 (A안 — "관찰"형 이벤트). 힌트-결과 연결이 매번 고정돼 있어
   // (달콤한 냄새=보상, 서늘한 바람=매복), 순수 운이 아니라 "감으로 고르는"
   // 재미를 준다. 어느 문이 왼쪽/오른쪽에 배정될지만 매번 무작위다.
-  function showObservationDoorsEvent(){
-    const hints = [
-      {key:'sweet', text:'문틈으로 달콤한 냄새가 희미하게 새어 나온다.'},
-      {key:'cold', text:'문틈으로 서늘한 바람이 새어 나온다.'},
-    ];
-    const shuffled = Math.random()<0.5 ? [hints[0],hints[1]] : [hints[1],hints[0]];
-    const {overlay, panel} = eventOverlay('두 개의 문',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        회랑이 갈라지며 낡은 문 두 개가 나타났다. 문틀에는 한때 정교했을 조각의 흔적만 희미하게 남아 있다. 어느 쪽이든 하나만 열 수 있다.
-      </p>`,
-      `<div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="btn" id="me-left" style="text-align:left; height:auto; padding:12px 14px; white-space:normal;">왼쪽 문 — ${shuffled[0].text}</button>
-        <button class="btn" id="me-right" style="text-align:left; height:auto; padding:12px 14px; white-space:normal;">오른쪽 문 — ${shuffled[1].text}</button>
-      </div>`);
-    function openDoor(hintKey){
-      overlay.remove();
-      if(hintKey==='sweet'){
-        const g = 25 + Math.floor(Math.random()*20) + depth*3;
-        player.gold += g;
-        renderStatus();
-        addLog(`문 너머에서 달콤한 향의 정체 — 숨겨진 보물이었다! (골드 +${g}G)`, 'gold');
-        saveGame();
-        renderExplore([]);
-      } else {
-        addLog('서늘한 바람의 정체는 매복이었다!', 'warn');
-        setTimeout(()=>startBattle(false), 350);
-      }
-    }
-    panel.querySelector('#me-left').addEventListener('click', ()=> openDoor(shuffled[0].key));
-    panel.querySelector('#me-right').addEventListener('click', ()=> openDoor(shuffled[1].key));
-  }
-
   // 8) 속삭이는 저주의 흔적 (B안 — 저주와 엮이는 이벤트). 짊어진 저주 개수가
   // 많을수록 공명시켰을 때의 보상이 커진다. 저주가 하나도 없으면 공명 자체가
   // 안 통해 밋밋한 결과만 나온다(그래도 손해는 없음).
