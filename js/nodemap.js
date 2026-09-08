@@ -157,6 +157,15 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     player.nodeRow = -1;
     player.nodeCurrentId = null;
     player.nodeVisited = [];
+    // 사용자 요청 — 고요한 제단(진 최종보스 직전 특수 구간) 진입 시 HP/MP를
+    // 가득 채운다. 4구간 보스를 갓 잡고 오든, admin 테스트로 곧장 이
+    // 지점부터 시작하든 enterNodeMapTier()를 반드시 거치므로 여기 한 곳만
+    // 처리하면 충분하다. saveGame() 이전에 반영해 즉시 저장되게 한다.
+    if(player.tierIndex===5){
+      player.hp = player.maxhp;
+      player.mp = player.maxmp;
+      renderStatus();
+    }
     saveGame();
     renderExplore(['새로운 구간에 들어섰다. 나아갈 길을 고를 수 있다.']);
     // 긴박한 BGM(사용자 요청) — showScreen('explore')는 이미 그 이전(보스 보상
