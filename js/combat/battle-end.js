@@ -401,7 +401,18 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 진엔딩(트루엔딩)은 tone:'grand'로 페이드가 더 느리고 장엄하며, 원혼들의
     // 목소리 대사 다음에 타이틀 자체를 마지막 대사로 한 번 더 짚어준다.
     if(isTrueEnding){
-      const lines = [
+      const isWitch = enemy && enemy.type==='timewitch';
+      const lines = isWitch ? [
+        '시간의 마녀가 무너져 내리는 순간, 손에 쥐고 있던 낡은 시계가 바닥에 떨어져 산산조각 난다.',
+        '베일 아래로 언뜻 드러난 눈가에는, 분노도 원한도 아닌 — 아주 오래 참아온 눈물의 흔적이 있었다.',
+        '멈춰 있던 회랑의 시간이, 그제야 다시 흐르기 시작한다.',
+        `오랫동안 붙잡혀 있던 이름 없는 백성들의 원혼이, 하나둘 빛으로 떠올라 ${player.name}의 곁을 스쳐 지나간다.`,
+        '"...고맙다." 그녀의 목소리인지, 그들의 목소리인지 알 수 없는 무언가가 나직이 들려온다.',
+        '"이제야, 놓아줄 수 있게 되었다."',
+        '돌기둥이 하나씩 허물어지고, 시간의 파편들이 빛무리와 함께 흩어진다.',
+        `${player.name}(${jobLabel})은(는) 다시 흐르기 시작한 회랑을 뒤로하고, 마침내 지상으로 향하는 계단을 오른다.`,
+        '"회랑, 마침내 시간을 되찾다."',
+      ] : [
         '회랑의 시조가 무너져 내리는 순간, 낡은 왕관이 힘없이 굴러떨어진다. 그 얼굴에 서려 있던 것은, 분노도 원한도 아닌 — 오래된 슬픔이었다.',
         '돌벽 틈새로 스며들던 서늘한 기운이 거짓말처럼 걷힌다.',
         `오랫동안 이 곳을 넘지 못한 채 쓰러져간 이름 없는 용사들의 원혼이, 하나둘 빛으로 떠올라 ${player.name}의 곁을 스쳐 지나간다.`,
@@ -413,10 +424,11 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       ];
       showDialogueSequence(lines, {tone:'grand', onDone: ()=>{
         showScreen('ending');
-        document.getElementById('ending-title').textContent = '회랑, 마침내 안식에 들다';
-        document.getElementById('ending-summary').textContent =
-          `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 그 무엇보다 값진, 단 한 번도 무릎 꿇지 않았다는 증명을 품고서. `
-          + `회랑의 문은 이제 열리지 않는다. 지킬 것도, 가둘 것도 남지 않았기 때문이다.`;
+        document.getElementById('ending-title').textContent = isWitch ? '회랑, 마침내 시간을 되찾다' : '회랑, 마침내 안식에 들다';
+        document.getElementById('ending-summary').textContent = isWitch
+          ? `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 다시 흐르기 시작한 시간을, 가장 먼저 두 눈으로 지켜보았다는 증명을 품고서.`
+          : `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 그 무엇보다 값진, 단 한 번도 무릎 꿇지 않았다는 증명을 품고서. `
+            + `회랑의 문은 이제 열리지 않는다. 지킬 것도, 가둘 것도 남지 않았기 때문이다.`;
       }});
     } else {
       const bossJob = (enemy && enemy.finalJobId && JOBS.find(j=>j.id===enemy.finalJobId)) || null;

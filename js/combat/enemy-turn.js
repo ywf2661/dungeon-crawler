@@ -102,8 +102,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     if(!enemy || !enemy.isBoss || battleOver) return;
     if(!(enemy.isFinal || enemy.isTrueFinal)) return;
     if(enemy.lastStandTriggered || enemy.hp<=0) return;
-    const steps = enemy.isTrueFinal ? ENRAGE_STEPS_TRUE : ENRAGE_STEPS_FINAL;
-    if((enemy.phase||0) < steps.length) return; // 아직 부활 카드가 남아있으면 최후의 발악 아님
+    const steps = getEnrageSteps(enemy);
     if(enemy.hp > enemy.maxhp*0.3) return;
     enemy.lastStandTriggered = true;
     enemy.lastStandActive = true;
@@ -543,6 +542,22 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       else if(skillKey==='ironCrush'){ dmg = Math.round(effAtk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
       else if(skillKey==='wraithWail'){ dmg = Math.round(effAtk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
       else if(skillKey==='eliteFerocity'){ dmg = Math.round(effAtk*2.1); label = `${enemy.name}이(가) 정예의 위압적인 기세로 짓쳐든다!`; }
+      // 시간의 마녀(아이온) 전용 — 매 턴(스킬 종류 무관) "시간 파편" 스택이
+      // 쌓인다. 플레이어의 시간술사 궁극기(mageTimeParadox)와 완전히 같은
+      // 스택 공식(최대5, 1.0+0.6×n)을 미러링한다.
+      if(enemy.type==='timewitch'){
+        battleFlags.aionTimeStacks = Math.min(5, (battleFlags.aionTimeStacks||0)+1);
+      }
+      if(skillKey==='aionHaste'){
+        dmg = Math.round(effAtk*1.9);
+        label = `${enemy.name}이(가) 시간을 압축해 순식간에 거리를 좁힌다!`;
+      }
+      else if(skillKey==='aionParadox'){
+        const stacks = battleFlags.aionTimeStacks||0;
+        dmg = Math.round(effAtk*(1.0 + stacks*0.6));
+        label = `무너져 있던 시간이 한꺼번에 쏟아진다! (누적 ${stacks})`;
+        battleFlags.aionTimeStacks = 0; // 소비
+      }
       // ---------- 신규 4종 보스 전용 스킬 ----------
       // 각 스킬마다 playBanner()로 서로 다른 시각 효과를 준다(사용자 요청 —
       // "유물 발동처럼 스킬마다 이펙트가 달랐으면"). 배너 클래스별 색상/글로우는

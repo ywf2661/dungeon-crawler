@@ -86,6 +86,9 @@ export(전역): heroBossSvg, svgMonster
     // 웅크린 채 플레이어를 내려다보는 구도). 처음 받은 이미지는 화풍이 달라서
     // 다른 몬스터들과 맞는 화풍(굵은 검은 윤곽선)으로 재교체됨.
     progenitor: 'images/monsters/progenitor.png',
+    // 진 최종보스 "시간의 마녀"(아이온) — 마녀의 시계 보유 시 회랑의 시조
+    // 대신 등장(combat/battle-setup.js의 pickEnemy() 참고).
+    timewitch: 'images/monsters/timewitch.png',
   };
 
   // 회랑의 시조 전용 스킬 예고/임팩트 포즈 3장(평상시/예고/내려찍기) 경로.
@@ -96,6 +99,18 @@ export(전역): heroBossSvg, svgMonster
     idle: 'images/monsters/progenitor.png',
     telegraph: 'images/monsters/progenitor_telegraph.png',
     slam: 'images/monsters/progenitor_slam.png',
+  };
+  // 시간의 마녀 전용 포즈 3장 — 위와 동일한 구조.
+  const TIMEWITCH_POSE_IMG = {
+    idle: 'images/monsters/timewitch.png',
+    telegraph: 'images/monsters/timewitch_telegraph.png',
+    slam: 'images/monsters/timewitch_slam.png',
+  };
+  // combat/battle-fx.js의 setBossPoseImage()가 enemy.type으로 어느 포즈셋을
+  // 쓸지 고를 때 참조하는 매핑(진 최종보스 종류가 늘어나도 여기만 추가하면 됨).
+  const BOSS_POSE_IMG_BY_TYPE = {
+    progenitor: PROGENITOR_POSE_IMG,
+    timewitch: TIMEWITCH_POSE_IMG,
   };
 
   // PNG 몬스터 그림 하단의 투명 여백을 자동으로 감지해 보정한다(사용자 피드백
@@ -300,6 +315,13 @@ export(전역): heroBossSvg, svgMonster
          <circle cx="70" cy="14" r="4" fill="#fff8e0" filter="url(#eg2)"/>
          <rect x="24" y="46" width="6" height="56" rx="2" fill="#e6c34a" opacity="0.9" transform="rotate(-14 24 46)"/>
          <rect x="110" y="46" width="6" height="56" rx="2" fill="#e6c34a" opacity="0.9" transform="rotate(14 110 46)"/>`);
+      // 진 최종보스 "시간의 마녀" 이미지 로딩 실패 시 폴백(사용자 요청 —
+      // 보라색 후광 컨셉과 맞춰 왕관 대신 부서진 톱니 고리 실루엣).
+      case 'timewitch': return heroBossSvg({c1:'#1a1420', c2:'#0d0a12', accent:'#b48ce6', eye:'#2a2030'},
+        `<circle cx="70" cy="20" r="16" fill="none" stroke="#9c7ad1" stroke-width="3" opacity="0.85" filter="url(#eg2)"/>
+         <circle cx="70" cy="20" r="6" fill="#b48ce6" filter="url(#eg2)"/>
+         <rect x="24" y="46" width="6" height="56" rx="2" fill="#7a5a9c" opacity="0.9" transform="rotate(-14 24 46)"/>
+         <rect x="110" y="46" width="6" height="56" rx="2" fill="#7a5a9c" opacity="0.9" transform="rotate(14 110 46)"/>`);
       case 'bat': return `<svg viewBox="0 0 120 120">${glow}
         <path d="M60 50 L20 30 L35 55 L10 60 L35 68 L20 90 L60 72 Z" fill="#241d17" opacity="0.92"/>
         <path d="M60 50 L100 30 L85 55 L110 60 L85 68 L100 90 L60 72 Z" fill="#241d17" opacity="0.92"/>

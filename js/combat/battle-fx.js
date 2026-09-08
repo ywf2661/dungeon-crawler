@@ -115,18 +115,19 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     bar.classList.remove('player-hit'); void bar.offsetWidth; bar.classList.add('player-hit');
   }
 
-  // 회랑의 시조 전용 스킬 예고/임팩트 포즈 전환(사용자 요청 — 손을 들어
-  // 힘을 모았다가 손바닥으로 내려찍는 연출). #bt-stage 안의 <img> src만
-  // 바꿔치기한다(innerHTML을 통째로 다시 그리면 hit/dying 등 클래스 상태가
-  // 꼬일 수 있어 src만 교체하는 쪽이 안전 — battle-setup.js가 전투 시작 때
-  // 딱 한 번만 innerHTML을 채우는 것과 같은 이유). monster-visuals.js의
-  // PROGENITOR_POSE_IMG를 사용한다. 다른 몬스터는 pose별 그림이 아예 없으므로
-  // enemy.type이 'progenitor'가 아니면 즉시 아무 일도 하지 않는다 — 매 턴
-  // 무조건 호출해도 안전(enemy-turn.js 참고).
+  // 회랑의 시조/시간의 마녀 등 "포즈 3장(평상시/예고/내려찍기)"을 가진 진
+  // 최종보스 전용 스킬 연출 전환(사용자 요청 — 손을 들어 힘을 모았다가
+  // 내려찍는 연출). #bt-stage 안의 <img> src만 바꿔치기한다(innerHTML을
+  // 통째로 다시 그리면 hit/dying 등 클래스 상태가 꼬일 수 있어 src만 교체하는
+  // 쪽이 안전). monster-visuals.js의 BOSS_POSE_IMG_BY_TYPE(enemy.type별
+  // 포즈셋 매핑)을 사용한다. 포즈셋이 없는 몬스터는 즉시 아무 일도 하지
+  // 않는다 — 매 턴 무조건 호출해도 안전(enemy-turn.js 참고).
   function setBossPoseImage(poseKey){
-    if(!enemy || enemy.type!=='progenitor') return;
-    if(typeof PROGENITOR_POSE_IMG==='undefined') return;
-    const src = PROGENITOR_POSE_IMG[poseKey] || PROGENITOR_POSE_IMG.idle;
+    if(!enemy) return;
+    if(typeof BOSS_POSE_IMG_BY_TYPE==='undefined') return;
+    const poseSet = BOSS_POSE_IMG_BY_TYPE[enemy.type];
+    if(!poseSet) return;
+    const src = poseSet[poseKey] || poseSet.idle;
     const img = document.querySelector('#bt-stage img');
     if(!img || img.src.endsWith(src)) return;
     img.src = src;

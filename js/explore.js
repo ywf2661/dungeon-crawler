@@ -243,18 +243,19 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       Object.keys(CONSUMABLE_CAPS).forEach(key=>{ player.inv[key] = CONSUMABLE_CAPS[key]; });
     }
 
-    // "고요한 제단"(tierIndex===5) — 준비 노드(1번)는 이미 통과한 것으로
-    // 두고, 나아가면 곧바로 보스 노드(진 최종보스)만 남긴다.
+    // "고요한 제단"(tierIndex===5) 구간으로 설정한다. 사용자 요청 — 예전엔
+    // 준비 노드(1번)를 이미 통과한 것으로 두고 보스 노드만 남겨서 "마을에서
+    // 나아가면 곧바로 진 최종보스"였는데, 이제는 그 준비 노드부터 정상적으로
+    // 밟도록 "한 마을 전"(고요한 제단 진입 직전 마을)에서 시작한다. nodeMap을
+    // 미리 만들지 않고 비워두면, explore.js의 onAdvance()가 "마을을 나설 때
+    // 지도가 없으면 새로 생성"하는 기존 로직을 그대로 타서 nodemap.js의
+    // enterNodeMapTier()가 tierIndex===5를 보고 고요한 제단 지도를 정상
+    // 생성해준다(별도 분기 불필요).
     player.tierIndex = 5;
-    player.nodeMap = generateSilentAltarMap(5);
-    player.nodeRow = 0;
-    player.nodeCurrentId = player.nodeMap[0][0].id;
-    player.nodeVisited = [player.nodeCurrentId];
-    // 사용자 요청 — "최종보스 노드맵 입장 직전, 마을에서" 시작하도록 변경.
-    // town=true로 두되 nodeMap은 미리 만들어둔 채로 시작하면, explore.js의
-    // onAdvance()가 "마을을 나설 때 지도가 없으면 새로 생성, 있으면 그대로
-    // 재사용"하는 기존 로직을 그대로 타서 별도 분기가 필요 없다 — 마을에서
-    // "나아가기"를 누르는 순간 곧바로 이 지도(진 최종보스 직전)로 들어간다.
+    player.nodeMap = null;
+    player.nodeRow = -1;
+    player.nodeCurrentId = null;
+    player.nodeVisited = [];
     town = true;
     depth = 55; // tierIndex 5 구간(가상 층수 50~60)의 대략치 — 전투 스케일링용
     // 강화석도 넉넉하게(사용자 요청 — 에픽 각인 테스트용).
@@ -265,7 +266,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     showScreen('explore');
     renderStatus();
     const relicMsg = opts.randomRelics ? '무작위 유물 지급' : '회랑자의 칼날/칼자루 장착';
-    renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 강화석 100개 · ${relicMsg} 완료. 마을에서 "나아가기"를 누르면 곧바로 진 최종보스 직전 구간으로 들어간다.`]);
+    renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 강화석 100개 · ${relicMsg} 완료. 마을에서 "나아가기"를 누르면 고요한 제단 구간(진 최종보스 직전)에 들어선다.`]);
     saveGame();
   }
 
