@@ -189,7 +189,11 @@ export(전역): showOriginQuiz
         const opt = s.playerOptions.find(o=>o.key===btn.dataset.key);
         body.innerHTML = '';
         showDialogueSequence([{text:opt.text, title:who}], {onDone:()=>{
-          showDialogueSequence(s.after, {onDone:applyOriginAndStart});
+          showDialogueSequence(s.after, {onDone:()=>{
+            // 사용자 요청 — 동기와 무관하게 마지막에 공통으로 한 번, 문지기의
+            // 정체를 직접 밝히지 않는 선에서 아주 짧은 복선만 심는다.
+            showDialogueSequence(['문지기가 품속에서 낡은 회중시계를 슬쩍 꺼내 들여다본다. 시간을 재는 것도 같고, 무언가를 기다리는 것도 같다. 이내 시계를 다시 품속에 넣으며 그가 말한다.\n"…들어가라. 문은 닫히지 않는다."'], {title:'문지기', onDone:applyOriginAndStart});
+          }});
         }});
       });
     });
