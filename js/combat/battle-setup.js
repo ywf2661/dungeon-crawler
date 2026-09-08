@@ -547,9 +547,45 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return true;
   }
 
-  // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 거울 보스 > 아이온 공명 >
-  // 회랑의 기사/시간술사 > 유품 착용자 > 엿듣기 > 마녀의 시계.
+  // 아이온(시간의 마녀) 본체와의 조우 — 회랑의 기사(칼리버 X 단계별) 또는
+  // 아코스의 유품 착용자가 마녀와 직접 마주하는, 서사적으로 가장 무거운
+  // 순간. isTrueFinal 전투는 런당 최대 1회뿐이라 빈도 조절이 필요 없다.
+  // maybeShowSpecialEncounterDialogue 체인 최우선(다른 어떤 대사보다 먼저).
+  const AION_KNIGHT_LINES_BY_STAGE = {
+    caliberx_1: [
+      '"...아코스?" 그녀의 목소리가 떨린다. "정말, 돌아온 건가..."',
+      '하지만 말이 끝나기도 전에, 표정이 다시 차갑게 굳는다.',
+      '"...아니. 넌 그저 그의 것을 쥐고 있을 뿐이지."',
+    ],
+    caliberx_2: [
+      '"...그 검. 아직도 그 이름을 기억하고 있나."',
+      '"...상관없다. 어차피 곧, 아무것도 남지 않을 테니."',
+    ],
+    caliberx_3: [
+      '그녀의 시선이 검에 잠시 머물렀다가, 이내 아무 일도 없었다는 듯 지나간다.',
+      '"...이제는, 그마저도 남지 않았군."',
+    ],
+  };
+  const AION_KEEPSAKE_LINE = ['그녀의 시선이 그대의 손끝에 멈춘다. 아주 오랫동안.', '"...그건 왜 네가 가지고 있지." 목소리에 억누른 무언가가 스며 있다.'];
+  function maybeShowAionEncounterDialogue(isTrueFinal){
+    if(!isTrueFinal || enemy.type !== 'timewitch') return false;
+    if(player.specialization === 'paladin_knight'){
+      const stage = (player.equipment && player.equipment.weapon) || 'caliberx_1';
+      const lines = AION_KNIGHT_LINES_BY_STAGE[stage] || AION_KNIGHT_LINES_BY_STAGE.caliberx_1;
+      showDialogueSequence(lines, {title:'시간의 마녀', tone:'grand'});
+      return true;
+    }
+    if(player.equipment && player.equipment.accessory === 'r_achoskeepsake'){
+      showDialogueSequence(AION_KEEPSAKE_LINE, {title:'시간의 마녀', tone:'grand'});
+      return true;
+    }
+    return false;
+  }
+
+  // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 아이온 조우(최우선) >
+  // 거울 보스 > 아이온 공명 > 회랑의 기사/시간술사 > 유품 착용자 > 엿듣기 > 마녀의 시계.
   function maybeShowSpecialEncounterDialogue(isBoss, isFinal, isTrueFinal){
+    if(maybeShowAionEncounterDialogue(isTrueFinal)) return;
     if(maybeShowMirrorBossDialogue(isFinal, isTrueFinal)) return;
     if(maybeShowAionResonanceDialogue()) return;
     if(maybeShowCorridorEncounterDialogue()) return;
