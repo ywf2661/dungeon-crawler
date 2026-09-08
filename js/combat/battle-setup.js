@@ -416,18 +416,27 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
 
   // 회랑의 기사 전용 대사. 실제로 대사를 띄웠으면 true를 반환한다(마녀의 시계
   // 쪽과 같은 전투에서 중복으로 겹쳐 뜨는 것을 막기 위한 신호용).
+  // 시간술사(mage_time)는 "회랑의 ○○" 몬스터를 개인적 인연이 아니라 "빌린
+  // 힘의 동질감"으로 인식한다 — 회랑의 기사와 같은 카운터/확률을 공유한다.
+  const TIME_MAGE_CORRIDOR_LINE = ['...그 기운, 익숙하군.', '너도, 빌린 것이었나.'];
   function maybeShowCorridorEncounterDialogue(){
-    if(player.specialization !== 'paladin_knight') return false;
+    const isKnight = player.specialization === 'paladin_knight';
+    const isTimeMage = player.specialization === 'mage_time';
+    if(!isKnight && !isTimeMage) return false;
     if((player.corridorDialogueCount||0) >= 2) return false;
-    let lines = null;
-    let displayName = (MONSTERS.find(m=>m.type===enemy.type)||{}).name || '';
-    if(enemy.type === 'ogre'){
-      const stage = (player.equipment && player.equipment.weapon) || 'caliberx_1';
-      lines = OGRE_KNIGHT_LINES_BY_STAGE[stage] || OGRE_KNIGHT_LINES_BY_STAGE.caliberx_1;
+    const isCorridorMonster = enemy.type==='ogre' || !!CORRIDOR_NPC_LINES[enemy.type];
+    if(!isCorridorMonster) return false;
+    let lines, displayName = (MONSTERS.find(m=>m.type===enemy.type)||{}).name || '';
+    if(isKnight){
+      if(enemy.type === 'ogre'){
+        const stage = (player.equipment && player.equipment.weapon) || 'caliberx_1';
+        lines = OGRE_KNIGHT_LINES_BY_STAGE[stage] || OGRE_KNIGHT_LINES_BY_STAGE.caliberx_1;
+      } else {
+        lines = CORRIDOR_NPC_LINES[enemy.type];
+      }
     } else {
-      lines = CORRIDOR_NPC_LINES[enemy.type];
+      lines = TIME_MAGE_CORRIDOR_LINE;
     }
-    if(!lines) return false;
     if(Math.random() >= 0.5) return false; // 만날 때마다 50%만 -> 런 전체에서 자연스럽게 1~2회로 수렴
     player.corridorDialogueCount = (player.corridorDialogueCount||0) + 1;
     saveGame();
@@ -461,9 +470,27 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     showDialogueSequence(isRegularBoss ? WITCH_CLOCK_LINES.boss : WITCH_CLOCK_LINES.corridor, {title:'마녀의 시계'});
   }
 
-  // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 거울 보스 > 회랑의 기사 > 마녀의 시계.
+  // 시간술사 + 마녀의 시계 동시 보유 — 직업 상호작용과 유물 상호작용이
+  // 겹치는 유일한 조합이라, 둘 중 하나 대신 별도의 3번째 대사를 준다.
+  // 가장 특별한 조합이므로 런당 1회만.
+  const AION_RESONANCE_LINE = ['시계 초침과 그대의 마력이, 순간 같은 박자로 뛴다.', '마치 둘 다, 같은 곳에서 흘러나온 것처럼.'];
+  function maybeShowAionResonanceDialogue(){
+    if(player.specialization !== 'mage_time') return false;
+    if(!(player.relics||[]).includes('relic_witchclock')) return false;
+    const isCorridorMonster = enemy.type==='ogre' || !!CORRIDOR_NPC_LINES[enemy.type];
+    if(!isCorridorMonster) return false;
+    if((player.aionResonanceDialogueCount||0) >= 1) return false;
+    if(Math.random() >= 0.5) return false;
+    player.aionResonanceDialogueCount = (player.aionResonanceDialogueCount||0) + 1;
+    saveGame();
+    showDialogueSequence(AION_RESONANCE_LINE, {title:'???'});
+    return true;
+  }
+
+  // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 거울 보스 > 아이온 공명 > 회랑의 기사/시간술사 > 마녀의 시계.
   function maybeShowSpecialEncounterDialogue(isBoss, isFinal, isTrueFinal){
     if(maybeShowMirrorBossDialogue(isFinal, isTrueFinal)) return;
+    if(maybeShowAionResonanceDialogue()) return;
     if(maybeShowCorridorEncounterDialogue()) return;
     maybeShowWitchClockDialogue(isBoss, isFinal);
   }
