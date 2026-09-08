@@ -289,13 +289,17 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     if(id==='explore'){
       scheduleJobAdvancementCheck();
       // 사용자 요청 — "고요한 제단"(tierIndex===5, 진짜 최종보스 직전 특수 구간)에
-      // 있는 동안은 explore 화면이라도 긴박한 BGM(dread)을 쓴다.
+      // 있는 동안은 explore 화면이라도 긴박한 BGM(dread)을 쓴다. 마을이면
+      // 'explore'(음원 준비 전까지는 기존 합성 BGM), 던전이면 실제 음원
+      // 플레이리스트(dungeon)를 쓴다.
       const inFinalTier = player && player.tierIndex===5 && !player.endingSeen;
-      Sound.setBgmMode(inFinalTier ? 'dread' : 'explore');
+      Sound.setBgmMode(inFinalTier ? 'dread' : (town ? 'explore' : 'dungeon'));
     } else if(id==='battle'){
-      // 사용자 요청 — 최종보스/진최종보스 전투는 훨씬 긴박한 전용 BGM(finalboss)을 쓴다.
-      const isFinalBattle = !!(enemy && (enemy.isFinal || enemy.isTrueFinal));
-      Sound.setBgmMode(isFinalBattle ? 'finalboss' : 'battle');
+      // 사용자 요청 — 일반 최종보스와 진 최종보스(아이온/시조)는 서로 다른
+      // 전용 음원을 쓴다. 일반 전투는 음원 준비 전까지 기존 합성 BGM 유지.
+      const isTrueFinalBattle = !!(enemy && enemy.isTrueFinal);
+      const isFinalBattle = !!(enemy && enemy.isFinal);
+      Sound.setBgmMode(isTrueFinalBattle ? 'truefinalboss' : (isFinalBattle ? 'finalboss' : 'battle'));
     } else if(id==='title' || id==='gameover'){
       Sound.setBgmMode('explore');
     }
