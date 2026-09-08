@@ -243,21 +243,20 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       Object.keys(CONSUMABLE_CAPS).forEach(key=>{ player.inv[key] = CONSUMABLE_CAPS[key]; });
     }
 
-    // "고요한 제단"(tierIndex===5) 구간으로 설정한다. 사용자 요청 — 예전엔
-    // 준비 노드(1번)를 이미 통과한 것으로 두고 보스 노드만 남겨서 "마을에서
-    // 나아가면 곧바로 진 최종보스"였는데, 이제는 그 준비 노드부터 정상적으로
-    // 밟도록 "한 마을 전"(고요한 제단 진입 직전 마을)에서 시작한다. nodeMap을
-    // 미리 만들지 않고 비워두면, explore.js의 onAdvance()가 "마을을 나설 때
-    // 지도가 없으면 새로 생성"하는 기존 로직을 그대로 타서 nodemap.js의
-    // enterNodeMapTier()가 tierIndex===5를 보고 고요한 제단 지도를 정상
-    // 생성해준다(별도 분기 불필요).
-    player.tierIndex = 5;
+    // "고요한 제단"(tierIndex===5) 진입 직전이 아니라, 그보다 한 마을 더 전
+    // (4번째 구간 시작 마을)에서 시작한다(사용자 요청 — admin2/3가 4구간
+    // 노드맵부터 정상적으로 밟아 4구간 보스를 잡고 나서 자연스럽게 5구간
+    // "고요한 제단"으로 이어지도록). tierIndex 증가는 combat/battle-end.js의
+    // 보스 처치 보상 확정 시점(player.tierIndex = nextTier)에서 정상적으로
+    // 일어나므로 여기서 미리 손댈 필요가 없다. nodeMap을 비워두면 앞서와
+    // 동일하게 explore.js의 onAdvance()가 새로 생성해준다.
+    player.tierIndex = 4;
     player.nodeMap = null;
     player.nodeRow = -1;
     player.nodeCurrentId = null;
     player.nodeVisited = [];
     town = true;
-    depth = 55; // tierIndex 5 구간(가상 층수 50~60)의 대략치 — 전투 스케일링용
+    depth = player.tierIndex*10; // 4구간 시작 층수(40) — 전투 스케일링용
     // 강화석도 넉넉하게(사용자 요청 — 에픽 각인 테스트용).
     player.reinforceStones = 100;
 
@@ -266,7 +265,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     showScreen('explore');
     renderStatus();
     const relicMsg = opts.randomRelics ? '무작위 유물 지급' : '회랑자의 칼날/칼자루 장착';
-    renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 강화석 100개 · ${relicMsg} 완료. 마을에서 "나아가기"를 누르면 고요한 제단 구간(진 최종보스 직전)에 들어선다.`]);
+    renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 강화석 100개 · ${relicMsg} 완료. 마을에서 "나아가기"를 누르면 4구간부터 정상적으로 노드맵을 밟는다(4구간 보스 클리어 후 자연스럽게 고요한 제단으로 이어짐).`]);
     saveGame();
   }
 
