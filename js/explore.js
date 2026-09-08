@@ -295,11 +295,18 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       const inFinalTier = player && player.tierIndex===5 && !player.endingSeen;
       Sound.setBgmMode(inFinalTier ? 'dread' : (town ? 'explore' : 'dungeon'));
     } else if(id==='battle'){
-      // 사용자 요청 — 일반 최종보스와 진 최종보스(아이온/시조)는 서로 다른
-      // 전용 음원을 쓴다. 일반 전투는 음원 준비 전까지 기존 합성 BGM 유지.
-      const isTrueFinalBattle = !!(enemy && enemy.isTrueFinal);
-      const isFinalBattle = !!(enemy && enemy.isFinal);
-      Sound.setBgmMode(isTrueFinalBattle ? 'truefinalboss' : (isFinalBattle ? 'finalboss' : 'battle'));
+      // 사용자 요청 — 세 가지를 완전히 분리한다.
+      // 일반 최종보스(finalboss) = "잠식된 OO 용사"
+      // 진 최종보스(truefinalboss) = 회랑의 시조(왕)
+      // 마녀(witchboss) = 마녀의 시계 보유 시 시조 대신 등장하는 시간의 마녀(아이온)
+      const isWitchBattle = !!(enemy && enemy.isTrueFinal && enemy.type==='timewitch');
+      const isTrueFinalBattle = !!(enemy && enemy.isTrueFinal && !isWitchBattle);
+      const isFinalBattle = !!(enemy && enemy.isFinal && !enemy.isTrueFinal);
+      Sound.setBgmMode(
+        isWitchBattle ? 'witchboss' :
+        isTrueFinalBattle ? 'truefinalboss' :
+        isFinalBattle ? 'finalboss' : 'battle'
+      );
     } else if(id==='title' || id==='gameover'){
       Sound.setBgmMode('explore');
     }

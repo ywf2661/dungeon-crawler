@@ -27,8 +27,12 @@ export(전역): const Sound
       dungeon: ['audio/bgm/dungeon1.mp3','audio/bgm/dungeon2.mp3','audio/bgm/dungeon3.mp3','audio/bgm/dungeon4.mp3','audio/bgm/dungeon5.mp3'],
       battle: ['audio/bgm/battle1.mp3','audio/bgm/battle2.mp3','audio/bgm/battle3.mp3','audio/bgm/battle4.mp3','audio/bgm/battle5.mp3'],
       dread: ['audio/bgm/dread.mp3'],
+      // 일반 최종보스 = "잠식된 OO 용사"(직전 플레이어 기록을 물려받는 보스).
       finalboss: ['audio/bgm/finalboss.mp3'],
-      truefinalboss: ['audio/bgm/truefinalboss.mp3','audio/bgm/truefinalboss2.mp3'],
+      // 진 최종보스 = 회랑의 시조(왕) 전용. 마녀(아이온)와는 완전히 별개 트랙.
+      truefinalboss: ['audio/bgm/truefinalboss.mp3'],
+      // 마녀의 시계 보유 시 시조 대신 등장하는 시간의 마녀(아이온) 전용.
+      witchboss: ['audio/bgm/witchboss.mp3'],
     };
     let bgmAudioEl = null, bgmPlaylist = [], bgmPlaylistIdx = 0;
 
