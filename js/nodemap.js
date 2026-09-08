@@ -157,6 +157,10 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     player.nodeRow = -1;
     player.nodeCurrentId = null;
     player.nodeVisited = [];
+    // 사용자 요청 — "이전 노드맵과 다음 노드맵끼리는 곡이 달라야 한다."
+    // 새 노드맵이 실제로 생성되는 이 시점에만 던전 BGM을 강제 재추첨한다
+    // (전투 갔다 돌아오는 것만으로는 곡이 안 바뀌도록 sound.js에서 처리됨).
+    if(typeof Sound!=='undefined' && Sound.rerollDungeonTrack) Sound.rerollDungeonTrack();
     // 사용자 요청 — 고요한 제단(진 최종보스 직전 특수 구간) 진입 시 HP/MP를
     // 가득 채운다. 4구간 보스를 갓 잡고 오든, admin 테스트로 곧장 이
     // 지점부터 시작하든 enterNodeMapTier()를 반드시 거치므로 여기 한 곳만
@@ -170,9 +174,14 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     renderExplore(['새로운 구간에 들어섰다. 나아갈 길을 고를 수 있다.']);
     // 긴박한 BGM(사용자 요청) — showScreen('explore')는 이미 그 이전(보스 보상
     // 선택 전)에 호출되어 있어서 tierIndex 갱신 시점을 놓친다. 여기서 직접
-    // 확정한다(고요한 제단에 들어서는 유일한 지점).
+    // 확정한다(새 노드맵에 들어서는 유일한 지점). 실제로 확인해보니 마을에서
+    // "나아가기"를 눌러 새 노드맵에 들어설 때도 showScreen('explore')가 다시
+    // 호출되지 않아 던전 BGM으로 전환이 안 되는 버그가 있었다 — 고요한 제단만
+    // 처리하던 걸 일반 구간도 함께 처리하도록 수정.
     if(player.tierIndex===5 && !player.endingSeen){
-      Sound.setBgmMode('dread');
+      Sound.setBgmMode('dread', {force:true});
+    } else {
+      Sound.setBgmMode('dungeon', {force:true});
     }
     // 사용자 요청: 새 구간에 들어서면 지도가 출발 지점(맨 위, row 0)부터
     // 보이도록 스크롤을 초기화한다. #node-map-area는 구간이 바뀌어도 DOM

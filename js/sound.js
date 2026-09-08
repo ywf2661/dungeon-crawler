@@ -77,6 +77,19 @@ export(전역): const Sound
       el.currentTime = 0;
       if(!muted) el.play().catch(()=>{});
     }
+    // 사용자 요청 — "이전 노드맵과 다음 노드맵끼리는 곡이 달라야 한다."
+    // nodemap.js의 enterNodeMapTier()(새 노드맵을 실제로 생성하는 유일한
+    // 지점)에서만 호출한다. 전투 갔다 돌아오는 것만으로는 절대 호출되지
+    // 않으므로, 같은 노드맵 안에서는 곡이 유지되고 노드맵이 바뀔 때만
+    // 곡이 바뀐다. 직전 곡과 겹치지 않도록 재추첨한다.
+    function rerollDungeonTrack(){
+      const files = BGM_FILES.dungeon;
+      if(!files || files.length<2) return;
+      const prev = bgmPlaylistIdxByMode.dungeon;
+      let next;
+      do{ next = Math.floor(Math.random()*files.length); }while(next===prev);
+      bgmPlaylistIdxByMode.dungeon = next;
+    }
     function stopBgmAudioEl(){
       if(bgmAudioEl) bgmAudioEl.pause();
       bgmPlaylist = [];
@@ -330,8 +343,9 @@ export(전역): const Sound
       }
       bgmTimer = setTimeout(scheduleBgmStep, interval);
     }
-    function setBgmMode(mode){
-      if(bgmMode === mode) return;
+    function setBgmMode(mode, opts){
+      opts = opts || {};
+      if(bgmMode === mode && !opts.force) return;
       bgmMode = mode;
       const files = BGM_FILES[mode];
       if(files){
@@ -385,7 +399,7 @@ export(전역): const Sound
     function isMuted(){ return muted; }
 
     return {
-      ensureCtx, ensureBgmRunning, setBgmMode,
+      ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
       levelUp, victory, gameOver, statusApply,
       setMuted, toggleMuted, isMuted,
