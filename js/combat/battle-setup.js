@@ -45,7 +45,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   // 알아보고 직접 나선다는 서사(CURRENT_STATUS.md/설계 대화 참고). 시조보다
   // 덜 단단하지만 더 빠른 쪽으로 스탯을 잡았다(HP/DEF 소폭 하향, SPD 대폭 상향).
   const TRUE_FINAL_BOSS_WITCH = {
-    name:'시간의 마녀', type:'timewitch', hp:440, atk:34, def:20, spd:14,
+    name:'시간의 마녀 Aiōn', type:'timewitch', hp:440, atk:34, def:20, spd:14,
     exp:1300, gold:[650,850], skills:['aionHaste','aionParadox'],
   };
   function pickFinalBossJob(){
@@ -562,8 +562,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       '"...상관없다. 어차피 곧, 아무것도 남지 않을 테니."',
     ],
     caliberx_3: [
-      '그녀의 시선이 검에 잠시 머물렀다가, 이내 아무 일도 없었다는 듯 지나간다.',
-      '"...이제는, 그마저도 남지 않았군."',
+      '그녀의 시선이 검에 오래 머문다.',
+      '"...아무것도, 남아있지 않구나."',
+      '한참의 침묵 끝에, 그녀가 나직이 되뇐다.',
+      '"...그래. 처음부터, 없었던 것으로 하자."',
     ],
   };
   const AION_KEEPSAKE_LINE = ['그녀의 시선이 그대의 손끝에 멈춘다. 아주 오랫동안.', '"...그건 왜 네가 가지고 있지." 목소리에 억누른 무언가가 스며 있다.'];
@@ -572,11 +574,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     if(player.specialization === 'paladin_knight'){
       const stage = (player.equipment && player.equipment.weapon) || 'caliberx_1';
       const lines = AION_KNIGHT_LINES_BY_STAGE[stage] || AION_KNIGHT_LINES_BY_STAGE.caliberx_1;
-      showDialogueSequence(lines, {title:'시간의 마녀', tone:'grand'});
+      showDialogueSequence(lines, {title: enemy.name, tone:'grand'});
       return true;
     }
     if(player.equipment && player.equipment.accessory === 'r_achoskeepsake'){
-      showDialogueSequence(AION_KEEPSAKE_LINE, {title:'시간의 마녀', tone:'grand'});
+      showDialogueSequence(AION_KEEPSAKE_LINE, {title: enemy.name, tone:'grand'});
       return true;
     }
     return false;
