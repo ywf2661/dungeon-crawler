@@ -116,9 +116,53 @@ export(전역): const Sound
       return buf;
     }
 
+    // ============ 실제 음원 SFX(사용자 제공) — 합성 SFX와 하이브리드 ============
+    // <audio> 태그(BGM에 쓰는 방식)는 재생 시작 지연이 있어 슬래시 연타
+    // 같은 빠른 중첩 재생에 안 맞는다. 대신 fetch+decodeAudioData로 미리
+    // AudioBuffer로 디코딩해두고, 재생할 때마다 AudioBufferSourceNode를
+    // 새로 만들어 즉시(지연 없이, 겹쳐서도) 재생한다.
+    const SFX_FILES = {
+      slash: 'audio/sfx/slash.wav',
+      hit: 'audio/sfx/hit.wav',
+      coin: 'audio/sfx/coin.wav',
+      potion: 'audio/sfx/potion.wav',
+      heal: 'audio/sfx/magicheal.wav',
+      magic: 'audio/sfx/magicspell.wav',
+      bomb: 'audio/sfx/fireball.wav',
+      levelUp: 'audio/sfx/levelup.wav',
+      clock: 'audio/sfx/clock.wav', // 시간 왜곡/마녀의 시계 추가 행동 전용(새 트리거)
+    };
+    const sfxBuffers = {};
+    function preloadSfx(){
+      const c = ensureCtx(); if(!c) return;
+      Object.keys(SFX_FILES).forEach(name=>{
+        if(sfxBuffers[name]) return;
+        fetch(SFX_FILES[name])
+          .then(r=> r.arrayBuffer())
+          .then(ab=> c.decodeAudioData(ab))
+          .then(buf=>{ sfxBuffers[name] = buf; })
+          .catch(()=>{ /* 로드 실패 시 조용히 무시 — 아래 재생 함수가 합성 SFX로 자동 대체 */ });
+      });
+    }
+    // name에 해당하는 실제 음원이 로드돼 있으면 재생하고 true를 반환한다.
+    // 아직 로딩 전이거나 파일이 없으면 false를 반환 — 호출부가 기존 합성
+    // SFX로 자연스럽게 대체(fallback)하도록 한다.
+    function playSfxBuffer(name){
+      const c = ensureCtx(); if(!c) return false;
+      const buf = sfxBuffers[name];
+      if(!buf) return false;
+      const src = c.createBufferSource();
+      src.buffer = buf;
+      src.connect(sfxGain);
+      src.start(0);
+      return true;
+    }
+
     // ---- 개별 효과음 ----
     function slash(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('slash')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       const src = c.createBufferSource(); src.buffer = noiseBuffer(c, 0.16);
       const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.1;
@@ -132,7 +176,9 @@ export(전역): const Sound
       for(let i=0;i<Math.max(1,n||2);i++) setTimeout(slash, i*130);
     }
     function bomb(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('bomb')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       const osc = c.createOscillator(); osc.type = 'sine';
       osc.frequency.setValueAtTime(140, t); osc.frequency.exponentialRampToValueAtTime(32, t+0.38);
@@ -147,7 +193,9 @@ export(전역): const Sound
       src.start(t); src.stop(t+0.55);
     }
     function magic(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('magic')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       [0, 0.04].forEach((delay, i)=>{
         const osc = c.createOscillator(); osc.type = i===0?'triangle':'sine';
@@ -162,7 +210,9 @@ export(전역): const Sound
       });
     }
     function heal(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('heal')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       [0,0.09,0.18].forEach((delay,i)=>{
         const osc = c.createOscillator(); osc.type = 'sine';
@@ -186,7 +236,9 @@ export(전역): const Sound
       osc.start(t); osc.stop(t+0.2);
     }
     function buff(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('buff')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       const osc = c.createOscillator(); osc.type = 'sawtooth';
       osc.frequency.setValueAtTime(220, t); osc.frequency.exponentialRampToValueAtTime(660, t+0.3);
@@ -196,8 +248,17 @@ export(전역): const Sound
       osc.connect(lp); lp.connect(g); g.connect(sfxGain);
       osc.start(t); osc.stop(t+0.33);
     }
+    // 시간 왜곡/마녀의 시계로 추가 행동이 발동하는 순간 전용(사용자 제공
+    // Clock.wav). 음원이 아직 로딩 전이면 기존 buff() 합성음으로 대체한다.
+    function clockChime(){
+      if(muted) return;
+      if(playSfxBuffer('clock')) return;
+      buff();
+    }
     function hit(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('hit')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       const osc = c.createOscillator(); osc.type='triangle';
       osc.frequency.setValueAtTime(160, t); osc.frequency.exponentialRampToValueAtTime(60, t+0.18);
@@ -214,7 +275,9 @@ export(전역): const Sound
       src.connect(bp); bp.connect(g); g.connect(sfxGain); src.start(t); src.stop(t+0.22);
     }
     function coin(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('coin')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       [0,0.06].forEach((delay,i)=>{
         const osc = c.createOscillator(); osc.type='square';
@@ -233,7 +296,9 @@ export(전역): const Sound
       osc.connect(g); g.connect(sfxGain); osc.start(t); osc.stop(t+0.32);
     }
     function potion(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('potion')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       [0,0.05,0.1].forEach((delay,i)=>{
         const osc = c.createOscillator(); osc.type='sine';
@@ -251,7 +316,9 @@ export(전역): const Sound
       osc.connect(g); g.connect(sfxGain); osc.start(t); osc.stop(t+0.05);
     }
     function levelUp(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('levelUp')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       [0,0.1,0.2,0.32].forEach((delay,i)=>{
         const osc = c.createOscillator(); osc.type='triangle';
@@ -398,10 +465,15 @@ export(전역): const Sound
     function toggleMuted(){ setMuted(!muted); return muted; }
     function isMuted(){ return muted; }
 
+    // 모듈 로드 시점에 곧바로 SFX 프리로드를 시작한다(재생과 달리 디코딩
+    // 자체는 사용자 제스처가 필요 없다 — 처음 효과음이 실제로 필요해지는
+    // 시점엔 이미 대부분 로드가 끝나 있도록).
+    preloadSfx();
+
     return {
       ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
-      levelUp, victory, gameOver, statusApply,
+      levelUp, victory, gameOver, statusApply, clockChime,
       setMuted, toggleMuted, isMuted,
     };
   })();
