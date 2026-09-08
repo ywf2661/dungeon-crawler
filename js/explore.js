@@ -219,6 +219,13 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
         player.relics.push(id);
         if(typeof applyRelicEffect==='function') applyRelicEffect(id);
       });
+      // 사용자 요청 — admin3(무작위 유물)는 마녀의 시계를 항상 보장한다
+      // (시간의 마녀/아이온 관련 콘텐츠 테스트 편의용). 위 무작위 추첨에서
+      // 이미 뽑혔으면 중복 지급하지 않는다.
+      if(!player.relics.includes('relic_witchclock')){
+        player.relics.push('relic_witchclock');
+        if(typeof applyRelicEffect==='function') applyRelicEffect('relic_witchclock');
+      }
     } else {
       player.relics.push('relic_hilt', 'relic_blade');
     }
@@ -264,7 +271,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
-    const relicMsg = opts.randomRelics ? '무작위 유물 지급' : '회랑자의 칼날/칼자루 장착';
+    const relicMsg = opts.randomRelics ? '무작위 유물 지급(마녀의 시계 항상 포함)' : '회랑자의 칼날/칼자루 장착';
     renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 강화석 100개 · ${relicMsg} 완료. 마을에서 "나아가기"를 누르면 4구간부터 정상적으로 노드맵을 밟는다(4구간 보스 클리어 후 자연스럽게 고요한 제단으로 이어짐).`]);
     saveGame();
   }
