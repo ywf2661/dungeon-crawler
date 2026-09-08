@@ -13,17 +13,22 @@ export(전역): const Sound
   const Sound = (function(){
     let ctx = null, master = null, bgmGain = null, sfxGain = null;
     let muted = false;
-    let bgmTimer = null, bgmStep = 0, bgmMode = 'explore'; // 'explore' | 'dungeon' | 'battle' | 'dread' | 'finalboss' | 'truefinalboss' | 'off'
+    let bgmTimer = null, bgmStep = 0, bgmMode = ''; // 'explore' | 'dungeon' | 'battle' | 'dread' | 'finalboss' | 'truefinalboss' | 'off'
+    // (초기값을 일부러 빈 문자열로 둔다 — 'explore'로 두면 최초 setBgmMode('explore')
+    // 호출이 "이미 같은 모드"로 판정돼 조기 반환되면서 파일 BGM이 아예 시작을
+    // 안 하는 버그가 있었다.)
 
     // 사용자 제공 실제 음원(60초 트림, mp3 128kbps) — 모드별 트랙 목록.
     // 목록이 2개 이상이면 순서대로(무작위 시작 후 순환) 재생해 플레이리스트처럼 돈다.
     // 여기 없는 모드('explore'=마을/타이틀, 'battle'=일반 전투)는 기존 합성 BGM을 그대로 쓴다
     // (사용자가 해당 모드용 음원을 추가로 구하면 여기에 등록만 하면 됨).
     const BGM_FILES = {
+      explore: ['audio/bgm/town1.mp3','audio/bgm/town2.mp3'],
       dungeon: ['audio/bgm/dungeon1.mp3','audio/bgm/dungeon2.mp3','audio/bgm/dungeon3.mp3','audio/bgm/dungeon4.mp3','audio/bgm/dungeon5.mp3'],
+      battle: ['audio/bgm/battle1.mp3','audio/bgm/battle2.mp3','audio/bgm/battle3.mp3','audio/bgm/battle4.mp3','audio/bgm/battle5.mp3'],
       dread: ['audio/bgm/dread.mp3'],
       finalboss: ['audio/bgm/finalboss.mp3'],
-      truefinalboss: ['audio/bgm/truefinalboss.mp3'],
+      truefinalboss: ['audio/bgm/truefinalboss.mp3','audio/bgm/truefinalboss2.mp3'],
     };
     let bgmAudioEl = null, bgmPlaylist = [], bgmPlaylistIdx = 0;
 
