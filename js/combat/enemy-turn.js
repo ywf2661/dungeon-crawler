@@ -135,7 +135,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         resetCommandUI();
         popDamage('추가 행동!', 'heal');
         playCastBurst();
-        Sound.buff();
+        Sound.clockChime();
         // 예전엔 이 추가 행동을 항상 "마녀의 시계"가 준 것처럼 문구가 고정되어
         // 있었다 — 시간술사 마스터리(시간 왜곡)만으로 발동해도 유물 이름이
         // 잘못 뜨는 버그였다. 실제로 무엇을 갖고 있는지에 따라 문구를 고른다.
