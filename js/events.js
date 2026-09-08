@@ -63,7 +63,7 @@ export(전역): showMysteryEvent
   function showAltarEvent(){
     const {overlay, panel} = eventOverlay('버려진 제단',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        오래된 제단 위에 마른 핏자국이 남아 있다. 무언가를 바치면 힘을 주는 듯한 기운이 감돈다.
+        오래된 제단 위에 마른 핏자국이 남아 있다. 새겨진 문양은 이제 다 지워졌지만, 한때 이곳에서 무언가 절박한 의식이 치러졌다는 것만은 분명하다. 바치면, 여전히 응답한다.
       </p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-hp">체력을 바친다 (최대HP -10%, 공격력·마력 영구 +8%)</button>
@@ -103,7 +103,7 @@ export(전역): showMysteryEvent
   function showSpringEvent(){
     const {overlay, panel} = eventOverlay('신비한 샘물',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        은은하게 빛나는 샘물을 발견했다. 마시면 몸이 가벼워질 것 같지만, 어딘가 대가가 있을 것 같다.
+        은은하게 빛나는 샘물을 발견했다. 수면 위로, 미동도 없는 잔물결이 얼어붙은 것처럼 비친다. 마시면 몸이 가벼워질 것 같지만, 어딘가 대가가 있을 것 같다.
       </p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-drink">마신다 (HP/MP 완전 회복, 최대HP 영구 -5%)</button>
@@ -132,7 +132,7 @@ export(전역): showMysteryEvent
     const hasFragment = !!player.hasMapFragment;
     const {overlay, panel} = eventOverlay('봉인된 관',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        먼지 쌓인 관 하나가 놓여 있다. 안에 뭐가 들었을지는 열어봐야 안다.
+        먼지 쌓인 관 하나가 놓여 있다. 관 뚜껑에 희미하게 남은 문장(紋章)이, 이 회랑 어딘가에서 본 것과 닮아 있다. 안에 뭐가 들었을지는 열어봐야 안다.
         ${hasFragment ? '<br><span style="color:var(--gold-bright);">품 안의 지도 조각이 이 관의 위치를 정확히 짚어냈던 그 그림과 일치한다!</span>' : ''}
       </p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
@@ -184,7 +184,7 @@ export(전역): showMysteryEvent
     const price = Math.round(basePrice*(1+depth*0.05));
     const {overlay, panel} = eventOverlay('방랑 상인의 마지막 재고',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
-        낯선 상인이 마지막 남은 물건이라며 하나를 내민다. 지금이 아니면 다시 없을 물건이다.
+        낯선 상인이 마지막 남은 물건이라며 하나를 내민다. 옷차림이 이상하리만치 낡았다 — 마치 이 회랑보다도 오래 이곳에 있었던 것처럼. 지금이 아니면 다시 없을 물건이다.
       </p>
       <div class="shop-item">
         <div class="si-info">
@@ -245,6 +245,7 @@ export(전역): showMysteryEvent
       '벽에 새겨진 글귀는 오래되어 알아볼 수 없다. 다만 누군가 절박하게 무언가를 새겨넣었다는 것만은 분명하다.',
       '회랑 깊은 곳에서, 아주 오래된 무언가가 여전히 깨어있다는 소문이 있다.',
       '이곳을 지나간 수많은 이들 중, 살아 돌아간 자는 손에 꼽는다고 한다.',
+      '벽 틈에 반쯤 삭은 깃발 조각이 끼어 있다. 문양은 알아볼 수 없지만, 한때 어느 가문의 것이었을 것이다.',
     ];
     const text = fragments[Math.floor(Math.random()*fragments.length)];
     const g = 8 + Math.floor(Math.random()*8) + depth;
@@ -273,7 +274,7 @@ export(전역): showMysteryEvent
     const shuffled = Math.random()<0.5 ? [hints[0],hints[1]] : [hints[1],hints[0]];
     const {overlay, panel} = eventOverlay('두 개의 문',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        회랑이 갈라지며 낡은 문 두 개가 나타났다. 어느 쪽이든 하나만 열 수 있다.
+        회랑이 갈라지며 낡은 문 두 개가 나타났다. 문틀에는 한때 정교했을 조각의 흔적만 희미하게 남아 있다. 어느 쪽이든 하나만 열 수 있다.
       </p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-left" style="text-align:left; height:auto; padding:12px 14px; white-space:normal;">왼쪽 문 — ${shuffled[0].text}</button>
@@ -305,7 +306,7 @@ export(전역): showMysteryEvent
     if(curseCount<=0){
       const {overlay, panel} = eventOverlay('속삭이는 저주의 흔적',
         `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-          바닥에 희미한 저주의 흔적이 남아 있다. 그대에게는 아무런 감흥도 일으키지 못한다.
+          바닥에 희미한 저주의 흔적이 남아 있다. 오래전 이곳에 살았던 누군가의 흔적 같기도 하다. 그대에게는 아무런 감흥도 일으키지 못한다.
         </p>`,
         `<div style="display:flex; flex-direction:column; gap:8px;">
           <button class="btn" id="me-continue">계속 나아간다</button>
@@ -345,7 +346,7 @@ export(전역): showMysteryEvent
   function showShadowDuelEvent(){
     const {overlay, panel} = eventOverlay('그림자와의 결투',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        그림자 하나가 조용히 다가와 결투를 청한다. "이기면 증표를 주지." 낮은 목소리가 울린다.
+        그림자 하나가 조용히 다가와 결투를 청한다. 갑주의 형체가 낯익다 — 이 회랑 어딘가에서 스러진 누군가의 것처럼. "이기면 증표를 주지." 낮은 목소리가 울린다.
       </p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-duel">결투를 받아들인다 (승리 시 정예의 인장 획득)</button>
@@ -367,10 +368,10 @@ export(전역): showMysteryEvent
   // 따라 발견하는 물건과 보상이 달라진다 — "내 직업다운" 순간을 준다.
   function showOldLibraryEvent(){
     const byJob = {
-      warrior:  {find:'낡은 훈련 교본', flavor:'닳고 닳은 교본에는 검을 다루는 법이 빼곡히 적혀 있다.', apply:()=>{ const d=Math.max(1,Math.round(player.atk*0.05)); player.atk+=d; return `공격력 +${d} (영구)`; }},
+      warrior:  {find:'낡은 훈련 교본', flavor:'닳고 닳은 교본 표지에, 이제는 지워진 문장(紋章)이 희미하게 남아 있다. 안에는 검을 다루는 법이 빼곡히 적혀 있다.', apply:()=>{ const d=Math.max(1,Math.round(player.atk*0.05)); player.atk+=d; return `공격력 +${d} (영구)`; }},
       mage:     {find:'봉인된 마법서', flavor:'표지가 서늘한 마법서 한 권. 넘기는 것만으로도 마력이 꿈틀댄다.', apply:()=>{ const d=Math.max(1,Math.round(player.mag*0.05)); player.mag+=d; return `마력 +${d} (영구)`; }},
       rogue:    {find:'숨겨진 보물 지도', flavor:'서고 한구석, 낡은 지도 한 장이 눈에 띈다.', apply:()=>{ const g=30+Math.floor(Math.random()*20)+depth*3; player.gold+=g; return `골드 +${g}G`; }},
-      paladin:  {find:'성서의 한 구절', flavor:'빛바랜 성서를 읽어내리자 몸에 온기가 감돈다.', apply:()=>{ const d=Math.max(1,Math.round(player.maxhp*0.04)); player.maxhp+=d; player.hp=Math.min(player.maxhp,player.hp+d); return `최대HP +${d} (영구)`; }},
+      paladin:  {find:'성서의 한 구절', flavor:'빛바랜 성서를 읽어내리자 몸에 온기가 감돈다. 마지막 장, 누군가의 서명이 있었을 자리가 긁혀 지워져 있다.', apply:()=>{ const d=Math.max(1,Math.round(player.maxhp*0.04)); player.maxhp+=d; player.hp=Math.min(player.maxhp,player.hp+d); return `최대HP +${d} (영구)`; }},
       mechanic: {find:'낡은 설계도 파편', flavor:'알아보기 힘든 설계도지만, 쓸 만한 부분만 골라 챙긴다.', apply:()=>{ const d=Math.max(1,Math.round(player.mag*0.05)); player.mag+=d; return `마력 +${d} (영구)`; }},
       jester:   {find:'낡은 도박 규칙서', flavor:'귀퉁이가 다 닳은 규칙서. 무언가 요령이 적혀 있다.', apply:()=>{ const g=30+Math.floor(Math.random()*20)+depth*3; player.gold+=g; return `골드 +${g}G`; }},
     };
@@ -399,7 +400,7 @@ export(전역): showMysteryEvent
   function showMapFragmentEvent(){
     const {overlay, panel} = eventOverlay('수상한 지도 조각',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:13px;font-style:italic;line-height:1.7;margin:-4px 0 16px;">
-        바닥에 반쯤 타버린 지도 조각이 떨어져 있다. 무언가의 위치를 표시해둔 것 같은데, 지금은 알아볼 수 없다.<br>
+        바닥에 반쯤 타버린 지도 조각이 떨어져 있다. 표시된 건 이 회랑이 아니라, 지금은 없는 어느 지역의 지도 같다.<br>
         <span style="color:var(--gold-bright);">품에 넣어두면 언젠가 쓸모가 있을지도 모른다.</span>
       </p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
@@ -475,7 +476,7 @@ export(전역): showMysteryEvent
   // 12) 낡은 연금술사의 가방
   function showAlchemistBagEvent(){
     const {overlay, panel} = eventOverlay('낡은 연금술사의 가방',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">누군가 버리고 간 가방이다.</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">누군가 버리고 간 가방이다. 안감에 작은 자수가 놓여 있다 — 한때는 이름이었을 것 같은데, 실이 다 풀려 알아볼 수 없다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-search">뒤진다 (랜덤 포션 1개 획득)</button>
         <button class="btn" id="me-skip">그냥 지나간다</button>
@@ -505,7 +506,7 @@ export(전역): showMysteryEvent
   // 13) 피의 제단
   function showBloodAltarEvent(){
     const {overlay, panel} = eventOverlay('피의 제단',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">오래된 제단에서 피 냄새가 난다.</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">오래된 제단에서 피 냄새가 난다. 이곳에서 바쳐진 것이, 짐승의 것만은 아니었던 것 같다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-full" ${player.hp<=Math.round(player.maxhp*0.2)?'disabled':''}>피를 바친다 (HP -20%, 무작위 희귀 장비)</button>
         <button class="btn" id="me-half" ${player.hp<=Math.round(player.maxhp*0.1)?'disabled':''}>조금만 바친다 (HP -10%, 골드 획득)</button>
@@ -539,7 +540,7 @@ export(전역): showMysteryEvent
   // 14) 미친 연금술사 — "검사"는 30G를 내고 결과를 미리 본 뒤 다시 선택하는 2단계 구성.
   function showMadAlchemistEvent(){
     const {overlay, panel} = eventOverlay('미친 연금술사',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"이 포션은 분명 효과가 있을 거야. 아마도."</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"이 포션은 분명 효과가 있을 거야. 아마도." 연금술사의 손끝이 옅은 보랏빛으로 물들어 있다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-drink">마신다 (랜덤 HP/MP 회복 또는 독)</button>
         <button class="btn" id="me-inspect" ${player.gold<30?'disabled':''}>포션을 검사한다 (30G, 결과를 먼저 확인)</button>
@@ -606,7 +607,7 @@ export(전역): showMysteryEvent
   // 15) 피투성이 도전자 — 정예 전투로 이어지는 결투류 이벤트.
   function showBloodyChallengerEvent(){
     const {overlay, panel} = eventOverlay('피투성이 도전자',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"나를 쓰러뜨리면 이 보물을 가져가라."</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"나를 쓰러뜨리면 이 보물을 가져가라." 갑옷 곳곳에 낯선 문장이 찍혀 있다 — 이미 누군가의 것이었던 것처럼.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-fight">싸운다 (정예급 전투, 승리 시 정예의 인장 +1 + 추가 골드)</button>
         <button class="btn" id="me-skip">거절한다</button>
@@ -637,7 +638,7 @@ export(전역): showMysteryEvent
   // 16) 수상한 무기
   function showSuspiciousWeaponEvent(){
     const {overlay, panel} = eventOverlay('수상한 무기',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">바닥에 누군가 버리고 간 검이 있다.</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">바닥에 누군가 버리고 간 검이 있다. 손잡이에 무언가 새겨져 있었던 것 같은데, 오래전에 긁혀 지워졌다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-take">집는다 (무기 획득, 대신 다음 전투에서 저주)</button>
         <button class="btn" id="me-inspect">조사한다 (50% 좋은 무기 / 50% 함정)</button>
@@ -677,7 +678,7 @@ export(전역): showMysteryEvent
   // 17) 시체 더미 — "뒤진다"는 30% 확률로 일반 전투로 이어진다.
   function showCorpsePileEvent(){
     const {overlay, panel} = eventOverlay('시체 더미',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">시체 사이에서 무언가 반짝인다.</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">시체 사이에서 무언가 반짝인다. 갑옷 아래로, 이 회랑의 것이 아닌 낯선 문양이 언뜻 비친다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-search">뒤진다 (골드/포션/장비 중 하나, 30% 확률로 전투 발생)</button>
         <button class="btn" id="me-careful">조심스럽게 조사한다 (골드 적게, 전투 없음)</button>
@@ -718,7 +719,7 @@ export(전역): showMysteryEvent
   // 18) 이상한 촛불
   function showStrangeCandleEvent(){
     const {overlay, panel} = eventOverlay('이상한 촛불',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">촛불 하나가 꺼지지 않고 타오르고 있다.</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">촛불 하나가 꺼지지 않고 타오르고 있다. 불꽃이 흔들리는 방식이, 마치 이 자리만 시간이 다르게 흐르는 것 같다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-extinguish">촛불을 끈다 (다음 전투 적 공격력 -20%)</button>
         <button class="btn" id="me-take">촛불을 가져간다 (골드 획득, 대신 다음 전투 받는 피해 +15%)</button>
@@ -748,7 +749,7 @@ export(전역): showMysteryEvent
   // 19) 악마의 계약 — 마을 도착 시(combat/battle-end.js의 showBossRewardChoice) 자동 해제.
   function showDemonContractEvent(){
     const {overlay, panel} = eventOverlay('악마의 계약',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"지금 네게 힘을 주겠다. 대가는 나중에 받도록 하지."</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"지금 네게 힘을 주겠다. 대가는 나중에 받도록 하지." 목소리에는 성별도 나이도 느껴지지 않는다. 다만 그 말투가, 어딘가 낡은 시계태엽 소리처럼 규칙적이다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-c1">계약한다 (공격력 +25%, 대신 승리마다 HP -5%)</button>
         <button class="btn" id="me-c2">더 강한 계약 (공격력 +50%, 대신 승리마다 HP -10%)</button>
@@ -775,7 +776,7 @@ export(전역): showMysteryEvent
   // 20) 잃어버린 지갑
   function showLostWalletEvent(){
     const {overlay, panel} = eventOverlay('잃어버린 지갑',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">바닥에 무거운 주머니가 떨어져 있다.</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">바닥에 무거운 주머니가 떨어져 있다. 안에는 이제 어디서도 쓸 수 없을 것 같은, 낯선 문양이 찍힌 동전 몇 개가 섞여 있다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-take">가져간다 (골드 +150)</button>
         <button class="btn" id="me-return">주인을 찾는다 (사례금 50G + 경험치)</button>
@@ -808,7 +809,7 @@ export(전역): showMysteryEvent
   // 21) 수수께끼의 마법사 — 3가지 중 반드시 하나를 고른다(거절 선택지 없음).
   function showMysteriousMageEvent(){
     const {overlay, panel} = eventOverlay('수수께끼의 마법사',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"네게 필요한 힘을 하나 주겠다."</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"네게 필요한 힘을 하나 주겠다." 말투에서, 아주 오래전에 잊힌 억양이 옅게 느껴진다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-atk">🔥 공격의 축복 (다음 3전투 공격력 +20%)</button>
         <button class="btn" id="me-def">🛡 생존의 축복 (다음 3전투 받는 피해 -15%)</button>
@@ -829,7 +830,7 @@ export(전역): showMysteryEvent
   function showInjuredAdventurerEvent(){
     const potionKeys = ['potion','hipotion','ether','hiether'].filter(k=>(player.inv[k]||0)>0);
     const {overlay, panel} = eventOverlay('부상당한 모험가',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"제발... 포션 하나만..."</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">"제발... 포션 하나만..." 갑옷은 낡았지만, 자세만은 이상하리만치 꼿꼿하다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-give-potion" ${potionKeys.length?'':'disabled'}>포션을 준다 (포션 1개 소모, 대신 경험치+골드)</button>
         <button class="btn" id="me-give-gold" ${player.gold<50?'disabled':''}>골드를 준다 (50G, 대신 경험치)</button>
@@ -874,7 +875,7 @@ export(전역): showMysteryEvent
   function showInjuredAdventurerReunionEvent(){
     const {overlay, panel} = eventOverlay('그때 그 모험가',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:13px;font-style:italic;line-height:1.7;margin:-4px 0 16px;">
-        낯익은 얼굴이 다가온다. "그때 도와줘서 고맙다." 그가 무언가를 건넨다.
+        낯익은 얼굴이 다가온다. 처음 만났을 때보다 표정이 한결 평온해 보인다. "그때 도와줘서 고맙다." 그가 무언가를 건넨다.
       </p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-take">받는다</button>
@@ -892,7 +893,7 @@ export(전역): showMysteryEvent
   // 23) 봉인된 문
   function showSealedDoorEvent(){
     const {overlay, panel} = eventOverlay('봉인된 문',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">문 너머에서 무언가가 두드리고 있다.</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">문 너머에서 무언가가 두드리고 있다. 두드리는 소리에 일정한 박자가 있다 — 마치 누군가 아직도 규율을 지키고 있는 것처럼.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-open">문을 연다 (정예 전투, 승리 시 정예의 인장 +2)</button>
         <button class="btn" id="me-break" ${player.hp<=Math.round(player.maxhp*0.15)?'disabled':''}>문을 부순다 (HP -15%, 즉시 보상)</button>
@@ -923,7 +924,7 @@ export(전역): showMysteryEvent
   // 24) 피를 원하는 석상
   function showBloodThirstyStatueEvent(){
     const {overlay, panel} = eventOverlay('피를 원하는 석상',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">석상의 눈이 붉게 빛난다.</p>`,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">석상의 눈이 붉게 빛난다. 조각된 얼굴은 사람의 것이지만, 표정만은 어딘가 텅 비어 있다.</p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-small" ${player.hp<=Math.round(player.maxhp*0.1)?'disabled':''}>HP 10% 바치기 (정예의 인장 조각 또는 골드)</button>
         <button class="btn" id="me-big" ${player.hp<=Math.round(player.maxhp*0.3)?'disabled':''}>HP 30% 바치기 (희귀 장비 획득)</button>
@@ -959,7 +960,7 @@ export(전역): showMysteryEvent
   function showDevilsDiceEvent(){
     const isJester = player.job==='jester';
     const {overlay, panel} = eventOverlay('악마의 주사위',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">"한 번 던져보겠나?"</p>
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">"한 번 던져보겠나?" 주사위 표면에 눈금 대신, 알아볼 수 없는 낡은 문자가 새겨져 있다.</p>
        <p id="me-dice-result" style="text-align:center;color:var(--gold-bright);font-size:12.5px;min-height:16px;margin:0 0 8px;"></p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-bet50" ${player.gold<50?'disabled':''}>50G를 건다</button>
