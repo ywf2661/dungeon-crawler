@@ -164,6 +164,13 @@ export(전역): showJobAdvancement, resolveJobAdvancement
         applyEquipStats(CALIBERX_STAGES.caliberx_1.stats);
         player.equipment.weapon = 'caliberx_1';
         if(!player.equipOwned.includes('caliberx_1')) player.equipOwned.push('caliberx_1');
+        // 사용자 요청 — 전직 확정 순간에 맞는 토스트 메시지. 장비 desc의
+        // 첫 문장("마치 처음부터 그대의 것이었던 것처럼")을 짧게 되풀이해
+        // 획득 임팩트를 주되, 이름이 새겨져 있다는 사실 자체는 장비창에서
+        // 직접 desc를 봐야 알 수 있게 남겨둔다(토스트에서 스포일러 안 함).
+        if(typeof showToast==='function'){
+          showToast(`<h3>⚔ 칼리버 X</h3><p>손에 쥐는 순간, 마치 처음부터 그대의 것이었던 것처럼 감겨온다.</p>`, '#e6c34a');
+        }
       }
       // 강철 군단장(mechanic_accumulator 리뉴얼) 베이스 스킬 교체 — 함수는
       // 아래 migrateLegionBaseSkills()에 분리해뒀다(신규 전직 시점 + 기존
