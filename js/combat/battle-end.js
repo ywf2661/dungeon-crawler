@@ -164,6 +164,13 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         if(Math.random() < rareChance) rareDropId = findRareDropForDepth();
         if(rareDropId) player.equipOwned.push(rareDropId);
       }
+      // 회랑의 정령(ogre) 전용 유품 드롭(사용자 요청) — 위 일반 희귀템 로직과
+      // 완전히 독립적인 별개 확률(4%), 미보유일 때만, 최종보스 처치가 아닐 때만.
+      let keepsakeDropId = null;
+      if(!isFinalKill && enemy.type==='ogre' && !player.equipOwned.includes('r_achoskeepsake') && Math.random() < 0.04){
+        keepsakeDropId = 'r_achoskeepsake';
+        player.equipOwned.push(keepsakeDropId);
+      }
       // 정예의 인장: 정예 처치마다 고정 1개 지급. 유물은 노드맵의 유물 제단
       // 노드에서만 얻고, 정예는 이 인장을 통해 "원하는 에픽을 직접 고르는"
       // 별개의 보상 경로를 갖는다(마을 교환소, shop.js의 openExchange() 참고).
@@ -262,6 +269,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
             const item = RARE_EQUIPMENT[rareDropId];
             lines.push({text:`✨ 희귀 아이템 [${item.name}]을(를) 손에 넣었다! (${statsText(item.stats)})`, cls:'gold'});
           }
+          if(keepsakeDropId){
+            const kitem = RARE_EQUIPMENT[keepsakeDropId];
+            lines.push({text:`✨ 낯익은 물건이 눈에 띈다 — [${kitem.name}]을(를) 챙겼다. (${statsText(kitem.stats)})`, cls:'gold'});
+          }
           if(epicDropId){
             const eitem = EPIC_EQUIPMENT[epicDropId];
             lines.push({text:`✦✦ 에픽 아이템 [${eitem.name}]을(를) 손에 넣었다! (${statsText(eitem.stats)})`, cls:'gold'});
@@ -274,6 +285,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           renderExplore(lines);
           if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
           if(rareDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[rareDropId]), 150*leveled.length + 200);
+          if(keepsakeDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[keepsakeDropId]), 150*leveled.length + (rareDropId?700:200));
           if(epicDropId) setTimeout(()=>showEpicDropToast(EPIC_EQUIPMENT[epicDropId]), 150*leveled.length + (rareDropId?500:200));
           // 정예의 인장 팝업(사용자 요청): 캐릭터 생애 최초 1회만 큰 토스트를
           // 띄운다. 탐험 로그 텍스트(위 lines.push)는 매번 그대로 남는다.

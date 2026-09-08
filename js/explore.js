@@ -382,7 +382,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       depthTag.textContent = town ? '마을' : '';
       depthTag.style.display = town ? 'inline-block' : 'none';
       document.getElementById('ex-loc-name').textContent = town ? '안식의 마을' : loc.name;
-      document.getElementById('ex-loc-desc').textContent = town ? '따뜻한 화롯불과 상인들의 목소리가 들린다. 이곳에서는 안전하다.' : loc.desc;
+      document.getElementById('ex-loc-desc').textContent = town ? '따뜻한 화롯불과 상인들의 목소리가 들린다. 이곳에서는 안전하다. 다만 이 마을이 언제부터 이 자리에 있었는지는, 아무도 정확히 기억하지 못한다.' : loc.desc;
     }
     document.getElementById('btn-advance').style.display = 'block';
     document.getElementById('btn-advance').textContent = inBossDen ? '⚔ 다음 상대와 맞서다' : (town ? '➡ 던전으로 출발' : '➡ 나아가다');

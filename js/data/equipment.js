@@ -48,6 +48,12 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       stats:{atk:5, def:5, mag:5},        minDepth:8,  rare:true, special:{dotBoost:0.25}},
     r_roguedagger:   {name:'도적의 단검',     slot:'weapon',    desc:'맹독이 발린 얇은 단검. 뒷골목의 암살자들이 즐겨 쓴다. ✦특성: 중독 피해가 40% 강화된다.',
       stats:{atk:8, spd:6},               minDepth:2,  rare:true, special:{dotBoost:{poison:0.4}}},
+    // 회랑의 정령(ogre) 처치 전용 드롭(사용자 요청 — 아코스 관련 단서를
+    // 직업 무관하게 접할 기회). keepsakeOnly:true는 findRareDropForDepth()의
+    // 일반 확률 로직에서 제외되고, combat/battle-end.js에서 회랑의 정령
+    // 처치 시에만 별도로 굴리는 독립 드롭이다.
+    r_achoskeepsake: {name:'낡은 병사의 반지', slot:'accessory', desc:'닳고 닳은 철 반지. 안쪽에 무언가 새겨져 있었던 자리가 있지만, 오래전에 닳아 알아볼 수 없다. 반지 표면에 얕게 눌린 자국 하나만 겨우 남아 있다 — \'A\'로 시작하는 글자였던 것 같기도 하다.',
+      stats:{def:8, maxhp:20},            minDepth:9,  rare:true, keepsakeOnly:true},
     r_guardiancharm: {name:'수호자의 부적',   slot:'accessory', desc:'고대 수호자의 힘이 깃든 부적. ✦특성: 전투 중 한 번, 치명적인 공격을 완전히 막아낸다.',
       stats:{def:6, maxhp:10},            minDepth:5,  rare:true, special:{guardianShield:true}},
     r_luckyclover:   {name:'행운의 네잎클로버', slot:'accessory', desc:'우연히 발견한 네 개의 잎. 행운을 가져다준다는 소문이 있다. ✦특성: 희귀 아이템 발견 확률과 획득 골드가 늘어난다.',

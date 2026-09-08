@@ -32,6 +32,7 @@ export(전역): showMysteryEvent
       showSuspiciousWeaponEvent, showCorpsePileEvent, showStrangeCandleEvent, showDemonContractEvent,
       showLostWalletEvent, showMysteriousMageEvent, showInjuredAdventurerEvent, showSealedDoorEvent,
       showBloodThirstyStatueEvent, showDevilsDiceEvent, showFrozenClockmakerEvent,
+      showAchosTombstoneEvent, showScratchedPortraitEvent, showPlagueDiaryEvent,
     ];
     // "그때 그 모험가"(재회)는 이전에 부상당한 모험가를 도와준 적이 있을 때만
     // 이벤트 풀에 포함된다 — 안 만난 적 없는 상태에서 재회가 뜨면 앞뒤가 안
@@ -1064,6 +1065,113 @@ export(전역): showMysteryEvent
     }
     panel.querySelector('#me-skip').addEventListener('click', ()=>{
       addLog('시계공방을 지나쳤다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+
+  // 27) 낡은 묘비 — 아코스(칼리버 X의 정체) 관련 간접 단서. 직업 무관.
+  function showAchosTombstoneEvent(){
+    const {overlay, panel} = eventOverlay('낡은 묘비',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        낡은 묘비 하나가 서 있다. 새겨진 이름은 거의 다 지워졌지만, 그 앞에 놓인 꽃만은 이상하리만치 시들지 않았다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-inspect">묘비를 살펴본다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-take">꽃을 치운다 (골드 획득, 대신 다음 전투에서 저주)</button>
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    panel.querySelector('#me-inspect').addEventListener('click', ()=>{
+      const expGain = 10 + depth*3;
+      const leveled = grantExp(expGain);
+      renderStatus();
+      addLog(`묘비 앞에 한참을 서 있었다. 이름은 끝내 읽을 수 없었다. (EXP +${expGain})`, 'gold');
+      saveGame();
+      overlay.remove();
+      if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+      renderExplore([]);
+    });
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      const g = 20 + Math.floor(Math.random()*20) + depth*3;
+      player.gold += g;
+      applyNextBattleCurse();
+      renderStatus();
+      addLog(`시들지 않는 꽃을 치웠다. 골드 +${g}G. 왠지 모를 죄책감이 스며든다(다음 전투 받는 피해 +15%).`, 'warn');
+      saveGame();
+      closeMysteryEvent(overlay);
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('묘비를 뒤로하고 발걸음을 옮겼다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 28) 긁힌 초상화 — 왕실 초상화에서 지워진 존재에 대한 간접 단서. 직업 무관.
+  function showScratchedPortraitEvent(){
+    const {overlay, panel} = eventOverlay('긁힌 초상화',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        낡은 초상화 한 점이 걸려 있다. 왕의 곁에 나란히 있었을 자리는 날카로운 것으로 긁혀 지워져 있다. 그 아래엔, 작은 손바닥 자국이 희미하게 남아 있다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-inspect">초상화를 살펴본다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-take">액자를 뜯어본다 (골드 획득, 대신 다음 전투에서 저주)</button>
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    panel.querySelector('#me-inspect').addEventListener('click', ()=>{
+      const expGain = 10 + depth*3;
+      const leveled = grantExp(expGain);
+      renderStatus();
+      addLog(`지워진 자리를 한참 들여다봤지만, 누구였는지는 끝내 알 수 없었다. (EXP +${expGain})`, 'gold');
+      saveGame();
+      overlay.remove();
+      if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+      renderExplore([]);
+    });
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      const g = 20 + Math.floor(Math.random()*20) + depth*3;
+      player.gold += g;
+      applyNextBattleCurse();
+      renderStatus();
+      addLog(`액자를 뜯어 뒷면을 확인했지만 아무것도 없었다. 골드 +${g}G. 괜히 뒤가 서늘하다(다음 전투 받는 피해 +15%).`, 'warn');
+      saveGame();
+      closeMysteryEvent(overlay);
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('초상화를 뒤로하고 발걸음을 옮겼다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 29) 역병 시절의 일기장 — 이번 스토리텔링 중 가장 직접적인 단서(역병→낯선
+  // 손님→시간 이상 순서를 플레이어가 스스로 조립하게 함). 직업 무관.
+  function showPlagueDiaryEvent(){
+    const {overlay, panel} = eventOverlay('역병 시절의 일기장',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        먼지 쌓인 서랍 속에서 낡은 일기장 하나를 발견했다. 마지막 몇 장만 겨우 글씨를 알아볼 수 있다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-read">일기장을 읽는다</button>
+        <button class="btn" id="me-skip">그냥 둔다</button>
+      </div>`);
+    panel.querySelector('#me-read').addEventListener('click', ()=>{
+      overlay.remove();
+      showDialogueSequence([
+        '"다들 기침을 멈추지 않는다. 의원들도 손을 놓은 지 오래다."',
+        '"오늘, 폐하께서 낯선 손님을 들이셨다고 한다. 아무도 그 이름을 알지 못한다."',
+        '"그날 이후로... 시계탑의 종이 울리지 않는다. 다들 이상하다고 하면서도, 아무도 이상하게 여기지 않는다."',
+        '이후로는, 아무것도 적혀 있지 않다.',
+      ], {onDone: ()=>{
+        const expGain = 15 + depth*3;
+        const leveled = grantExp(expGain);
+        renderStatus();
+        addLog(`오래된 일기장을 끝까지 읽었다. (EXP +${expGain})`, 'gold');
+        saveGame();
+        if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('일기장을 서랍에 도로 넣어두었다.');
       closeMysteryEvent(overlay);
     });
   }

@@ -693,7 +693,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   }
 
   function findRareDropForDepth(){
-    const pool = Object.keys(RARE_EQUIPMENT).filter(id=>RARE_EQUIPMENT[id].minDepth<=depth && !player.equipOwned.includes(id));
+    const pool = Object.keys(RARE_EQUIPMENT).filter(id=>RARE_EQUIPMENT[id].minDepth<=depth && !player.equipOwned.includes(id) && !RARE_EQUIPMENT[id].keepsakeOnly);
     if(!pool.length) return null;
     return pool[Math.floor(Math.random()*pool.length)];
   }
