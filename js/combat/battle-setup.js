@@ -517,11 +517,44 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return true;
   }
 
-  // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 거울 보스 > 아이온 공명 > 회랑의 기사/시간술사 > 마녀의 시계.
+  // 아코스의 유품("낡은 병사의 반지", 회랑의 정령 처치 시 드롭)을 착용한
+  // 채로 회랑의 정령을 만나면 — 직업 무관. 회랑의 기사/시간술사 전용
+  // 대사가 이미 떴다면(우선순위상 먼저 체크되므로) 겹치지 않는다.
+  const KEEPSAKE_RECOGNITION_LINE = ['정령의 시선이 그대의 손끝에 머문다.', '"...그 반지, 어디서 났나. 설마 아직도 그 자리에 있었나."'];
+  function maybeShowKeepsakeRecognitionDialogue(){
+    if(enemy.type !== 'ogre') return false;
+    if(!(player.equipment && player.equipment.accessory === 'r_achoskeepsake')) return false;
+    if((player.keepsakeDialogueCount||0) >= 1) return false;
+    if(Math.random() >= 0.7) return false;
+    player.keepsakeDialogueCount = (player.keepsakeDialogueCount||0) + 1;
+    saveGame();
+    showDialogueSequence(KEEPSAKE_RECOGNITION_LINE, {title:'회랑의 정령'});
+    return true;
+  }
+
+  // 직업/장비 무관 — 아무 "회랑의 ○○" 몬스터에게서나 낮은 확률로 뜨는
+  // "엿듣기" 버전. 플레이어를 아코스로 착각하는 게 아니라, 그 이름이 아직도
+  // 회랑 어딘가에 남아 떠돈다는 걸 보여주는 용도(런당 1회, 낮은 확률).
+  const OVERHEARD_ACHOS_LINE = ['회랑의 몬스터가 허공에 대고 낮게 중얼거린다.', '"...아코스. 그 이름을 들은 지도 오래됐군."'];
+  function maybeShowOverheardAchosDialogue(){
+    const isCorridorMonster = enemy.type==='ogre' || !!CORRIDOR_NPC_LINES[enemy.type];
+    if(!isCorridorMonster) return false;
+    if((player.overheardAchosDialogueCount||0) >= 1) return false;
+    if(Math.random() >= 0.3) return false;
+    player.overheardAchosDialogueCount = (player.overheardAchosDialogueCount||0) + 1;
+    saveGame();
+    showDialogueSequence(OVERHEARD_ACHOS_LINE, {});
+    return true;
+  }
+
+  // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 거울 보스 > 아이온 공명 >
+  // 회랑의 기사/시간술사 > 유품 착용자 > 엿듣기 > 마녀의 시계.
   function maybeShowSpecialEncounterDialogue(isBoss, isFinal, isTrueFinal){
     if(maybeShowMirrorBossDialogue(isFinal, isTrueFinal)) return;
     if(maybeShowAionResonanceDialogue()) return;
     if(maybeShowCorridorEncounterDialogue()) return;
+    if(maybeShowKeepsakeRecognitionDialogue()) return;
+    if(maybeShowOverheardAchosDialogue()) return;
     maybeShowWitchClockDialogue(isBoss, isFinal);
   }
 
