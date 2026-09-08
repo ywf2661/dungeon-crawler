@@ -381,6 +381,93 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return {pStat, eStat, label:{p:STAT_LABEL[pStat], e:STAT_LABEL[eStat]}};
   }
 
+  /* ============ 회랑 특수 조우 대사(사용자 요청 — 서사 통합) ============
+     전투 세팅이 전부 끝난 뒤(startBattle() 맨 끝)에만 호출되는, 순수하게
+     .dialogue-overlay(전체화면 고정 오버레이)를 얹는 방식이라 enemyTurn()/
+     checkBattleEnd() 등 실제 전투 로직 체인은 전혀 건드리지 않는다.
+     저장 데이터: player.corridorDialogueCount/witchClockDialogueCount는
+     storage.js가 player 객체를 통째로 직렬화하므로 별도 마이그레이션 없이
+     안전하다(구 세이브는 undefined -> ||0으로 처리). */
+
+  // 회랑의 정령(ogre)만 칼리버 X 단계별로 다른 반응 — 깊이 스케일 상 1~3단계를
+  // 전부 실제로 마주칠 수 있는 유일한 "회랑의 ○○" 몬스터라 여기서만 단계별
+  // 분기를 둔다(나머지 7종은 사실상 항상 3단계 시점에만 마주치게 되어 있어
+  // 단일 버전으로 충분하다는 사용자 확인 반영).
+  const OGRE_KNIGHT_LINES_BY_STAGE = {
+    caliberx_1: ['...익숙한 기운이군.', '아코스. 자네가 그 검을 들고 여기까지 올 줄은 몰랐네.'],
+    caliberx_2: ['...아코스? ...자네, 눈빛이 예전 같지 않군.', '정말 자네가 맞나?'],
+    caliberx_3: ['...누구지?', '아니, 아무것도 아니다. 지나가라.'],
+  };
+  // 회랑의 기사(paladin_knight) 전용 — 나머지 "회랑의 ○○" 몬스터 7종.
+  const CORRIDOR_NPC_LINES = {
+    egg: ['쩌적... 쩌적... 껍질 안쪽에서 무언가 웅얼거리는 소리가 새어 나온다.', '알아들을 수 있는 말은 아니지만, 어딘가 반가운 듯한 울림이다.'],
+    golem: ['그 검... 낯이 익구먼. 예전에 성벽 보수를 같이 했던가.', '쓸데없는 소리였군. 어서 가시게, 여긴 자네가 있을 곳이 아니야.'],
+    jack: ['오, 아코스 경 아니십니까! 제가 만든 인형들, 기억하십니까?', '왕자님께서 참 좋아하셨는데 말이죠...'],
+    demon: ['하하, 아코스 경 아니신가! 마지막 공연이 아직도 안 끝났나 보군.', '다들 박수를 못 쳐서 안달인데 말이야.'],
+    tome: ['그 검을 든 자여, 마녀의 이름은 이 책 어디에도 적혀 있지 않다.', '그녀는 애초에, 이름을 남기지 않는 자니까.'],
+    tailor: ['아코스...? 그 갑옷, 아직도 몸에 맞는가 보군.', '마녀를 무찌르러 가는 길인가... 부디, 무리는 하지 말게.'],
+    hornbeast: ['크르릉... 컹!', '짐승 같은 울음소리 사이로, 언뜻 사람의 말이 섞여 나온다. "...도망쳐... 늦기 전에..."'],
+  };
+  // 마녀의 시계(relic_witchclock) 보유 시 — 직업 무관, 내레이션 톤(캐릭터 대사 아님).
+  const WITCH_CLOCK_LINES = {
+    boss: ['손목의 시계가 미세하게 떨린다.', '마치 저 너머의 무언가가, 그대가 쥔 시계를 알아본 것처럼.'],
+    corridor: ['시계 초침이 한순간 멈췄다가, 다시 움직인다.', '그 몬스터의 눈이, 아주 잠깐 시계 쪽을 향했다.'],
+  };
+
+  // 회랑의 기사 전용 대사. 실제로 대사를 띄웠으면 true를 반환한다(마녀의 시계
+  // 쪽과 같은 전투에서 중복으로 겹쳐 뜨는 것을 막기 위한 신호용).
+  function maybeShowCorridorEncounterDialogue(){
+    if(player.specialization !== 'paladin_knight') return false;
+    if((player.corridorDialogueCount||0) >= 2) return false;
+    let lines = null;
+    let displayName = (MONSTERS.find(m=>m.type===enemy.type)||{}).name || '';
+    if(enemy.type === 'ogre'){
+      const stage = (player.equipment && player.equipment.weapon) || 'caliberx_1';
+      lines = OGRE_KNIGHT_LINES_BY_STAGE[stage] || OGRE_KNIGHT_LINES_BY_STAGE.caliberx_1;
+    } else {
+      lines = CORRIDOR_NPC_LINES[enemy.type];
+    }
+    if(!lines) return false;
+    if(Math.random() >= 0.5) return false; // 만날 때마다 50%만 -> 런 전체에서 자연스럽게 1~2회로 수렴
+    player.corridorDialogueCount = (player.corridorDialogueCount||0) + 1;
+    saveGame();
+    showDialogueSequence(lines, {title: displayName});
+    return true;
+  }
+
+  // 일반 최종보스("잠식된 OO 용사")가 내 직업과 같을 때 — 파수꾼 시스템의
+  // 무게감을 살리는 1회성 대사(빈도 조절 불필요 — 50층 최종보스는 런당 최대 1회).
+  function maybeShowMirrorBossDialogue(isFinal, isTrueFinal){
+    if(!isFinal || isTrueFinal) return false;
+    if(!enemy.finalJobId || enemy.finalJobId !== player.job) return false;
+    showDialogueSequence(
+      ['저건... 나와 같은 길을 걷던 자였다.', '한때 자신과 같은 선택을 했을 누군가가, 지금은 회랑의 것이 되어 서 있다.'],
+      {tone:'grand'}
+    );
+    return true;
+  }
+
+  // 마녀의 시계 보유 시 — 직업 무관. 회랑의 기사 전용 대사가 이미 떴다면 같은
+  // 전투에서 중복으로 겹쳐 뜨지 않도록 건너뛴다.
+  function maybeShowWitchClockDialogue(isBoss, isFinal){
+    if(!(player.relics||[]).includes('relic_witchclock')) return;
+    const isCorridorMonster = enemy.type==='ogre' || !!CORRIDOR_NPC_LINES[enemy.type];
+    const isRegularBoss = isBoss && !isFinal;
+    if(!isCorridorMonster && !isRegularBoss) return;
+    if((player.witchClockDialogueCount||0) >= 2) return;
+    if(Math.random() >= 0.5) return;
+    player.witchClockDialogueCount = (player.witchClockDialogueCount||0) + 1;
+    saveGame();
+    showDialogueSequence(isRegularBoss ? WITCH_CLOCK_LINES.boss : WITCH_CLOCK_LINES.corridor, {title:'마녀의 시계'});
+  }
+
+  // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 거울 보스 > 회랑의 기사 > 마녀의 시계.
+  function maybeShowSpecialEncounterDialogue(isBoss, isFinal, isTrueFinal){
+    if(maybeShowMirrorBossDialogue(isFinal, isTrueFinal)) return;
+    if(maybeShowCorridorEncounterDialogue()) return;
+    maybeShowWitchClockDialogue(isBoss, isFinal);
+  }
+
   function startBattle(isBoss, isFinal, isTrueFinal){
     revertDiceDelta(); // 직전 전투의 불확실성의 주사위 효과가 남아있다면 먼저 되돌린다(안전망).
     revertRiggedTableDelta(); // 사기꾼 "조작된 도박판"도 동일한 안전망.
@@ -522,4 +609,5 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       const traitLines = enemy.eliteTraits.map(k=> `<b>[${ELITE_TRAITS[k].label}]</b> ${ELITE_TRAITS[k].desc}`).join('<br>');
       showToast(`<h3>⚔ 정예 특성</h3><p>${traitLines}</p>`, '#ff8a3a');
     }
+    maybeShowSpecialEncounterDialogue(isBoss, isFinal, isTrueFinal);
   }
