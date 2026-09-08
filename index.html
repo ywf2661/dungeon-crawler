@@ -461,6 +461,21 @@
     0%,100%{ opacity:.4; transform:translate(-50%,-50%) scale(0.96); }
     50%{ opacity:.85; transform:translate(-50%,-50%) scale(1.08); }
   }
+  /* 시간의 마녀 전용 후광(사용자 요청 — 회랑의 시조의 금색 후광과 확실히
+     구분되는 보라색). 애니메이션은 위 truebosshalo/truebosshaloring을
+     그대로 재사용하고 색상만 다르다. */
+  .enemy-stage.witch-boss-halo::before{
+    content:''; position:absolute; left:50%; top:46%; transform:translate(-50%,-50%);
+    width:260px; height:260px; border-radius:50%;
+    background:radial-gradient(circle, #e8d9ff 0%, #9c7ad1cc 22%, #7a5a9c55 48%, transparent 72%);
+    animation:truebosshalo 1.8s ease-in-out infinite; pointer-events:none;
+  }
+  .enemy-stage.witch-boss-halo::after{
+    content:''; position:absolute; left:50%; top:46%; transform:translate(-50%,-50%);
+    width:340px; height:340px; border-radius:50%;
+    border:2px solid #b48ce699; box-shadow:0 0 40px 6px #7a5a9c66;
+    animation:truebosshaloring 1.8s ease-in-out infinite; pointer-events:none;
+  }
   /* 떠 있는 컨셉의 보스 전용 부유 애니메이션(사용자 요청, 해당되는 보스에만
      JS에서 클래스 부여). --ground-offset(PNG 보정치)이 있는 img도 안전하게
      같은 규칙을 쓸 수 있도록 calc()로 기존 보정값에 얹는다. */

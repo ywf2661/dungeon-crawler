@@ -40,6 +40,14 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     name:'회랑의 시조', type:'progenitor', hp:460, atk:32, def:22, spd:10,
     exp:1200, gold:[600,800], skills:['trueBossJudgment','heal'],
   };
+  // 마녀의 시계(relic_witchclock) 보유 시, 회랑의 시조 대신 등장하는 진 최종보스
+  // "시간의 마녀"(아이온) — B안: 대역(시조)을 보낼 필요 없이 자신의 물건을
+  // 알아보고 직접 나선다는 서사(CURRENT_STATUS.md/설계 대화 참고). 시조보다
+  // 덜 단단하지만 더 빠른 쪽으로 스탯을 잡았다(HP/DEF 소폭 하향, SPD 대폭 상향).
+  const TRUE_FINAL_BOSS_WITCH = {
+    name:'시간의 마녀', type:'timewitch', hp:440, atk:34, def:20, spd:14,
+    exp:1300, gold:[650,850], skills:['aionHaste','aionParadox'],
+  };
   function pickFinalBossJob(){
     const ids = JOBS.map(j=>j.id);
     return ids[Math.floor(Math.random()*ids.length)];
@@ -63,15 +71,28 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   const ENRAGE_STEPS_TRUE = [
     {atkMult:1.10, defMult:1.05, hpMult:1.10, skillChance:0.45, label:'각성 — 태초의 분노가 깨어난다'},
   ];
+  // 아이온 전용 광폭화 스텝 — 발동 조건/구조(체력 0 -> 풀피 부활)는
+  // ENRAGE_STEPS_TRUE와 완전히 동일하고 라벨/연출만 시간 역행 테마로 다르다.
+  const ENRAGE_STEPS_WITCH = [
+    {atkMult:1.10, defMult:1.05, hpMult:1.10, skillChance:0.45, label:'시간 역행 — 되감긴 시간이 상처를 지운다'},
+  ];
+  // 진 최종보스 종류별 광폭화 스텝 선택 헬퍼(canEnrage/triggerEnragePhase/
+  // checkLastStand 3곳에서 공용으로 쓴다) — 새 진 최종보스가 추가되면
+  // 여기만 분기를 늘리면 된다.
+  function getEnrageSteps(e){
+    if(e && e.type==='timewitch') return ENRAGE_STEPS_WITCH;
+    if(e && e.isTrueFinal) return ENRAGE_STEPS_TRUE;
+    return ENRAGE_STEPS_FINAL;
+  }
   function canEnrage(e){
     if(!e || !(e.isFinal || e.isTrueFinal)) return false;
     if(!player || player.difficulty==='easy') return false;
-    const steps = e.isTrueFinal ? ENRAGE_STEPS_TRUE : ENRAGE_STEPS_FINAL;
+    const steps = getEnrageSteps(e);
     return (e.phase||0) < steps.length;
   }
   function triggerEnragePhase(){
     setCommandsEnabled(false);
-    const steps = enemy.isTrueFinal ? ENRAGE_STEPS_TRUE : ENRAGE_STEPS_FINAL;
+    const steps = getEnrageSteps(enemy);
     const phase = enemy.phase||0;
     const step = steps[phase];
     enemy.phase = phase+1;
@@ -194,11 +215,13 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     heroWarriorSmite:'필멸의 참격', heroMageBurst:'멸망의 화염구', heroRogueSlash:'그림자 베기',
     heroPaladinSmite:'심판의 빛', heroMechanicBlast:'장치 기폭', heroJesterGamble:'최후의 도박',
     trueBossJudgment:'태초의 심판',
+    aionHaste:'가속의 손', aionParadox:'시간의 역설',
   };
 
   function pickEnemy(isBoss, isFinal, isTrueFinal){
     if(isTrueFinal){
-      const base = TRUE_FINAL_BOSS;
+      const hasWitchClock = (player.relics||[]).includes('relic_witchclock');
+      const base = hasWitchClock ? TRUE_FINAL_BOSS_WITCH : TRUE_FINAL_BOSS;
       const scale = 1 + depth*0.05;
       // 사용자 요청 — 시뮬레이션(자연 진행 레벨17, 유물슬롯 보정 포함) 결과
       // 반영: hp/atk에 ×0.77 하향. def는 하향 대상에서 제외(원래도 별도
@@ -604,7 +627,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     document.getElementById('bt-stage').className='enemy-stage'
       + (enemy.isElite?' elite':'')
       + (enemy.isBoss && !isTrueFinal?' boss-halo':'')
-      + (isTrueFinal?' true-boss-halo':'')
+      + (isTrueFinal && enemy.type==='timewitch'?' witch-boss-halo':'')
+      + (isTrueFinal && enemy.type!=='timewitch'?' true-boss-halo':'')
       + (enemy.isBoss && isFloatingBoss?' boss-float':'');
     // PNG 몬스터 그림이 캔버스 안 투명 여백 때문에 "붕 떠 보이는" 문제를
     // 자동으로 보정한다(monster-visuals.js의 fixMonsterImageGrounding 참고).
