@@ -1,7 +1,7 @@
 "use strict";
 /*
 장비 관리 화면 UI(에픽 세트 진행도 표시 포함).
-export(전역): renderSetProgressHTML, openEquipment
+export(전역): renderSetProgressHTML, openEquipment, showSetEffectPopup
 의존성: player(state.js), data/equipment.js
 주의: 회랑의 기사(paladin_knight)의 전용무기 칼리버 X(storyWeapon:true, 3단계)는
      교체/해제가 불가능하므로, 이 화면에서도 그에 맞게 손봤다 —
@@ -23,11 +23,14 @@ export(전역): renderSetProgressHTML, openEquipment
         const set = EPIC_SETS[id];
         const equippedCount = counts[id]||0;
         const items = Object.keys(EPIC_EQUIPMENT).filter(k=>EPIC_EQUIPMENT[k].setId===id);
+        // 장비 이름을 클릭하면 2/3세트 효과 팝업이 뜨도록(사용자 요청) — 이름
+        // 자체는 지금까지처럼 목록에 그대로 두되, 밑줄 스타일로 클릭 가능함을
+        // 표시하고 data-action="setinfo"로 openEquipment()에서 이벤트를 건다.
         const rows = items.map(k=>{
           const owned = player.equipOwned.includes(k);
           const equipped = Object.values(player.equipment).includes(k);
           const mark = equipped ? '■' : (owned?'▣':'□');
-          return `${EPIC_EQUIPMENT[k].name} ${mark}`;
+          return `<span class="set-item-name" data-action="setinfo" data-set="${id}" style="cursor:pointer; text-decoration:underline dotted;">${EPIC_EQUIPMENT[k].name}</span> ${mark}`;
         }).join('&nbsp;&nbsp;');
         const tierNote = equippedCount>=3 ? `<span style="color:var(--epic-bright);"> — SET COMPLETE (${set.set3Name})</span>`
           : equippedCount>=2 ? `<span style="color:var(--epic-bright);"> — ${set.set2Name} 발동중</span>` : '';
@@ -35,6 +38,33 @@ export(전역): renderSetProgressHTML, openEquipment
           <b style="color:var(--epic-bright);">${set.name}</b> (${equippedCount}/3 장착)${tierNote}<br>${rows}
         </div>`;
       }).join('');
+  }
+
+  // 세트 이름 클릭 시 뜨는 2/3세트 효과 팝업(사용자 요청) — relic 도감류와
+  // 같은 오버레이 스타일(relicdex-row/relic-desc 클래스 재사용)로 통일한다.
+  // openEquipment()가 만든 장비 오버레이 위에 하나 더 쌓이는 구조라, 닫으면
+  // 원래 장비 화면이 그대로 남아있다.
+  function showSetEffectPopup(setId){
+    const set = EPIC_SETS[setId];
+    if(!set) return;
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'setinfo-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `<h3>✦ ${set.name}</h3>
+      <div class="relicdex-row">
+        <div style="color:var(--epic-bright); font-family:'Cinzel';">2세트 — ${set.set2Name}</div>
+        <div class="relic-desc" style="margin-top:3px;">${set.set2Desc}</div>
+      </div>
+      <div class="relicdex-row" style="margin-top:8px;">
+        <div style="color:var(--epic-bright); font-family:'Cinzel';">3세트 — ${set.set3Name}</div>
+        <div class="relic-desc" style="margin-top:3px;">${set.set3Desc}</div>
+      </div>
+      <div style="text-align:center; margin-top:10px;"><button class="btn" id="setinfo-close">닫기</button></div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    panel.querySelector('#setinfo-close').addEventListener('click', ()=> overlay.remove());
   }
 
   function openEquipment(){
@@ -87,6 +117,9 @@ export(전역): renderSetProgressHTML, openEquipment
     });
     panel.querySelectorAll('[data-action="unequip"]').forEach(b=>{
       b.addEventListener('click', ()=>{ unequipItem(b.dataset.slot); overlay.remove(); openEquipment(); });
+    });
+    panel.querySelectorAll('[data-action="setinfo"]').forEach(el=>{
+      el.addEventListener('click', ()=>{ showSetEffectPopup(el.dataset.set); });
     });
     panel.querySelector('#equip-close').addEventListener('click', ()=>overlay.remove());
   }
