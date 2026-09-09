@@ -674,6 +674,7 @@
   .back-row{display:flex; justify-content:flex-end; flex-shrink:0; padding-top:2px;}
   .link-btn{background:none; border:none; color:var(--parchment-dim); font-family:var(--font-ui); font-size:12.5px; cursor:pointer; text-decoration:underline; padding:4px;}
   .link-btn:hover{color:var(--gold-bright);}
+  .title-links-row{display:flex; gap:16px; justify-content:center; align-items:center;}
 
   #sound-toggle{
     position:absolute; top:8px; right:8px; z-index:40;
@@ -954,8 +955,10 @@
     <div class="difficulty-select" id="difficulty-select"></div>
     <button class="btn" id="btn-start">새로 시작하다</button>
     <button class="link-btn" id="btn-delete-save" style="display:none;">저장 데이터 삭제</button>
-    <button class="link-btn" id="btn-relicdex">📖 유물 도감</button>
-    <button class="link-btn" id="btn-achievements">📜 업적</button>
+    <div class="title-links-row">
+      <button class="link-btn" id="btn-relicdex">📖 유물 도감</button>
+      <button class="link-btn" id="btn-achievements">📜 업적</button>
+    </div>
     <div id="records-section" style="display:none;">
       <div class="records-title">이전 모험 기록</div>
       <div id="records-list"></div>
