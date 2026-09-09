@@ -440,10 +440,20 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(player.buffDefTurns>0){
       const b = document.createElement('div');
       b.className = 'status-badge player-badge';
-      const pct = Math.round((1-(player.buffDefMult||1))*100);
       const turnLabel = player.buffDefTurns>=90 ? '지속 중' : `${player.buffDefTurns}턴`;
-      b.textContent = `🛡️ 방어 버프 ${turnLabel}`;
-      b.title = pct>0 ? `받는 피해 -${pct}%` : '방어 태세가 지속되고 있다.';
+      // 버그 수정(사용자 제보) — buffDefMult는 방어 버프(1보다 작음, 받는
+      // 피해 감소)와 물음표 이벤트 저주(applyNextBattleCurse 등, 1보다 큼,
+      // 받는 피해 증가) 양쪽에 재활용되는 필드인데, 배지는 방향과 무관하게
+      // 항상 "방어 버프"로만 표시하고 있었다. 방향에 따라 배지 자체를 분기한다.
+      if((player.buffDefMult||1) > 1){
+        const curseP = Math.round(((player.buffDefMult||1)-1)*100);
+        b.textContent = `💀 저주: 받는피해 증가 ${turnLabel}`;
+        b.title = `받는 피해 +${curseP}%`;
+      } else {
+        const pct = Math.round((1-(player.buffDefMult||1))*100);
+        b.textContent = `🛡️ 방어 버프 ${turnLabel}`;
+        b.title = pct>0 ? `받는 피해 -${pct}%` : '방어 태세가 지속되고 있다.';
+      }
       box.appendChild(b);
     }
     if(player.buffCounterTurns>0){
