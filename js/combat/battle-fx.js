@@ -3,7 +3,7 @@
 전투 UI 연출/이펙트 — HP바 갱신, 메시지 표시, 커맨드 UI 리셋/활성화,
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
-              shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnChalnaSlashBurst, playComboFinish,
+              shakeEnemy, spawnSlashMark, spawnSlashImageFx, playComboFinish,
               playStatusFx, playCastBurst, playBanner,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
@@ -159,12 +159,10 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.style.setProperty('--sx', (opts.x!=null ? opts.x : Math.round(32+Math.random()*36))+'%');
     el.style.setProperty('--sy', (opts.y!=null ? opts.y : Math.round(32+Math.random()*36))+'%');
     stage.appendChild(el);
-    setTimeout(()=>el.remove(), 420);
+    setTimeout(()=>el.remove(), 230);
   }
-  // 찰나검사 타격 연출용 헬퍼 — n번, delayMs 간격으로 spawnSlashImageFx를 뿌린다.
-  function spawnChalnaSlashBurst(n, delayMs){
-    for(let i=0;i<n;i++) setTimeout(()=>spawnSlashImageFx(), i*(delayMs||90));
-  }
+  // 찰나검사 타격 연출 — 실제 타이밍 동기화는 player-actions.js에서 각 타격/
+  // 임팩트 시점에 spawnSlashImageFx()를 직접 호출하는 방식으로 처리한다.
 
   function playComboFinish(hits){
     if(hits < 2) return;

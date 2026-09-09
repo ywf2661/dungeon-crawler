@@ -1022,8 +1022,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       // 타별로 순차 적용(사용자 요청 — "4번 베면 4번에 걸쳐 데미지가 들어갔으면
       // 좋겠다"). 기존 multihit 타입 처리부와 동일한 패턴(220ms 간격)이며,
-      // 매 타마다 이미지 VFX도 하나씩 곁들인다(spawnChalnaSlashBurst 대신
-      // 타이밍을 직접 맞춤).
+      // 매 타마다 이미지 VFX도 그 타격 시점에 맞춰 하나씩 재생한다.
       const title = combo ? `${player.name}의 ${combo.name}!` : `${player.name}의 ${s.name}!`;
       setBattleMsg(title, '연속 공격 중...');
       parts.forEach((hitDmg, i)=>{
@@ -1057,15 +1056,21 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       dmgTri = modTri.value;
       consumeAtkBuff();
       rogueRegisterHit(true);
-      enemy.hp = Math.max(0, enemy.hp-dmgTri);
-      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmgTri, modTri.triggered?'crit':undefined);
-      Sound.slash();
-      // 삼박일섬 — "세 박자"를 상징하도록 3연속으로 뿌린다.
-      if(typeof spawnChalnaSlashBurst==='function') spawnChalnaSlashBurst(3);
-      renderStatus();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `세 박자가 하나의 섬광으로 이어져 ${dmgTri}의 피해를 입혔다!`);
-      if(checkBattleEnd()) return;
-      enemyTurn();
+      // 버그 수정(사용자 제보) — 데미지는 즉시 뜨는데 VFX는 3연속으로 270ms에
+      // 걸쳐 재생돼 서로 안 맞았다. "세 박자"를 상징하는 VFX 3연타를 먼저
+      // 재생하고, 그게 다 끝나는 시점에 맞춰 데미지가 임팩트처럼 뜨도록 순서를
+      // 바꿨다(스태거 80ms×3 + 여유 100ms).
+      setBattleMsg(`${player.name}의 ${s.name}!`, '세 박자를 하나로 잇는 중...');
+      for(let i=0;i<3;i++) setTimeout(()=>{ if(typeof spawnSlashImageFx==='function') spawnSlashImageFx(); }, i*80);
+      setTimeout(()=>{
+        enemy.hp = Math.max(0, enemy.hp-dmgTri);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmgTri, modTri.triggered?'crit':undefined);
+        Sound.slash();
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `세 박자가 하나의 섬광으로 이어져 ${dmgTri}의 피해를 입혔다!`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+      }, 260);
       return;
     }
 
