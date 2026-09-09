@@ -64,6 +64,7 @@ export(전역): init, showMaintenanceModal, isAdminName
     });
     document.getElementById('btn-relicdex').addEventListener('click', ()=>{ showRelicDex(); });
     document.getElementById('btn-achievements').addEventListener('click', ()=>{ showAchievements(); });
+    document.getElementById('btn-records').addEventListener('click', ()=>{ showRecords(); });
     document.getElementById('btn-restart').addEventListener('click', ()=>{
       // player는 이미 쓰러진 시점에 마을로 옮겨져 체력이 회복되고 골드가 절반이 되었다.
       showScreen('explore');
@@ -81,7 +82,7 @@ export(전역): init, showMaintenanceModal, isAdminName
         deathCount: player.deathCount||0, ts: Date.now(),
         difficulty: player.difficulty||'easy',
         // 난이도별 왕관 표시(사용자 제보 — 원래 되던 게 안 보임)의 근거 필드.
-        // records.js의 renderRecords()도 이 필드(r.trueEnding)를 읽어 뱃지를
+        // records.js의 showRecords()도 이 필드(r.trueEnding)를 읽어 뱃지를
         // 붙이는데, 정작 이 record 객체엔 한 번도 채워진 적이 없었다.
         trueEnding: !!player.trueEndingSeen,
         // 일반 최종보스("잠식된 OO 용사")가 이 기록의 이름/직업을 따르게
@@ -105,7 +106,6 @@ export(전역): init, showMaintenanceModal, isAdminName
       showScreen('title');
       if(newlyUnlocked.length) showAchievementToast(newlyUnlocked);
       loadRecords().then(records=>{
-        renderRecords(records);
         normalUnlocked = records.length > 0;
         hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
         // 난이도별 왕관 표시(사용자 제보로 원인 확인 — record 객체에 trueEnding
@@ -155,7 +155,6 @@ export(전역): init, showMaintenanceModal, isAdminName
     }).catch(e=>{ console.warn('불러오기 실패(무시):', e); });
 
     loadRecords().then(records=>{
-      renderRecords(records);
       normalUnlocked = records.length > 0;
       hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
       easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0);

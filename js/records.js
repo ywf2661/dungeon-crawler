@@ -1,7 +1,7 @@
 "use strict";
 /*
 이전 모험 기록 렌더 + 유물 도감 표시(획득한 유물의 현재 상태를 설명에 덧붙인다) + 업적 판정/도감.
-export(전역): renderRecords, getRelicDisplayDesc, showMyRelics, checkAchievements, showAchievements,
+export(전역): showRecords, getRelicDisplayDesc, showMyRelics, checkAchievements, showAchievements,
               showAchievementToast
 의존성: player(state.js), RELICS(relics.js), ACHIEVEMENTS(data/achievements.js),
         loadRelicDex/loadAchievements/unlockAchievement(storage.js)
@@ -14,37 +14,55 @@ export(전역): renderRecords, getRelicDisplayDesc, showMyRelics, checkAchieveme
      같은 이유로 저주를 교체 후보에서 아예 제외하도록 이미 고쳐져 있다.
 */
 
-  function renderRecords(records){
-    const section = document.getElementById('records-section');
-    const box = document.getElementById('records-list');
-    if(!records || !records.length){ section.style.display='none'; return; }
-    section.style.display='block';
-    box.innerHTML = '';
-    records.slice().reverse().forEach(r=>{
-      const row = document.createElement('div');
-      row.className = 'record-row' + (r.trueEnding ? ' flawless' : '');
-      const left = document.createElement('span');
-      left.className = 'rec-name';
-      left.textContent = r.name;
-      const job = document.createElement('span');
-      job.className = 'rec-job';
-      job.textContent = r.jobLabel;
-      const diffLabel = {easy:'쉬움', normal:'보통', hardcore:'하드코어'}[r.difficulty] || '쉬움';
-      const stat = document.createElement('span');
-      stat.className = 'rec-stat';
-      stat.textContent = `${diffLabel} · Lv.${r.level} · 사망 ${r.deathCount}회`;
-      row.appendChild(left); row.appendChild(job); row.appendChild(stat);
-      if(r.trueEnding){
-        const badge = document.createElement('span');
-        badge.className = 'rec-flawless-badge';
-        badge.style.color = 'var(--gold-bright)';
-        badge.style.marginLeft = '6px';
-        badge.title = '한 번도 쓰러지지 않고 진 최종보스를 물리쳤다';
-        badge.textContent = '👑 무결';
-        row.appendChild(badge);
-      }
-      box.appendChild(row);
-    });
+  // 기록 한 줄(row)을 그린다 — showRecords()에서 재사용.
+  function buildRecordRow(r){
+    const row = document.createElement('div');
+    row.className = 'record-row' + (r.trueEnding ? ' flawless' : '');
+    const left = document.createElement('span');
+    left.className = 'rec-name';
+    left.textContent = r.name;
+    const job = document.createElement('span');
+    job.className = 'rec-job';
+    job.textContent = r.jobLabel;
+    const diffLabel = {easy:'쉬움', normal:'보통', hardcore:'하드코어'}[r.difficulty] || '쉬움';
+    const stat = document.createElement('span');
+    stat.className = 'rec-stat';
+    stat.textContent = `${diffLabel} · Lv.${r.level} · 사망 ${r.deathCount}회`;
+    row.appendChild(left); row.appendChild(job); row.appendChild(stat);
+    if(r.trueEnding){
+      const badge = document.createElement('span');
+      badge.className = 'rec-flawless-badge';
+      badge.style.color = 'var(--gold-bright)';
+      badge.style.marginLeft = '6px';
+      badge.title = '한 번도 쓰러지지 않고 진 최종보스를 물리쳤다';
+      badge.textContent = '👑 무결';
+      row.appendChild(badge);
+    }
+    return row;
+  }
+
+  // 이전 모험 기록 — 유물 도감/업적처럼 버튼을 눌러야 보이는 오버레이로 표시한다.
+  // (예전엔 타이틀 화면에 항상 펼쳐진 목록이었으나, 플레이할수록 계속 늘어나
+  // 타이틀 화면 정보량 과다의 주된 원인이었음 — 사용자 요청으로 오버레이로 분리)
+  async function showRecords(){
+    const records = await loadRecords();
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'records-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `<h3>📜 이전 모험 기록</h3>
+      <div id="records-overlay-list" style="display:flex; flex-direction:column; gap:4px; max-height:280px; overflow-y:auto; padding:2px;"></div>
+      <div style="text-align:center; margin-top:10px;"><button class="btn" id="records-overlay-close">닫기</button></div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    const box = panel.querySelector('#records-overlay-list');
+    if(!records.length){
+      box.innerHTML = `<p style="text-align:center;color:var(--parchment-dim);font-size:13px;font-style:italic;padding:10px 0;">아직 기록이 없다.</p>`;
+    } else {
+      records.slice().reverse().forEach(r=> box.appendChild(buildRecordRow(r)));
+    }
+    panel.querySelector('#records-overlay-close').addEventListener('click', ()=> overlay.remove());
   }
 
   async function showRelicDex(){
