@@ -137,7 +137,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // masterySkillIds(복수)로 마스터리+즉시2종+예약2종(완박/중박 계열)을 한
       // 번에 지급하고, Lv12에 급박 계열(즉시+예약) 2개를 skillLevels 배열로
       // 추가 지급, Lv15는 찰나 시스템과 무관한 독립 궁극기.
-      {id:'warrior_chalna', name:'찰나검사', icon:'🌀',
+      {id:'warrior_chalna', name:'찰나의 검사', icon:'🌀',
         desc:'멈춰버린 회랑 어딘가에서 떨어져 나온 시간의 파편이, 벨 때마다 손끝에 스며든다. 그 찰나의 감각을 다음 검격과 잇는 법을 스스로 터득한 검사.',
         masteryName:'찰나검', masteryDesc:'완박/중박/급박 중 하나를 찰나로 남길 수 있게 된다. 찰나가 남아있는 동안 다음 검격과 합쳐져 전혀 다른 콤보 검격이 발동한다(다음 내 턴 안에 잇지 못하면 찰나는 흩어진다).', masterySkillId:'mastery_chalna',
         activeSkillIds:['chalnaSlowStrike','chalnaMidStrike','chalnaSlowReserve','chalnaMidReserve'],
