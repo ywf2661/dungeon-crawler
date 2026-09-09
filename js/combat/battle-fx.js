@@ -212,7 +212,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 반대편 슬롯의 다른 로봇은 그대로 보인다.
   function renderOneRigSlot(el, rig){
     if(!rig){
-      el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('rig-wide'); el.classList.remove('rig-top'); el.classList.remove('rig-shield');
+      el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('rig-wide'); el.classList.remove('rig-top'); el.classList.remove('rig-shield'); el.classList.remove('rig-hover');
       return;
     }
     el.innerHTML = svgRig(rig.kind) + `<div class="rig-turns">${rig.turnsLeft}턴</div>`;
@@ -223,6 +223,12 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.classList.toggle('rig-top', ['recon','firepower','shield','filler'].includes(rig.kind));
     // 방벽 로봇은 다른 2종보다 살짝 작고 더 바깥쪽/위쪽에 오도록(사용자 요청).
     el.classList.toggle('rig-shield', rig.kind==='shield');
+    // 정찰/화력/방벽 3종은 드론처럼 공중에 떠 있는 컨셉이라 은은하게 둥둥
+    // 뜨는 애니메이션을 준다(사용자 요청). 필러(긴급배치)는 대상에서 제외 —
+    // 요청 범위가 명시적으로 이 3종이었음. 컨테이너(el)에 애니메이션을 걸어
+    // img 자식의 좌우반전 transform(.rig-slot-right img{scaleX(-1)})과 겹치지
+    // 않게 한다.
+    el.classList.toggle('rig-hover', ['recon','firepower','shield'].includes(rig.kind));
   }
   // 메카닉 리뉴얼(사용자 요청) — 보일러 압력 폭주. 압력이 100에 도달한 채
   // 방출되지 않고 넘어가면, 내 턴이 돌아올 때 자동으로 터진다(20% 확률로
