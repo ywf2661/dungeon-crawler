@@ -653,9 +653,10 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       }
       normalKeys.forEach(k=>{
         const s = SKILLDB[k];
-        // 찰나검사(warrior_chalna): 찰나가 대기 중이면 예약 3항목은 목록에서
-        // 아예 숨긴다(한 번에 하나만 걸 수 있으므로 또 예약할 이유가 없음).
-        if(s.type==='chalnaReserve' && battleFlags && battleFlags.chalnaReserve) return;
+        // 찰나검사(warrior_chalna): 예약 스킬은 이제 독립된 항목으로 렌더링하지
+        // 않는다(사용자 요청 — 목록이 너무 길어짐). 대신 짝이 되는 즉시시전
+        // 스킬 항목 오른쪽에 작은 "예약" 버튼으로 통합해서 붙인다.
+        if(s.type==='chalnaReserve') return;
         const mpCost = s.mp;
         const cdLeft = (battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[k]) || 0;
         // 사기꾼 "운명 뒤바꾸기"(hpswap)는 전투당 1회 제한(겹패 각인이 있으면
@@ -675,6 +676,18 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
           const combo = CHALNA_COMBOS[[battleFlags.chalnaReserve.beat, s.beat].sort().join('+')];
           if(combo){ displayName = combo.name; displayDesc = combo.desc; }
         }
+        // 찰나검사 예약 버튼 — 짝이 되는 예약 스킬 키는 이름 규칙(XxxStrike ↔
+        // XxxReserve)으로 바로 유도한다. 이미 찰나가 대기 중이면(한 번에 하나만
+        // 걸 수 있으므로) 버튼 자체를 렌더링하지 않는다.
+        let reserveBtnHtml = '';
+        let reserveKey = null;
+        if(s.type==='chalnaStrike' && !(battleFlags && battleFlags.chalnaReserve)){
+          const candidateKey = k.replace('Strike','Reserve');
+          if(SKILLDB[candidateKey] && player.skills.includes(candidateKey)){
+            reserveKey = candidateKey;
+            reserveBtnHtml = `<button class="chalna-reserve-btn" data-reserve="${reserveKey}">⏱ 예약</button>`;
+          }
+        }
         // 베팅/올인(goldbet 타입): 실제로 쓰면 판돈이 얼마가 될지 현재 소지 골드
         // 기준으로 미리 계산해 보여준다("전투 중 소지금액 확인" 요청에 맞춰,
         // 그냥 골드 숫자만 보여주는 것보다 "이 스킬을 쓰면 얼마를 거는지"가 더
@@ -693,8 +706,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
           extraInfo = `<div class="si-desc" style="color:var(--gold-bright); margin-top:2px;">📒 지금까지 ${count}회 대출 · 빌리면 빚 ${(player.debt||0)+loan.amount}G</div>`;
         }
         const costBadge = usedOnce ? '전투당 1회' : (cdLeft>0 ? `쿨타임 ${cdLeft}턴` : `MP ${mpCost}`);
-        div.innerHTML = `<div class="si-info"><div class="si-name">${displayName}</div><div class="si-desc">${displayDesc}</div>${extraInfo}</div><div class="si-cost">${costBadge}</div>`;
+        div.innerHTML = `<div class="si-info"><div class="si-name">${displayName}</div><div class="si-desc">${displayDesc}</div>${extraInfo}</div><div class="si-cost">${costBadge}</div>${reserveBtnHtml}`;
         if(canUse) div.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
+        if(reserveKey){
+          const rBtn = div.querySelector('.chalna-reserve-btn');
+          if(rBtn && canUse){
+            rBtn.addEventListener('click', (e)=>{ e.stopPropagation(); closeSub(); playerSkill(reserveKey); });
+          } else if(rBtn){
+            rBtn.disabled = true;
+          }
+        }
         sub.appendChild(div);
       });
     } else if(mode==='item'){

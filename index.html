@@ -649,6 +649,15 @@
   .sub-item .si-desc{color:var(--parchment-dim); font-size:12px; font-style:italic; display:block; margin-top:2px; white-space:normal; overflow-wrap:break-word; line-height:1.4;}
   .sub-item .si-cost{color:#8fb4e8; font-size:12px; flex-shrink:0; margin-left:8px; padding-top:1px;}
   .sub-item.disabled{opacity:.35; cursor:not-allowed;}
+  /* 찰나검사(warrior_chalna) 예약 버튼 — sub-item 안에 si-cost와 나란히 붙는
+     세 번째 flex 자식. */
+  .chalna-reserve-btn{
+    flex-shrink:0; align-self:center; font-family:var(--font-ui); font-size:11px;
+    color:var(--parchment); background:#2a2119; border:1px solid #4a3a24; border-radius:3px;
+    padding:6px 8px; cursor:pointer; white-space:nowrap;
+  }
+  .chalna-reserve-btn:hover{ border-color:var(--gold); color:var(--gold-bright); }
+  .chalna-reserve-btn:disabled{ opacity:.35; cursor:not-allowed; }
   /* 1차/2차 각성 스킬 구분용 테두리 색(사용자 요청 — 2차 전직 후 스킬 목록이
      뒤섞여 헷갈림). 1차=기본 직업 공용 스킬, 2차=전직으로 얻은 특성 전용 스킬. */
   .sub-item.skill-tier1{ border-color:#5a7a9c; }
