@@ -356,11 +356,8 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         showScreen('gameover');
         if(player.difficulty==='hardcore'){
           document.getElementById('go-summary').textContent =
-            `깊이 ${depth}까지 도달했으나, 회랑 깊숙이 새겨진 오래된 시간의 힘이 거칠게 되감긴다. `
-            + `레벨 1, 1층부터 다시 시작한다. 그러나 손에 넣은 유물만은 그대로 남는다.`;
-          if(typeof showToast==='function'){
-            showToast(`<h3>⏳ 되감긴 시간</h3><p>쓰러지는 순간, 회랑 전체의 시간이 거칠게 되감긴다. 붙잡을 수 없는 힘 앞에서, 걸어온 길조차 흩어진다.</p>`, '#9fd8ff');
-          }
+            `쓰러지는 순간, 회랑 깊숙이 새겨진 오래된 시간의 힘이 거칠게 되감긴다. `
+            + `깊이 ${depth}까지 도달했던 모든 기억이 흩어지고, 레벨 1, 1층부터 다시 시작한다. 그러나 손에 넣은 유물만은 그대로 남는다.`;
           const oldRelics = (player.relics||[]).slice();
           const oldRelicSlots = player.relicSlots;
           const oldAltarsSeen = (player.relicAltarsSeen||[]).slice();
@@ -389,10 +386,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           // 없지만 안전장치) 기존처럼 절반 골드+완전회복으로 폴백한다.
           const cp = player.townCheckpoint;
           document.getElementById('go-summary').textContent =
-            `깊이 ${depth}까지 도달했다. 쓰러지는 순간 시간이 삐끗하며 되감겨, 마지막으로 안식했던 그 순간의 마을로 돌아왔다.`;
-          if(typeof showToast==='function'){
-            showToast(`<h3>⏳ 되감긴 시간</h3><p>쓰러지는 순간, 붙잡을 수 없는 무언가가 시간을 살짝 되돌린다. 눈을 뜨니, 마을이다.</p>`, '#9fd8ff');
-          }
+            `쓰러지는 순간, 시간이 되감긴다. 깊이 ${depth}까지 도달했던 기억이 흐려지며, 마지막으로 안식했던 그 순간의 마을로 돌아왔다.`;
           if(cp){
             applyTownCheckpoint(cp);
           } else {

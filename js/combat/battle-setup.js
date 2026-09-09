@@ -533,9 +533,17 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   }
 
   // 직업/장비 무관 — 아무 "회랑의 ○○" 몬스터에게서나 낮은 확률로 뜨는
-  // "엿듣기" 버전. 플레이어를 아코스로 착각하는 게 아니라, 그 이름이 아직도
-  // 회랑 어딘가에 남아 떠돈다는 걸 보여주는 용도(런당 1회, 낮은 확률).
-  const OVERHEARD_ACHOS_LINE = ['회랑의 몬스터가 허공에 대고 낮게 중얼거린다.', '"...아코스. 그 이름을 들은 지도 오래됐군."'];
+  // "엿듣기" 버전. 원래는 직업 무관 단일 대사였으나(사용자 피드백 — "아코스
+  // 얘기가 뜬금없다"), 플레이어 직업에 따라 반응이 달라지도록 분기했다.
+  // - 검사 계열(전사/성기사): 아코스를 여전히 간접적으로 암시("그도 검을
+  //   쓰는 기사였지")하되, 이름을 직접 부르지는 않는다.
+  // - 마법사: 아코스 얘기 대신, 몬스터(주민)들이 스스로를 저주에 걸린
+  //   피해자로 여기고 있다는 걸 보여주는 쪽으로 완전히 틀었다 — 마법을
+  //   본 반응이 "혹시 그 마녀와 관계가 있나"로 향한다.
+  // - 그 외 직업은 기존 범용 대사를 그대로 유지(요청 범위 밖).
+  const OVERHEARD_ACHOS_LINE_SWORD = ['회랑의 몬스터가 그대의 검을 흘긋 본다.', '"...그래. 그도 검을 쓰는 기사였지."'];
+  const OVERHEARD_ACHOS_LINE_MAGE = ['회랑의 몬스터가 흠칫하며 뒷걸음질친다.', '"마법의 힘이라니...? 혹시, 우릴 이렇게 만든 마녀와 관계가 있는 건가...?"'];
+  const OVERHEARD_ACHOS_LINE_DEFAULT = ['회랑의 몬스터가 허공에 대고 낮게 중얼거린다.', '"...아코스. 그 이름을 들은 지도 오래됐군."'];
   function maybeShowOverheardAchosDialogue(){
     const isCorridorMonster = enemy.type==='ogre' || !!CORRIDOR_NPC_LINES[enemy.type];
     if(!isCorridorMonster) return false;
@@ -543,7 +551,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     if(Math.random() >= 0.3) return false;
     player.overheardAchosDialogueCount = (player.overheardAchosDialogueCount||0) + 1;
     saveGame();
-    showDialogueSequence(OVERHEARD_ACHOS_LINE, {});
+    const isSwordJob = player.job==='warrior' || player.job==='paladin';
+    const isMageJob = player.job==='mage';
+    const lines = isSwordJob ? OVERHEARD_ACHOS_LINE_SWORD : isMageJob ? OVERHEARD_ACHOS_LINE_MAGE : OVERHEARD_ACHOS_LINE_DEFAULT;
+    showDialogueSequence(lines, {});
     return true;
   }
 
