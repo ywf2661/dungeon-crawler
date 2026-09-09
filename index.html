@@ -393,10 +393,10 @@
     35%{opacity:1; transform:translate(-50%,-50%) rotate(var(--ang,-30deg)) scaleX(1.15);}
     100%{opacity:0; transform:translate(-50%,-50%) rotate(var(--ang,-30deg)) scaleX(1.3);}
   }
-  // 이미지 기반 슬래시 VFX(사용자 제공 스프라이트, images/vfx/). 찰나검사
-  // 전용으로 좌우반전(--flipx)/회전(--ang)/위치(--sx,--sy)를 매번 무작위로
-  // 바꿔가며 여러 번 뿌려 "이곳저곳에서 베는" 느낌을 낸다(사용자 요청).
-  // 기존 CSS 전용 .slash-mark와는 별개 — 다른 직업의 기본 연출은 그대로 둔다.
+  /* 이미지 기반 슬래시 VFX(사용자 제공 스프라이트, images/vfx/). 찰나검사
+     전용으로 좌우반전(--flipx)/회전(--ang)/위치(--sx,--sy)를 매번 무작위로
+     바꿔가며 여러 번 뿌려 "이곳저곳에서 베는" 느낌을 낸다(사용자 요청).
+     기존 CSS 전용 .slash-mark와는 별개 — 다른 직업의 기본 연출은 그대로 둔다. */
   .slash-img-fx{
     position:absolute; width:220px; height:220px;
     left:var(--sx,50%); top:var(--sy,50%);
@@ -1117,11 +1117,11 @@
 <script src="js/blacksmith.js"></script>
 <script src="js/ui/equipment-ui.js"></script>
 <script src="js/combat/battle-setup.js"></script>
-<script src="js/combat/battle-fx.js?v=chalnavfxdebug1"></script>
+<script src="js/combat/battle-fx.js"></script>
 <script src="js/combat/battle-end.js"></script>
 <script src="js/combat/job-advancement.js"></script>
 <script src="js/combat/enemy-turn.js"></script>
-<script src="js/combat/player-actions.js?v=chalnavfxdebug1"></script>
+<script src="js/combat/player-actions.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

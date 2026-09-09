@@ -1,5 +1,4 @@
 "use strict";
-console.log('[찰나VFX] battle-fx.js 로드됨 - 이 로그가 안 보이면 캐시 문제');
 /*
 전투 UI 연출/이펙트 — HP바 갱신, 메시지 표시, 커맨드 UI 리셋/활성화,
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
@@ -150,10 +149,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 때마다 회전각/위치/좌우반전을 무작위로 섞어서(옵션으로 고정도 가능)
   // "이곳저곳에서 베는" 느낌을 낸다. opts: {angle, x, y, flip}(전부 생략 가능).
   function spawnSlashImageFx(opts){
-    console.log('[찰나VFX] spawnSlashImageFx 호출됨', opts);
     opts = opts || {};
     const stage = document.getElementById('bt-stage');
-    console.log('[찰나VFX] stage 요소:', stage);
     if(!stage) return;
     const el = document.createElement('div');
     const flip = opts.flip!=null ? opts.flip : Math.random()<0.5;
@@ -162,12 +159,10 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.style.setProperty('--sx', (opts.x!=null ? opts.x : Math.round(32+Math.random()*36))+'%');
     el.style.setProperty('--sy', (opts.y!=null ? opts.y : Math.round(32+Math.random()*36))+'%');
     stage.appendChild(el);
-    console.log('[찰나VFX] 엘리먼트 추가됨, className:', el.className, 'computed opacity:', getComputedStyle(el).opacity, 'computed backgroundImage:', getComputedStyle(el).backgroundImage);
     setTimeout(()=>el.remove(), 420);
   }
   // 찰나검사 타격 연출용 헬퍼 — n번, delayMs 간격으로 spawnSlashImageFx를 뿌린다.
   function spawnChalnaSlashBurst(n, delayMs){
-    console.log('[찰나VFX] spawnChalnaSlashBurst 호출됨, n=', n);
     for(let i=0;i<n;i++) setTimeout(()=>spawnSlashImageFx(), i*(delayMs||90));
   }
 
