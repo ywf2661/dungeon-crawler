@@ -63,6 +63,7 @@ export(전역): init, showMaintenanceModal, isAdminName
       document.getElementById('btn-delete-save').style.display='none';
     });
     document.getElementById('btn-relicdex').addEventListener('click', ()=>{ showRelicDex(); });
+    document.getElementById('btn-achievements').addEventListener('click', ()=>{ showAchievements(); });
     document.getElementById('btn-restart').addEventListener('click', ()=>{
       // player는 이미 쓰러진 시점에 마을로 옮겨져 체력이 회복되고 골드가 절반이 되었다.
       showScreen('explore');
@@ -87,8 +88,14 @@ export(전역): init, showMaintenanceModal, isAdminName
         // 하려면 원문 job id가 필요하다(jobLabel은 이미 아이콘까지 붙은
         // 표시용 문자열이라 역으로 파싱하기엔 부적합).
         job: player.job,
+        // 진 최종보스 두 종(회랑의 시조/시간의 마녀 Aiōn)을 업적에서 구분하기
+        // 위한 필드. enemy는 아직 리셋 전이라(explore.js의 새 게임 시작 시점에만
+        // null로 초기화됨) 이 시점엔 방금 물리친 보스를 그대로 가리킨다.
+        bossType: (enemy && enemy.type) || null,
       };
-      await addRecord(record);
+      const allRecords = await addRecord(record);
+      // player가 리셋(deleteSave)되기 전, 이번 판 결과 + 누적 기록으로 업적을 판정한다.
+      const newlyUnlocked = await checkAchievements(player, record, allRecords);
       await deleteSave();
       window.__savedGame = null;
       document.getElementById('continue-info').style.display='none';
@@ -96,6 +103,7 @@ export(전역): init, showMaintenanceModal, isAdminName
       document.getElementById('btn-delete-save').style.display='none';
       document.getElementById('statusbar').style.display='none';
       showScreen('title');
+      if(newlyUnlocked.length) showAchievementToast(newlyUnlocked);
       loadRecords().then(records=>{
         renderRecords(records);
         normalUnlocked = records.length > 0;
