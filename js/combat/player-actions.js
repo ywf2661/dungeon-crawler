@@ -969,7 +969,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const mult = combo ? combo.mult : s.mult;
       const defPierce = (combo && combo.defPierce) || 0;
       const edef = Math.round(getEffectiveEnemyDef(enemy.def)*(1-defPierce));
-      const perHit = Math.max(1, Math.round(effectiveAtk()*mult/hits) - Math.round(edef/hits));
+      // 버그 수정(사용자 제보) — mult는 기존 multihit 스킬(연속 베기 등)과
+      // 동일하게 "타당" 배율인데, 이전엔 atk*mult와 edef를 hits로 나눈 뒤 다시
+      // hits번 더해서 결국 타수와 무관하게 항상 "1타 분량"으로 상쇄되고 있었다.
+      // 기존 multihit 타입 처리부(player-actions.js 1689번째 줄 근처)와 동일하게
+      // 매 타마다 전체 mult/edef를 그대로 적용한다.
+      const perHit = Math.max(1, Math.round(effectiveAtk()*mult) - edef);
       const rawParts = [];
       for(let i=0;i<hits;i++) rawParts.push(perHit);
       const rawTotal = rawParts.reduce((a,b)=>a+b,0);
