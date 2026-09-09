@@ -903,16 +903,18 @@ export(전역): SKILLDB, CHALNA_COMBOS
   // combat/player-actions.js의 chalnaStrike 처리부가 이 테이블을 참조한다.
   // 스킬 데이터가 아니라 SKILLDB 바깥에 별도 상수로 둔다.
   const CHALNA_COMBOS = {
+    // 밸런스 시뮬레이션(8턴, MP54, 적 방어10 기준 - 사용자 승인) 결과 동레벨
+    // 전사 분기(혈맹의 검투사) 대비 약 24% 낮게 나와 전체 배율 +20% 상향.
     'slow+slow': {name:'침좌', hanja:'沈座', desc:'느린 두 박자를 겹쳐 짓누른다. 초고배율 단발 강타, 방어력 25% 관통.',
-      mult:4.2, defPierce:0.25},
+      mult:5.0, defPierce:0.25},
     'mid+mid':   {name:'부동참', hanja:'不動斬', desc:'흔들림 없는 세 번의 참격. 참격 후 2턴간 받는 피해가 줄어든다.',
-      mult:1.0, hits:3, selfDmgReducePct:0.15, selfDmgReduceTurns:2},
+      mult:1.2, hits:3, selfDmgReducePct:0.15, selfDmgReduceTurns:2},
     'fast+fast': {name:'난격', hanja:'亂擊', desc:'폭풍 같은 네 번의 연타. 치명타 확률이 크게 오른다.',
-      mult:0.9, hits:4, critBonus:0.30},
+      mult:1.08, hits:4, critBonus:0.30},
     'mid+slow':  {name:'진각', hanja:'震脚', desc:'무겁게 내디딘 발이 자세를 무너뜨린다. 적 방어력이 2턴간 크게 낮아진다.',
-      mult:2.6, enemyDefDownPct:0.20, enemyDefDownTurns:2},
+      mult:3.1, enemyDefDownPct:0.20, enemyDefDownTurns:2},
     'fast+slow': {name:'완급', hanja:'緩急', desc:'느림과 빠름이 어긋나는 찰나, 그 빈틈을 정확히 벤다. 확정 치명타, 1턴간 적을 경직시킨다.',
-      mult:2.0, guaranteedCritMult:1.4, stunTurns:1},
+      mult:2.4, guaranteedCritMult:1.4, stunTurns:1},
     'fast+mid':  {name:'가속참', hanja:'加速斬', desc:'두 번의 참격이 자신의 속도를 끌어올린다. 2턴간 속도가 오른다.',
-      mult:1.0, hits:2, selfSpdBuffPct:0.15, selfSpdBuffTurns:2},
+      mult:1.2, hits:2, selfSpdBuffPct:0.15, selfSpdBuffTurns:2},
   };
