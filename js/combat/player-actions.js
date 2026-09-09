@@ -1020,20 +1020,30 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
           comboMsg += ` 몸놀림이 가벼워져 ${combo.selfSpdBuffTurns}턴간 속도가 오른다.`;
         }
       }
-      enemy.hp = Math.max(0, enemy.hp-total);
-      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+total, mod.triggered?'crit':undefined);
-      Sound.slash();
-      // 찰나검사 전용 이미지 VFX(사용자 제공 스프라이트) — 콤보는 타수만큼,
-      // 개별 스킬은 1회. 매번 좌우반전/위치/각도가 무작위라 "이곳저곳에서
-      // 베는" 느낌을 낸다.
-      if(typeof spawnChalnaSlashBurst==='function') spawnChalnaSlashBurst(hits);
-      renderStatus();
-      updatePlayerStatusBadges();
+      // 타별로 순차 적용(사용자 요청 — "4번 베면 4번에 걸쳐 데미지가 들어갔으면
+      // 좋겠다"). 기존 multihit 타입 처리부와 동일한 패턴(220ms 간격)이며,
+      // 매 타마다 이미지 VFX도 하나씩 곁들인다(spawnChalnaSlashBurst 대신
+      // 타이밍을 직접 맞춤).
       const title = combo ? `${player.name}의 ${combo.name}!` : `${player.name}의 ${s.name}!`;
-      const bodyMsg = (combo ? combo.desc+' ' : '') + `${hits>1?parts.join(' + ')+' = 총 ':''}${total}의 피해!${comboMsg}`;
-      setBattleMsg(title, bodyMsg);
-      if(checkBattleEnd()) return;
-      enemyTurn();
+      setBattleMsg(title, '연속 공격 중...');
+      parts.forEach((hitDmg, i)=>{
+        setTimeout(()=>{
+          enemy.hp = Math.max(0, enemy.hp-hitDmg);
+          updateEnemyHpBar(); shakeEnemy();
+          popDamage('-'+hitDmg, (mod.triggered && i===parts.length-1) ? 'crit' : undefined);
+          Sound.slash();
+          if(typeof spawnSlashImageFx==='function') spawnSlashImageFx();
+        }, i*220);
+      });
+      setTimeout(()=>{
+        renderStatus();
+        updatePlayerStatusBadges();
+        if(hits>1 && typeof playComboFinish==='function') playComboFinish(hits);
+        const bodyMsg = (combo ? combo.desc+' ' : '') + `${hits>1?parts.join(' + ')+' = 총 ':''}${total}의 피해!${comboMsg}`;
+        setBattleMsg(title, bodyMsg);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+      }, hits*220 + 250);
       return;
     }
 
