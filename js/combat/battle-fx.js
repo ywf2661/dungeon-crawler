@@ -3,7 +3,8 @@
 전투 UI 연출/이펙트 — HP바 갱신, 메시지 표시, 커맨드 UI 리셋/활성화,
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
-              shakeEnemy, spawnSlashMark, playComboFinish, playStatusFx, playCastBurst, playBanner,
+              shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnChalnaSlashBurst, playComboFinish,
+              playStatusFx, playCastBurst, playBanner,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -142,6 +143,26 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.style.setProperty('--ang', angles[seed % angles.length]+'deg');
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 350);
+  }
+
+  // 이미지 기반 슬래시 VFX(사용자 제공 스프라이트) — 찰나검사 전용. 호출할
+  // 때마다 회전각/위치/좌우반전을 무작위로 섞어서(옵션으로 고정도 가능)
+  // "이곳저곳에서 베는" 느낌을 낸다. opts: {angle, x, y, flip}(전부 생략 가능).
+  function spawnSlashImageFx(opts){
+    opts = opts || {};
+    const stage = document.getElementById('bt-stage');
+    const el = document.createElement('div');
+    const flip = opts.flip!=null ? opts.flip : Math.random()<0.5;
+    el.className = 'slash-img-fx' + (flip ? ' flip' : '');
+    el.style.setProperty('--ang', (opts.angle!=null ? opts.angle : Math.round(Math.random()*70-35))+'deg');
+    el.style.setProperty('--sx', (opts.x!=null ? opts.x : Math.round(32+Math.random()*36))+'%');
+    el.style.setProperty('--sy', (opts.y!=null ? opts.y : Math.round(32+Math.random()*36))+'%');
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 420);
+  }
+  // 찰나검사 타격 연출용 헬퍼 — n번, delayMs 간격으로 spawnSlashImageFx를 뿌린다.
+  function spawnChalnaSlashBurst(n, delayMs){
+    for(let i=0;i<n;i++) setTimeout(()=>spawnSlashImageFx(), i*(delayMs||90));
   }
 
   function playComboFinish(hits){

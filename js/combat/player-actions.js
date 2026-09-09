@@ -1018,6 +1018,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-total);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+total, mod.triggered?'crit':undefined);
       Sound.slash();
+      // 찰나검사 전용 이미지 VFX(사용자 제공 스프라이트) — 콤보는 타수만큼,
+      // 개별 스킬은 1회. 매번 좌우반전/위치/각도가 무작위라 "이곳저곳에서
+      // 베는" 느낌을 낸다.
+      if(typeof spawnChalnaSlashBurst==='function') spawnChalnaSlashBurst(hits);
       renderStatus();
       updatePlayerStatusBadges();
       const title = combo ? `${player.name}의 ${combo.name}!` : `${player.name}의 ${s.name}!`;
@@ -1041,6 +1045,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-dmgTri);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmgTri, modTri.triggered?'crit':undefined);
       Sound.slash();
+      // 삼박일섬 — "세 박자"를 상징하도록 3연속으로 뿌린다.
+      if(typeof spawnChalnaSlashBurst==='function') spawnChalnaSlashBurst(3);
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, `세 박자가 하나의 섬광으로 이어져 ${dmgTri}의 피해를 입혔다!`);
       if(checkBattleEnd()) return;
