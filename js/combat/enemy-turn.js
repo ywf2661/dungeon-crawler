@@ -290,7 +290,11 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       const dmg = Math.max(1, rig.dmgPerTick + pressureBonus + legionBonus);
       enemy.hp = Math.max(0, enemy.hp - dmg);
       updateEnemyHpBar(); popDamage('-'+dmg, 'rig');
-      Sound.hit();
+      // 로봇 공격음(사용자 요청) — 오메가 유닛은 폭발음, 정찰/화력/방벽 드론
+      // 3종은 전용 드론 공격음, 그 외(포탑/필러)는 기존 타격음 그대로.
+      if(rig.kind==='omega') Sound.bomb();
+      else if(['recon','firepower','shield'].includes(rig.kind)) Sound.droneAttack();
+      else Sound.hit();
       // 메카닉 리뉴얼(사용자 요청) — 장치가 사격할 때마다 압력도 함께 쌓는다.
       let pressureMsg = '';
       if(rig.pressurePerTick && battleFlags){

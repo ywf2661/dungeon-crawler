@@ -999,7 +999,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
-      Sound.magic();
+      // 정찰/화력/방벽 드론 3종 전용 설치음(사용자 요청). 필러(긴급배치)는
+      // 기존 magic() 그대로 유지 — 요청 범위가 명시적으로 이 3종이었음.
+      if(role.kind==='filler') Sound.magic();
+      else Sound.droneDeploy();
       renderStatus();
       updateRigVisuals();
       let msg2 = `${role.label} 역할의 로봇을 배치했다! 첫 사격으로 ${dmg}의 피해를 입혔다. ${slotMsg}${fortifyMsg}`;
