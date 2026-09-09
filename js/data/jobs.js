@@ -172,7 +172,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         skillLevels: {12:'mageCurseBrand', 15:'mageCurseBloom'}},
     ],
     rogue: [
-      {id:'rogue_phantom', name:'환영검사', icon:'👥',
+      {id:'rogue_phantom', name:'환영도적', icon:'👥',
         desc:'그림자 속에 분신을 두고 함께 싸우는 환영 검사. 눈에 보이는 칼날은 언제나 하나가 아니다.',
         masteryName:'잔영', masteryDesc:'공격형 스킬 사용 시 확정적으로 분신 생성, 적 턴 직전 자동으로 50% 위력의 추가 공격.', masterySkillId:'mastery_afterimage',
         activeName:'그림자 쇄도', activeDesc:'분신과 함께 즉시 2연격(급소 확정 적중). 이 스킬 자체도 잔영을 발동시켜 다음 턴 분신 공격까지 예약된다.', activeSkillId:'rogueShadowStrike',
