@@ -172,6 +172,12 @@ export(전역): showJobAdvancement, resolveJobAdvancement
           showToast(`<h3>⚔ 칼리버 X</h3><p>손에 쥐는 순간, 마치 처음부터 그대의 것이었던 것처럼 감겨온다.</p>`, '#e6c34a');
         }
       }
+      // 시간술사(mage_time): 전직 확정 순간에 맞는 토스트 메시지(사용자 요청).
+      // 회랑의 기사(paladin_knight)와 같은 패턴 — "빌린 시간" 테마를 직접
+      // 설명하지 않고 감각적으로만 암시한다(간접 서술 원칙).
+      if(specId==='mage_time' && typeof showToast==='function'){
+        showToast(`<h3>⏳ 시간술사</h3><p>남들보다 반 박자 먼저 움직이는 감각이, 손끝에서부터 낯설게 스며든다.</p>`, '#9fd8ff');
+      }
       // 강철 군단장(mechanic_accumulator 리뉴얼) 베이스 스킬 교체 — 함수는
       // 아래 migrateLegionBaseSkills()에 분리해뒀다(신규 전직 시점 + 기존
       // 세이브 캐릭터의 전투 진입 시점, 총 두 곳에서 호출해야 하기 때문).
