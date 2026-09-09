@@ -1061,7 +1061,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 재생하고, 그게 다 끝나는 시점에 맞춰 데미지가 임팩트처럼 뜨도록 순서를
       // 바꿨다(스태거 80ms×3 + 여유 100ms).
       setBattleMsg(`${player.name}의 ${s.name}!`, '세 박자를 하나로 잇는 중...');
-      for(let i=0;i<3;i++) setTimeout(()=>{ if(typeof spawnSlashImageFx==='function') spawnSlashImageFx(); }, i*80);
+      for(let i=0;i<3;i++) setTimeout(()=>{
+        if(typeof spawnSlashImageFx==='function') spawnSlashImageFx();
+        Sound.slash();
+      }, i*80);
       setTimeout(()=>{
         enemy.hp = Math.max(0, enemy.hp-dmgTri);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmgTri, modTri.triggered?'crit':undefined);
