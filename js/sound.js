@@ -131,6 +131,9 @@ export(전역): const Sound
       bomb: 'audio/sfx/fireball.wav',
       levelUp: 'audio/sfx/levelup.wav',
       clock: 'audio/sfx/clock.wav', // 시간 왜곡/마녀의 시계 추가 행동 전용(새 트리거)
+      // 강철 군단장의 정찰/화력/방벽 드론 3종 전용(사용자 제공, 새 트리거).
+      droneDeploy: 'audio/sfx/dronedeploy.wav',
+      droneAttack: 'audio/sfx/droneattack.wav',
     };
     const sfxBuffers = {};
     function preloadSfx(){
@@ -254,6 +257,19 @@ export(전역): const Sound
       if(muted) return;
       if(playSfxBuffer('clock')) return;
       buff();
+    }
+    // 강철 군단장의 정찰/화력/방벽 드론 3종 전용(사용자 제공). 음원이 아직
+    // 로딩 전이면 기존에 이 로봇들이 쓰던 합성음(설치=magic/공격=hit)으로
+    // 대체한다 — clockChime()과 동일한 패턴.
+    function droneDeploy(){
+      if(muted) return;
+      if(playSfxBuffer('droneDeploy')) return;
+      magic();
+    }
+    function droneAttack(){
+      if(muted) return;
+      if(playSfxBuffer('droneAttack')) return;
+      hit();
     }
     function hit(){
       if(muted) return;
@@ -473,7 +489,7 @@ export(전역): const Sound
     return {
       ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
-      levelUp, victory, gameOver, statusApply, clockChime,
+      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack,
       setMuted, toggleMuted, isMuted,
     };
   })();
