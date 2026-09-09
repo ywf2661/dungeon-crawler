@@ -386,7 +386,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           // 없지만 안전장치) 기존처럼 절반 골드+완전회복으로 폴백한다.
           const cp = player.townCheckpoint;
           document.getElementById('go-summary').textContent =
-            `쓰러지는 순간, 시간이 되감긴다. 깊이 ${depth}까지 도달했던 기억이 흐려지며, 마지막으로 안식했던 그 순간의 마을로 돌아왔다.`;
+            `쓰러지는 순간, 회랑에 새겨진 알 수 없는 힘에 의해 시간이 되감긴다. 깊이 ${depth}까지 도달했던 기억이 흐려지며, 마지막으로 안식했던 그 순간의 마을로 돌아왔다.`;
           if(cp){
             applyTownCheckpoint(cp);
           } else {

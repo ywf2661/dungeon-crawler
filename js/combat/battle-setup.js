@@ -540,9 +540,23 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   // - 마법사: 아코스 얘기 대신, 몬스터(주민)들이 스스로를 저주에 걸린
   //   피해자로 여기고 있다는 걸 보여주는 쪽으로 완전히 틀었다 — 마법을
   //   본 반응이 "혹시 그 마녀와 관계가 있나"로 향한다.
-  // - 그 외 직업은 기존 범용 대사를 그대로 유지(요청 범위 밖).
+  // - 그 외 직업(도적/기관사/도박사): 아코스 얘기 대신 스토리 힌트 풀
+  //   (OVERHEARD_STORY_HINT_POOL)에서 매번 무작위로 하나를 골라 보여준다.
   const OVERHEARD_ACHOS_LINE_SWORD = ['회랑의 몬스터가 그대의 검을 흘긋 본다.', '"...그래. 그도 검을 쓰는 기사였지."'];
   const OVERHEARD_ACHOS_LINE_MAGE = ['회랑의 몬스터가 흠칫하며 뒷걸음질친다.', '"마법의 힘이라니...? 혹시, 우릴 이렇게 만든 마녀와 관계가 있는 건가...?"'];
+  // 그 외 직업(도적/기관사/도박사)용 — 아코스 얘기 대신, 몬스터(주민)들의
+  // 처지를 보여주는 스토리 힌트를 여러 개 두고 매번 무작위로 하나를
+  // 고른다(사용자 요청 — "직접적인 힌트가 될만한 내용들을 랜덤하게").
+  // 국왕/저주/시계 등 기존 설정과 이어지는 단서들이라 직접 설명 없이도
+  // 조금씩 전체 그림이 그려지게 한다(간접 서술 원칙).
+  const OVERHEARD_STORY_HINT_POOL = [
+    ['회랑의 몬스터가 낮게 중얼거린다.', '"...언제쯤 이 저주가 풀릴지."'],
+    ['회랑의 몬스터가 먼 곳을 바라본다.', '"국왕님이... 보고 싶군."'],
+    ['회랑의 몬스터가 힘없이 중얼거린다.', '"다시 태양을 볼 수 있을까..."'],
+    ['회랑의 몬스터가 몸을 떤다.', '"그 여자가 다녀간 뒤로... 모든 게 멈춰버렸어."'],
+    ['회랑의 몬스터가 허공에 귀를 기울인다.', '"...시계 소리가, 아직도 들리는 것 같아."'],
+    ['회랑의 몬스터가 자신의 몸을 내려다본다.', '"얼마나 오래... 이 모습으로 있었던 걸까."'],
+  ];
   const OVERHEARD_ACHOS_LINE_DEFAULT = ['회랑의 몬스터가 허공에 대고 낮게 중얼거린다.', '"...아코스. 그 이름을 들은 지도 오래됐군."'];
   function maybeShowOverheardAchosDialogue(){
     const isCorridorMonster = enemy.type==='ogre' || !!CORRIDOR_NPC_LINES[enemy.type];
@@ -553,7 +567,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     saveGame();
     const isSwordJob = player.job==='warrior' || player.job==='paladin';
     const isMageJob = player.job==='mage';
-    const lines = isSwordJob ? OVERHEARD_ACHOS_LINE_SWORD : isMageJob ? OVERHEARD_ACHOS_LINE_MAGE : OVERHEARD_ACHOS_LINE_DEFAULT;
+    let lines;
+    if(isSwordJob) lines = OVERHEARD_ACHOS_LINE_SWORD;
+    else if(isMageJob) lines = OVERHEARD_ACHOS_LINE_MAGE;
+    else lines = OVERHEARD_STORY_HINT_POOL[Math.floor(Math.random()*OVERHEARD_STORY_HINT_POOL.length)] || OVERHEARD_ACHOS_LINE_DEFAULT;
     showDialogueSequence(lines, {});
     return true;
   }
