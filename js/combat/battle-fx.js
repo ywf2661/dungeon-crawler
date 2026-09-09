@@ -151,6 +151,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   function spawnSlashImageFx(opts){
     opts = opts || {};
     const stage = document.getElementById('bt-stage');
+    if(!stage) return;
     const el = document.createElement('div');
     const flip = opts.flip!=null ? opts.flip : Math.random()<0.5;
     el.className = 'slash-img-fx' + (flip ? ' flip' : '');

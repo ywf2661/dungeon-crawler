@@ -402,14 +402,21 @@
     left:var(--sx,50%); top:var(--sy,50%);
     background-image:url('images/vfx/slash_ice.png');
     background-size:contain; background-repeat:no-repeat; background-position:center;
-    pointer-events:none; z-index:6; opacity:0; --flipx:1;
+    pointer-events:none; z-index:6; opacity:0;
     animation:slashimgcut .4s ease-out forwards;
   }
-  .slash-img-fx.flip{ --flipx:-1; }
+  /* 좌우반전은 calc(var(...)) 방식 대신(브라우저 호환성 불확실) 별도
+     키프레임으로 분리한다 — animation-name만 바꿔치기하는 안전한 방식. */
+  .slash-img-fx.flip{ animation-name:slashimgcutflip; }
   @keyframes slashimgcut{
-    0%{opacity:0; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scale(calc(var(--flipx)*0.65), 0.65);}
-    30%{opacity:1; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scale(calc(var(--flipx)*1.05), 1.05);}
-    100%{opacity:0; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scale(calc(var(--flipx)*1.15), 1.15);}
+    0%{opacity:0; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scale(0.65);}
+    30%{opacity:1; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scale(1.05);}
+    100%{opacity:0; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scale(1.15);}
+  }
+  @keyframes slashimgcutflip{
+    0%{opacity:0; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scaleX(-0.65) scaleY(0.65);}
+    30%{opacity:1; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scaleX(-1.05) scaleY(1.05);}
+    100%{opacity:0; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scaleX(-1.15) scaleY(1.15);}
   }
   .combo-count{
     position:absolute; left:50%; top:64%; transform:translate(-50%,0);
