@@ -45,6 +45,17 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
   function clearOneBattleBuffs(){
     player.buffAtkTurns = 0; player.buffAtkMult = 1;
     player.buffDefTurns = 0; player.buffDefMult = 1;
+    // 위 두 쌍과 완전히 같은 문제(전투가 자연 소멸 전에 끝나면 다음 전투로
+    // 넘어감)를 buffCounterTurns/buffCounterChance도 그대로 안고 있었다 —
+    // 같이 정리한다.
+    player.buffCounterTurns = 0; player.buffCounterChance = 0;
+    // 찰나검사(warrior_chalna) "가속참" 콤보 속도버프 — player.spd에 직접 더한
+    // 값이라, 전투가 자연 소멸 전에 끝나면 델타를 못 돌려받고 영구히 남는다.
+    if(battleFlags && battleFlags.chalnaSpdBuffDelta){
+      player.spd -= battleFlags.chalnaSpdBuffDelta;
+      battleFlags.chalnaSpdBuffDelta = 0;
+      battleFlags.chalnaSpdBuffTurns = 0;
+    }
   }
 
   function checkBattleEnd(){

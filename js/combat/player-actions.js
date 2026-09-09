@@ -3173,6 +3173,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(Math.random() < chance){
       battleOver = true;
       revertDiceDelta();
+      // 버그 수정(사용자 제보) — 승리/사망 4곳에는 이미 있던 clearOneBattleBuffs()
+      // 호출이 도망치기 성공 경로에만 빠져있었다. 버프 스킬을 쓰고 자연 소멸
+      // 전에 도망치면 다음 전투로 그대로 넘어가던 원인이 이거였다.
+      if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
       // 버그 수정: 노드맵 도입 이전의 낡은 로직(depth를 직접 1 깎는 방식)이
       // 그대로 남아있었다. 특히 보스 노드(지도의 마지막 행)에서 도망치면
       // player.nodeRow는 마지막 행에 그대로 머무는데 "다음 행"이 아예 없어서,
