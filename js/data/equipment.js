@@ -587,7 +587,10 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     // 장신구 강화(사용자 요청) — 마력의 반지(스킬 피해 전용), 행운의 부적(치명타),
     // 도박사의 주사위(도박), 시간의 모래(전투 첫 행동)까지 전부 이 지점에서 처리.
     if(ctx.type!=='basic') mult *= (1 + getSpecialSum('skillDmgPctBonus'));
-    const critChance = getSpecialSum('critChancePct');
+    // ctx.extraCritChance(찰나검사 "난격" 콤보 등) — 특정 스킬 한정으로 치명타
+    // 확률을 임시로 더해준다. 기본값 0이라 이 필드를 안 쓰는 다른 모든 스킬은
+    // 기존과 완전히 동일하게 동작한다(하위 호환).
+    const critChance = getSpecialSum('critChancePct') + (ctx.extraCritChance||0);
     if(critChance>0 && Math.random()<critChance) mult *= 1.5;
     const gambleChance = getSpecialSum('gambleDiceChance');
     if(gambleChance>0){

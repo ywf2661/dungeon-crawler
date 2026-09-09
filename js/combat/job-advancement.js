@@ -147,10 +147,15 @@ export(전역): showJobAdvancement, resolveJobAdvancement
       if(spec.skillLevels){
         Object.keys(spec.skillLevels).forEach(lvKey=>{
           const lv = parseInt(lvKey, 10);
-          const skillId = spec.skillLevels[lvKey];
-          if(player.level>=lv && skillId && typeof SKILLDB!=='undefined' && SKILLDB[skillId] && !player.skills.includes(skillId)){
-            player.skills.push(skillId);
-          }
+          const skillIdRaw = spec.skillLevels[lvKey];
+          // 잔영검사(warrior_afterimage)처럼 한 레벨에 스킬 2개를 동시에 줘야
+          // 하는 분기를 위해 배열 값도 지원한다(문자열이면 기존과 동일 — 하위 호환).
+          const skillIds = Array.isArray(skillIdRaw) ? skillIdRaw : [skillIdRaw];
+          skillIds.forEach(skillId=>{
+            if(player.level>=lv && skillId && typeof SKILLDB!=='undefined' && SKILLDB[skillId] && !player.skills.includes(skillId)){
+              player.skills.push(skillId);
+            }
+          });
         });
       }
       // 회랑의 기사(paladin_knight): 전직 확정 즉시 전용 무기 칼리버 X 1단계를

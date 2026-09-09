@@ -316,6 +316,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.textContent = `🎯 급소 노출 ${enemy.exposedTurns}턴`;
       box.appendChild(b);
     }
+    // 찰나검사(warrior_chalna) "완급" 콤보 경직 배지.
+    if(enemy && enemy.chalnaStunTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge expose';
+      b.textContent = `😵 경직 ${enemy.chalnaStunTurns}턴`;
+      box.appendChild(b);
+    }
     // 독 중첩(맹독 연금술사): enemy.venomStacks는 일반 dot(enemy.dots)과 별개로
     // 관리되는 영구 스택이라(턴이 지나도 안 사라짐) 위 dots 루프에는 안 걸린다 —
     // 여기서 따로 표시한다. "적 왼쪽 위"에 두 달라는 요청이 있었지만, 그 자리는
@@ -352,6 +359,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.title = s.desc || '';
       box.appendChild(b);
     });
+    // 찰나검사(warrior_chalna) — 찰나 예약 중 배지. 대기 중인 beat의 한국어
+    // 이름(완박/중박/급박)을 그대로 보여준다.
+    if(battleFlags && battleFlags.chalnaReserve){
+      const beatLabel = {slow:'완박', mid:'중박', fast:'급박'}[battleFlags.chalnaReserve.beat] || '';
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      b.textContent = `🌀 찰나: ${beatLabel} 대기 중`;
+      b.title = '다음 내 턴에 다른 검격을 시전하면 콤보가 발동한다. 놓치면 흩어진다.';
+      box.appendChild(b);
+    }
     // 시간 조각(mastery_timewarp, 시간술사): 토글이 아니라 누적 스택이라 위 루프와는
     // 별도로 처리한다. 시계 아이콘을 스택 수만큼 반복해 한 배지에 표시한다
     // (예: 3스택 = 🕐🕐🕐). battleFlags.timeStacks가 0이면 아예 표시하지 않는다.
@@ -605,6 +622,9 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       }
       normalKeys.forEach(k=>{
         const s = SKILLDB[k];
+        // 찰나검사(warrior_chalna): 찰나가 대기 중이면 예약 3항목은 목록에서
+        // 아예 숨긴다(한 번에 하나만 걸 수 있으므로 또 예약할 이유가 없음).
+        if(s.type==='chalnaReserve' && battleFlags && battleFlags.chalnaReserve) return;
         const mpCost = s.mp;
         const cdLeft = (battleFlags && battleFlags.skillCooldowns && battleFlags.skillCooldowns[k]) || 0;
         // 사기꾼 "운명 뒤바꾸기"(hpswap)는 전투당 1회 제한(겹패 각인이 있으면
@@ -617,6 +637,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         const div = document.createElement('div');
         const tierClsN = getSkillTier(k);
         div.className = 'sub-item'+(canUse?'':' disabled')+(tierClsN?' skill-tier'+tierClsN:'');
+        // 찰나검사: 찰나가 대기 중이면 즉시시전 3항목은 실제로 눌렀을 때 나갈
+        // 콤보의 이름/설명으로 표시를 바꿔치기한다(원래 스킬 이름 대신).
+        let displayName = s.name, displayDesc = s.desc;
+        if(s.type==='chalnaStrike' && battleFlags && battleFlags.chalnaReserve){
+          const combo = CHALNA_COMBOS[[battleFlags.chalnaReserve.beat, s.beat].sort().join('+')];
+          if(combo){ displayName = combo.name; displayDesc = combo.desc; }
+        }
         // 베팅/올인(goldbet 타입): 실제로 쓰면 판돈이 얼마가 될지 현재 소지 골드
         // 기준으로 미리 계산해 보여준다("전투 중 소지금액 확인" 요청에 맞춰,
         // 그냥 골드 숫자만 보여주는 것보다 "이 스킬을 쓰면 얼마를 거는지"가 더
@@ -635,7 +662,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
           extraInfo = `<div class="si-desc" style="color:var(--gold-bright); margin-top:2px;">📒 지금까지 ${count}회 대출 · 빌리면 빚 ${(player.debt||0)+loan.amount}G</div>`;
         }
         const costBadge = usedOnce ? '전투당 1회' : (cdLeft>0 ? `쿨타임 ${cdLeft}턴` : `MP ${mpCost}`);
-        div.innerHTML = `<div class="si-info"><div class="si-name">${s.name}</div><div class="si-desc">${s.desc}</div>${extraInfo}</div><div class="si-cost">${costBadge}</div>`;
+        div.innerHTML = `<div class="si-info"><div class="si-name">${displayName}</div><div class="si-desc">${displayDesc}</div>${extraInfo}</div><div class="si-cost">${costBadge}</div>`;
         if(canUse) div.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
         sub.appendChild(div);
       });

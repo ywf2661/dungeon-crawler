@@ -359,6 +359,26 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     if(battleFlags && battleFlags.dicerevealPenaltyTurns>0){
       battleFlags.dicerevealPenaltyTurns -= 1;
     }
+    // 찰나검사(warrior_chalna) — 찰나 예약 소멸 타이밍. turnsLeft:1로 시작해서
+    // 예약을 건 그 적 턴엔 0으로만 내려가고(아직 안 지움 — 그 사이에 낀 "다음
+    // 내 턴"엔 확실히 남아있어야 하므로), 그 다음 적 턴에 실제로 지운다.
+    if(battleFlags && battleFlags.chalnaReserve){
+      if(battleFlags.chalnaReserve.turnsLeft>0){
+        battleFlags.chalnaReserve.turnsLeft -= 1;
+      } else {
+        battleFlags.chalnaReserve = null;
+        if(typeof showToast==='function') showToast(`<h3>찰나가 흩어졌다</h3>`, '#8a8a9a');
+        updatePlayerStatusBadges();
+      }
+    }
+    // 찰나검사 "가속참" 콤보의 임시 속도 버프 만료 — 올렸던 만큼 정확히 되돌린다.
+    if(battleFlags && battleFlags.chalnaSpdBuffTurns>0){
+      battleFlags.chalnaSpdBuffTurns -= 1;
+      if(battleFlags.chalnaSpdBuffTurns<=0){
+        player.spd -= (battleFlags.chalnaSpdBuffDelta||0);
+        battleFlags.chalnaSpdBuffDelta = 0;
+      }
+    }
     if(battleFlags){
       battleFlags.hourglassTurn = (battleFlags.hourglassTurn||0) + 1;
       const limit = getRelicSum('turnLimitTurns');
@@ -485,6 +505,16 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   }
   function enemyAction(){
     setTimeout(()=>{
+      // 찰나검사(warrior_chalna) "완급" 콤보의 경직 — 게임 내 최초의 "적 턴
+      // 스킵" 메커닉이라 다른 로직(보스 예고 등)과 얽히지 않도록 함수 맨
+      // 앞에서 가장 먼저 확인하고 조기 반환한다.
+      if(enemy && enemy.chalnaStunTurns>0){
+        enemy.chalnaStunTurns -= 1;
+        setBattleMsg(`${enemy.name}이(가) 경직되어 움직이지 못한다!`, '');
+        updateStatusBadges();
+        finishEnemyTurn();
+        return;
+      }
       // 회랑의 시조 포즈 리셋(사용자 요청) — 이번 턴 판정 결과(예고/즉시발동/
       // 평범한 공격)에 따라 아래에서 다시 telegraph/slam으로 바뀔 수 있다.
       // 다른 몬스터는 setBossPoseImage() 안에서 type 체크로 즉시 무시된다.

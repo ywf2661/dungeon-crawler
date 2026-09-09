@@ -124,6 +124,24 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         // 기본 공격이 한 번 더 나감). 전부 combat/player-actions.js의 playerAttack()
         // 안에서 직접 처리한다.
         skillLevels: {12:'warriorPuristEcho', 15:'warriorPuristDoubleStrike'}},
+      // 찰나검사(warrior_chalna) — 신규 3번째 분기(사용자 기획). 완박/중박/
+      // 급박 3종을 "즉시 시전" 또는 "예약(찰나)"으로 쓸 수 있고, 찰나를 남긴
+      // 다음 내 턴에 다른 검격을 시전하면 둘이 합쳐진 콤보 검격이 대신 발동한다
+      // (원래 시전하려던 스킬의 개별 효과는 완전히 대체됨 — 완전대체 방식 확정).
+      // 콤보를 못 채우고 그 다음 적 턴까지 넘기면 찰나는 흩어진다.
+      // 주의: 처음엔 "잔영검사"/masterySkillId:'mastery_afterimage'로 설계했으나,
+      // 도적 환영검사(rogue_phantom)가 이미 "잔영"이라는 이름과 mastery_afterimage
+      // 키를 쓰고 있어(완전히 다른 분신 메커닉) 충돌 확인 후 "찰나" 계열로 전면
+      // 교체했다 — battleFlags 필드명(chalnaReserve)도 afterimage 계열과 겹치지
+      // 않게 새로 지음.
+      // masterySkillIds(복수)로 마스터리+즉시2종+예약2종(완박/중박 계열)을 한
+      // 번에 지급하고, Lv12에 급박 계열(즉시+예약) 2개를 skillLevels 배열로
+      // 추가 지급, Lv15는 찰나 시스템과 무관한 독립 궁극기.
+      {id:'warrior_chalna', name:'찰나검사', icon:'🌀',
+        desc:'멈춰버린 회랑 어딘가에서 떨어져 나온 시간의 파편이, 벨 때마다 손끝에 스며든다. 그 찰나의 감각을 다음 검격과 잇는 법을 스스로 터득한 검사.',
+        masteryName:'찰나검', masteryDesc:'완박/중박/급박 중 하나를 찰나로 남길 수 있게 된다. 찰나가 남아있는 동안 다음 검격과 합쳐져 전혀 다른 콤보 검격이 발동한다(다음 내 턴 안에 잇지 못하면 찰나는 흩어진다).', masterySkillId:'mastery_chalna',
+        activeSkillIds:['chalnaSlowStrike','chalnaMidStrike','chalnaSlowReserve','chalnaMidReserve'],
+        skillLevels: {12:['chalnaFastStrike','chalnaFastReserve'], 15:'chalnaTriBeat'}},
     ],
     mage: [
       {id:'mage_pact', name:'계약술사', icon:'🎴',

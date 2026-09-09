@@ -643,8 +643,13 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 추가 스킬(예: 혈맹의 검투사
     // 12/15). specialization.skillLevels가 없는 분기는 이 줄이 그냥 undefined라
     // 아무 영향이 없다(아직 skillLevels를 채우지 않은 다른 분기들도 안전).
+    // 잔영검사(warrior_afterimage)처럼 한 레벨에 스킬 2개를 동시에 줘야 하는
+    // 분기를 위해 배열 값도 지원한다(문자열이면 기존과 동일하게 동작 — 하위 호환).
     const specKey = specialization && specialization.skillLevels && specialization.skillLevels[player.level];
-    if(specKey && !player.skills.includes(specKey)) player.skills.push(specKey);
+    if(specKey){
+      const specKeys = Array.isArray(specKey) ? specKey : [specKey];
+      specKeys.forEach(k=>{ if(k && !player.skills.includes(k)) player.skills.push(k); });
+    }
     // 회랑의 기사(paladin_knight): 레벨12/15에 도달하면 칼리버 X 자체가 다음
     // 단계로 자동 교체된다(플레이어가 직접 장착하는 게 아님 — equipItem()은 이
     // 무기를 교체 못 하게 막고 있으므로 data/equipment.js의 reforgeCaliberX()를
@@ -673,7 +678,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 이미 정상적으로 지급하고 있었지만, 이 토스트 함수가 specialization.skillLevels를
     // 확인하지 않아 알림만 안 뜨던 버그였다.
     const specKey = specialization && specialization.skillLevels && specialization.skillLevels[lv];
-    if(specKey) names.push(SKILLDB[specKey].name);
+    if(specKey){
+      const specKeys = Array.isArray(specKey) ? specKey : [specKey];
+      specKeys.forEach(k=>{ if(k && SKILLDB[k]) names.push(SKILLDB[k].name); });
+    }
     Sound.levelUp();
     t.innerHTML = `<h3>레벨 업! Lv.${lv}</h3><p>최대 HP/MP와 능력치가 상승했다.</p>${names.length?`<p>새로운 스킬 습득: <b>${names.join(', ')}</b></p>`:''}`;
     document.getElementById('app').appendChild(t);

@@ -945,6 +945,109 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    // ---------- 찰나검사(warrior_chalna) ----------
+    // 예약: 이번 턴은 피해 없이 battleFlags.chalnaReserve만 세팅한다. 유지
+    // 타이밍(다음 내 턴 안에 못 이으면 소멸)은 combat/enemy-turn.js의
+    // enemyTurnReal()에서 처리(exposedTurns 등과 같은 자리, turnsLeft 1에서
+    // 시작해 첫 적 턴엔 0으로만 내려가고 그 다음 적 턴에 실제로 지워진다 —
+    // 그래야 "다음 내 턴"(적 턴 사이에 낀 그 한 번)엔 확실히 남아있다).
+    if(s.type==='chalnaReserve'){
+      battleFlags.chalnaReserve = {beat: s.beat, turnsLeft: 1};
+      renderStatus();
+      updatePlayerStatusBadges();
+      Sound.buff();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${s.name.replace(' 예약','')}의 찰나를 남겼다. 다음 검격과 이으면 콤보가 발동한다.`);
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='chalnaStrike'){
+      const reserve = battleFlags.chalnaReserve;
+      const combo = reserve ? CHALNA_COMBOS[[reserve.beat, s.beat].sort().join('+')] : null;
+      if(combo) battleFlags.chalnaReserve = null;
+      const hits = (combo ? combo.hits : s.hits) || 1;
+      const mult = combo ? combo.mult : s.mult;
+      const defPierce = (combo && combo.defPierce) || 0;
+      const edef = Math.round(getEffectiveEnemyDef(enemy.def)*(1-defPierce));
+      const perHit = Math.max(1, Math.round(effectiveAtk()*mult/hits) - Math.round(edef/hits));
+      const rawParts = [];
+      for(let i=0;i<hits;i++) rawParts.push(perHit);
+      const rawTotal = rawParts.reduce((a,b)=>a+b,0);
+      const onHitMult = consumeOnHitBonuses();
+      const extraCritChance = (combo && combo.critBonus) || 0;
+      let boostedTotal = applyOutgoingDamageMods(rawTotal, {type:'physkill', mpCost, onHitMult, extraCritChance});
+      const mod = applySkillModifiers(boostedTotal, combo || s);
+      const scale = mod.value / rawTotal;
+      const parts = rawParts.map(d=>Math.max(1, Math.round(d*scale)));
+      const total = parts.reduce((a,b)=>a+b,0);
+      consumeAtkBuff();
+      rogueRegisterHit(true);
+      // 콤보 부가효과 적용
+      let comboMsg = '';
+      if(combo){
+        // 진각: 적 방어력 감소 — 정찰 로봇과 동일한 exposedTurns/exposePierce
+        // 필드를 재사용한다(새 필드를 만들지 않아도 되는 기존 시스템).
+        if(combo.enemyDefDownPct){
+          enemy.exposedTurns = combo.enemyDefDownTurns;
+          enemy.exposePierce = combo.enemyDefDownPct;
+          comboMsg += ` 적의 자세가 무너져 방어력이 ${combo.enemyDefDownTurns}턴간 낮아진다.`;
+        }
+        // 부동참: 받는 피해 감소 — 기존 buffDefTurns/buffDefMult(범용 방어 버프) 재사용.
+        if(combo.selfDmgReducePct){
+          player.buffDefTurns = Math.max(player.buffDefTurns||0, combo.selfDmgReduceTurns);
+          player.buffDefMult = Math.min(player.buffDefMult||1, 1-combo.selfDmgReducePct);
+          comboMsg += ` 자세가 안정되어 ${combo.selfDmgReduceTurns}턴간 받는 피해가 줄어든다.`;
+        }
+        // 완급: 확정 치명타(guaranteedCritMult, applySkillModifiers에서 처리됨)
+        // + 경직 — 새 필드 enemy.chalnaStunTurns, 실제 턴 스킵 처리는 combat/
+        // enemy-turn.js의 enemyAction() 맨 앞에서 확인한다.
+        if(combo.stunTurns){
+          enemy.chalnaStunTurns = Math.max(enemy.chalnaStunTurns||0, combo.stunTurns);
+          comboMsg += ` 어긋난 박자에 ${enemy.name}이(가) ${combo.stunTurns}턴간 경직된다!`;
+        }
+        // 가속참: 자신 속도 버프 — player.spd를 직접 올리고 델타를 저장해뒀다가
+        // enemyTurnReal()에서 턴이 다 되면 정확히 그만큼 되돌린다.
+        if(combo.selfSpdBuffPct){
+          const delta = Math.max(1, Math.round(player.spd*combo.selfSpdBuffPct));
+          player.spd += delta;
+          battleFlags.chalnaSpdBuffDelta = (battleFlags.chalnaSpdBuffDelta||0) + delta;
+          battleFlags.chalnaSpdBuffTurns = Math.max(battleFlags.chalnaSpdBuffTurns||0, combo.selfSpdBuffTurns);
+          comboMsg += ` 몸놀림이 가벼워져 ${combo.selfSpdBuffTurns}턴간 속도가 오른다.`;
+        }
+      }
+      enemy.hp = Math.max(0, enemy.hp-total);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+total, mod.triggered?'crit':undefined);
+      Sound.slash();
+      renderStatus();
+      updatePlayerStatusBadges();
+      const title = combo ? `${player.name}의 ${combo.name}!` : `${player.name}의 ${s.name}!`;
+      const bodyMsg = (combo ? combo.desc+' ' : '') + `${hits>1?parts.join(' + ')+' = 총 ':''}${total}의 피해!${comboMsg}`;
+      setBattleMsg(title, bodyMsg);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='chalnaUltimate'){
+      // 삼박일섬 — 찰나 예약/콤보 시스템과 무관한 독립 궁극기(15레벨).
+      const edefTri = Math.round(getEffectiveEnemyDef(enemy.def)*(1-(s.defPierce||0)));
+      const onHitMultTri = consumeOnHitBonuses();
+      let dmgTri = Math.max(1, Math.round(effectiveAtk()*s.mult) - edefTri);
+      dmgTri = applyOutgoingDamageMods(dmgTri, {type:'physkill', mpCost, onHitMult:onHitMultTri});
+      const modTri = applySkillModifiers(dmgTri, s);
+      dmgTri = modTri.value;
+      consumeAtkBuff();
+      rogueRegisterHit(true);
+      enemy.hp = Math.max(0, enemy.hp-dmgTri);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmgTri, modTri.triggered?'crit':undefined);
+      Sound.slash();
+      renderStatus();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `세 박자가 하나의 섬광으로 이어져 ${dmgTri}의 피해를 입혔다!`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
     if(s.type==='legiondeploy'){
       // 역할 배치(로봇군단장): 사용자 피드백으로 "무작위 배정"을 폐기하고
       // 계약술사/외상 도박사와 같은 방식으로 재설계했다 — 정찰/화력/방벽을

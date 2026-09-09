@@ -1,7 +1,7 @@
 "use strict";
 /*
 전 직업 스킬 데이터베이스(정적 데이터, 로직 없음).
-export(전역): SKILLDB
+export(전역): SKILLDB, CHALNA_COMBOS
 의존성: 없음(실제 스킬 실행 로직은 combat/player-actions.js의 playerSkill에 있음)
 */
 
@@ -291,6 +291,35 @@ export(전역): SKILLDB
     // 재사용한다 — player-actions.js의 doubleChance 계산부에 그대로 합산.
     warriorPuristDoubleStrike: {name:'쌍격의 파문', mp:0, type:'passive',
       desc:'기본 공격 시 반드시 한 번 더 공격한다. 두 번째 타격의 위력은 50%.'},
+
+    // 전사 - 찰나검사(warrior_chalna) — 전사의 3번째 분기(사용자 기획).
+    // 완박/중박/급박 3종을 "즉시 시전"(type:'chalnaStrike') 또는 "예약"
+    // (type:'chalnaReserve')으로 쓸 수 있다. 예약하면 이번 턴은 피해 없이
+    // battleFlags.chalnaReserve = {beat, turnsLeft:1}만 세팅하고 턴을 마친다.
+    // 이 상태에서 다음 내 턴에 chalnaStrike 타입 스킬을 쓰면(즉시시전이든 새로
+    // 예약을 걸려던 것이든) 두 beat가 합쳐진 콤보 효과가 대신 발동하고
+    // (완전대체 — 원래 그 스킬의 개별 효과는 나가지 않음) chalnaReserve는 소모된다.
+    // 콤보 조합 데이터는 아래 CHALNA_COMBOS(beat 두 개를 정렬한 문자열 키,
+    // 예 'mid+slow')에 정의한다. 실제 판정/실행 로직은 combat/player-actions.js,
+    // 매 라운드 turnsLeft 감소(다음 내 턴 안에 못 이으면 소멸)는 combat/
+    // enemy-turn.js의 enemyTurnReal()에서 처리(exposedTurns 등과 같은 자리).
+    mastery_chalna: {name:'찰나검', mp:0, type:'passive',
+      desc:'완박/중박/급박 중 하나를 찰나로 남길 수 있게 된다.'},
+    chalnaSlowStrike: {name:'완박', mp:8, desc:'느리지만 묵직한 단발 강타.',
+      type:'chalnaStrike', beat:'slow', mult:1.7},
+    chalnaMidStrike: {name:'중박', mp:5, desc:'안정적인 범용 검격.',
+      type:'chalnaStrike', beat:'mid', mult:1.3},
+    chalnaFastStrike: {name:'급박', mp:6, desc:'빠른 2연타. 치명타 확률이 우대된다.',
+      type:'chalnaStrike', beat:'fast', mult:0.75, hits:2},
+    chalnaSlowReserve: {name:'완박 예약', mp:8, desc:'완박의 검격을 찰나로 남긴다. 다음 내 턴에 다른 검격을 시전하면 하나로 합쳐진다.',
+      type:'chalnaReserve', beat:'slow'},
+    chalnaMidReserve: {name:'중박 예약', mp:5, desc:'중박의 검격을 찰나로 남긴다. 다음 내 턴에 다른 검격을 시전하면 하나로 합쳐진다.',
+      type:'chalnaReserve', beat:'mid'},
+    chalnaFastReserve: {name:'급박 예약', mp:6, desc:'급박의 검격을 찰나로 남긴다. 다음 내 턴에 다른 검격을 시전하면 하나로 합쳐진다.',
+      type:'chalnaReserve', beat:'fast'},
+    // 레벨15 궁극기 — 찰나 시스템(예약/콤보)과는 무관한 독립형 필살기.
+    chalnaTriBeat: {name:'삼박일섬', mp:16, cooldown:3, desc:'세 박자를 하나의 섬광으로 잇는다.',
+      type:'chalnaUltimate', mult:3.8, defPierce:0.3},
 
     // 마법사 - 계약술사(mage_pact)
     // 마스터리 "원소 계약": 마법 스킬을 시전할 때마다 화염/빙결/번개 중 하나를 무작위로
@@ -867,4 +896,23 @@ export(전역): SKILLDB
       desc:'스킬을 사용할 때마다 카드 한 장을 자동으로 뽑는다(최대 3장). 페어/스트레이트/트리플이 완성되면 즉시 추가 피해를 입히고 손을 비운다.'},
     jesterExchange: {name:'패 교환', mp:5, desc:'원치 않는 카드 한 장을 새 카드로 교체한다. 이미 세 장이 있으면 마지막 카드를 대신 교체한다',
       type:'cardexchange'},
+  };
+
+  // 찰나검사(warrior_chalna) 콤보 6종 — beat 두 개를 알파벳순으로 정렬해
+  // 합친 키('fast'<'mid'<'slow' 순서이므로 예: 완박+급박 → 'fast+slow').
+  // combat/player-actions.js의 chalnaStrike 처리부가 이 테이블을 참조한다.
+  // 스킬 데이터가 아니라 SKILLDB 바깥에 별도 상수로 둔다.
+  const CHALNA_COMBOS = {
+    'slow+slow': {name:'침좌', desc:'느린 두 박자를 겹쳐 짓누른다. 초고배율 단발 강타, 방어력 25% 관통.',
+      mult:4.2, defPierce:0.25},
+    'mid+mid':   {name:'부동참', desc:'흔들림 없는 세 번의 참격. 참격 후 2턴간 받는 피해가 줄어든다.',
+      mult:1.0, hits:3, selfDmgReducePct:0.15, selfDmgReduceTurns:2},
+    'fast+fast': {name:'난격', desc:'폭풍 같은 네 번의 연타. 치명타 확률이 크게 오른다.',
+      mult:0.9, hits:4, critBonus:0.30},
+    'mid+slow':  {name:'진각', desc:'무겁게 내디딘 발이 자세를 무너뜨린다. 적 방어력이 2턴간 크게 낮아진다.',
+      mult:2.6, enemyDefDownPct:0.20, enemyDefDownTurns:2},
+    'fast+slow': {name:'완급', desc:'느림과 빠름이 어긋나는 찰나, 그 빈틈을 정확히 벤다. 확정 치명타, 1턴간 적을 경직시킨다.',
+      mult:2.0, guaranteedCritMult:1.4, stunTurns:1},
+    'fast+mid':  {name:'가속참', desc:'두 번의 참격이 자신의 속도를 끌어올린다. 2턴간 속도가 오른다.',
+      mult:1.0, hits:2, selfSpdBuffPct:0.15, selfSpdBuffTurns:2},
   };
