@@ -173,10 +173,11 @@ export(전역): showJobAdvancement, resolveJobAdvancement
         }
       }
       // 시간술사(mage_time): 전직 확정 순간에 맞는 토스트 메시지(사용자 요청).
-      // 회랑의 기사(paladin_knight)와 같은 패턴 — "빌린 시간" 테마를 직접
-      // 설명하지 않고 감각적으로만 암시한다(간접 서술 원칙).
+      // 회랑의 기사(paladin_knight)와 같은 패턴 — 시간의 마녀 Aiōn의 힘 일부를
+      // 손에 넣었다는 것을 이름을 밝히지 않고 "멈춰버린 회랑"과 "시간 파편"
+      // (아이온의 실제 메커닉 명칭과 동일한 단어) 이미지로만 암시한다(간접 서술 원칙).
       if(specId==='mage_time' && typeof showToast==='function'){
-        showToast(`<h3>⏳ 시간술사</h3><p>남들보다 반 박자 먼저 움직이는 감각이, 손끝에서부터 낯설게 스며든다.</p>`, '#9fd8ff');
+        showToast(`<h3>⏳ 시간술사</h3><p>멈춰버린 회랑 어딘가에서 새어 나온 시간의 파편이, 어느새 손끝에 스며들어 있었다.</p>`, '#9fd8ff');
       }
       // 강철 군단장(mechanic_accumulator 리뉴얼) 베이스 스킬 교체 — 함수는
       // 아래 migrateLegionBaseSkills()에 분리해뒀다(신규 전직 시점 + 기존
