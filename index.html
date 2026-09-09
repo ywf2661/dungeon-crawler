@@ -894,6 +894,22 @@
    박스 밖으로 벗어난다 — 박스 하단 안쪽에 오도록 별도 지정. */
 .rig-slot.rig-top .rig-turns{ top:auto; bottom:2px; }
 .rig-fire{ animation:rigfire .35s ease-out; }
+/* 정찰/화력/방벽 드론 3종 전용 — 은은하게 위아래로 둥둥 뜨는 연출(사용자 요청).
+   컨테이너(.rig-slot)에 거는 애니메이션이라 자식 img의 좌우반전
+   transform(.rig-slot-right img{scaleX(-1)})과 서로 다른 요소라 충돌하지 않는다.
+   좌/우 슬롯이 서로 다른 위상으로 흔들리도록 delay를 살짝 다르게 준다. */
+.rig-hover{ animation:righover 2.6s ease-in-out infinite; }
+.rig-hover.rig-slot-right{ animation-delay:-1.3s; }
+/* rig-fire(사격 번쩍임, filter 애니메이션)와 rig-hover(둥둥 뜨기, transform
+   애니메이션)는 서로 다른 속성을 건드리므로 두 클래스가 동시에 걸릴 때
+   (정찰/화력/방벽 로봇이 사격하는 순간) animation 축약 속성을 합쳐서 둘 다
+   재생되게 한다. 이 규칙이 없으면 뒤에 선언된 쪽이 animation 속성 전체를
+   덮어써서 한쪽이 재생되지 않는다. */
+.rig-hover.rig-fire{ animation: righover 2.6s ease-in-out infinite, rigfire .35s ease-out; }
+@keyframes righover{
+  0%,100%{ transform:translateY(0); }
+  50%{ transform:translateY(-6px); }
+}
 @keyframes rigfire{
   0%{ filter:drop-shadow(0 0 0 #fff0) brightness(1); }
   35%{ filter:drop-shadow(0 0 8px #ffe08acc) brightness(1.6); }
