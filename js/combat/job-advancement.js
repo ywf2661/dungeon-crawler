@@ -184,6 +184,12 @@ export(전역): showJobAdvancement, resolveJobAdvancement
       if(specId==='mage_time' && typeof showToast==='function'){
         showToast(`<h3>⏳ 시간술사</h3><p>멈춰버린 회랑 어딘가에서 새어 나온 시간의 파편이, 어느새 손끝에 스며들어 있었다.</p>`, '#9fd8ff');
       }
+      // 찰나검사(warrior_chalna): 전직 확정 순간에 맞는 토스트 메시지(사용자 요청).
+      // 시간술사와 같은 "시간의 파편" 계열 이미지를 검술 쪽으로 변주 — 벤 순간에
+      // 스며든다는 표현으로 desc의 톤을 그대로 이어받는다.
+      if(specId==='warrior_chalna' && typeof showToast==='function'){
+        showToast(`<h3>🌀 찰나검사</h3><p>검을 휘두른 그 짧은 찰나에도, 회랑에 떠돌던 시간의 파편이 스며들어 있었다.</p>`, '#9fd8ff');
+      }
       // 강철 군단장(mechanic_accumulator 리뉴얼) 베이스 스킬 교체 — 함수는
       // 아래 migrateLegionBaseSkills()에 분리해뒀다(신규 전직 시점 + 기존
       // 세이브 캐릭터의 전투 진입 시점, 총 두 곳에서 호출해야 하기 때문).

@@ -672,11 +672,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         div.className = 'sub-item'+(canUse?'':' disabled')+(tierClsN?' skill-tier'+tierClsN:'');
         // 찰나검사: 찰나가 대기 중이면 즉시시전 3항목은 실제로 눌렀을 때 나갈
         // 콤보의 이름/설명으로 표시를 바꿔치기한다(원래 스킬 이름 대신).
-        let displayName = s.name, displayDesc = s.desc;
+        let displayName = s.name, displayDesc = s.desc, displayHanja = s.hanja;
         if(s.type==='chalnaStrike' && battleFlags && battleFlags.chalnaReserve){
           const combo = CHALNA_COMBOS[[battleFlags.chalnaReserve.beat, s.beat].sort().join('+')];
-          if(combo){ displayName = combo.name; displayDesc = combo.desc; }
+          if(combo){ displayName = combo.name; displayDesc = combo.desc; displayHanja = combo.hanja; }
         }
+        // 2차 전직(찰나검사 등) 스킬에 한해 이름 옆에 한자를 괄호로 병기(사용자 요청).
+        if(displayHanja) displayName = `${displayName}(${displayHanja})`;
         // 찰나검사 예약 버튼 — 짝이 되는 예약 스킬 키는 이름 규칙(XxxStrike ↔
         // XxxReserve)으로 바로 유도한다. 이미 찰나가 대기 중이면(한 번에 하나만
         // 걸 수 있으므로) 버튼 자체를 렌더링하지 않는다.
