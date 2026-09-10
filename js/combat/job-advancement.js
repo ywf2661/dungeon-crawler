@@ -101,13 +101,20 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     player.job2 = null; // 레거시 하이브리드 파트너 직업 필드 — 신규 시스템에서는 더 이상 쓰지 않는다.
     player.specialization = specId;
     // 스탯 보너스: 기존 하이브리드 시스템의 "본인 직업 재선택" 보너스 공식을 그대로 재사용.
+    // 버그 수정(사용자 제보) — 최대체력/마나만 늘어나고 현재 체력/마나는 그대로라
+    // "레벨업했는데 체력이 꽉 안 찬" 것처럼 보였다. 다른 maxhp 증가 지점들
+    // (relics.js/blacksmith.js/equipment.js)과 동일하게 늘어난 만큼 현재
+    // 체력/마나도 함께 채운다.
     player.maxhp += 16; player.maxmp += 8;
+    player.hp = Math.min(player.maxhp, player.hp+16);
+    player.mp = Math.min(player.maxmp, player.mp+8);
     player.atk += 3; player.def += 3; player.mag += 3; player.spd += 3;
     // 일격의 구도자(warrior_purist): 스킬을 전혀 쓰지 않는(패시브 3개뿐인) 컨셉이라
     // 마나 자체가 필요 없다. 위에서 계산된 maxmp 증가분을 포함해 완전히 0으로
     // 되돌린다(사용자 요청).
     if(specId === 'warrior_purist'){
       player.maxmp = 0;
+      player.mp = 0;
     }
     // 저주술사(mastery_curseweaver)는 무회복(굶주린 회랑)도 저주 개수만큼의 확률로
     // 뚫고 나올 수 있다 — isCurseSealActive()가 확률 판정과 배너 안내를 처리한다.
