@@ -370,7 +370,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.textContent = `😵 경직 ${enemy.chalnaStunTurns}턴`;
       box.appendChild(b);
     }
-    // 독 중첩(맹독 연금술사): enemy.venomStacks는 일반 dot(enemy.dots)과 별개로
+    // 역병스택(역병숙주): enemy.venomStacks는 일반 dot(enemy.dots)과 별개로
     // 관리되는 영구 스택이라(턴이 지나도 안 사라짐) 위 dots 루프에는 안 걸린다 —
     // 여기서 따로 표시한다. "적 왼쪽 위"에 두 달라는 요청이 있었지만, 그 자리는
     // 이미 내 토글 상태 배지(#bt-player-status — 혈서/원소계약/시간조각)가 쓰고
@@ -378,7 +378,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(enemy && (enemy.venomStacks||0) > 0){
       const b = document.createElement('div');
       b.className = 'status-badge venom-stack';
-      b.textContent = `☠ 독중첩 ${enemy.venomStacks}/10`;
+      b.textContent = `☠ 역병스택 ${enemy.venomStacks}/10`;
       box.appendChild(b);
     }
   }

@@ -475,13 +475,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       let venomTickForLifesteal = 0;
       if(hasVenomBurst && enemy.venomStacks>=10){
         const burstDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack() * 3));
-        activeDots.push({type:'poison', turns:1, dmgPerTurn:burstDmg, label:`맹독 폭발(${enemy.venomStacks}중첩 전량 소모)`});
+        activeDots.push({type:'poison', turns:1, dmgPerTurn:burstDmg, label:`역병 폭발(${enemy.venomStacks}스택 전량 소모)`});
         venomTickForLifesteal = burstDmg;
         enemy.venomStacks = 0;
         updateStatusBadges();
       } else {
         const venomTickDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack()));
-        activeDots.push({type:'poison', turns:1, dmgPerTurn:venomTickDmg, label:`맹독(${enemy.venomStacks}중첩)`});
+        activeDots.push({type:'poison', turns:1, dmgPerTurn:venomTickDmg, label:`역병(${enemy.venomStacks}스택)`});
         venomTickForLifesteal = venomTickDmg;
       }
       // 만성 기생(rogueVenomRefine, 레벨12, 역병숙주): 이번 라운드 잠식 dot

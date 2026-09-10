@@ -8,7 +8,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
 
   // 역병숙주(rogue_alchemist) 잠식 스택 상한 — 고독 각인(re_solovenom, 장신구)을
   // 꼈으면 6, 아니면 기본 10. 맹독 주입 전용 로직뿐 아니라 기본 공격 등
-  // 범용 독중첩 훅에서도 동일하게 참조해야 한다(예전엔 범용 훅 3곳이 상한을
+  // 범용 역병스택 훅에서도 동일하게 참조해야 한다(예전엔 범용 훅 3곳이 상한을
   // 10으로 하드코딩해둬서, 고독 각인을 꼈어도 기본 공격 등으로 쌓은 스택은
   // 상한6을 무시하고 10까지 차던 버그가 있었다).
   function getVenomStackCap(){
@@ -849,7 +849,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 내가 짊어진 저주 개수(getCurseCount(), relics.js)에 비례해 세진다 —
       // "내 저주가 곧 힘의 원천"이라는 저주술사 정체성을 그대로 따른다. 기존
       // applyDot()/enemy.dots 파이프라인을 그대로 재사용해 신규 애니메이션
-      // 코드가 필요 없다(역병숙주의 독 중첩과 달리, 이건 일반 도트라
+      // 코드가 필요 없다(역병숙주의 역병스택과 달리, 이건 일반 도트라
       // 턴이 다 되면 자연히 사라진다 — 전투 끝까지 지속되는 게 아님).
       const curses = (typeof getCombatCurseCount === 'function') ? getCombatCurseCount() : ((typeof getCurseCount === 'function') ? getCurseCount() : 0);
       const edefBrand = getEffectiveEnemyDef(enemy.def);
