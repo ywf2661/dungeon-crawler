@@ -623,10 +623,28 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return false;
   }
 
-  // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 아이온 조우(최우선) >
-  // 거울 보스 > 아이온 공명 > 회랑의 기사/시간술사 > 유품 착용자 > 엿듣기 > 마녀의 시계.
+  // 역병숙주(rogue_alchemist)가 무결 클리어로 회랑의 시조와 마주쳤을 때 —
+  // 직접 대화(showDialogueSequence)가 아니라 토스트 한 번으로 짧게 스친다
+  // (사용자 요청). 시조가 왕국을 살리기 위해 받아들인 바로 그 역병의
+  // 기운을 역병숙주가 몸에 두르고 있다는 접점만 암시하고, 왕자의 죽음 등
+  // 다른 떡밥은 건드리지 않는다(간접 서술 원칙 유지). isTrueFinal 전투는
+  // 런당 1회뿐이라 별도 빈도 조절이 필요 없다 — 아이온 조우(위)와 마찬가지.
+  function maybeShowPlagueHostProgenitorDialogue(isTrueFinal){
+    if(!isTrueFinal || enemy.type !== 'progenitor') return false;
+    if(player.specialization !== 'rogue_alchemist') return false;
+    showToast(
+      `<h3>${enemy.name}</h3><p>시조의 낡은 왕관 아래, 시선이 그대의 몸에 스민 역병에 오래 머문다.<br>"...그 기운, 낯익군." 목소리가 가늘게 떨린다. "우리 모두를 이렇게 만든 것과, 같은 냄새가 난다."</p>`,
+      '#c9a86a'
+    );
+    return true;
+  }
+
+  // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 아이온 조우 > 역병숙주-시조
+  // 조우(둘 다 isTrueFinal 전용, enemy.type으로 상호배타적) > 거울 보스 > 아이온
+  // 공명 > 회랑의 기사/시간술사 > 유품 착용자 > 엿듣기 > 마녀의 시계.
   function maybeShowSpecialEncounterDialogue(isBoss, isFinal, isTrueFinal){
     if(maybeShowAionEncounterDialogue(isTrueFinal)) return;
+    if(maybeShowPlagueHostProgenitorDialogue(isTrueFinal)) return;
     if(maybeShowMirrorBossDialogue(isFinal, isTrueFinal)) return;
     if(maybeShowAionResonanceDialogue()) return;
     if(maybeShowCorridorEncounterDialogue()) return;
