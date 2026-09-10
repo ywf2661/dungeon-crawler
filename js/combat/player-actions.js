@@ -3065,6 +3065,18 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       stealthDmgMsg2 = ' 은신에서 벗어나며 가한 일격의 위력이 크게 올랐다!';
       player.stealthDmgBonusArmed = false;
     }
+    // 역병의 확인사살(rogue_alchemist, 사용자 피드백 — "암살이 역병숙주의
+    // 정체성과 따로 노는 느낌") — 역병숙주가 "암살"(공용 도적 베이스 스킬,
+    // 환영도적과 공유)을 쓰면 적의 잠식 스택 1개당 추가 피해 +8%(스택 소모
+    // 없음, 최대 10스택 +80%). 체액 흡수로 스택을 쌓아둘수록 암살의 한 방도
+    // 같이 강해지도록 연결해, 역병 축적이 곧 암살 딜의 근거가 되게 만든다.
+    // 환영도적(rogue_phantom)의 암살 수치는 전혀 건드리지 않는다.
+    let plagueExecuteMsg2 = '';
+    if(key==='assassinate' && player.specialization==='rogue_alchemist' && (enemy.venomStacks||0)>0){
+      const plagueBonus = Math.min(0.8, (enemy.venomStacks||0)*0.08);
+      dmg = Math.round(dmg*(1+plagueBonus));
+      plagueExecuteMsg2 = ' 잠식된 상처가 암살의 일격을 더욱 깊게 파고들었다!';
+    }
     // 잔영(mastery_afterimage, 환영검사): 공격형 스킬(이 범용 phys/magic 분기에
     // 도달하는 모든 스킬)을 사용하면 확정적으로 분신이 예약된다. 어떤 스킬을 얼마의
     // 피해로 재현할지는 최종 dmg가 확정된 뒤 battleFlags.afterimageQueue에 기록하고,
@@ -3153,6 +3165,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(transcendMsg) msg2 += transcendMsg;
     if(lightningCritMsg2) msg2 += lightningCritMsg2;
     if(stealthDmgMsg2) msg2 += stealthDmgMsg2;
+    if(plagueExecuteMsg2) msg2 += plagueExecuteMsg2;
     if(elementMsg) msg2 += elementMsg;
     if(tripleElementMsg) msg2 += tripleElementMsg;
     if(hpSacMsg) msg2 += hpSacMsg;
