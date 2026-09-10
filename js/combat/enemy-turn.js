@@ -786,13 +786,14 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // (0이어도) 항상 연출한다.
       lungeEnemy();
       if(mitigated>0) shakePlayerArea();
-      // 타격음 타이밍 수정(사용자 제보 — "소리가 늦게 들린다") — 예전엔
-      // Sound.hit()가 lungeEnemy() 애니메이션이 시작되기도 전에(같은 tick)
-      // 즉시 울려서, 실제 타격 모션(index.html의 @keyframes enemyLunge —
-      // 0.38s짜리 애니메이션 중 35%=약 133ms 지점에서 적이 앞으로 튀어나오며
-      // 최대로 겹침)보다 소리가 먼저 나 버렸다. 애니메이션의 임팩트 프레임에
-      // 맞춰 130ms 지연시켜 소리와 타격 모션이 실제로 겹치는 순간에 울리게 한다.
-      if(mitigated>0) setTimeout(()=>Sound.hit(), 130);
+      // 타격음 타이밍 재수정(사용자 재제보 — "여전히 늦게 들린다") — 이전에
+      // lungeEnemy() 애니메이션의 임팩트 프레임(133ms)에 맞춰 130ms 지연시켰는데,
+      // 정작 HP바 갱신(renderStatus())과 화면 흔들림(shakePlayerArea())은 전부
+      // 이 지점에서 "즉시"(동기적으로) 일어나고 있었다 — 즉 소리만 130ms 늦게
+      // 나서 오히려 HP바/흔들림보다 더 크게 어긋나 보인 것. 애니메이션의 미세한
+      // 피크보다 HP바/흔들림 같은 즉각적인 신호가 더 지배적이라고 판단해,
+      // 소리도 다시 즉시(다른 연출과 같은 tick) 재생하도록 되돌린다.
+      if(mitigated>0) Sound.hit();
 
       // 정예 특성 — 흡혈(가한 피해의 20% 회복)/독성(적중 시 플레이어 중독 3턴 부여).
       if(mitigated>0 && enemy.eliteTraits && enemy.eliteTraits.length){
