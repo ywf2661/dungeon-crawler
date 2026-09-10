@@ -35,7 +35,7 @@ SFX 9개)을 구해와서 하이브리드 구조(파일 있으면 파일 재생,
 - 목표: 15레벨 전까지 액티브(구 맹독 주입)를 쓸 이유가 없던 문제 해결. "기생형" 컨셉으로 전면 개편
 - 변경 파일: `js/data/jobs.js`, `js/data/skills.js`, `js/data/equipment.js`, `js/combat/enemy-turn.js`, `js/combat/player-actions.js`
 - 마스터리(역병 잠식): 기존 스택 축적/틱딜 유지 + 스택 1개당 적 ATK/DEF -2%(최대 -20%) 신규 추가
-- 레벨10(체액 흡수): 자기 전용 스택 +1(레벨15면 +3, 스택 소모 없음) + 갱신 직후 스택의 절반(레벨15면 전부)만큼 ATK를 이번 전투 동안 영구 흡수(`battleFlags.venomAbsorbPoints`, `getVenomAbsorbBonus()`, 캡 +30%p)
+- 레벨10(체액 흡수): 자기 전용 스택 +3(스택 소모 없음) + 갱신 직후 스택의 절반(레벨15면 전부)만큼 ATK를 이번 전투 동안 영구 흡수(`battleFlags.venomAbsorbPoints`, `getVenomAbsorbBonus()`, 캡 +30%p) — [수정] 기존 기본 1/레벨15 3에서 사용자 요청으로 레벨10부터 3으로 상향, 레벨15는 흡수 비율(절반→전량)만 담당
 - 레벨12(만성 기생): 잠식 dot 피해의 20% 자동 회복(구 "독성 정제" 틱딜+30%/+15% 효과는 코드에서 제거됨)
 - 레벨15(완전 기생화): 자기 스택 보너스 +3, 흡수 비율 전량
 - ⚠️ 미해결: 전용 각인 3종(`re_venomrush`/`re_venomburst`/`re_solovenom`)은 옛 "맹독 주입/독성 정제" 기준 텍스트라 안 맞음 — 다음 작업 참고

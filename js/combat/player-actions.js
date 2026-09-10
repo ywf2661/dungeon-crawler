@@ -618,7 +618,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const hasVenomRush = !!(wIdVR && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdVR).includes('re_venomrush'));
       const cIdSV = player.equipment && player.equipment.accessory;
       const hasSoloVenom = !!(cIdSV && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdSV).includes('re_solovenom'));
-      let venomGain = (player.skills && player.skills.includes('rogueVenomTriple')) ? 3 : 1;
+      // [수정] 사용자 요청 — "10레벨부터 3스택씩 쌓이면 좋겠다". 기존에는
+      // 기본 1, 레벨15(완전 기생화)를 배워야 3이었는데, 레벨10 액티브부터
+      // 바로 3으로 상향(레벨15는 더 이상 이 수치에 관여하지 않고, 흡수
+      // 비율(절반→전량) 쪽만 담당하도록 역할을 정리했다 — 아래 완전 기생화
+      // desc도 함께 갱신).
+      let venomGain = 3;
       if(hasVenomRush) venomGain *= 2;
       if(hasSoloVenom) venomGain *= 2;
       const venomCap = getVenomStackCap();
