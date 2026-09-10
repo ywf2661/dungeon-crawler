@@ -152,14 +152,20 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
 
   // 이미지 기반 슬래시 VFX(사용자 제공 스프라이트) — 찰나검사 전용. 호출할
   // 때마다 회전각/위치/좌우반전을 무작위로 섞어서(옵션으로 고정도 가능)
-  // "이곳저곳에서 베는" 느낌을 낸다. opts: {angle, x, y, flip}(전부 생략 가능).
+  // "이곳저곳에서 베는" 느낌을 낸다. opts: {angle, x, y, flip, variant}(전부 생략 가능).
+  // 칼날연출 변주 10종(v1~v10, v1은 무표시=기본) — 새 스프라이트 없이 색상
+  // 필터/크기/교차 레이어로 다르게 보이게 한다(CSS 쪽 .slash-img-fx.vN 참고).
+  // 삼박난무(chalnaTriBeat)는 이 함수를 3연속 호출하므로 매번 다른 조합이
+  // 자연스럽게 섞여 "여러 번 다르게 베는" 느낌이 강화된다.
+  const SLASH_VARIANTS = ['','v2','v3','v4','v5','v6','v7','v8','v9','v10'];
   function spawnSlashImageFx(opts){
     opts = opts || {};
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
     const el = document.createElement('div');
     const flip = opts.flip!=null ? opts.flip : Math.random()<0.5;
-    el.className = 'slash-img-fx' + (flip ? ' flip' : '');
+    const variant = opts.variant!=null ? opts.variant : SLASH_VARIANTS[Math.floor(Math.random()*SLASH_VARIANTS.length)];
+    el.className = 'slash-img-fx' + (flip ? ' flip' : '') + (variant ? ' '+variant : '');
     el.style.setProperty('--ang', (opts.angle!=null ? opts.angle : Math.round(Math.random()*70-35))+'deg');
     // 참격은 몬스터 쪽(중앙 근처)에 뜨도록(사용자 요청) — 사람 형상은 외곽,
     // 참격은 중앙으로 역할을 나눈다.
@@ -168,7 +174,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 230);
   }
-  // 삼박일섬 전용 — 베는 동작을 하는 사람 형상(사용자 제공 스프라이트 3종)을
+  // 삼박난무 전용 — 베는 동작을 하는 사람 형상(사용자 제공 스프라이트 3종)을
   // spawnSlashImageFx와 동일한 무작위 위치/회전/반전으로 뿌린다.
   const CHALNA_FIGURE_IMAGES = ['images/vfx/chalna_figure_1.png','images/vfx/chalna_figure_2.png','images/vfx/chalna_figure_3.png'];
   function spawnFigureSlashFx(opts){
@@ -370,7 +376,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.textContent = `😵 경직 ${enemy.chalnaStunTurns}턴`;
       box.appendChild(b);
     }
-    // 역병스택(역병숙주): enemy.venomStacks는 일반 dot(enemy.dots)과 별개로
+    // 역병중첩(역병숙주): enemy.venomStacks는 일반 dot(enemy.dots)과 별개로
     // 관리되는 영구 스택이라(턴이 지나도 안 사라짐) 위 dots 루프에는 안 걸린다 —
     // 여기서 따로 표시한다. "적 왼쪽 위"에 두 달라는 요청이 있었지만, 그 자리는
     // 이미 내 토글 상태 배지(#bt-player-status — 혈서/원소계약/시간조각)가 쓰고
@@ -378,7 +384,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(enemy && (enemy.venomStacks||0) > 0){
       const b = document.createElement('div');
       b.className = 'status-badge venom-stack';
-      b.textContent = `☠ 역병스택 ${enemy.venomStacks}/10`;
+      b.textContent = `☠ 역병중첩 ${enemy.venomStacks}/10`;
       box.appendChild(b);
     }
   }

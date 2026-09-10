@@ -320,7 +320,7 @@ export(전역): SKILLDB, CHALNA_COMBOS
     chalnaFastReserve: {name:'급박 예약', hanja:'急拍', mp:6, desc:'급박의 검격을 찰나로 남긴다. 다음 내 턴에 다른 검격을 시전하면 하나로 합쳐진다.',
       type:'chalnaReserve', beat:'fast', mult:0.75, hits:2},
     // 레벨15 궁극기 — 찰나 시스템(예약/콤보)과는 무관한 독립형 필살기.
-    chalnaTriBeat: {name:'삼박일섬', hanja:'三拍一閃', mp:16, cooldown:3, desc:'세 박자를 하나의 섬광으로 잇는다.',
+    chalnaTriBeat: {name:'삼박난무', hanja:'三拍亂舞', mp:16, cooldown:3, desc:'세 박자를 한꺼번에 몰아쳐 어지럽게 베어낸다.',
       type:'chalnaUltimate', mult:3.8, defPierce:0.3},
 
     // 마법사 - 계약술사(mage_pact)
@@ -559,7 +559,7 @@ export(전역): SKILLDB, CHALNA_COMBOS
     // (3) [신규] 스택 1개당 적의 ATK/DEF가 각각 2%씩 감소(곱연산, 최대
     //     10스택 -20%) — combat/enemy-turn.js의 getEffectiveEnemyAtk()와
     //     data/equipment.js의 getEffectiveEnemyDef()에서 처리.
-    // 스택 수는 화면에서 적 상태 배지 영역에 "☠ 역병스택 N/10"으로 표시된다
+    // 스택 수는 화면에서 적 상태 배지 영역에 "☠ 역병중첩 N/10"으로 표시된다
     // (배지 라벨 자체는 변경하지 않음 — combat/battle-fx.js).
     mastery_venomstacks: {name:'역병 잠식', mp:0, type:'passive',
       desc:'기본 공격과 모든 스킬이 적중할 때마다 적에게 역병이 스며든다(+1스택). 쌓인 역병은 매 라운드 자동으로 피해를 입히며, 스택이 많을수록 피해도 커진다(최대 10, 전투가 끝날 때까지 지속). 또한 스택 1개당 적의 공격력·방어력이 각각 2%씩 약해진다(최대 -20%).'},
