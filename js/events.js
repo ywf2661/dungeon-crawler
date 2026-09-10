@@ -27,9 +27,9 @@ export(전역): showMysteryEvent
   function showMysteryEvent(){
     const handlers = [
       showAltarEvent, showSpringEvent, showCoffinEvent, showMerchantEvent, showTrainingEvent, showMemoryEvent,
-      showCurseEchoEvent, showShadowDuelEvent, showOldLibraryEvent, showMapFragmentEvent,
-      showAlchemistBagEvent, showBloodAltarEvent, showMadAlchemistEvent, showBloodyChallengerEvent,
-      showSuspiciousWeaponEvent, showCorpsePileEvent, showStrangeCandleEvent, showDemonContractEvent,
+      showCurseEchoEvent, showOldLibraryEvent, showMapFragmentEvent,
+      showAlchemistBagEvent, showMadAlchemistEvent, showBloodyChallengerEvent,
+      showCorpsePileEvent, showStrangeCandleEvent, showDemonContractEvent,
       showLostWalletEvent, showMysteriousMageEvent, showInjuredAdventurerEvent, showSealedDoorEvent,
       showBloodThirstyStatueEvent, showDevilsDiceEvent, showFrozenClockmakerEvent,
       showAchosTombstoneEvent, showScratchedPortraitEvent, showPlagueDiaryEvent,
@@ -314,30 +314,6 @@ export(전역): showMysteryEvent
     });
   }
 
-  // 9) 그림자와의 결투 (C안 — 정예의 인장 대체 획득 경로). 정예 사냥 없이도
-  // 자발적인 결투로 인장을 얻을 수 있다. 강제 기습이 아니라 "도전할지 말지"를
-  // 직접 고르는 정상적인 전투라 패배하면 평범하게 전투 패배 처리를 받는다.
-  function showShadowDuelEvent(){
-    const {overlay, panel} = eventOverlay('그림자와의 결투',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        그림자 하나가 조용히 다가와 결투를 청한다. 갑주의 형체가 낯익다 — 이 회랑 어딘가에서 스러진 누군가의 것처럼. "이기면 증표를 주지." 낮은 목소리가 울린다.
-      </p>`,
-      `<div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="btn" id="me-duel">결투를 받아들인다 (승리 시 정예의 인장 획득)</button>
-        <button class="btn" id="me-skip">거절한다</button>
-      </div>`);
-    panel.querySelector('#me-duel').addEventListener('click', ()=>{
-      overlay.remove();
-      pendingDuelSealCount = 1;
-      addLog('그림자 결투사와 맞선다!', 'warn');
-      setTimeout(()=>startBattle(false), 350);
-    });
-    panel.querySelector('#me-skip').addEventListener('click', ()=>{
-      addLog('결투를 거절하고 지나쳤다.');
-      closeMysteryEvent(overlay);
-    });
-  }
-
   // 10) 낡은 서고 (D안 — 직업별로 다르게 반응하는 이벤트). 기본 직업(job)에
   // 따라 발견하는 물건과 보상이 달라진다 — "내 직업다운" 순간을 준다.
   function showOldLibraryEvent(){
@@ -477,39 +453,6 @@ export(전역): showMysteryEvent
     });
   }
 
-  // 13) 피의 제단
-  function showBloodAltarEvent(){
-    const {overlay, panel} = eventOverlay('피의 제단',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">오래된 제단에서 피 냄새가 난다. 이곳에서 바쳐진 것이, 짐승의 것만은 아니었던 것 같다.</p>`,
-      `<div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="btn" id="me-full" ${player.hp<=Math.round(player.maxhp*0.2)?'disabled':''}>피를 바친다 (HP -20%, 무작위 희귀 장비)</button>
-        <button class="btn" id="me-half" ${player.hp<=Math.round(player.maxhp*0.1)?'disabled':''}>조금만 바친다 (HP -10%, 골드 획득)</button>
-        <button class="btn" id="me-skip">지나간다</button>
-      </div>`);
-    panel.querySelector('#me-full').addEventListener('click', ()=>{
-      const loss = Math.max(1, Math.round(player.maxhp*0.2));
-      player.hp = Math.max(1, player.hp-loss);
-      const msg = grantRareOrGold(25);
-      renderStatus();
-      addLog(`제단에 피를 바쳤다(HP -${loss}). ${msg}`, 'warn');
-      saveGame();
-      closeMysteryEvent(overlay);
-    });
-    panel.querySelector('#me-half').addEventListener('click', ()=>{
-      const loss = Math.max(1, Math.round(player.maxhp*0.1));
-      player.hp = Math.max(1, player.hp-loss);
-      const g = 20 + Math.floor(Math.random()*20) + depth*3;
-      player.gold += g;
-      renderStatus();
-      addLog(`제단에 피를 조금 바쳤다(HP -${loss}). 골드 +${g}G.`, 'warn');
-      saveGame();
-      closeMysteryEvent(overlay);
-    });
-    panel.querySelector('#me-skip').addEventListener('click', ()=>{
-      addLog('제단을 지나쳤다.');
-      closeMysteryEvent(overlay);
-    });
-  }
 
   // 14) 미친 연금술사 — "검사"는 30G를 내고 결과를 미리 본 뒤 다시 선택하는 2단계 구성.
   function showMadAlchemistEvent(){
@@ -606,46 +549,6 @@ export(전역): showMysteryEvent
       pendingDuelSealCount = 2;
       addLog('도전자를 도발했다 — 훨씬 강해진 기운이 느껴진다!', 'warn');
       setTimeout(()=>startBattle(false), 350);
-    });
-  }
-
-  // 16) 수상한 무기
-  function showSuspiciousWeaponEvent(){
-    const {overlay, panel} = eventOverlay('수상한 무기',
-      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">바닥에 누군가 버리고 간 검이 있다. 손잡이에 무언가 새겨져 있었던 것 같은데, 오래전에 긁혀 지워졌다.</p>`,
-      `<div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="btn" id="me-take">집는다 (무기 획득, 대신 다음 전투에서 저주)</button>
-        <button class="btn" id="me-inspect">조사한다 (50% 좋은 무기 / 50% 함정)</button>
-        <button class="btn" id="me-skip">버린다</button>
-      </div>`);
-    panel.querySelector('#me-take').addEventListener('click', ()=>{
-      const id = findEquipmentForDepth();
-      let text;
-      if(id){ player.equipOwned.push(id); text = `[${EQUIPMENT[id].name}]을(를) 얻었다.`; }
-      else { const g = 15+Math.floor(Math.random()*15)+depth*2; player.gold += g; text = `대신 금화 ${g}G를 얻었다.`; }
-      applyNextBattleCurse();
-      renderStatus();
-      addLog(`무기를 집었다. ${text} 불길한 기운이 스며든다(다음 전투 받는 피해 +15%).`, 'warn');
-      saveGame();
-      closeMysteryEvent(overlay);
-    });
-    panel.querySelector('#me-inspect').addEventListener('click', ()=>{
-      if(Math.random()<0.5){
-        const msg = grantRareOrGold(20);
-        renderStatus();
-        addLog(`조사해보니 좋은 물건이었다! ${msg}`, 'gold');
-      } else {
-        const loss = Math.max(1, Math.round(player.maxhp*0.1));
-        player.hp = Math.max(1, player.hp-loss);
-        renderStatus();
-        addLog(`함정이었다! HP -${loss}`, 'warn');
-      }
-      saveGame();
-      closeMysteryEvent(overlay);
-    });
-    panel.querySelector('#me-skip').addEventListener('click', ()=>{
-      addLog('무기를 그냥 지나쳤다.');
-      closeMysteryEvent(overlay);
     });
   }
 
