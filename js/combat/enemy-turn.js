@@ -13,7 +13,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
               getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus, getLuckWaveBonus,
               getVenomDmgPerStack, hasEliteTrait, getEffectiveEnemyAtk, handleEliteOnHitTraits,
-              checkLastStand
+              checkLastStand, getVenomAbsorbBonus
 주의(신규 — 보스전 리뉴얼): 보스는 스킬을 쓰기로 결정될 때마다(치유 제외)
      즉시 발동하는 대신 한 턴 예고("힘을 끌어모은다")부터 하고, 그 다음
      보스 턴에 enemy.pendingSkillKey를 강제로 확정 발동시킨다(실제 데미지
@@ -66,6 +66,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     if(hasEliteTrait('madness')){
       enemy.madnessTurn = (enemy.madnessTurn||0) + 1;
       if(enemy.madnessTurn % 3 === 0) a = Math.round(a*1.6);
+    }
+    // 역병숙주(mastery_venomstacks) 마스터리 "역병 잠식": 잠식 스택 1개당
+    // 적 공격력 2% 감소(최대 10스택 -20%). data/equipment.js의
+    // getEffectiveEnemyDef()와 대칭되는 처리.
+    if(enemy && (enemy.venomStacks||0)>0){
+      a = Math.round(a * (1 - Math.min(0.2, enemy.venomStacks*0.02)));
     }
     return a;
   }
@@ -451,7 +457,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
     }
     const activeDots = (enemy.dots||[]).filter(d=>d.turns>0);
-    // 독 중첩(mastery_venomstacks, 맹독 연금술사): 일반 dot과 달리 턴이 지나도
+    // 역병 잠식(mastery_venomstacks, 역병숙주): 일반 dot과 달리 턴이 지나도
     // 사라지지 않고 전투가 끝날 때까지 유지되므로, enemy.dots에 영구 저장하지
     // 않는다. 대신 매 라운드 이 시점에서 현재 스택 수 기준으로 즉석 계산한 임시
     // dot 객체를 만들어 기존 processDotsSequentially()의 연출/피해 파이프라인에
@@ -459,21 +465,35 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     // 않으므로, 라운드가 끝날 때 enemy.dots를 정리하는 로직(processDotsSequentially
     // 내부)의 영향을 받지 않고 다음 라운드에도 다시 새로 계산된다.
     if(enemy && (enemy.venomStacks||0) > 0){
-      // 폭발 정제 각인(re_venomburst, 독사 방어구 각인 — 사용자 요청): 독
+      // 폭발 정제 각인(re_venomburst, 역병숙주 방어구 각인 — 사용자 요청): 독
       // 스택이 최대(10)에 도달한 라운드엔, 평소처럼 틱딜 대신 스택을 전부
       // 소모하는 큰 폭발 피해로 터뜨리고 0으로 리셋한다. 대신 스택당 지속
       // 피해 자체는 낮다(getVenomDmgPerStack()에서 정제 보너스를 1.3배가
       // 아니라 1.15배로 낮춰서 반영).
       const aIdVB = player.equipment && player.equipment.armor;
       const hasVenomBurst = !!(aIdVB && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdVB).includes('re_venomburst'));
+      let venomTickForLifesteal = 0;
       if(hasVenomBurst && enemy.venomStacks>=10){
         const burstDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack() * 3));
         activeDots.push({type:'poison', turns:1, dmgPerTurn:burstDmg, label:`맹독 폭발(${enemy.venomStacks}중첩 전량 소모)`});
+        venomTickForLifesteal = burstDmg;
         enemy.venomStacks = 0;
         updateStatusBadges();
       } else {
         const venomTickDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack()));
         activeDots.push({type:'poison', turns:1, dmgPerTurn:venomTickDmg, label:`맹독(${enemy.venomStacks}중첩)`});
+        venomTickForLifesteal = venomTickDmg;
+      }
+      // 만성 기생(rogueVenomRefine, 레벨12, 역병숙주): 이번 라운드 잠식 dot
+      // 피해량의 20%를 자동으로 체력 회복. 실제 enemy.hp 감소는
+      // processDotsSequentially()에서 지연 애니메이션과 함께 처리되지만,
+      // 회복은 그 예정 피해량을 기준으로 즉시 계산해도 무방하다(오차 요인은
+      // 오버킬 정도뿐이라 다른 계열 라이프스틸과 동일한 수준의 근사).
+      if(player.skills && player.skills.includes('rogueVenomRefine') && player.hp>0){
+        const lifesteal = Math.max(1, Math.round(venomTickForLifesteal*0.2));
+        player.hp = Math.min(player.maxhp, player.hp+lifesteal);
+        popDamage('+'+lifesteal, 'heal');
+        renderStatus();
       }
     }
     if(activeDots.length){
@@ -952,7 +972,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function effectiveAtk(){
     let a = player.atk;
     if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
-    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus() + getReceivableAtkBonus()));
+    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus() + getReceivableAtkBonus() + getVenomAbsorbBonus()));
     // 광전사의 반지(사용자 요청 — 장비 강화): HP 40% 이하일 때 공격력 +30%.
     if(typeof getEnhancementsFor==='function' && player.equipment && player.equipment.accessory){
       const accId = player.equipment.accessory;
@@ -971,7 +991,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function effectiveMag(){
     let a = player.mag;
     if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
-    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus() + getReceivableAtkBonus()));
+    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus() + getReceivableAtkBonus() + getVenomAbsorbBonus()));
     if(typeof getEnhancementsFor==='function' && player.equipment && player.equipment.accessory){
       const accId = player.equipment.accessory;
       if(getEnhancementsFor(accId).includes('berserkring') && player.maxhp>0 && (player.hp/player.maxhp)<=0.4){
@@ -1060,7 +1080,17 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     if(!(player.skills && player.skills.includes('mastery_luckwave'))) return 0;
     return (battleFlags.luckGauge||0) * 0.07;
   }
-  // 독 중첩(mastery_venomstacks, 맹독 연금술사): "스택 하나당" 매 라운드 피해량을
+  // 체액 흡수(rogueVenomInject, 역병숙주): 스킬을 쓸 때마다
+  // battleFlags.venomAbsorbPoints에 흡수량을 누적시킨다(player-actions.js).
+  // 여기서는 그 누적치를 1포인트당 공격력 +1%로 environment에 반영하기만
+  // 한다. 반복 사용으로 무한히 커지는 것을 막기 위해 +30%p에서 캡을 둔다
+  // (다른 2차 전직의 퍼센트 버프들과 동일한 안전장치 패턴).
+  function getVenomAbsorbBonus(){
+    if(!(player.skills && player.skills.includes('mastery_venomstacks'))) return 0;
+    if(!battleFlags || !battleFlags.venomAbsorbPoints) return 0;
+    return Math.min(0.3, battleFlags.venomAbsorbPoints * 0.01);
+  }
+  // 역병 잠식(mastery_venomstacks, 역병숙주): "스택 하나당" 매 라운드 피해량을
   // 계산한다. 여기에 레벨12 패시브(독성 정제)와 장비의 중독 강화 아이템
   // (getDotBoostRatio('poison') — 도적의 단검 +40%, 영혼의 반지 +25% 등 기존
   // 아이템과 자연스럽게 시너지)이 곱연산으로 붙는다. 최종 틱 피해 = 이 값 ×
@@ -1072,7 +1102,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 2) (이번 세션) 실제 처치까지 걸리는 멀티턴 Monte Carlo로 재검증한 결과 정반대
   //    결론(전사 일격의 구도자/저주 미투자 저주술사 대비 보스전 기준 약 20~25%
   //    낮은 화력)이 나왔다. 원인은 "죽지 않는 더미" 기준 순수 화력 자체는 결코
-  //    낮지 않았고(오히려 더 높았음), 독사 특유의 구조적 손실 — 직접타로 적을
+  //    낮지 않았고(오히려 더 높았음), 역병숙주 특유의 구조적 손실 — 직접타로 적을
   //    끝내버리면 checkBattleEnd()가 그 즉시 발동해 그 턴에 쌓여있던 독틱 피해가
   //    통째로 증발하는 문제 — 때문이었다. 이 손실 자체는 전투 흐름을 바꿔야 해서
   //    (checkBattleEnd 호출 시점 변경 금지) 이번엔 건드리지 않고, 대신 기본 비율을
@@ -1084,12 +1114,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     // 마력이 아니라 effectiveAtk() 기준(도적은 mag에 페널티가 있어 atk가
     // 실제 투자 스탯이므로).
     let per = Math.max(0.01, effectiveAtk() * 0.13);
-    if(player.skills.includes('rogueVenomRefine')){
-      const aIdVB2 = player.equipment && player.equipment.armor;
-      const hasVenomBurst2 = !!(aIdVB2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdVB2).includes('re_venomburst'));
-      per *= hasVenomBurst2 ? 1.15 : 1.3;
-    }
-    // 고독 각인(re_solovenom, 독사 장신구 — 밸런스 재설계): 원래는 스택 상한만
+    // [리뉴얼] rogueVenomRefine(레벨12)은 "독성 정제"(틱딜 +30%)에서 "만성
+    // 기생"(라이프스틸)으로 의미가 바뀌었다. 여기서 틱딜을 증폭시키던 구
+    // 로직은 삭제 — 새 효과는 enemyTurnReal()의 dot 계산 직후에서 처리한다.
+    // 고독 각인(re_solovenom, 역병숙주 장신구 — 밸런스 재설계): 원래는 스택 상한만
     // 10->7로 줄이고 스택당 피해는 그대로였는데, 피해 공식이 "스택 수 × 스택당
     // 피해"로 선형이라 상한을 낮추는 순간 데미지 상한선 자체가 낮아져 사실상
     // 죽은 각인이었다(시뮬레이션으로 확인). 상한 감소폭을 10->6으로 완화하고,

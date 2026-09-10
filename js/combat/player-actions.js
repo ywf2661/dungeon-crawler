@@ -6,7 +6,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         combat/battle-end.js, combat/enemy-turn.js(적 턴 호출)
 */
 
-  // 독사(rogue_alchemist) 독 스택 상한 — 고독 각인(re_solovenom, 장신구)을
+  // 역병숙주(rogue_alchemist) 잠식 스택 상한 — 고독 각인(re_solovenom, 장신구)을
   // 꼈으면 6, 아니면 기본 10. 맹독 주입 전용 로직뿐 아니라 기본 공격 등
   // 범용 독중첩 훅에서도 동일하게 참조해야 한다(예전엔 범용 훅 3곳이 상한을
   // 10으로 하드코딩해둬서, 고독 각인을 꼈어도 기본 공격 등으로 쌓은 스택은
@@ -113,7 +113,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
     Sound.slash();
-    // 독 중첩(mastery_venomstacks, 독사): 기본 공격도 독을 남긴다(사용자 요청 —
+    // 역병 잠식(mastery_venomstacks, 역병숙주): 기본 공격도 독을 남긴다(사용자 요청 —
     // "도적의 기본공격, 기본스킬에도 독이 묻었으면"). 맹독 주입 자신의 전용
     // 보너스(+1 또는 +3)와는 별개로, 이 범용 훅은 모든 공격 행동에 공통으로
     // +1만 준다.
@@ -589,21 +589,23 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='venominject'){
-      // 맹독 주입(rogueVenomInject, 레벨10 액티브, 맹독 연금술사): 피해를 입히는
-      // 동시에 독 스택(enemy.venomStacks, 최대 10)을 쌓는 유일한 수단이다. 레벨15
-      // 패시브(rogueVenomTriple)를 배웠으면 1이 아니라 3씩 쌓인다. 실제 매 라운드
+      // 체액 흡수(rogueVenomInject, 레벨10 액티브, 역병숙주 — 구 "맹독 주입"):
+      // 피해를 입히는 동시에 잠식 스택(enemy.venomStacks, 최대 10)을 쌓는다.
+      // 레벨15 패시브(rogueVenomTriple)를 배웠으면 1이 아니라 3씩 쌓인다.
+      // [리뉴얼] 여기에 더해, 스택을 소모하지 않고 그 직후 스택 수의 절반(레벨15면
+      // 전부)만큼 내 공격력을 이번 전투 동안 흡수한다(아래 참고). 실제 매 라운드
       // 독 피해 처리는 combat/enemy-turn.js의 enemyTurnReal()에서 스택 수 기준으로
       // 매번 새로 계산한다(이 스킬은 스택을 "쌓기"만 하고 직접 틱 피해를 주지 않음).
       const edefVenom = getEffectiveEnemyDef(enemy.def);
       const onHitMultVenom = consumeOnHitBonuses();
-      let venomDmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - Math.round(edefVenom*0.9));
+      let venomDmg = Math.max(1, Math.round(effectiveAtk()*s.mult) - edefVenom);
       venomDmg = applyOutgoingDamageMods(venomDmg, {type:'physkill', mpCost, onHitMult:onHitMultVenom});
       enemy.hp = Math.max(0, enemy.hp-venomDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+venomDmg);
       Sound.slash(); playStatusFx('poison');
       rogueRegisterHit(true);
-      // 폭주 주입 각인(re_venomrush, 독사 무기)과 고독 각인(re_solovenom,
-      // 독사 장신구): 둘 다 자기 전용 스택 보너스를 2배로 만드는데, 고독
+      // 폭주 주입 각인(re_venomrush, 역병숙주 무기)과 고독 각인(re_solovenom,
+      // 역병숙주 장신구): 둘 다 자기 전용 스택 보너스를 2배로 만드는데, 고독
       // 각인은 그 대신 스택 상한이 10->6으로 줄어든다(밸런스 재설계 —
       // 스택딜 자체는 enemy-turn.js의 getVenomDmgPerStack()에서 +25%
       // 별도 보상. 원래 상한만 7로 줄이고 보상이 없던 버전은 시뮬레이션상
@@ -631,9 +633,20 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
           venomOverflowMsg = ` 독이 역류해 스스로 ${selfDmg}의 피해를 입었다!`;
         }
       }
+      // [신규] 완전 기생화(rogueVenomTriple, 레벨15) 보유 시 갱신 직후 스택
+      // 전부를, 아니면 절반(내림)을 공격력으로 흡수한다. battleFlags에
+      // 누적시켜두면 combat/enemy-turn.js의 getVenomAbsorbBonus()가
+      // effectiveAtk()/effectiveMag()에 매번 반영한다(최대 +30%p 캡).
+      const hasFullAbsorb = player.skills && player.skills.includes('rogueVenomTriple');
+      const absorbGain = hasFullAbsorb ? enemy.venomStacks : Math.floor(enemy.venomStacks/2);
+      let venomAbsorbMsg = '';
+      if(absorbGain>0 && battleFlags){
+        battleFlags.venomAbsorbPoints = (battleFlags.venomAbsorbPoints||0) + absorbGain;
+        venomAbsorbMsg = ` 공격력을 ${absorbGain}%만큼 흡수했다!`;
+      }
       updateStatusBadges();
       renderStatus();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `${enemy.name}에게 ${venomDmg}의 피해를 입히고 맹독을 주입했다! (독중첩 ${enemy.venomStacks}/${venomCap})${venomOverflowMsg}`);
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${enemy.name}에게 ${venomDmg}의 피해를 입히고 잠식을 더 진행시켰다! (잠식 ${enemy.venomStacks}/${venomCap})${venomAbsorbMsg}${venomOverflowMsg}`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -836,7 +849,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 내가 짊어진 저주 개수(getCurseCount(), relics.js)에 비례해 세진다 —
       // "내 저주가 곧 힘의 원천"이라는 저주술사 정체성을 그대로 따른다. 기존
       // applyDot()/enemy.dots 파이프라인을 그대로 재사용해 신규 애니메이션
-      // 코드가 필요 없다(맹독 연금술사의 독 중첩과 달리, 이건 일반 도트라
+      // 코드가 필요 없다(역병숙주의 독 중첩과 달리, 이건 일반 도트라
       // 턴이 다 되면 자연히 사라진다 — 전투 끝까지 지속되는 게 아님).
       const curses = (typeof getCombatCurseCount === 'function') ? getCombatCurseCount() : ((typeof getCurseCount === 'function') ? getCurseCount() : 0);
       const edefBrand = getEffectiveEnemyDef(enemy.def);
@@ -1883,7 +1896,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const total = parts.reduce((a,b)=>a+b,0);
       if(!magicBased) consumeAtkBuff();
       rogueRegisterHit(!magicBased);
-      // 독 중첩(mastery_venomstacks, 독사): 연속 공격형 스킬(두번베기/그림자
+      // 역병 잠식(mastery_venomstacks, 역병숙주): 연속 공격형 스킬(두번베기/그림자
       // 쇄도 등)도 독을 남긴다. 여러 타를 때려도 이 스킬 사용 1회당 +1만
       // 준다(개별 타격마다 주면 스택이 지나치게 빨리 차오르기 때문).
       if(player.skills && player.skills.includes('mastery_venomstacks')){
@@ -3087,7 +3100,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         }
       }
     }
-    // 독 중첩(mastery_venomstacks, 독사): 기본 공격뿐 아니라 이 범용 phys/magic
+    // 역병 잠식(mastery_venomstacks, 역병숙주): 기본 공격뿐 아니라 이 범용 phys/magic
     // 분기를 타는 모든 스킬(백스탭/암살 등)도 독을 남긴다. 맹독 주입 자신은
     // 별도의 전용 타입('venominject')이라 이 훅을 타지 않는다 — 중복 없음.
     if(player.skills && player.skills.includes('mastery_venomstacks')){

@@ -179,11 +179,24 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         // 레벨12/15 둘 다 액티브. 12는 잔영을 "증폭시키는 토글", 15는 이번 전투
         // 누적 잔영 발동 횟수를 그대로 힘으로 바꾸는 궁극기.
         skillLevels: {12:'rogueDoubleImage', 15:'rogueUndeadParade'}},
-      {id:'rogue_alchemist', name:'독사', icon:'🐍',
-        desc:'스치기만 해도 독이 스며든다. 무기든 맨손이든, 닿는 모든 것이 독으로 물든다.',
-        masteryName:'독 중첩', masteryDesc:'기본 공격과 모든 스킬이 적중할 때마다 적에게 독이 스며든다(+1스택). 쌓인 맹독은 매 라운드 자동으로 피해를 입힌다(전투가 끝날 때까지 지속, 최대 10스택).', masterySkillId:'mastery_venomstacks',
-        activeName:'맹독 주입', activeDesc:'피해와 함께 독 스택을 추가로 더 쌓는다.', activeSkillId:'rogueVenomInject',
-        // 레벨12/15는 독 중첩 시스템을 강화하는 패시브 2개.
+      // [리뉴얼] 독사(rogue_alchemist)는 사용자 요청으로 "역병숙주"로 전면
+      // 리뉴얼되었다(id는 rogue_alchemist 그대로 재사용 — 기존 세이브 호환).
+      // 기존 구조는 "맹독 주입"이 마스터리(기본공격도 +1스택)와 완전히 같은
+      // 방향(스택 추가)이라 15레벨(삼중 주입) 전까지 액티브를 쓸 이유가 없다는
+      // 문제가 있었다. 리뉴얼 컨셉은 "기생형" — 적을 약화시킨 만큼 내가
+      // 흡수한다. 상세 수치는 combat/enemy-turn.js(getEffectiveEnemyAtk/
+      // getEffectiveEnemyDef의 역병 잠식 디버프, getVenomAbsorbBonus) 및
+      // combat/player-actions.js(체액 흡수 핸들러) 참고.
+      // ⚠️ 미해결: 이 직업 전용 에픽 각인 3종(re_venomrush/re_venomburst/
+      // re_solovenom, js/blacksmith.js)은 옛 "맹독 주입" 메커니즘 기준으로
+      // 설계되어 있어 이름/설명이 새 스킬명과 안 맞는다. 사용자 요청으로
+      // 이번 작업 범위에서 제외 — 별도 작업으로 리뉴얼 필요.
+      {id:'rogue_alchemist', name:'역병숙주', icon:'🐍',
+        desc:'회랑에 남은 역병의 기운을 스스로 몸에 받아들인 자. 손이 닿는 모든 것이 서서히 병들어 간다.',
+        masteryName:'역병 잠식', masteryDesc:'기본 공격과 모든 스킬이 적중할 때마다 적을 역병으로 잠식시킨다(+1스택, 최대 10, 전투가 끝날 때까지 유지). 잠식이 진행될수록 매 라운드 피해를 입히는 동시에 적의 공격력·방어력이 스택당 2%씩 약해진다.', masterySkillId:'mastery_venomstacks',
+        activeName:'체액 흡수', activeDesc:'적의 상처에서 역병의 체액을 빨아들인다. 피해를 입히며 잠식 스택을 더 끌어올리고, 그만큼 내 공격력을 이번 전투 동안 흡수한다(스택을 소모하지 않는다).', activeSkillId:'rogueVenomInject',
+        // 레벨12: 잠식 dot 피해의 일부를 자동으로 흡혈. 레벨15: 체액 흡수의
+        // 자기 전용 스택 보너스와 흡수 비율이 함께 강화되는 궁극 패시브.
         skillLevels: {12:'rogueVenomRefine', 15:'rogueVenomTriple'}},
     ],
     paladin: [
