@@ -780,13 +780,19 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
 
       player.hp = Math.max(0, player.hp - mitigated);
       checkPaladinAwoken();
-      if(mitigated>0) Sound.hit();
       // 적 공격 연출(사용자 요청) — 회피/무효화된 경우는 위쪽 dodgeChance
       // 분기에서 이미 return돼서 여기까지 안 온다. 즉 이 지점에 도달했다는
       // 것 자체가 "공격이 실제로 진행됐다"는 뜻이라 mitigated 값과 무관하게
       // (0이어도) 항상 연출한다.
       lungeEnemy();
       if(mitigated>0) shakePlayerArea();
+      // 타격음 타이밍 수정(사용자 제보 — "소리가 늦게 들린다") — 예전엔
+      // Sound.hit()가 lungeEnemy() 애니메이션이 시작되기도 전에(같은 tick)
+      // 즉시 울려서, 실제 타격 모션(index.html의 @keyframes enemyLunge —
+      // 0.38s짜리 애니메이션 중 35%=약 133ms 지점에서 적이 앞으로 튀어나오며
+      // 최대로 겹침)보다 소리가 먼저 나 버렸다. 애니메이션의 임팩트 프레임에
+      // 맞춰 130ms 지연시켜 소리와 타격 모션이 실제로 겹치는 순간에 울리게 한다.
+      if(mitigated>0) setTimeout(()=>Sound.hit(), 130);
 
       // 정예 특성 — 흡혈(가한 피해의 20% 회복)/독성(적중 시 플레이어 중독 3턴 부여).
       if(mitigated>0 && enemy.eliteTraits && enemy.eliteTraits.length){
