@@ -1118,16 +1118,18 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       dmgTri = modTri.value;
       consumeAtkBuff();
       rogueRegisterHit(true);
-      // 버그 수정(사용자 제보) — 데미지는 즉시 뜨는데 VFX는 3연속으로 270ms에
-      // 걸쳐 재생돼 서로 안 맞았다. "세 박자"를 상징하는 VFX 3연타를 먼저
-      // 재생하고, 그게 다 끝나는 시점에 맞춰 데미지가 임팩트처럼 뜨도록 순서를
-      // 바꿨다(스태거 80ms×3 + 여유 100ms).
+      // VFX 페이싱 조정(사용자 요청) — 기존엔 3연타를 80ms 간격으로 균일하게
+      // 재생해 전부 "슉슉" 지나가는 느낌이었다. 총 10연타로 늘리고, 첫 1·2타는
+      // 느리게(300ms 간격) 무게감을 준 뒤, 나머지 8타는 빠르게(70ms 간격)
+      // 몰아치도록 완급을 줬다. 데미지는 마지막 타격이 끝나는 시점에 맞춰
+      // 임팩트처럼 뜨도록 그대로 스태거 순서를 유지한다.
+      const TRIBEAT_HIT_DELAYS = [0, 300, 370, 440, 510, 580, 650, 720, 790, 860];
       setBattleMsg(`${player.name}의 ${s.name}!`, '세 박자를 몰아치는 중...');
-      for(let i=0;i<3;i++) setTimeout(()=>{
+      TRIBEAT_HIT_DELAYS.forEach(delay=> setTimeout(()=>{
         if(typeof spawnSlashImageFx==='function') spawnSlashImageFx();
         if(typeof spawnFigureSlashFx==='function') spawnFigureSlashFx();
         Sound.slash();
-      }, i*80);
+      }, delay));
       setTimeout(()=>{
         enemy.hp = Math.max(0, enemy.hp-dmgTri);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmgTri, modTri.triggered?'crit':undefined);
@@ -1136,7 +1138,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         setBattleMsg(`${player.name}의 ${s.name}!`, `세 박자가 몰아쳐 ${dmgTri}의 피해를 입혔다!`);
         if(checkBattleEnd()) return;
         enemyTurn();
-      }, 260);
+      }, TRIBEAT_HIT_DELAYS[TRIBEAT_HIT_DELAYS.length-1] + 150);
       return;
     }
 

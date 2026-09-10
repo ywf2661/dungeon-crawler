@@ -187,11 +187,12 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const img = CHALNA_FIGURE_IMAGES[Math.floor(Math.random()*CHALNA_FIGURE_IMAGES.length)];
     el.style.backgroundImage = `url('${img}')`;
     el.style.setProperty('--ang', (opts.angle!=null ? opts.angle : Math.round(Math.random()*70-35))+'deg');
-    // 몬스터 외곽(가장자리) 쪽에 뜨도록(사용자 요청) — 중앙(참격이 뜨는 자리)을
-    // 피해서 10~24% 또는 76~90% 중 하나의 대역에서 좌표를 뽑는다.
-    const edgeBand = ()=> Math.random()<0.5 ? (2+Math.random()*12) : (86+Math.random()*12);
-    el.style.setProperty('--sx', (opts.x!=null ? opts.x : Math.round(edgeBand()))+'%');
-    el.style.setProperty('--sy', (opts.y!=null ? opts.y : Math.round(edgeBand()))+'%');
+    // [수정] 사용자 요청 — 예전엔 참격(중앙)과 사람 형상(외곽)의 자리를
+    // 나눴었는데, 삼박난무가 10연타로 늘어나며 굳이 안 나눠도 자연스러운
+    // "여러 명이 동시에 베는" 느낌이 나서 제한을 풀었다. 참격과 동일한
+    // 무작위 범위를 그대로 재사용.
+    el.style.setProperty('--sx', (opts.x!=null ? opts.x : Math.round(38+Math.random()*24))+'%');
+    el.style.setProperty('--sy', (opts.y!=null ? opts.y : Math.round(38+Math.random()*24))+'%');
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 320);
   }
