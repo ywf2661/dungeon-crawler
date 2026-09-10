@@ -51,16 +51,22 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
   // 두고 이 함수 내부만 큐잉하도록 바꿔서 다른 파일은 손댈 필요가 없다.
   let toastQueue = [];
   let toastShowing = false;
-  function showToast(html, borderColor){
-    toastQueue.push({html, borderColor});
+  // opts: {duration, extraClass, sound}(전부 생략 가능) — 사용자 요청으로 레벨업/
+  // 스킬습득/아이템획득류 토스트도 이 큐를 타도록 확장하면서 추가한 옵션.
+  // 기존 호출부(showToast(html, borderColor))는 opts 생략이라 그대로 동작한다.
+  function showToast(html, borderColor, opts){
+    toastQueue.push({html, borderColor, opts: opts||{}});
     processToastQueue();
   }
   function processToastQueue(){
     if(toastShowing || toastQueue.length===0) return;
     toastShowing = true;
-    const {html, borderColor} = toastQueue.shift();
+    const {html, borderColor, opts} = toastQueue.shift();
+    // 사운드는 큐에 쌓일 때가 아니라 실제로 화면에 뜨는 시점에 재생해야
+    // 토스트 여러 개가 한꺼번에 큐에 들어와도 소리가 겹치지 않는다.
+    if(typeof opts.sound==='function'){ try{ opts.sound(); }catch(e){} }
     const t = document.createElement('div');
-    t.className = 'toast';
+    t.className = 'toast' + (opts.extraClass ? ' '+opts.extraClass : '');
     if(borderColor) t.style.borderColor = borderColor;
     t.innerHTML = html;
     document.getElementById('app').appendChild(t);
@@ -68,7 +74,7 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
       t.remove();
       toastShowing = false;
       processToastQueue();
-    }, 1800);
+    }, opts.duration || 1800);
   }
   function renderDifficultySelect(){
     const wrap = document.getElementById('difficulty-select');

@@ -295,21 +295,28 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
             lines.push({text:`🔱 정예를 쓰러뜨려 정예의 인장을 얻었다! (보유 ${player.eliteSeals}개) 마을 교환소에서 원하는 에픽 장비와 교환할 수 있다.`, cls:'gold'});
           }
           renderExplore(lines);
-          if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
-          if(rareDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[rareDropId]), 150*leveled.length + 200);
-          if(keepsakeDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[keepsakeDropId]), 150*leveled.length + (rareDropId?700:200));
-          if(epicDropId) setTimeout(()=>showEpicDropToast(EPIC_EQUIPMENT[epicDropId]), 150*leveled.length + (rareDropId?500:200));
+          // [리뉴얼] showToast()가 이제 큐잉/순차재생을 전담하므로(ui/difficulty.js),
+          // 여기서 150ms/500ms 단위로 수동 스태거링하던 로직은 필요 없어졌다 —
+          // 그냥 순서대로 호출하면 큐가 알아서 하나씩 보여준다(토스트 겹침 버그 수정).
+          let toastCount = 0;
+          if(leveled.length){ leveled.forEach(lv=> showLevelUpToast(lv)); toastCount += leveled.length; }
+          if(rareDropId){ showRareDropToast(RARE_EQUIPMENT[rareDropId]); toastCount++; }
+          if(keepsakeDropId){ showRareDropToast(RARE_EQUIPMENT[keepsakeDropId]); toastCount++; }
+          if(epicDropId){ showEpicDropToast(EPIC_EQUIPMENT[epicDropId]); toastCount++; }
           // 정예의 인장 팝업(사용자 요청): 캐릭터 생애 최초 1회만 큰 토스트를
           // 띄운다. 탐험 로그 텍스트(위 lines.push)는 매번 그대로 남는다.
-          const toastDelay = 150*leveled.length + (rareDropId?500:200) + (epicDropId?500:200);
           if(enemy.isElite && !player.eliteSealFirstSeen){
             player.eliteSealFirstSeen = true;
-            setTimeout(()=>showEliteSealToast(), toastDelay);
+            showEliteSealToast();
+            toastCount++;
           }
+          // 보스 보상 선택창은 모달이라 토스트들과 겹치면 안 된다 — 큐가 순차
+          // 재생되는 예상 총 시간만큼(토스트 1개당 대략 1.9초) 넉넉히 기다린 뒤 띄운다.
+          const toastDelay = toastCount * 1900;
           // 사용자 요청: 타이어 보스를 잡으면 무조건 마을로 — 보상을 하나
           // 고른 뒤에 실제로 마을에 도착한다(그 시점에 체크포인트 저장).
           if(isTierBossClear){
-            setTimeout(()=>showBossRewardChoice(clearedTier, pendingPurifyIds), toastDelay + (enemy.isElite?500:0) + 400);
+            setTimeout(()=>showBossRewardChoice(clearedTier, pendingPurifyIds), toastDelay + 400);
           }
           saveGame();
         }, 1300);
@@ -786,8 +793,6 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     const job = getJob(player);
     const hybrid = getHybrid(player);
     const specialization = getSpecialization(player);
-    const t = document.createElement('div');
-    t.className='toast';
     const names = [];
     const unlockKey = job.skillLevels[lv];
     if(unlockKey) names.push(SKILLDB[unlockKey].name);
@@ -802,49 +807,33 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       const specKeys = Array.isArray(specKey) ? specKey : [specKey];
       specKeys.forEach(k=>{ if(k && SKILLDB[k]) names.push(SKILLDB[k].name); });
     }
-    Sound.levelUp();
-    t.innerHTML = `<h3>레벨 업! Lv.${lv}</h3><p>최대 HP/MP와 능력치가 상승했다.</p>${names.length?`<p>새로운 스킬 습득: <b>${names.join(', ')}</b></p>`:''}`;
-    document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 2200);
+    const html = `<h3>레벨 업! Lv.${lv}</h3><p>최대 HP/MP와 능력치가 상승했다.</p>${names.length?`<p>새로운 스킬 습득: <b>${names.join(', ')}</b></p>`:''}`;
+    showToast(html, null, {duration:2200, sound:Sound.levelUp});
   }
 
   // 정예의 인장 토스트(사용자 요청) — 예전엔 탐험 로그 한 줄로만 알려줘서
   // 눈에 잘 안 띄었다. showRareDropToast류와 동일한 패턴의 프롬프트 팝업으로
   // 확실히 보이게 한다.
   function showEliteSealToast(){
-    const t = document.createElement('div');
-    t.className='toast';
-    t.style.borderColor = '#ffd76a';
-    Sound.coin();
-    t.innerHTML = `<h3 style="color:#ffd76a;">🔱 정예의 인장 획득!</h3><p>보유 ${player.eliteSeals}개</p><p style="opacity:.75;">마을 교환소에서 원하는 에픽 장비와 교환할 수 있다.</p>`;
-    document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 2200);
+    const html = `<h3 style="color:#ffd76a;">🔱 정예의 인장 획득!</h3><p>보유 ${player.eliteSeals}개</p><p style="opacity:.75;">마을 교환소에서 원하는 에픽 장비와 교환할 수 있다.</p>`;
+    showToast(html, '#ffd76a', {duration:2200, sound:Sound.coin});
   }
 
   function showRareDropToast(item){
-    const t = document.createElement('div');
-    t.className='toast';
-    t.style.borderColor = 'var(--violet)';
-    Sound.coin();
-    t.innerHTML = `<h3 style="color:#c9a8ff;">✨ 희귀 아이템 발견!</h3><p><b>${item.name}</b></p><p>${statsText(item.stats)}</p><p style="opacity:.75;">${item.desc}</p>`;
-    document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 2800);
+    const html = `<h3 style="color:#c9a8ff;">✨ 희귀 아이템 발견!</h3><p><b>${item.name}</b></p><p>${statsText(item.stats)}</p><p style="opacity:.75;">${item.desc}</p>`;
+    showToast(html, 'var(--violet)', {duration:2800, sound:Sound.coin});
   }
 
   function showEpicDropToast(item){
-    const t = document.createElement('div');
-    t.className='toast toast-epic';
     const setInfo = EPIC_SETS[item.setId];
     const owned = player.equipOwned.filter(id=>EPIC_EQUIPMENT[id] && EPIC_EQUIPMENT[id].setId===item.setId);
     const setItems = Object.keys(EPIC_EQUIPMENT).filter(k=>EPIC_EQUIPMENT[k].setId===item.setId);
     const bars = setItems.map(k=> owned.includes(k) ? '■' : '□').join(' ');
-    Sound.levelUp();
-    t.innerHTML = `<h3 style="color:var(--epic-bright);">✦✦ EPIC DROP ✦✦</h3>
+    const html = `<h3 style="color:var(--epic-bright);">✦✦ EPIC DROP ✦✦</h3>
       <p style="color:var(--epic-bright);"><b>「${setInfo.name}」</b></p>
       <p><b>[${SLOT_LABELS[item.slot]}] ${item.name}</b></p>
       <p>${statsText(item.stats)}</p>
       <p style="opacity:.75;">${item.desc}</p>
       <p style="margin-top:8px; font-size:13px; letter-spacing:.15em;">세트 진행도 ${bars} (${owned.length}/3)</p>`;
-    document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 3400);
+    showToast(html, null, {duration:3400, extraClass:'toast-epic', sound:Sound.levelUp});
   }

@@ -262,15 +262,13 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   }
   function showEpicSetToast(setId, tier){
     const set = EPIC_SETS[setId];
-    const t = document.createElement('div');
-    t.className = 'toast toast-epic';
+    let html;
     if(tier===2){
-      t.innerHTML = `<h3 style="color:var(--epic-bright);">✦ ${set.name} — 2/3</h3><p><b>${set.set2Name}</b></p><p>${set.set2Desc}</p>`;
+      html = `<h3 style="color:var(--epic-bright);">✦ ${set.name} — 2/3</h3><p><b>${set.set2Name}</b></p><p>${set.set2Desc}</p>`;
     } else {
-      t.innerHTML = `<h3 style="color:var(--epic-bright);">✦✦✦ SET COMPLETE</h3><p style="color:var(--epic-bright);"><b>${set.name}</b></p><p><b>${set.set3Name}</b></p><p>${set.set3Desc}</p>`;
+      html = `<h3 style="color:var(--epic-bright);">✦✦✦ SET COMPLETE</h3><p style="color:var(--epic-bright);"><b>${set.name}</b></p><p><b>${set.set3Name}</b></p><p>${set.set3Desc}</p>`;
     }
-    document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 3200);
+    showToast(html, null, {duration:3200, extraClass:'toast-epic'});
   }
 
   function equippedSpecials(){
