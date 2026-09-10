@@ -1094,6 +1094,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       setBattleMsg(`${player.name}의 ${s.name}!`, '세 박자를 하나로 잇는 중...');
       for(let i=0;i<3;i++) setTimeout(()=>{
         if(typeof spawnSlashImageFx==='function') spawnSlashImageFx();
+        if(typeof spawnFigureSlashFx==='function') spawnFigureSlashFx();
         Sound.slash();
       }, i*80);
       setTimeout(()=>{

@@ -3,7 +3,7 @@
 전투 UI 연출/이펙트 — HP바 갱신, 메시지 표시, 커맨드 UI 리셋/활성화,
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
-              shakeEnemy, spawnSlashMark, spawnSlashImageFx, playComboFinish,
+              shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
               playStatusFx, playCastBurst, playBanner,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
@@ -166,8 +166,25 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 230);
   }
-  // 찰나검사 타격 연출 — 실제 타이밍 동기화는 player-actions.js에서 각 타격/
-  // 임팩트 시점에 spawnSlashImageFx()를 직접 호출하는 방식으로 처리한다.
+  // 삼박일섬 전용 — 베는 동작을 하는 사람 형상(사용자 제공 스프라이트 3종)을
+  // spawnSlashImageFx와 동일한 무작위 위치/회전/반전으로 뿌린다.
+  const CHALNA_FIGURE_IMAGES = ['images/vfx/chalna_figure_1.png','images/vfx/chalna_figure_2.png','images/vfx/chalna_figure_3.png'];
+  function spawnFigureSlashFx(opts){
+    opts = opts || {};
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    const flip = opts.flip!=null ? opts.flip : Math.random()<0.5;
+    el.className = 'slash-figure-fx' + (flip ? ' flip' : '');
+    const img = CHALNA_FIGURE_IMAGES[Math.floor(Math.random()*CHALNA_FIGURE_IMAGES.length)];
+    el.style.backgroundImage = `url('${img}')`;
+    el.style.setProperty('--ang', (opts.angle!=null ? opts.angle : Math.round(Math.random()*70-35))+'deg');
+    el.style.setProperty('--sx', (opts.x!=null ? opts.x : Math.round(28+Math.random()*44))+'%');
+    el.style.setProperty('--sy', (opts.y!=null ? opts.y : Math.round(28+Math.random()*44))+'%');
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 320);
+  }
+
 
   function playComboFinish(hits){
     if(hits < 2) return;

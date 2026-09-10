@@ -408,6 +408,17 @@
   /* 좌우반전은 calc(var(...)) 방식 대신(브라우저 호환성 불확실) 별도
      키프레임으로 분리한다 — animation-name만 바꿔치기하는 안전한 방식. */
   .slash-img-fx.flip{ animation-name:slashimgcutflip; }
+  /* 삼박일섬 전용 - 베는 동작을 하는 사람 형상(사용자 제공 스프라이트 3종).
+     .slash-img-fx와 완전히 같은 애니메이션/좌우반전을 재사용하되, 배경이미지는
+     background-image 대신 매번 JS에서 인라인으로 지정한다(3종 중 무작위). */
+  .slash-figure-fx{
+    position:absolute; width:220px; height:220px;
+    left:var(--sx,50%); top:var(--sy,50%);
+    background-size:contain; background-repeat:no-repeat; background-position:center;
+    pointer-events:none; z-index:6; opacity:0;
+    animation:slashimgcut .3s ease-out forwards;
+  }
+  .slash-figure-fx.flip{ animation-name:slashimgcutflip; }
   @keyframes slashimgcut{
     0%{opacity:0; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scale(0.65);}
     40%{opacity:1; transform:translate(-50%,-50%) rotate(var(--ang,0deg)) scale(1.05);}
