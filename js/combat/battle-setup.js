@@ -440,7 +440,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   // 회랑의 기사 전용 대사. 실제로 대사를 띄웠으면 true를 반환한다(마녀의 시계
   // 쪽과 같은 전투에서 중복으로 겹쳐 뜨는 것을 막기 위한 신호용).
   // 시간술사(mage_time)는 "회랑의 ○○" 몬스터를 개인적 인연이 아니라 "빌린
-  // 힘의 동질감"으로 인식한다 — 회랑의 기사와 같은 카운터/확률을 공유한다.
+  // 힘의 동질감"으로, 역병숙주(rogue_alchemist)는 "몸 안의 역병"이라는
+  // 동질감으로 인식한다 — 셋 다 같은 카운터/확률을 공유한다.
   // 사용자 요청 — 런당 최대 2회 발동인데 대사가 하나뿐이면 똑같은 말을
   // 두 번 듣게 되어 어색함. 첫 발동/두 번째 발동에 각각 다른 대사가
   // 나오도록 2종으로 분리(무작위가 아니라 순서 고정 — 같은 대사가 연속
@@ -449,10 +450,18 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     ['...그 기운, 익숙하군.', '너도, 빌린 것이었나.'],
     ['...너에게서도 그 냄새가 난다.', '빌린 시간은, 언젠가 반드시 돌려줘야 하는 법인데.'],
   ];
+  // 역병숙주(rogue_alchemist) 전용 — 시간술사와 같은 자리를 공유하되, "빌린
+  // 시간"이 아니라 "몸 안의 역병"이라는 다른 각도로 회랑의 몬스터와 동질감을
+  // 느낀다(사용자 요청 — 역병숙주 리뉴얼에 맞춰 몬스터 상호작용 추가).
+  const PLAGUE_HOST_CORRIDOR_LINES = [
+    ['...그 냄새, 낯익다.', '너도, 그 안에서부터 썩어가고 있었구나.'],
+    ['...몸 안의 것이, 제 것을 알아보는군.', '조금만 더 지났으면, 너도 나와 같아졌을 텐데.'],
+  ];
   function maybeShowCorridorEncounterDialogue(){
     const isKnight = player.specialization === 'paladin_knight';
     const isTimeMage = player.specialization === 'mage_time';
-    if(!isKnight && !isTimeMage) return false;
+    const isPlagueHost = player.specialization === 'rogue_alchemist';
+    if(!isKnight && !isTimeMage && !isPlagueHost) return false;
     if((player.corridorDialogueCount||0) >= 2) return false;
     const isCorridorMonster = enemy.type==='ogre' || !!CORRIDOR_NPC_LINES[enemy.type];
     if(!isCorridorMonster) return false;
@@ -464,8 +473,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       } else {
         lines = CORRIDOR_NPC_LINES[enemy.type];
       }
-    } else {
+    } else if(isTimeMage){
       lines = TIME_MAGE_CORRIDOR_LINES[player.corridorDialogueCount||0] || TIME_MAGE_CORRIDOR_LINES[TIME_MAGE_CORRIDOR_LINES.length-1];
+    } else {
+      lines = PLAGUE_HOST_CORRIDOR_LINES[player.corridorDialogueCount||0] || PLAGUE_HOST_CORRIDOR_LINES[PLAGUE_HOST_CORRIDOR_LINES.length-1];
     }
     if(Math.random() >= 0.5) return false; // 만날 때마다 50%만 -> 런 전체에서 자연스럽게 1~2회로 수렴
     player.corridorDialogueCount = (player.corridorDialogueCount||0) + 1;

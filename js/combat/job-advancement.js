@@ -197,6 +197,13 @@ export(전역): showJobAdvancement, resolveJobAdvancement
       if(specId==='warrior_chalna' && typeof showToast==='function'){
         showToast(`<h3>🌀 찰나검사</h3><p>검을 휘두른 그 짧은 찰나에도, 회랑에 떠돌던 시간의 파편이 스며들어 있었다.</p>`, '#9fd8ff');
       }
+      // 역병숙주(rogue_alchemist 리뉴얼): 전직 확정 순간에 맞는 토스트 메시지
+      // (사용자 요청). 회랑의 기사/시간술사와 같은 패턴 — "역병"이라는 단어를
+      // 직접 쓰지 않고 검은 기운/핏줄이 번져나간다는 이미지로만 암시한다
+      // (간접 서술 원칙, story.md 8장).
+      if(specId==='rogue_alchemist' && typeof showToast==='function'){
+        showToast(`<h3>🦠 역병숙주</h3><p>손끝부터 스며든 검은 기운이 핏줄을 타고 번져나간다. 이제, 그것은 당신의 일부다.</p>`, '#8a9c4a');
+      }
       // 강철 군단장(mechanic_accumulator 리뉴얼) 베이스 스킬 교체 — 함수는
       // 아래 migrateLegionBaseSkills()에 분리해뒀다(신규 전직 시점 + 기존
       // 세이브 캐릭터의 전투 진입 시점, 총 두 곳에서 호출해야 하기 때문).
