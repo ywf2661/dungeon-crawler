@@ -93,6 +93,11 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const pop = document.createElement('div');
     pop.className = 'dmg-pop'+(cls?(' '+cls):'');
     pop.textContent = text;
+    // 버그 수정(사용자 제보) — 항상 정확히 같은 위치(left:50%)에 떠서, 짧은
+    // 간격으로 여러 번 데미지가 들어가면(멀티히트, 로봇 틱뎀 등) 숫자들이
+    // 완전히 겹쳐 보였다. 매번 약간의 무작위 좌우 오프셋을 줘서 퍼지게 한다.
+    const jitter = Math.round(Math.random()*70-35);
+    pop.style.left = `calc(50% + ${jitter}px)`;
     stage.appendChild(pop);
     setTimeout(()=>pop.remove(), 800);
   }
