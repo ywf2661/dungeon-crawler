@@ -183,7 +183,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.style.setProperty('--ang', (opts.angle!=null ? opts.angle : Math.round(Math.random()*70-35))+'deg');
     // 몬스터 외곽(가장자리) 쪽에 뜨도록(사용자 요청) — 중앙(참격이 뜨는 자리)을
     // 피해서 10~24% 또는 76~90% 중 하나의 대역에서 좌표를 뽑는다.
-    const edgeBand = ()=> Math.random()<0.5 ? (10+Math.random()*14) : (76+Math.random()*14);
+    const edgeBand = ()=> Math.random()<0.5 ? (2+Math.random()*12) : (86+Math.random()*12);
     el.style.setProperty('--sx', (opts.x!=null ? opts.x : Math.round(edgeBand()))+'%');
     el.style.setProperty('--sy', (opts.y!=null ? opts.y : Math.round(edgeBand()))+'%');
     stage.appendChild(el);
