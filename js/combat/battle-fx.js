@@ -444,6 +444,18 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.title = '다음 공격형 스킬을 쓰면 잔영이 두 번, 더 강하게 나타난다. 한 번 쓰면 소모된다.';
       box.appendChild(b);
     }
+    // 흡수한 공격력(mastery_venomstacks, 역병숙주, 사용자 요청 — "얼마나
+    // 흡수했는지 안 보인다") — 체액 흡수를 쓸 때마다 battleFlags.venomAbsorbPoints에
+    // 쌓이는 값을 getVenomAbsorbBonus()와 똑같은 공식(1포인트=1%, 최대 +30%)으로
+    // 그대로 보여준다. 0이면 표시 안 함(아직 한 번도 안 썼다는 뜻).
+    if(player.skills.includes('mastery_venomstacks') && battleFlags && (battleFlags.venomAbsorbPoints||0) > 0){
+      const absorbPct = Math.min(30, battleFlags.venomAbsorbPoints);
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      b.textContent = `⚔ 흡수 +${absorbPct}%`;
+      b.title = `체액 흡수로 빼앗은 공격력 — 이번 전투 동안 유지된다(최대 +30%).`;
+      box.appendChild(b);
+    }
     // 잔영 누적(mastery_afterimage): 백귀야행(레벨15)의 재료가 되는 이번 전투
     // 누적 발동 횟수를 보여준다. 0이면 표시하지 않는다.
     if(player.skills.includes('mastery_afterimage') && battleFlags && (battleFlags.afterimageTriggerCount||0) > 0){

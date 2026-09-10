@@ -645,6 +645,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         venomAbsorbMsg = ` 공격력을 ${absorbGain}%만큼 흡수했다!`;
       }
       updateStatusBadges();
+      if(typeof updatePlayerStatusBadges==='function') updatePlayerStatusBadges();
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, `${enemy.name}에게 ${venomDmg}의 피해를 입히고 잠식을 더 진행시켰다! (잠식 ${enemy.venomStacks}/${venomCap})${venomAbsorbMsg}${venomOverflowMsg}`);
       if(checkBattleEnd()) return;
