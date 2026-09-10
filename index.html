@@ -629,7 +629,7 @@
   }
   .enemy-hp-inner{height:100%; background:linear-gradient(90deg,var(--rust),var(--rust-bright)); transition:width .4s;}
 
-  .battle-lower{padding:12px 14px 16px; display:flex; flex-direction:column; gap:10px; flex:1; min-height:0;}
+  .battle-lower{padding:12px 14px 16px; display:flex; flex-direction:column; gap:10px; flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
   .msgbox{
   background:linear-gradient(180deg,#e9dcc0,#dccba0);
   color:var(--ink); border:2px solid #6b5230; border-radius:4px;
@@ -641,7 +641,7 @@
   .msgbox .m-line{margin:0;}
   .msgbox .m-line + .m-line{margin-top:2px; opacity:.65; font-size:13.5px;}
 
- #bt-command-area{display:flex; flex-direction:column; flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;}
+ #bt-command-area{display:flex; flex-direction:column; flex:1; min-height:220px;}
 
   .cmd-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; flex-shrink:0;}
   .cmd-btn{
