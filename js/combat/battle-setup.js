@@ -543,6 +543,42 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return true;
   }
 
+  // 잭(회랑의 인형수집가) 전용 — "왕자 언급의 유일한 출처"라는 위치를 살려,
+  // 직업/전직 무관하게 만날 때마다 조금씩 더 짙어지는 3단계 대사(사용자
+  // 기획 — 왕자 떡밥을 대사→장소→엔딩 순으로 심는 세트 중 1단계).
+  // 회랑의 기사(CORRIDOR_NPC_LINES.jack)/시간술사·역병숙주(위 두 배열)는
+  // maybeShowCorridorEncounterDialogue()에서 먼저 처리되므로, 그 롤이
+  // 성공한 전투에서는 이 함수까지 도달하지 않아 자연히 겹치지 않는다.
+  // 3단계까지 다 본 상태(jackPrinceDialogueCount>=3)가 events.js의 신규
+  // 이벤트("잠긴 육아실")가 이벤트 풀에 들어가는 조건이기도 하다.
+  const JACK_PRINCE_LINES = [
+    ['오, 손님이시군요! 제가 만든 인형들 좀 보고 가시겠습니까?', '예전엔... 작은 손님 하나가 자주 놀러 오곤 했는데 말이죠.'],
+    ['이 목마 인형, 유난히 좋아하셨는데.', '요즘은 통 소식이 없으시네요. ...다들 그런 것처럼.'],
+    ['...그러고 보니, 마지막으로 뵌 게 언제였더라.', '기억이 잘 안 나는군요. 왜 이렇게 흐릿하지.'],
+  ];
+  function maybeShowJackPrinceDialogue(){
+    if(enemy.type !== 'jack') return false;
+    // 낡은 목마 인형(r_woodenhorse, "잠긴 육아실" 이벤트 보상) 착용 중이면
+    // 3단계 대사 대신 전용 1회성 인식 대사를 우선 보여준다(왕자 떡밥 세트
+    // 3단계 — 대사→장소→(이 재조우)로 마무리).
+    if(player.equipment && player.equipment.accessory === 'r_woodenhorse' && !player.woodenHorseDialogueSeen){
+      player.woodenHorseDialogueSeen = true;
+      saveGame();
+      showDialogueSequence(
+        ['잭의 손이 멈춘다. 그 손에 들린 목마를 오래도록 바라본다.', '"...그건, 제가 만든 게 맞습니다." 목소리가 낮게 가라앉는다. "잘 챙겨주셔서, 고맙습니다."'],
+        {title: enemy.name}
+      );
+      return true;
+    }
+    const idx = player.jackPrinceDialogueCount||0;
+    if(idx >= JACK_PRINCE_LINES.length) return false;
+    if(Math.random() >= 0.4) return false;
+    player.jackPrinceDialogueCount = idx + 1;
+    saveGame();
+    showDialogueSequence(JACK_PRINCE_LINES[idx], {title: enemy.name});
+    return true;
+  }
+
   // 직업/장비 무관 — 아무 "회랑의 ○○" 몬스터에게서나 낮은 확률로 뜨는
   // "엿듣기" 버전. 원래는 직업 무관 단일 대사였으나(사용자 피드백 — "아코스
   // 얘기가 뜬금없다"), 플레이어 직업에 따라 반응이 달라지도록 분기했다.
@@ -649,6 +685,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     if(maybeShowAionResonanceDialogue()) return;
     if(maybeShowCorridorEncounterDialogue()) return;
     if(maybeShowKeepsakeRecognitionDialogue()) return;
+    if(maybeShowJackPrinceDialogue()) return;
     if(maybeShowOverheardAchosDialogue()) return;
     maybeShowWitchClockDialogue(isBoss, isFinal);
   }

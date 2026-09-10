@@ -38,6 +38,11 @@ export(전역): showMysteryEvent
     // 이벤트 풀에 포함된다 — 안 만난 적 없는 상태에서 재회가 뜨면 앞뒤가 안
     // 맞기 때문에, 이 조건만은 균등 확률 원칙의 예외로 둔다.
     if(player.helpedInjuredAdventurer) handlers.push(showInjuredAdventurerReunionEvent);
+    // "잠긴 육아실"(왕자 떡밥 3단계 세트 중 2단계, 사용자 기획): 잭과의
+    // 대사를 3단계까지 전부 들은 상태(combat/battle-setup.js의
+    // jackPrinceDialogueCount>=3)에서만 이벤트 풀에 등장하고, 한 번 보면
+    // 다시 뜨지 않는다(재회 이벤트와 같은 "조건부 예외" 패턴).
+    if((player.jackPrinceDialogueCount||0) >= 3 && !player.nurseryEventSeen) handlers.push(showNurseryEvent);
     handlers[Math.floor(Math.random()*handlers.length)]();
   }
 
@@ -1140,6 +1145,56 @@ export(전역): showMysteryEvent
     });
     panel.querySelector('#me-skip').addEventListener('click', ()=>{
       addLog('일기장을 서랍에 도로 넣어두었다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 30) 잠긴 육아실 — 왕자 떡밥 3단계 세트 중 2단계(사용자 기획). 잭과의
+  // 대사를 3단계까지 전부 들은 플레이어(combat/battle-setup.js의
+  // jackPrinceDialogueCount>=3)에게만 이벤트 풀에 등장하며, 한 번 보면
+  // player.nurseryEventSeen 플래그로 이후 다시 뜨지 않는다(showMysteryEvent
+  // 참고). 죽음은 끝까지 직접 말하지 않고, 긁힌 초상화의 손바닥 자국과
+  // 조용히 연결만 시킨다(간접 서술 원칙 — story.md 8장).
+  function showNurseryEvent(){
+    const {overlay, panel} = eventOverlay('잠긴 육아실',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        회랑 깊은 곳, 오랫동안 열리지 않은 것 같은 작은 방을 발견했다. 문 틈으로 먼지 쌓인 목마 인형과, 한 번도 쓰인 흔적이 없는 작은 침대가 보인다. 서리 낀 창문 한쪽에, 작은 손바닥 자국이 희미하게 남아 있다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-take">목마 인형을 챙긴다</button>
+        <button class="btn" id="me-look">방을 조용히 둘러본다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-skip">문을 닫고 나온다</button>
+      </div>`);
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      overlay.remove();
+      player.nurseryEventSeen = true;
+      const already = player.equipOwned.includes('r_woodenhorse');
+      if(!already) player.equipOwned.push('r_woodenhorse');
+      showDialogueSequence([
+        '목마를 집어 드니, 손잡이가 유난히 매끈하게 닳아 있다. 오래도록, 자주 쥐었던 것처럼.',
+        already ? '이미 하나 가지고 있었다는 걸 깨닫는다 — 어쩌면, 그때도 이곳에 와본 적이 있었던 걸까.' : '',
+      ].filter(Boolean), {onDone: ()=>{
+        renderStatus();
+        addLog(already ? '낡은 목마 인형을 다시 손에 쥐었다.' : '낡은 목마 인형을 손에 넣었다.', 'gold');
+        saveGame();
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-look').addEventListener('click', ()=>{
+      player.nurseryEventSeen = true;
+      const expGain = 15 + depth*3;
+      const leveled = grantExp(expGain);
+      renderStatus();
+      addLog(`방 안을 한참 둘러봤지만, 누구의 것이었는지는 끝내 알 수 없었다. (EXP +${expGain})`, 'gold');
+      saveGame();
+      overlay.remove();
+      if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+      renderExplore([]);
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      player.nurseryEventSeen = true;
+      addLog('왠지 더 들여다봐선 안 될 것 같아, 문을 조용히 닫았다.');
+      saveGame();
       closeMysteryEvent(overlay);
     });
   }

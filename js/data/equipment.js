@@ -54,6 +54,13 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     // 처치 시에만 별도로 굴리는 독립 드롭이다.
     r_achoskeepsake: {name:'낡은 병사의 반지', slot:'accessory', desc:'닳고 닳은 철 반지. 안쪽에 무언가 새겨져 있었던 자리가 있지만, 오래전에 닳아 알아볼 수 없다. 반지 표면에 얕게 눌린 자국 하나만 겨우 남아 있다 — \'A\'로 시작하는 글자였던 것 같기도 하다.',
       stats:{def:8, maxhp:20},            minDepth:9,  rare:true, keepsakeOnly:true},
+    // 물음표 이벤트 "잠긴 육아실"(events.js) 전용 확정 지급 아이템(사용자
+    // 기획 — 왕자 떡밥을 대사→장소→엔딩 순으로 심는 세트 중 2단계). 확률
+    // 드롭이 아니라 이벤트 선택지 보상이라 findRareDropForDepth() 등 일반
+    // 드롭 로직과는 무관하다. 착용 중 잭과 조우하면 전용 1회성 인식 대사가
+    // 뜬다(combat/battle-setup.js의 maybeShowWoodenHorseRecognitionDialogue()).
+    r_woodenhorse: {name:'낡은 목마 인형', slot:'accessory', desc:'귀퉁이가 닳은 나무 목마. 누군가 오랫동안 아껴 만지던 흔적이 손잡이 부분에 유난히 진하게 남아 있다.',
+      stats:{maxhp:15, spd:2},            minDepth:20, rare:true},
     r_guardiancharm: {name:'수호자의 부적',   slot:'accessory', desc:'고대 수호자의 힘이 깃든 부적. ✦특성: 전투 중 한 번, 치명적인 공격을 완전히 막아낸다.',
       stats:{def:6, maxhp:10},            minDepth:5,  rare:true, special:{guardianShield:true}},
     r_luckyclover:   {name:'행운의 네잎클로버', slot:'accessory', desc:'우연히 발견한 네 개의 잎. 행운을 가져다준다는 소문이 있다. ✦특성: 희귀 아이템 발견 확률과 획득 골드가 늘어난다.',
