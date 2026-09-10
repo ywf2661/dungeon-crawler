@@ -748,6 +748,13 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       player.mp = Math.min(player.mp, player.maxmp);
     } else {
       player.hp = player.maxhp; player.mp = player.maxmp;
+      // 버그 수정(사용자 제보) — renderStatus()의 정예 "저주" 특성 회복감소가
+      // "지난 렌더 이후 HP가 늘었으면 그 증가분의 30%를 사후 차감"하는 방식
+      // 이라, 레벨업으로 체력이 꽉 차는 것까지 "회복"으로 오인해서 깎고
+      // 있었다. 여기서 기준값(_prevHpForCurse)을 미리 지금 값으로 맞춰둬서
+      // 다음 renderStatus() 호출이 "변화 없음"으로 보게 한다 — 레벨업 보상은
+      // 저주로 깎일 대상이 아니므로.
+      player._prevHpForCurse = player.hp;
     }
     const unlockKey = job.skillLevels[player.level];
     if(unlockKey && !player.skills.includes(unlockKey)) player.skills.push(unlockKey);
