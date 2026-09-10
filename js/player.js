@@ -94,6 +94,15 @@ export(전역): newPlayer
       // 강화석(사용자 요청) — 단일 재화. 몬스터 처치/보스 보상으로만 얻으며
       // 상점에서는 절대 판매하지 않는다.
       reinforceStones:0,
+      // 대장간 강화 후보 캐싱(사용자 요청 — 취소 후 재입장해도 후보가 안 바뀌게)
+      // + 재추첨 유료화. equipEnhanceCandidates는 아이템id -> 각인id 배열.
+      // blacksmithRerollCount는 "그 마을(town checkpoint)에 도착한 뒤" 누적
+      // 재추첨 횟수 — 다음 마을 도착/사망 복귀 시 0으로 리셋된다.
+      equipEnhanceCandidates:{}, blacksmithRerollCount:0,
+      // 유물 제단 "고르지 않는다" 비용 에스컬레이션(사용자 요청) — 게임 전체에
+      // 걸쳐 누적. 사망 시 체크포인트(makeTownCheckpoint)를 통해 "직전 마을
+      // 당시의 누적 횟수"로 되돌아간다.
+      relicSkipRerollCount:0,
       // 정예의 교환소 재고(사용자 요청 — 5개만 무작위 노출, 재방문해도 유지).
       // 다음 마을 도착 시(battle-end.js의 showBossRewardChoice) null로
       // 리셋되어 shop.js의 openExchange()가 새로 뽑는다.
