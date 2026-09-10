@@ -464,6 +464,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 마지막 마을 상태로 되돌아간다.
       reinforceStones: player.reinforceStones,
       equipEnhancements: JSON.parse(JSON.stringify(player.equipEnhancements||{})),
+      // 직전 층별보스 보상 선택(사용자 요청 — 사망 후 재선택 가능하게).
+      lastBossRewardChoice: player.lastBossRewardChoice ? Object.assign({}, player.lastBossRewardChoice) : null,
+      // 유물 제단 재추첨(스킵) 에스컬레이션 비용(사용자 요청) — 게임 전체에
+      // 걸쳐 누적되지만, 사망 시엔 "직전 마을 당시의 누적 횟수"로 되돌아가야
+      // 하므로 체크포인트에 포함시킨다.
+      relicSkipRerollCount: player.relicSkipRerollCount||0,
     };
   }
 
@@ -484,6 +490,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       else if(k==='debtAppliedDelta') player.debtAppliedDelta = Object.assign({}, cp.debtAppliedDelta);
       else if(k==='tempCurses') player.tempCurses = Object.assign({}, cp.tempCurses);
       else if(k==='equipEnhancements') player.equipEnhancements = JSON.parse(JSON.stringify(cp.equipEnhancements||{}));
+      else if(k==='lastBossRewardChoice') player.lastBossRewardChoice = cp.lastBossRewardChoice ? Object.assign({}, cp.lastBossRewardChoice) : null;
       else player[k] = cp[k];
     });
   }

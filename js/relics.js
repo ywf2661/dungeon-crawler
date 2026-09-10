@@ -9,7 +9,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
               getCurseCount / getCurseRewardMult / getCurseEpicBonus, getRelicDef,
               getCurseSealBypassChance, isCurseSealActive,
               applyRelicEffect, removeRelic, BLADE_HILT_IDS, rollRelicChoices, finalizeRelicPick,
-              showRelicSwapPrompt, showRelicAltar, showCurseAltar,RELIC_SKIP_GOLD_COST
+              showRelicSwapPrompt, showRelicAltar, showCurseAltar, getRelicSkipCost
               findEquipmentForDepth, findRareDropForDepth, findEpicDropForDepth,
               applyMerchantSealPurchase
 의존성: player/enemy/depth(state.js), EQUIPMENT류(data/equipment.js), Sound(sound.js)
@@ -139,7 +139,17 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   const CURSE_ALTAR_FLOORS = [9,21,33,44];
 
   // 유물 제단에서 "고르지 않는다"를 선택할 때 소모되는 골드. 횟수 제한 대신 골드 비용으로 대체.
-  const RELIC_SKIP_GOLD_COST = 1000;
+  // 유물 제단 "고르지 않는다" 비용 — 원래 고정 1000이었으나(사용자 요청),
+  // 대장간 재추첨과 동일한 패턴(500/800/1000)의 에스컬레이션으로 변경.
+  // player.relicSkipRerollCount는 게임 전체에 걸쳐 누적되고, 사망 시엔
+  // 체크포인트(explore.js의 makeTownCheckpoint/applyTownCheckpoint)를 통해
+  // "직전 마을 당시의 누적 횟수"로 자동 복원된다.
+  function getRelicSkipCost(){
+    const n = player.relicSkipRerollCount||0;
+    if(n===0) return 500;
+    if(n===1) return 800;
+    return 1000;
+  }
 
   // 저주를 감수할수록 보상이 커진다: 저주 1개 → 골드/드랍 +10%, 2개 이상 → +25%, 3개 이상 → 에픽 확률 추가 보너스.
   // 저주형은 유물 슬롯을 차지하지 않는다 — 저주는 페널티 그 자체가 대가이므로,
@@ -559,7 +569,8 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     const slotNote = slotUsage>=player.relicSlots
       ? `<p style="text-align:center;color:#ff9a7a;font-size:12px;margin:0 0 8px;">유물 슬롯(${player.relicSlots})이 가득 찼다. 새 유물을 고르면 하나를 내려놓아야 한다.</p>`
       : `<p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:0 0 8px;">유물 슬롯 ${slotUsage}/${player.relicSlots}</p>`;
-    const canSkip = player.gold >= RELIC_SKIP_GOLD_COST;
+    const skipCost = getRelicSkipCost();
+    const canSkip = player.gold >= skipCost;
     panel.innerHTML = `<h3>✦ 유물 제단 ✦</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 6px;">세 개의 유물이 그대를 기다리고 있다. 하나를 선택하라.</p>
       ${slotNote}
@@ -582,7 +593,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
       }).join('')}
       </div>
       <div style="text-align:center; margin-top:10px;">
-        <button class="link-btn" id="relic-skip-btn" disabled>${canSkip ? `고르지 않는다 (골드 ${RELIC_SKIP_GOLD_COST} 소모)` : `고르지 않는다 (골드 부족, ${RELIC_SKIP_GOLD_COST} 필요)`}</button>
+        <button class="link-btn" id="relic-skip-btn" disabled>${canSkip ? `고르지 않는다 (골드 ${skipCost} 소모)` : `고르지 않는다 (골드 부족, ${skipCost} 필요)`}</button>
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
@@ -615,12 +626,14 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     if(skipBtn){
       skipBtn.addEventListener('click', ()=>{
         if(skipBtn.disabled) return;
-        if(player.gold < RELIC_SKIP_GOLD_COST) return;
-        player.gold -= RELIC_SKIP_GOLD_COST;
+        const cost = getRelicSkipCost();
+        if(player.gold < cost) return;
+        player.gold -= cost;
+        player.relicSkipRerollCount = (player.relicSkipRerollCount||0) + 1;
         renderStatus();
         saveGame();
         overlay.remove();
-        addLog(`골드 ${RELIC_SKIP_GOLD_COST}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
+        addLog(`골드 ${cost}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
       });
     }
   }

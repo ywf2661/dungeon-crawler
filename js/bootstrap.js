@@ -71,6 +71,8 @@ export(전역): init, showMaintenanceModal, isAdminName
       renderStatus();
       renderExplore(['다시 회랑 어귀에 섰다. 소지품과 체력이 정비되었다.']);
       saveGame();
+      // 직전 층별보스 보상을 다시 고를 기회 제공(사용자 요청, 하드코어 제외).
+      if(typeof maybeOfferRewardRedo==='function') maybeOfferRewardRedo();
     });
     document.getElementById('btn-ending-title').addEventListener('click', async ()=>{
       const job = getJob(player);

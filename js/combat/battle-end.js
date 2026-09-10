@@ -3,7 +3,8 @@
 전투 종료 판정 및 결과 처리 — 승리/패배/광폭화 재판정, 엔딩 화면,
 경험치 지급, 레벨업/희귀드랍/에픽드랍 토스트.
 export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showLevelUpToast,
-              showRareDropToast, showEpicDropToast, showBossRewardChoice
+              showRareDropToast, showEpicDropToast, showBossRewardChoice,
+              applyBossReward, revertBossReward, maybeOfferRewardRedo
 의존성: state.js, storage.js, explore.js(renderExplore/showScreen/makeTownCheckpoint/applyTownCheckpoint),
         combat/battle-setup.js(triggerEnragePhase), data/jobs.js(getSpecialization)
 주의(신규): 사용자 요청으로 타이어 보스를 잡으면 무조건 마을로 이동한다.
@@ -400,6 +401,11 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         // 생성된다. depth는 10층 단위 경계로 재계산한다.
         depth = player.tierIndex*10; town = true; inBossDen = false; bossDenFloor = 0;
         player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
+        // 대장간 재추첨 비용 에스컬레이션(사용자 요청) — 사망 복귀도 "새로운
+        // 마을 도착"으로 취급해 초기화한다. applyTownCheckpoint()는 이 필드를
+        // 다루지 않으므로(체크포인트에 없던 필드) 여기서 명시적으로 리셋.
+        player.blacksmithRerollCount = 0;
+        player.equipEnhanceCandidates = {};
         // 이벤트 시스템의 전투 한정/지속 효과도 함께 정리한다(마을로 돌아온
         // 이상 유지될 이유가 없다).
         player.nextBattleEnemyAtkMult = null;
@@ -475,6 +481,120 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
   // 보스 클리어 보상 선택(신규, 사용자 요청) — 5가지 중 하나를 골라 얻고,
   // 선택이 끝나야 실제로 마을에 도착한다(town=true + 마을 체크포인트 저장은
   // 여기서 보상까지 반영한 뒤에 한다).
+  // 층별보스 보상 적용/되돌리기(사용자 요청 — 사망 후 "직전 보상을 다시
+  // 고를 수 있게"). 6가지 선택지의 실제 효과를 여기 한 곳에 모아 원래
+  // 선택 시점(showBossRewardChoice)과 사망 후 재선택(maybeOfferRewardRedo)
+  // 양쪽에서 재사용한다 — 로직이 어긋나지 않도록.
+  // 주의: exp 선택을 되돌릴 때 레벨업으로 얻은 영구 스탯/레벨 자체는 되돌리지
+  // 않는다(되돌리려면 레벨업 이력 전체를 역산해야 해서 복잡도가 크게 늘어남 —
+  // 사용자에게 고지된 한계). exp 포인트만 최선을 다해 되돌린다.
+  function applyBossReward(key, tier){
+    const goldReward = Math.round((100 + tier*60) * (player.difficulty==='easy' ? 1.25 : 1));
+    const expReward = Math.round(player.expNext*0.25);
+    const stoneReward = 4 + tier*2;
+    if(key==='heal'){
+      const healHp = Math.round(player.maxhp*0.5), healMp = Math.round(player.maxmp*0.5);
+      player.hp = Math.min(player.maxhp, player.hp+healHp);
+      player.mp = Math.min(player.maxmp, player.mp+healMp);
+      return {key, tier, healHp, healMp, label:'깊은 회복을 선택했다. HP/MP가 크게 회복되었다.'};
+    }
+    if(key==='gold'){
+      player.gold += goldReward;
+      return {key, tier, goldAmt:goldReward, label:`두둑한 보상을 선택했다. 골드 +${goldReward}G를 얻었다.`};
+    }
+    if(key==='exp'){
+      const leveled = grantExp(expReward);
+      if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+      return {key, tier, expAmt:expReward, label:`정진을 선택했다. 경험치 +${expReward}를 얻었다.`};
+    }
+    if(key==='seal'){
+      player.eliteSeals = (player.eliteSeals||0)+1;
+      return {key, tier, label:`정예의 증표를 선택했다. 정예의 인장 +1개를 얻었다. (보유 ${player.eliteSeals}개)`};
+    }
+    if(key==='stone'){
+      player.reinforceStones = (player.reinforceStones||0) + stoneReward;
+      return {key, tier, stoneAmt:stoneReward, label:`강화석을 조달했다. 강화석 +${stoneReward}개를 얻었다. (보유 ${player.reinforceStones}개)`};
+    }
+    if(key==='awaken'){
+      player.multiBattleBuff = {type:'atk', value:0.2, battlesLeft:3};
+      return {key, tier, label:'각성을 선택했다. 앞으로 3번의 전투 동안 공격력이 20% 상승한다.'};
+    }
+  }
+  function revertBossReward(choice){
+    if(!choice) return;
+    if(choice.key==='heal'){
+      player.hp = Math.max(1, player.hp-(choice.healHp||0));
+      player.mp = Math.max(0, player.mp-(choice.healMp||0));
+    } else if(choice.key==='gold'){
+      player.gold = Math.max(0, player.gold-(choice.goldAmt||0));
+    } else if(choice.key==='exp'){
+      player.exp = Math.max(0, player.exp-(choice.expAmt||0));
+    } else if(choice.key==='seal'){
+      player.eliteSeals = Math.max(0, (player.eliteSeals||0)-1);
+    } else if(choice.key==='stone'){
+      player.reinforceStones = Math.max(0, (player.reinforceStones||0)-(choice.stoneAmt||0));
+    } else if(choice.key==='awaken'){
+      player.multiBattleBuff = null;
+    }
+  }
+  // 사망(쉬움/보통) 후 마을 복귀 직후 호출 — 직전 층별보스 보상 선택을 다시
+  // 고를 기회를 준다(사용자 요청 — "체력 대신 인장을 골랐다가 그 체력으로
+  // 죽었을 때, 그 선택만 무를 수 있게"). 정예의 인장 보너스(1~2개 무작위)는
+  // 여기서 다시 지급되지 않는다 — 오직 6가지 선택지 중 하나를 다른 것으로
+  // 맞바꾸는 것뿐(선택 → 되돌리기 → 새 선택 적용).
+  function maybeOfferRewardRedo(){
+    const choice = player.lastBossRewardChoice;
+    if(!choice || player.difficulty==='hardcore') return;
+    const KEY_LABEL = {heal:'💗 깊은 회복', gold:'💰 두둑한 보상', exp:'📖 정진', seal:'🔱 정예의 증표', stone:'🔶 강화석 조달', awaken:'⚡ 각성'};
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'reward-redo-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    const renderOffer = ()=>{
+      panel.innerHTML = `<h3>⏳ 되감긴 선택</h3>
+        <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">직전에 고른 "${KEY_LABEL[choice.key]||choice.key}"를 다른 것으로 바꿀 수 있다. 바꾸지 않으면 그대로 유지된다.</p>
+        <div style="text-align:center; margin-top:4px;"><button class="btn" id="reward-redo-yes">다시 고르기</button> <button class="btn" id="reward-redo-no">그대로 두기</button></div>`;
+      panel.querySelector('#reward-redo-no').addEventListener('click', ()=> overlay.remove());
+      panel.querySelector('#reward-redo-yes').addEventListener('click', renderChoices);
+    };
+    const renderChoices = ()=>{
+      const tier = choice.tier;
+      const goldReward = Math.round((100 + tier*60) * (player.difficulty==='easy' ? 1.25 : 1));
+      const expReward = Math.round(player.expNext*0.25);
+      const stoneReward = 4 + tier*2;
+      const options = [
+        {key:'heal', label:`💗 깊은 회복 — HP/MP 50% 회복`},
+        {key:'gold', label:`💰 두둑한 보상 — 골드 +${goldReward}`},
+        {key:'exp', label:`📖 정진 — 경험치 +${expReward}`},
+        {key:'seal', label:`🔱 정예의 증표 — 정예의 인장 +1`},
+        {key:'stone', label:`🔶 강화석 조달 — 강화석 +${stoneReward}`},
+        {key:'awaken', label:`⚡ 각성 — 앞으로 3전투 공격력 +20%`},
+      ];
+      panel.innerHTML = `<h3>⏳ 되감긴 선택</h3>
+        <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">무엇으로 바꿀지 고른다.</p>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${options.map(o=>`<button class="btn reward-redo-pick" data-key="${o.key}" style="text-align:left; padding:10px 12px;">${o.label}</button>`).join('')}
+        </div>
+        <div style="text-align:center; margin-top:10px;"><button class="btn" id="reward-redo-cancel">취소</button></div>`;
+      panel.querySelectorAll('.reward-redo-pick').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          revertBossReward(player.lastBossRewardChoice);
+          const newChoice = applyBossReward(b.dataset.key, tier);
+          player.lastBossRewardChoice = newChoice;
+          player.townCheckpoint = makeTownCheckpoint();
+          renderStatus();
+          overlay.remove();
+          addLog(newChoice.label, 'gold');
+          saveGame();
+        });
+      });
+      panel.querySelector('#reward-redo-cancel').addEventListener('click', renderOffer);
+    };
+    renderOffer();
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+  }
   function showBossRewardChoice(clearedTier, pendingPurifyIds){
     // 층별보스 보상 강화(사용자 요청) — 6지선다 보상 선택과는 별개로, 층별보스를
     // 잡을 때마다 정예의 인장을 1~2개 무작위로 그냥 더 준다(교환소에서 인장이
@@ -537,42 +657,42 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       // 새로고침된다 — null로 비워두면 shop.js의 openExchange()가 새로 뽑는다.
       player.exchangeStock = null;
       player.townCheckpoint = makeTownCheckpoint();
+      // 대장간 재추첨 비용 에스컬레이션(사용자 요청) — 새 마을에 도착하면 초기화.
+      player.blacksmithRerollCount = 0;
+      player.equipEnhanceCandidates = {};
       renderStatus();
       renderExplore([{text:logText, cls:'gold'}]);
       saveGame();
     }
     panel.querySelector('#reward-heal').addEventListener('click', ()=>{
-      const healHp = Math.round(player.maxhp*0.5), healMp = Math.round(player.maxmp*0.5);
-      player.hp = Math.min(player.maxhp, player.hp+healHp);
-      player.mp = Math.min(player.maxmp, player.mp+healMp);
-      finish('깊은 회복을 선택했다. HP/MP가 크게 회복되었다.');
+      const choice = applyBossReward('heal', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
     });
     panel.querySelector('#reward-gold').addEventListener('click', ()=>{
-      player.gold += goldReward;
-      finish(`두둑한 보상을 선택했다. 골드 +${goldReward}G를 얻었다.`);
+      const choice = applyBossReward('gold', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
     });
     panel.querySelector('#reward-exp').addEventListener('click', ()=>{
-      const leveled = grantExp(expReward);
-      if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
-      finish(`정진을 선택했다. 경험치 +${expReward}를 얻었다.`);
+      const choice = applyBossReward('exp', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
     });
     panel.querySelector('#reward-seal').addEventListener('click', ()=>{
-      player.eliteSeals = (player.eliteSeals||0)+1;
-      finish(`정예의 증표를 선택했다. 정예의 인장 +1개를 얻었다. (보유 ${player.eliteSeals}개)`);
+      const choice = applyBossReward('seal', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
     });
     panel.querySelector('#reward-stone').addEventListener('click', ()=>{
-      player.reinforceStones = (player.reinforceStones||0) + stoneReward;
-      finish(`강화석을 조달했다. 강화석 +${stoneReward}개를 얻었다. (보유 ${player.reinforceStones}개)`);
+      const choice = applyBossReward('stone', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
     });
     panel.querySelector('#reward-awaken').addEventListener('click', ()=>{
-      // 사용자 요청 — 원래 "다음 전투 1회" 한정이었는데 "다음 세 번의 전투"로
-      // 변경. 기존 buffAtkTurns=99 관례(라운드당 1씩만 깎여 부정확) 대신,
-      // 수수께끼의 마법사 이벤트와 동일한 다중 전투 버프 시스템
-      // (player.multiBattleBuff, battle-setup.js가 매 전투 시작마다 재적용,
-      // tickMultiBattleBuff()가 전투 종료마다 battlesLeft를 정확히 깎음)을
-      // 그대로 재사용한다.
-      player.multiBattleBuff = {type:'atk', value:0.2, battlesLeft:3};
-      finish('각성을 선택했다. 앞으로 3번의 전투 동안 공격력이 20% 상승한다.');
+      const choice = applyBossReward('awaken', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
     });
   }
 
