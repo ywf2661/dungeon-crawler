@@ -485,27 +485,20 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
   // 고를 수 있게"). 6가지 선택지의 실제 효과를 여기 한 곳에 모아 원래
   // 선택 시점(showBossRewardChoice)과 사망 후 재선택(maybeOfferRewardRedo)
   // 양쪽에서 재사용한다 — 로직이 어긋나지 않도록.
-  // 주의: exp 선택을 되돌릴 때 레벨업으로 얻은 영구 스탯/레벨 자체는 되돌리지
-  // 않는다(되돌리려면 레벨업 이력 전체를 역산해야 해서 복잡도가 크게 늘어남 —
-  // 사용자에게 고지된 한계). exp 포인트만 최선을 다해 되돌린다.
+  // 주의(사용자 요청으로 경험치 선택지는 제거됨 — 레벨업 되돌리기 복잡도
+  // 문제도 함께 해소됨). 회복은 50%에서 전체 회복으로 상향.
   function applyBossReward(key, tier){
     const goldReward = Math.round((100 + tier*60) * (player.difficulty==='easy' ? 1.25 : 1));
-    const expReward = Math.round(player.expNext*0.25);
     const stoneReward = 4 + tier*2;
     if(key==='heal'){
-      const healHp = Math.round(player.maxhp*0.5), healMp = Math.round(player.maxmp*0.5);
-      player.hp = Math.min(player.maxhp, player.hp+healHp);
-      player.mp = Math.min(player.maxmp, player.mp+healMp);
-      return {key, tier, healHp, healMp, label:'깊은 회복을 선택했다. HP/MP가 크게 회복되었다.'};
+      const healHp = player.maxhp-player.hp, healMp = player.maxmp-player.mp;
+      player.hp = player.maxhp;
+      player.mp = player.maxmp;
+      return {key, tier, healHp, healMp, label:'깊은 회복을 선택했다. HP/MP가 완전히 회복되었다.'};
     }
     if(key==='gold'){
       player.gold += goldReward;
       return {key, tier, goldAmt:goldReward, label:`두둑한 보상을 선택했다. 골드 +${goldReward}G를 얻었다.`};
-    }
-    if(key==='exp'){
-      const leveled = grantExp(expReward);
-      if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
-      return {key, tier, expAmt:expReward, label:`정진을 선택했다. 경험치 +${expReward}를 얻었다.`};
     }
     if(key==='seal'){
       player.eliteSeals = (player.eliteSeals||0)+1;
@@ -527,8 +520,6 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       player.mp = Math.max(0, player.mp-(choice.healMp||0));
     } else if(choice.key==='gold'){
       player.gold = Math.max(0, player.gold-(choice.goldAmt||0));
-    } else if(choice.key==='exp'){
-      player.exp = Math.max(0, player.exp-(choice.expAmt||0));
     } else if(choice.key==='seal'){
       player.eliteSeals = Math.max(0, (player.eliteSeals||0)-1);
     } else if(choice.key==='stone'){
@@ -545,7 +536,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
   function maybeOfferRewardRedo(){
     const choice = player.lastBossRewardChoice;
     if(!choice || player.difficulty==='hardcore') return;
-    const KEY_LABEL = {heal:'💗 깊은 회복', gold:'💰 두둑한 보상', exp:'📖 정진', seal:'🔱 정예의 증표', stone:'🔶 강화석 조달', awaken:'⚡ 각성'};
+    const KEY_LABEL = {heal:'💗 깊은 회복', gold:'💰 두둑한 보상', seal:'🔱 정예의 증표', stone:'🔶 강화석 조달', awaken:'⚡ 각성'};
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'reward-redo-overlay';
@@ -561,12 +552,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     const renderChoices = ()=>{
       const tier = choice.tier;
       const goldReward = Math.round((100 + tier*60) * (player.difficulty==='easy' ? 1.25 : 1));
-      const expReward = Math.round(player.expNext*0.25);
       const stoneReward = 4 + tier*2;
       const options = [
-        {key:'heal', label:`💗 깊은 회복 — HP/MP 50% 회복`},
+        {key:'heal', label:`💗 깊은 회복 — HP/MP 전체 회복`},
         {key:'gold', label:`💰 두둑한 보상 — 골드 +${goldReward}`},
-        {key:'exp', label:`📖 정진 — 경험치 +${expReward}`},
         {key:'seal', label:`🔱 정예의 증표 — 정예의 인장 +1`},
         {key:'stone', label:`🔶 강화석 조달 — 강화석 +${stoneReward}`},
         {key:'awaken', label:`⚡ 각성 — 앞으로 3전투 공격력 +20%`},
@@ -611,16 +600,14 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // — tierIndex 자체는 아직 증가시키지 않았으므로 +1을 명시적으로 더한다.
     const nextTier = clearedTier + 1;
     const goldReward = Math.round((100 + nextTier*60) * (player.difficulty==='easy' ? 1.25 : 1));
-    const expReward = Math.round(player.expNext*0.25);
     const stoneReward = 4 + nextTier*2;
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">보스를 물리쳤다!</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">마을로 향하기 전, 마지막으로 얻어갈 것을 하나 고른다.</p>
       <p style="text-align:center;color:#ffd76a;font-size:12.5px;margin:-8px 0 14px;">🔱 정예의 인장 +${bonusSeals}개를 추가로 얻었다! (보유 ${player.eliteSeals}개)</p>
       <div style="display:flex; flex-direction:column; gap:8px;">
-        <button class="btn" id="reward-heal">💗 깊은 회복 — HP/MP 50% 회복</button>
+        <button class="btn" id="reward-heal">💗 깊은 회복 — HP/MP 전체 회복</button>
         <button class="btn" id="reward-gold">💰 두둑한 보상 — 골드 +${goldReward}</button>
-        <button class="btn" id="reward-exp">📖 정진 — 경험치 +${expReward}</button>
         <button class="btn" id="reward-seal">🔱 정예의 증표 — 정예의 인장 +1</button>
         <button class="btn" id="reward-stone">🔶 강화석 조달 — 강화석 +${stoneReward}</button>
         <button class="btn" id="reward-awaken">⚡ 각성 — 앞으로 3전투 공격력 +20%</button>
@@ -671,11 +658,6 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     });
     panel.querySelector('#reward-gold').addEventListener('click', ()=>{
       const choice = applyBossReward('gold', nextTier);
-      player.lastBossRewardChoice = choice;
-      finish(choice.label);
-    });
-    panel.querySelector('#reward-exp').addEventListener('click', ()=>{
-      const choice = applyBossReward('exp', nextTier);
       player.lastBossRewardChoice = choice;
       finish(choice.label);
     });
