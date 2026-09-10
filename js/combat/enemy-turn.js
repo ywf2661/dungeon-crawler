@@ -635,7 +635,11 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         return;
       }
 
-      const dodgeChance = getTotalDodgeChance();
+      // 잔심의 각인(ch_lingering, 찰나의 검사 방어구 각인) — 찰나를 예약하는
+      // 동안엔 받는 피해가 줄어드는 대신 회피율이 0이 된다.
+      const aIdLing = player.equipment && player.equipment.armor;
+      const hasLingering = !!(battleFlags && battleFlags.chalnaReserve && aIdLing && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdLing).includes('ch_lingering'));
+      const dodgeChance = hasLingering ? 0 : getTotalDodgeChance();
       if(dodgeChance>0 && Math.random()<dodgeChance){
         playBanner('회피!','dodge');
         setBattleMsg(label, `${player.name}이(가) 재빠르게 공격을 피했다!`);
@@ -673,6 +677,8 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         reduceMult -= battleFlags.omegaRig.shieldPct;
       }
       reduceMult += getRelicSum('dmgTakenPctMult');
+      // 잔심의 각인(ch_lingering) — 위에서 계산해둔 hasLingering 재사용.
+      if(hasLingering) reduceMult -= 0.30;
       // 결투자의 서약(relic_duelistoath): 일반 몬스터(정예/보스 아님) 상대로만
       // 받는 피해 증가.
       if(!(enemy && (enemy.isElite || enemy.isBoss))) reduceMult += getRelicSum('normalDmgTakenPctMult');

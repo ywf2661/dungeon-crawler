@@ -311,12 +311,14 @@ export(전역): SKILLDB, CHALNA_COMBOS
       type:'chalnaStrike', beat:'mid', mult:1.3},
     chalnaFastStrike: {name:'급박', hanja:'急拍', mp:6, desc:'빠른 2연타. 치명타 확률이 우대된다.',
       type:'chalnaStrike', beat:'fast', mult:0.75, hits:2},
+    // 각 예약 스킬의 mult(+급박의 hits)는 짝이 되는 즉시시전 스킬과 동일하게
+    // 맞춘다 — 선결의 각인(ch_forestrike, 예약 시 즉발피해)이 이 값을 참조한다.
     chalnaSlowReserve: {name:'완박 예약', hanja:'緩拍', mp:8, desc:'완박의 검격을 찰나로 남긴다. 다음 내 턴에 다른 검격을 시전하면 하나로 합쳐진다.',
-      type:'chalnaReserve', beat:'slow'},
+      type:'chalnaReserve', beat:'slow', mult:1.7},
     chalnaMidReserve: {name:'중박 예약', hanja:'中拍', mp:5, desc:'중박의 검격을 찰나로 남긴다. 다음 내 턴에 다른 검격을 시전하면 하나로 합쳐진다.',
-      type:'chalnaReserve', beat:'mid'},
+      type:'chalnaReserve', beat:'mid', mult:1.3},
     chalnaFastReserve: {name:'급박 예약', hanja:'急拍', mp:6, desc:'급박의 검격을 찰나로 남긴다. 다음 내 턴에 다른 검격을 시전하면 하나로 합쳐진다.',
-      type:'chalnaReserve', beat:'fast'},
+      type:'chalnaReserve', beat:'fast', mult:0.75, hits:2},
     // 레벨15 궁극기 — 찰나 시스템(예약/콤보)과는 무관한 독립형 필살기.
     chalnaTriBeat: {name:'삼박일섬', hanja:'三拍一閃', mp:16, cooldown:3, desc:'세 박자를 하나의 섬광으로 잇는다.',
       type:'chalnaUltimate', mult:3.8, defPierce:0.3},

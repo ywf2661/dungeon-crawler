@@ -381,7 +381,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 속임수 폭로 각인(ju_dicereveal, 사기꾼 장신구 각인)의 페널티 — 들통난
     // 뒤 2턴간 모든 스킬 MP 소모 +20%.
     const dicerevealMult = (battleFlags && battleFlags.dicerevealPenaltyTurns>0) ? 1.2 : 1;
-    const mpCostMult = mbbMult * easyMpMult * dicerevealMult;
+    // 유예의 각인(ch_grace, 찰나의 검사 장신구 각인) — 예약(chalnaReserve)
+    // 스킬에 한해 MP 소모 +20%. 대신 찰나 유지시간이 늘어난다(아래 chalnaReserve
+    // 처리부에서 turnsLeft 초기값으로 반영).
+    const cIdGrace = player.equipment && player.equipment.accessory;
+    const hasGrace = s.type==='chalnaReserve' && !!(cIdGrace && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdGrace).includes('ch_grace'));
+    const graceMult = hasGrace ? 1.2 : 1;
+    const mpCostMult = mbbMult * easyMpMult * dicerevealMult * graceMult;
     const mpCost = Math.max(0, Math.round(s.mp*mpCostMult));
     if(!isRetry && player.mp < mpCost) return;
     // 스킬 쿨타임(사용자 요청 — 1차 직업 궁극기 로테이션 개선). 쿨타임이 남아
@@ -952,11 +958,29 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 시작해 첫 적 턴엔 0으로만 내려가고 그 다음 적 턴에 실제로 지워진다 —
     // 그래야 "다음 내 턴"(적 턴 사이에 낀 그 한 번)엔 확실히 남아있다).
     if(s.type==='chalnaReserve'){
-      battleFlags.chalnaReserve = {beat: s.beat, turnsLeft: 1};
+      // 유예의 각인(ch_grace): 유지시간 1턴 -> 2턴(다다음 내 턴까지 이을 수 있음).
+      battleFlags.chalnaReserve = {beat: s.beat, turnsLeft: hasGrace ? 2 : 1};
       renderStatus();
       updatePlayerStatusBadges();
       Sound.buff();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `${s.name.replace(' 예약','')}의 찰나를 남겼다. 다음 검격과 이으면 콤보가 발동한다.`);
+      let reserveMsg = `${s.name.replace(' 예약','')}의 찰나를 남겼다. 다음 검격과 이으면 콤보가 발동한다.`;
+      // 선결의 각인(ch_forestrike, 무기 각인) — 예약 시에도 그 스킬 배율의
+      // 30%만큼 즉발 피해가 함께 나간다(대신 콤보 배율 페널티는 chalnaStrike
+      // 처리부에서 적용).
+      const wIdFore = player.equipment && player.equipment.weapon;
+      const hasForestrike = !!(wIdFore && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdFore).includes('ch_forestrike'));
+      if(hasForestrike){
+        const edefFore = getEffectiveEnemyDef(enemy.def);
+        const foreMultTotal = s.mult*(s.hits||1);
+        const foreDmg = Math.max(1, Math.round(effectiveAtk()*foreMultTotal*0.3) - Math.round(edefFore*0.3));
+        enemy.hp = Math.max(0, enemy.hp-foreDmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+foreDmg);
+        Sound.slash();
+        if(typeof spawnSlashImageFx==='function') spawnSlashImageFx();
+        reserveMsg += ` 선결의 일격으로 ${foreDmg}의 피해를 함께 입혔다.`;
+      }
+      setBattleMsg(`${player.name}의 ${s.name}!`, reserveMsg);
+      if(hasForestrike && checkBattleEnd()) return;
       enemyTurn();
       return;
     }
@@ -966,7 +990,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const combo = reserve ? CHALNA_COMBOS[[reserve.beat, s.beat].sort().join('+')] : null;
       if(combo) battleFlags.chalnaReserve = null;
       const hits = (combo ? combo.hits : s.hits) || 1;
-      const mult = combo ? combo.mult : s.mult;
+      let mult = combo ? combo.mult : s.mult;
+      // 선결의 각인(ch_forestrike, 무기 각인) — 예약 시 즉발피해를 주는 대신,
+      // 콤보 자체의 배율은 15% 줄어든다.
+      if(combo){
+        const wIdFore2 = player.equipment && player.equipment.weapon;
+        const hasForestrike2 = !!(wIdFore2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdFore2).includes('ch_forestrike'));
+        if(hasForestrike2) mult *= 0.85;
+      }
       const defPierce = (combo && combo.defPierce) || 0;
       const edef = Math.round(getEffectiveEnemyDef(enemy.def)*(1-defPierce));
       // 버그 수정(사용자 제보) — mult는 기존 multihit 스킬(연속 베기 등)과

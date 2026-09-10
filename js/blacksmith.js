@@ -185,6 +185,17 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
       desc:'손버릇의 무료 재시도마저 실패하면, 한 번 더(총 3연속 시도) 기회가 생긴다. 대신 그 마지막 시도까지 실패하면 이번 턴 방어력이 사실상 무의미해질 만큼(받는 피해 3배) 무너진다.'},
     ju_dicereveal: {slot:'accessory', specId:'jester_debtcollector', name:'속임수 폭로 각인', prefix:'폭로된',
       desc:'주사위류 스킬의 눈이 4~6이 아니라 항상 6만 나오도록 더 노골적으로 조작한다. 대신 들통난 대가로 이후 2턴간 모든 스킬의 MP 소모가 20% 늘어난다.'},
+    // 찰나의 검사(warrior_chalna) — 예약 턴의 무방비 상태와 찰나 유지시간의
+    // 빡빡한 타이밍을 각각 다른 방식으로 완화해주는 3종(사용자 기획).
+    ch_forestrike: {slot:'weapon', specId:'warrior_chalna', name:'선결의 각인', prefix:'선결의',
+      desc:'찰나를 예약할 때도 그 스킬 배율의 30%만큼 즉발 피해가 함께 나간다. 대신 콤보가 실제로 발동할 때 콤보 배율이 15% 줄어든다.'},
+    ch_lingering: {slot:'armor', specId:'warrior_chalna', name:'잔심의 각인', prefix:'잔심의',
+      desc:'찰나를 예약하는 턴엔 받는 피해가 30% 줄어든다. 대신 예약 중엔 회피율이 0이 된다.'},
+    // 밸런스 시뮬레이션(12턴 보스전, 매 턴 15% 확률로 강제 스킵 가정 - 사용자
+    // 승인) 결과: MP+20%가 평균 총딜은 거의 안 깎으면서(-1.2%) 하위10% 최악의
+    // 판을 +21% 끌어올려주는 지점이었음(30%는 평균까지 과하게 깎여서 기각).
+    ch_grace: {slot:'accessory', specId:'warrior_chalna', name:'유예의 각인', prefix:'유예의',
+      desc:'찰나의 유지시간이 1턴 늘어나 다다음 내 턴까지 이을 수 있게 된다. 대신 예약 시 소모하는 MP가 20% 늘어난다.'},
   };
   Object.assign(ENHANCEMENTS, EPIC_JOB_ENCHANTS);
 
@@ -398,24 +409,39 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
     });
     panel.querySelector('#blacksmith-close').addEventListener('click', ()=>panel.closest('.shop-overlay').remove());
   }
-  function renderBlacksmithChoice(panel, slot, id, grade){
+  // 재추첨 비용 — 1회차 500, 2회차 800, 3회차부터는 1000 고정(사용자 요청).
+  function getBlacksmithRerollCost(){
+    const n = player.blacksmithRerollCount||0;
+    if(n===0) return 500;
+    if(n===1) return 800;
+    return 1000;
+  }
+  function rollEnhanceCandidates(slot, id, grade){
     const already = getEnhancementsFor(id);
     const pool = Object.keys(ENHANCEMENTS).filter(eid=>{
       const def = ENHANCEMENTS[eid];
       if(def.slot!==slot || already.includes(eid)) return false;
-      // 직업 각인(specId 있음)은 에픽 등급 + 실제로 그 특성으로 전직했을
-      // 때만 후보로 나온다(사용자 요청 — 강화 슬롯 하나를 그대로 차지).
       if(def.specId){
         if(grade!=='epic' || player.specialization!==def.specId) return false;
       }
-      // exclusiveGroup(택1류): 이미 같은 그룹의 다른 각인을 골랐다면 제외.
       if(def.exclusiveGroup && already.some(aid=> ENHANCEMENTS[aid] && ENHANCEMENTS[aid].exclusiveGroup===def.exclusiveGroup)){
         return false;
       }
       return true;
     });
     const shuffled = pool.slice().sort(()=>Math.random()-0.5);
-    const candidates = shuffled.slice(0, 3);
+    return shuffled.slice(0, 3);
+  }
+  function renderBlacksmithChoice(panel, slot, id, grade){
+    // 강화 후보 캐싱(사용자 요청) — 이미 이 아이템에 대해 뽑아둔 후보가 있으면
+    // 그대로 재사용한다(취소 후 재입장해도 후보가 안 바뀜). 재추첨 버튼을
+    // 눌러야만 새로 뽑는다.
+    if(!player.equipEnhanceCandidates) player.equipEnhanceCandidates = {};
+    let candidates = player.equipEnhanceCandidates[id];
+    if(!candidates || !candidates.length){
+      candidates = rollEnhanceCandidates(slot, id, grade);
+      player.equipEnhanceCandidates[id] = candidates;
+    }
     if(!candidates.length){
       panel.innerHTML = `<h3>🔨 대장간</h3><p style="text-align:center;color:var(--parchment-dim);font-size:13px;padding:12px;">더 이상 새로 붙일 수 있는 강화가 없다.</p>
         <div style="text-align:center; margin-top:10px;"><button class="btn" id="blacksmith-back">돌아가기</button></div>`;
@@ -439,7 +465,20 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
         </button>`;
         }).join('')}
       </div>
-      <div style="text-align:center; margin-top:10px;"><button class="btn" id="blacksmith-cancel">취소</button></div>`;
+      <div style="text-align:center; margin-top:10px; display:flex; gap:8px; justify-content:center;">
+        <button class="btn" id="blacksmith-cancel">취소</button>
+        <button class="btn" id="blacksmith-reroll" ${(player.gold||0) < getBlacksmithRerollCost() ? 'disabled' : ''}>🔄 재추첨 (${getBlacksmithRerollCost()}G)</button>
+      </div>`;
+    panel.querySelector('#blacksmith-reroll').addEventListener('click', ()=>{
+      const cost = getBlacksmithRerollCost();
+      if((player.gold||0) < cost) return;
+      player.gold -= cost;
+      player.blacksmithRerollCount = (player.blacksmithRerollCount||0) + 1;
+      player.equipEnhanceCandidates[id] = rollEnhanceCandidates(slot, id, grade);
+      renderStatus();
+      saveGame();
+      renderBlacksmithChoice(panel, slot, id, grade);
+    });
     panel.querySelectorAll('.enhance-pick').forEach(b=>{
       b.addEventListener('click', ()=>{
         const eid = b.dataset.eid;
@@ -448,6 +487,9 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
         player.reinforceStones -= cost;
         if(!player.equipEnhancements[id]) player.equipEnhancements[id] = [];
         player.equipEnhancements[id].push(eid);
+        // 방금 하나를 새겼으니, 다음에 이 아이템을 또 강화할 땐 새로 뽑아야
+        // 한다(이미 고른 각인이 후보에 남아있으면 안 되므로 캐시를 비운다).
+        if(player.equipEnhanceCandidates) player.equipEnhanceCandidates[id] = null;
         // 스탯형 보너스(피의 갑옷 최대HP+20%, 마력의 반지 최대MP+20%)는 지금
         // 이 아이템이 장착 중일 때만 즉시 적용한다 — 장착 중이 아니면 나중에
         // 장착하는 순간 data/equipment.js의 equipItem()이 적용해준다.
