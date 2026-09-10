@@ -509,7 +509,14 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     // 역병숙주(mastery_venomstacks) 마스터리 "역병 잠식": 잠식 스택 1개당
     // 적 방어력 2% 감소(최대 10스택 -20%). 데미지 계산 지점이 전부 이
     // 함수를 거치므로 여기 한 곳만 고치면 모든 공격/스킬에 자동 반영된다.
-    if(enemy && (enemy.venomStacks||0)>0) pierce += Math.min(0.2, enemy.venomStacks*0.02);
+    // 잠식 갑주(re_corrosion, 역병숙주 방어구 각인)를 꼈으면 스택당 3%
+    // (최대 -30%)로 커진다 — combat/enemy-turn.js의 effectiveAtk() 디버프와
+    // 대칭 처리.
+    if(enemy && (enemy.venomStacks||0)>0){
+      const aIdCor = player.equipment && player.equipment.armor;
+      const hasCorrosion = !!(aIdCor && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdCor).includes('re_corrosion'));
+      pierce += Math.min(hasCorrosion?0.3:0.2, enemy.venomStacks*(hasCorrosion?0.03:0.02));
+    }
     if(pierce<=0) return base;
     return Math.max(0, Math.round(base*(1-Math.min(0.9, pierce))));
   }

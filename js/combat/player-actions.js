@@ -14,7 +14,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   function getVenomStackCap(){
     const cId = player.equipment && player.equipment.accessory;
     const hasSolo = !!(cId && typeof getEnhancementsFor==='function' && getEnhancementsFor(cId).includes('re_solovenom'));
-    return hasSolo ? 6 : 10;
+    if(hasSolo) return 6;
+    // 공생의 각인(re_symbiosis, 장신구 — 고독 각인과 exclusiveGroup이라
+    // 동시에 걸릴 일 없음): 만성 기생 라이프스틸을 올려주는 대신 스택
+    // 상한이 10->7로 줄어든다.
+    const hasSymbiosis = !!(cId && typeof getEnhancementsFor==='function' && getEnhancementsFor(cId).includes('re_symbiosis'));
+    if(hasSymbiosis) return 7;
+    return 10;
   }
 
   function playerAttack(){
@@ -598,7 +604,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 매번 새로 계산한다(이 스킬은 스택을 "쌓기"만 하고 직접 틱 피해를 주지 않음).
       const edefVenom = getEffectiveEnemyDef(enemy.def);
       const onHitMultVenom = consumeOnHitBonuses();
+      const wIdVR = player.equipment && player.equipment.weapon;
+      const hasVenomRush = !!(wIdVR && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdVR).includes('re_venomrush'));
+      // 폭식의 각인(re_gluttony, 무기 — 폭주 주입 각인과 exclusiveGroup으로
+      // 상호배타적이라 동시에 걸릴 일은 없다): 자기 전용 스택 보너스를
+      // 곱연산 대신 기본값 자체를 3→5로 늘리는 쪽(초반부터 흡수를 더
+      // 빠르게 쌓는 컨셉). 대신 이 스킬 자체의 즉발 피해가 25% 줄어든다.
+      const hasGluttony = !!(wIdVR && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdVR).includes('re_gluttony'));
       let venomDmg = Math.max(1, Math.round(effectiveAtk()*s.mult) - edefVenom);
+      if(hasGluttony) venomDmg = Math.max(1, Math.round(venomDmg*0.75));
       venomDmg = applyOutgoingDamageMods(venomDmg, {type:'physkill', mpCost, onHitMult:onHitMultVenom});
       enemy.hp = Math.max(0, enemy.hp-venomDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+venomDmg);
@@ -614,8 +628,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 다른 부위(무기/장신구)라 동시에 낄 수 있다 — 그러면 보너스가 한 번
       // 더 곱해져(예: 삼중 주입까지 있으면 3->6->12) 상한(6) 초과분 반동도
       // 그만큼 커진다.
-      const wIdVR = player.equipment && player.equipment.weapon;
-      const hasVenomRush = !!(wIdVR && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdVR).includes('re_venomrush'));
       const cIdSV = player.equipment && player.equipment.accessory;
       const hasSoloVenom = !!(cIdSV && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdSV).includes('re_solovenom'));
       // [수정] 사용자 요청 — "10레벨부터 3스택씩 쌓이면 좋겠다". 기존에는
@@ -623,7 +635,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 바로 3으로 상향(레벨15는 더 이상 이 수치에 관여하지 않고, 흡수
       // 비율(절반→전량) 쪽만 담당하도록 역할을 정리했다 — 아래 완전 기생화
       // desc도 함께 갱신).
-      let venomGain = 3;
+      let venomGain = hasGluttony ? 5 : 3;
       if(hasVenomRush) venomGain *= 2;
       if(hasSoloVenom) venomGain *= 2;
       const venomCap = getVenomStackCap();

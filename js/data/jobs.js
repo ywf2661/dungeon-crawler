@@ -187,10 +187,12 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // 흡수한다. 상세 수치는 combat/enemy-turn.js(getEffectiveEnemyAtk/
       // getEffectiveEnemyDef의 역병 잠식 디버프, getVenomAbsorbBonus) 및
       // combat/player-actions.js(체액 흡수 핸들러) 참고.
-      // ⚠️ 미해결: 이 직업 전용 에픽 각인 3종(re_venomrush/re_venomburst/
-      // re_solovenom, js/blacksmith.js)은 옛 "맹독 주입" 메커니즘 기준으로
-      // 설계되어 있어 이름/설명이 새 스킬명과 안 맞는다. 사용자 요청으로
-      // 이번 작업 범위에서 제외 — 별도 작업으로 리뉴얼 필요.
+      // [해결됨] 이 직업 전용 에픽 각인은 기존 3종(re_venomrush/re_venomburst/
+      // re_solovenom)이 새 "기생형" 메커니즘(enemy.venomStacks,
+      // getVenomDmgPerStack())에 맞춰 이미 재연결되어 있고, 이번 세션에
+      // 슬롯별 대안 각인 3종(re_gluttony/re_corrosion/re_symbiosis,
+      // exclusiveGroup으로 기존 각인과 택1)이 추가되어 총 6종, 슬롯당 2택이
+      // 됐다(js/blacksmith.js 참고).
       {id:'rogue_alchemist', name:'역병숙주', icon:'🐍',
         desc:'회랑에 남은 역병의 기운을 스스로 몸에 받아들인 자. 손이 닿는 모든 것이 서서히 병들어 간다.',
         masteryName:'역병 잠식', masteryDesc:'기본 공격과 모든 스킬이 적중할 때마다 적을 역병으로 잠식시킨다(+1스택, 최대 10, 전투가 끝날 때까지 유지). 잠식이 진행될수록 매 라운드 피해를 입히는 동시에 적의 공격력·방어력이 스택당 2%씩 약해진다.', masterySkillId:'mastery_venomstacks',

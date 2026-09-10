@@ -69,9 +69,14 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     }
     // 역병숙주(mastery_venomstacks) 마스터리 "역병 잠식": 잠식 스택 1개당
     // 적 공격력 2% 감소(최대 10스택 -20%). data/equipment.js의
-    // getEffectiveEnemyDef()와 대칭되는 처리.
+    // getEffectiveEnemyDef()와 대칭되는 처리. 잠식 갑주(re_corrosion, 방어구
+    // 각인)를 꼈으면 스택당 3%(최대 -30%)로 커진다(대신 getVenomDmgPerStack()
+    // 에서 자체 dot 피해가 25% 줄어든다 — 아래 참고).
     if(enemy && (enemy.venomStacks||0)>0){
-      a = Math.round(a * (1 - Math.min(0.2, enemy.venomStacks*0.02)));
+      const aIdCor = player.equipment && player.equipment.armor;
+      const hasCorrosion = !!(aIdCor && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdCor).includes('re_corrosion'));
+      const debuffPer = hasCorrosion ? 0.03 : 0.02, debuffCap = hasCorrosion ? 0.3 : 0.2;
+      a = Math.round(a * (1 - Math.min(debuffCap, enemy.venomStacks*debuffPer)));
     }
     return a;
   }
@@ -490,7 +495,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 회복은 그 예정 피해량을 기준으로 즉시 계산해도 무방하다(오차 요인은
       // 오버킬 정도뿐이라 다른 계열 라이프스틸과 동일한 수준의 근사).
       if(player.skills && player.skills.includes('rogueVenomRefine') && player.hp>0){
-        const lifesteal = Math.max(1, Math.round(venomTickForLifesteal*0.2));
+        // 공생의 각인(re_symbiosis, 역병숙주 장신구): 만성 기생의 라이프스틸
+        // 비율이 20%->35%로 오른다(대신 위 getVenomStackCap()에서 스택
+        // 상한이 10->7로 줄어든다).
+        const cIdSym = player.equipment && player.equipment.accessory;
+        const hasSymbiosis = !!(cIdSym && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdSym).includes('re_symbiosis'));
+        const lifestealRatio = hasSymbiosis ? 0.35 : 0.2;
+        const lifesteal = Math.max(1, Math.round(venomTickForLifesteal*lifestealRatio));
         player.hp = Math.min(player.maxhp, player.hp+lifesteal);
         popDamage('+'+lifesteal, 'heal');
         renderStatus();
@@ -1133,6 +1144,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     const cIdSV2 = player.equipment && player.equipment.accessory;
     const hasSoloVenom2 = !!(cIdSV2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdSV2).includes('re_solovenom'));
     if(hasSoloVenom2) per *= 1.25;
+    // 잠식 갑주(re_corrosion, 방어구 — 폭발 정제 각인과 exclusiveGroup이라
+    // 동시에 걸릴 일 없음): 적 공/방 약화 폭을 키우는 대신, 스택당 자체
+    // 지속피해가 25% 줄어든다.
+    const aIdCor2 = player.equipment && player.equipment.armor;
+    const hasCorrosion2 = !!(aIdCor2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdCor2).includes('re_corrosion'));
+    if(hasCorrosion2) per *= 0.75;
     const boost = getDotBoostRatio('poison');
     if(boost>0) per *= (1+boost);
     return per;
