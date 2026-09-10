@@ -4,8 +4,8 @@
 세이브 데이터, 모험 기록, 유물 도감, 패치노트 상태를 영속화한다.
 의존성 없음(이 파일 내부에서 SAVE_KEY 등 상수도 함께 선언).
 export(전역): SAVE_KEY, saveGame, loadGame, deleteSave, RECORDS_KEY, addRecord, loadRecords,
-              RELICDEX_KEY, 관련 함수들, PATCHNOTE_VERSION, PATCHNOTE_KEY,
-              loadDismissedPatchNote, markPatchNoteDismissed 등
+              RELICDEX_KEY, 관련 함수들, ACHIEVEMENTS_KEY, loadAchievements, unlockAchievement,
+              PATCHNOTE_VERSION, PATCHNOTE_KEY, loadDismissedPatchNote, markPatchNoteDismissed 등
 주의: saveGame()은 player/depth/town 등 게임 상태 전역 변수(state.js)를 참조한다.
 */
 
@@ -146,6 +146,32 @@ export(전역): SAVE_KEY, saveGame, loadGame, deleteSave, RECORDS_KEY, addRecord
       else if(hasLocalStorage()) window.localStorage.setItem(RELICDEX_KEY, payload);
     }catch(e){ /* ignore */ }
     return dex;
+  }
+  // ---------- 업적(계정 단위 영구 기록, relicDex와 동일 패턴) ----------
+  const ACHIEVEMENTS_KEY = 'achievements';
+  async function loadAchievements(){
+    if(!storageAvailable()) return [];
+    try{
+      if(hasArtifactStorage()){
+        const res = await window.storage.get(ACHIEVEMENTS_KEY, false);
+        if(res && res.value) return JSON.parse(res.value);
+      } else if(hasLocalStorage()){
+        const raw = window.localStorage.getItem(ACHIEVEMENTS_KEY);
+        if(raw) return JSON.parse(raw);
+      }
+    }catch(e){ /* 기록 없음, 정상 */ }
+    return [];
+  }
+  async function unlockAchievement(id){
+    const list = await loadAchievements();
+    if(list.includes(id)) return {list, isNew:false};
+    list.push(id);
+    const payload = JSON.stringify(list);
+    try{
+      if(hasArtifactStorage()) await window.storage.set(ACHIEVEMENTS_KEY, payload, false);
+      else if(hasLocalStorage()) window.localStorage.setItem(ACHIEVEMENTS_KEY, payload);
+    }catch(e){ /* ignore */ }
+    return {list, isNew:true};
   }
   // 패치노트 — 버전 문자열을 바꾸면 "다시 보지 않기"를 눌렀던 사람에게도 새 패치노트가 다시 뜬다.
   const PATCHNOTE_VERSION = 'mechanic-renewal-1';

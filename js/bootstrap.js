@@ -63,6 +63,8 @@ export(전역): init, showMaintenanceModal, isAdminName
       document.getElementById('btn-delete-save').style.display='none';
     });
     document.getElementById('btn-relicdex').addEventListener('click', ()=>{ showRelicDex(); });
+    document.getElementById('btn-achievements').addEventListener('click', ()=>{ showAchievements(); });
+    document.getElementById('btn-records').addEventListener('click', ()=>{ showRecords(); });
     document.getElementById('btn-restart').addEventListener('click', ()=>{
       // player는 이미 쓰러진 시점에 마을로 옮겨져 체력이 회복되고 골드가 절반이 되었다.
       showScreen('explore');
@@ -80,15 +82,21 @@ export(전역): init, showMaintenanceModal, isAdminName
         deathCount: player.deathCount||0, ts: Date.now(),
         difficulty: player.difficulty||'easy',
         // 난이도별 왕관 표시(사용자 제보 — 원래 되던 게 안 보임)의 근거 필드.
-        // records.js의 renderRecords()도 이 필드(r.trueEnding)를 읽어 뱃지를
+        // records.js의 showRecords()도 이 필드(r.trueEnding)를 읽어 뱃지를
         // 붙이는데, 정작 이 record 객체엔 한 번도 채워진 적이 없었다.
         trueEnding: !!player.trueEndingSeen,
         // 일반 최종보스("잠식된 OO 용사")가 이 기록의 이름/직업을 따르게
         // 하려면 원문 job id가 필요하다(jobLabel은 이미 아이콘까지 붙은
         // 표시용 문자열이라 역으로 파싱하기엔 부적합).
         job: player.job,
+        // 진 최종보스 두 종(회랑의 시조/시간의 마녀 Aiōn)을 업적에서 구분하기
+        // 위한 필드. enemy는 아직 리셋 전이라(explore.js의 새 게임 시작 시점에만
+        // null로 초기화됨) 이 시점엔 방금 물리친 보스를 그대로 가리킨다.
+        bossType: (enemy && enemy.type) || null,
       };
-      await addRecord(record);
+      const allRecords = await addRecord(record);
+      // player가 리셋(deleteSave)되기 전, 이번 판 결과 + 누적 기록으로 업적을 판정한다.
+      const newlyUnlocked = await checkAchievements(player, record, allRecords);
       await deleteSave();
       window.__savedGame = null;
       document.getElementById('continue-info').style.display='none';
@@ -96,8 +104,8 @@ export(전역): init, showMaintenanceModal, isAdminName
       document.getElementById('btn-delete-save').style.display='none';
       document.getElementById('statusbar').style.display='none';
       showScreen('title');
+      if(newlyUnlocked.length) showAchievementToast(newlyUnlocked);
       loadRecords().then(records=>{
-        renderRecords(records);
         normalUnlocked = records.length > 0;
         hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
         // 난이도별 왕관 표시(사용자 제보로 원인 확인 — record 객체에 trueEnding
@@ -147,7 +155,6 @@ export(전역): init, showMaintenanceModal, isAdminName
     }).catch(e=>{ console.warn('불러오기 실패(무시):', e); });
 
     loadRecords().then(records=>{
-      renderRecords(records);
       normalUnlocked = records.length > 0;
       hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
       easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0);
