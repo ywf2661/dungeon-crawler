@@ -63,6 +63,7 @@ export(전역): init, showMaintenanceModal, isAdminName
       document.getElementById('btn-delete-save').style.display='none';
     });
     document.getElementById('btn-relicdex').addEventListener('click', ()=>{ showRelicDex(); });
+    document.getElementById('btn-monsterdex').addEventListener('click', ()=>{ showMonsterDex(); });
     document.getElementById('btn-achievements').addEventListener('click', ()=>{ showAchievements(); });
     document.getElementById('btn-records').addEventListener('click', ()=>{ showRecords(); });
     document.getElementById('btn-restart').addEventListener('click', ()=>{

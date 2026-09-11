@@ -1,10 +1,10 @@
 "use strict";
 /*
-이전 모험 기록 렌더 + 유물 도감 표시(획득한 유물의 현재 상태를 설명에 덧붙인다) + 업적 판정/도감.
-export(전역): showRecords, getRelicDisplayDesc, showMyRelics, checkAchievements, showAchievements,
+이전 모험 기록 렌더 + 유물 도감 표시(획득한 유물의 현재 상태를 설명에 덧붙인다) + 몬스터 도감 + 업적 판정/도감.
+export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, checkAchievements, showAchievements,
               showAchievementToast
-의존성: player(state.js), RELICS(relics.js), ACHIEVEMENTS(data/achievements.js),
-        loadRelicDex/loadAchievements/unlockAchievement(storage.js)
+의존성: player(state.js), RELICS(relics.js), MONSTERS(data/monsters.js), ACHIEVEMENTS(data/achievements.js),
+        loadRelicDex/loadMonsterDex/loadAchievements/unlockAchievement(storage.js)
 주의: checkAchievements(player, record, records)는 bootstrap.js의 addRecord() 직후,
      player가 아직 리셋(deleteSave)되기 전 시점에 호출된다. record는 이번 판(run)의
      결과, records는 addRecord()가 반환한 전체 누적 기록 배열(누적형 업적 판정용).
@@ -97,6 +97,41 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, checkAchievement
       box.appendChild(row);
     });
     panel.querySelector('#relicdex-close').addEventListener('click', ()=> overlay.remove());
+  }
+
+  // 몬스터 도감(사용자 요청) — 유물 도감(showRelicDex)과 완전히 동일한
+  // 패턴. MONSTERS(data/monsters.js)의 20종 일반 몬스터를 대상으로 하며,
+  // 진최종보스/층별보스는 이번 1차 범위에서 제외했다(story.md 8-6 다크
+  // 판타지 팔레트 유지 — 잠긴 상태는 물음표+회색으로 통일).
+  async function showMonsterDex(){
+    const discovered = await loadMonsterDex();
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'monsterdex-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `<h3>🐾 몬스터 도감</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;margin:-4px 0 10px;">조우: ${discovered.length} / ${MONSTERS.length}</p>
+      <div id="monsterdex-list" style="display:flex; flex-direction:column; gap:6px; max-height:340px; overflow-y:auto; padding:2px;"></div>
+      <div style="text-align:center; margin-top:10px;"><button class="btn" id="monsterdex-close">닫기</button></div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    const box = panel.querySelector('#monsterdex-list');
+    MONSTERS.slice().sort((a,b)=>a.minDepth-b.minDepth).forEach(m=>{
+      const found = discovered.includes(m.type);
+      const row = document.createElement('div');
+      row.className = 'relicdex-row' + (found?'':' locked');
+      if(found){
+        row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:var(--gold-bright); font-family:'Cinzel';">${m.name}</span><span style="color:var(--parchment-dim); font-size:11.5px;">B${m.minDepth}~</span>
+          </div>
+          <div class="relic-desc" style="margin-top:3px;">${m.dex || ''}</div>`;
+      } else {
+        row.innerHTML = `<span>？？？</span><span>🔒</span>`;
+      }
+      box.appendChild(row);
+    });
+    panel.querySelector('#monsterdex-close').addEventListener('click', ()=> overlay.remove());
   }
 
   // 현재 보유 중인 유물 목록 (탐험 화면에서 언제든 확인 가능)

@@ -710,6 +710,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // 캐릭터도 여기서 자동으로 새 킷으로 마이그레이션된다(멱등 처리라 안전).
     if(typeof migrateLegionBaseSkills==='function') migrateLegionBaseSkills(player);
     enemy = pickEnemy(isBoss, isFinal, isTrueFinal);
+    // 몬스터 도감(사용자 요청) — 조우한 순간 바로 등록한다(처치 여부와
+    // 무관, 유물 도감의 "획득 시점 등록"과 대칭되는 "조우 시점 등록").
+    // 계정 단위 영구 기록이라 storage.js에 비동기로 저장한다 — 전투 흐름
+    // 자체에는 영향을 주지 않도록 await 없이 fire-and-forget.
+    if(enemy && enemy.type && typeof addToMonsterDex==='function') addToMonsterDex(enemy.type);
     // 다음 전투 한정 적 공격력 감소(사용자 요청 — 이상한 촛불 이벤트 "촛불을 끈다").
     // 단발성이라 소비 즉시 되돌린다.
     if(player.nextBattleEnemyAtkMult){

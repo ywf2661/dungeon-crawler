@@ -4,7 +4,8 @@
 세이브 데이터, 모험 기록, 유물 도감, 패치노트 상태를 영속화한다.
 의존성 없음(이 파일 내부에서 SAVE_KEY 등 상수도 함께 선언).
 export(전역): SAVE_KEY, saveGame, loadGame, deleteSave, RECORDS_KEY, addRecord, loadRecords,
-              RELICDEX_KEY, 관련 함수들, ACHIEVEMENTS_KEY, loadAchievements, unlockAchievement,
+              RELICDEX_KEY, 관련 함수들, MONSTERDEX_KEY, loadMonsterDex, addToMonsterDex,
+              ACHIEVEMENTS_KEY, loadAchievements, unlockAchievement,
               PATCHNOTE_VERSION, PATCHNOTE_KEY, loadDismissedPatchNote, markPatchNoteDismissed 등
 주의: saveGame()은 player/depth/town 등 게임 상태 전역 변수(state.js)를 참조한다.
 */
@@ -144,6 +145,33 @@ export(전역): SAVE_KEY, saveGame, loadGame, deleteSave, RECORDS_KEY, addRecord
     try{
       if(hasArtifactStorage()) await window.storage.set(RELICDEX_KEY, payload, false);
       else if(hasLocalStorage()) window.localStorage.setItem(RELICDEX_KEY, payload);
+    }catch(e){ /* ignore */ }
+    return dex;
+  }
+  // ---------- 몬스터 도감(조우한 몬스터는 런이 끝나도 영구히 기록된다,
+  // relicDex와 완전히 동일한 패턴) ----------
+  const MONSTERDEX_KEY = 'monsterdex';
+  async function loadMonsterDex(){
+    if(!storageAvailable()) return [];
+    try{
+      if(hasArtifactStorage()){
+        const res = await window.storage.get(MONSTERDEX_KEY, false);
+        if(res && res.value) return JSON.parse(res.value);
+      } else if(hasLocalStorage()){
+        const raw = window.localStorage.getItem(MONSTERDEX_KEY);
+        if(raw) return JSON.parse(raw);
+      }
+    }catch(e){ /* 기록 없음, 정상 */ }
+    return [];
+  }
+  async function addToMonsterDex(type){
+    const dex = await loadMonsterDex();
+    if(dex.includes(type)) return dex;
+    dex.push(type);
+    const payload = JSON.stringify(dex);
+    try{
+      if(hasArtifactStorage()) await window.storage.set(MONSTERDEX_KEY, payload, false);
+      else if(hasLocalStorage()) window.localStorage.setItem(MONSTERDEX_KEY, payload);
     }catch(e){ /* ignore */ }
     return dex;
   }

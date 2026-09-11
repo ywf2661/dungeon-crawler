@@ -692,3 +692,42 @@ Carlo로 확인). 상한 감소폭을 10→6으로 완화하고 스택당 매 �
   `combat/enemy-turn.js`, `combat/battle-fx.js`, `combat/job-advancement.js`,
   `combat/battle-setup.js`, `monster-visuals.js`, `index.html`.
 - `node --check` 전체 통과.
+
+---
+
+## 세션: 역병숙주 리뉴얼(v1) + 사운드 실음원화 + UI 리디자인
+
+### 역병숙주 리뉴얼 (구 독사, rogue_alchemist, 커밋 `7e69a28`)
+- 목표: 15레벨 전까지 액티브(구 맹독 주입)를 쓸 이유가 없던 문제 해결. "기생형" 컨셉으로 전면 개편
+- 변경 파일: `js/data/jobs.js`, `js/data/skills.js`, `js/data/equipment.js`, `js/combat/enemy-turn.js`, `js/combat/player-actions.js`
+- 마스터리(역병 잠식): 기존 스택 축적/틱딜 유지 + 스택 1개당 적 ATK/DEF -2%(최대 -20%) 신규 추가
+- 레벨10(체액 흡수): 자기 전용 스택 +3(스택 소모 없음) + 갱신 직후 스택의 절반(레벨15면 전부)만큼 ATK를 이번 전투 동안 영구 흡수(`battleFlags.venomAbsorbPoints`, `getVenomAbsorbBonus()`, 캡 +30%p)
+- 레벨12(만성 기생): 잠식 dot 피해의 20% 자동 회복
+- 레벨15(완전 기생화): 자기 스택 보너스 +3, 흡수 비율 전량
+- (참고) 전용 각인 3종은 이후 세션에서 이미 새 메커니즘 기준으로 재연결됨 확인 — CURRENT_STATUS.md 최신판 참고
+
+### BGM 실음원화 (커밋 `2c9609e`~`6bfa566`)
+- 사용자 제공 음원(원본 wav 130MB+)을 60초 트림 + 페이드 + mp3 128kbps로 압축(최종 15MB, `audio/bgm/`)
+- `sound.js`: `<audio>` 엘리먼트 기반 재생 인프라 신설(`BGM_FILES`, `bgmPlaylistIdxByMode`, `playBgmTrack()`, `setBgmMode(mode, {force})`)
+- 모드 6종 완전 분리(explore/dungeon/battle/dread/finalboss/truefinalboss/witchboss)
+- 잡은 버그 2개: ① `bgmMode` 초기값이 `'explore'`였던 탓에 최초 마을 진입 시 파일 BGM 미재생 → 빈 문자열로 변경. ② "나아가기"로 마을→새 던전 진입 시 `showScreen('explore')` 미재호출 → `enterNodeMapTier()`에서 직접 `Sound.setBgmMode()` 호출하도록 수정
+- 곡 유지/전환 규칙: 같은 노드맵 안 왕복은 곡 유지, 새 노드맵마다 직전과 무조건 다르게(`rerollDungeonTrack()`)
+
+### SFX 실음원화 (커밋 `1543c55`)
+- 사용자 제공 9개(Hit/Coin/Potion/Magic_heal/Magic_spell/Clock/Fireball/Slash/Levelup) → `audio/sfx/`
+- `fetch`+`decodeAudioData` 프리로드 → `AudioBufferSourceNode` 즉시 재생(중첩 재생 가능)
+- `guard/poisonHit/fail/click/victory/gameOver/statusApply`는 음원 없어 합성음 유지
+
+### UI 리디자인 (커밋 `88222c7`)
+- 폰트: 한글 미지원 장식체 → `Gowun Batang`(제목) + `IBM Plex Sans KR`(본문/UI)
+- 버튼: 그라데이션+이중 그림자 → 단색 배경+얇은 테두리+단일 외곽 그림자로 평면화
+- 색상 토큰(`--void`/`--gold`/`--violet` 등)은 그대로 유지
+
+### 기타
+- admin3(무작위 유물)가 마녀의 시계를 항상 보유하도록 보장(`e54e711`)
+- 시간의 마녀 이름을 "시간의 마녀 Aiōn"으로 명명, 조우 대사 제목도 `enemy.name` 참조로 통일
+
+### 검증
+- `node --check` 전체 통과. Playwright 헤드리스로 BGM 6모드 전환/곡 유지 규칙/SFX 9개 로드/UI 폰트 적용 확인
+- 미검증: 실제 청취, 모바일 사파리 오디오 자동재생 정책
+
