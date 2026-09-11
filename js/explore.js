@@ -210,22 +210,27 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
           const r = RELICS[id];
           return r && !r.effect.mpZero && !r.deprecated;
         });
-      const shuffled = pool.slice();
+      // 버그 수정(사용자 제보 — admin3 접속 시 유물이 슬롯 수보다 1개 많게
+      // 나옴): 마녀의 시계를 항상 보장하면서도 무작위 추첨을 그대로 n개
+      // 뽑아버려서, 추첨에 안 걸렸을 때 n+1개가 되고 있었다. 마녀의 시계
+      // 몫으로 슬롯 하나를 미리 빼두고(n-1개만 무작위 추첨) 마지막에
+      // 채워 넣어, 항상 정확히 n개(난이도별 실제 슬롯 수와 동일)가 되도록
+      // 고쳤다.
+      const randomPool = pool.filter(id=> id!=='relic_witchclock');
+      const shuffled = randomPool.slice();
       for(let i=shuffled.length-1;i>0;i--){
         const j = Math.floor(Math.random()*(i+1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
-      shuffled.slice(0, n).forEach(id=>{
+      shuffled.slice(0, Math.max(0, n-1)).forEach(id=>{
         player.relics.push(id);
         if(typeof applyRelicEffect==='function') applyRelicEffect(id);
       });
-      // 사용자 요청 — admin3(무작위 유물)는 마녀의 시계를 항상 보장한다
-      // (시간의 마녀/아이온 관련 콘텐츠 테스트 편의용). 위 무작위 추첨에서
-      // 이미 뽑혔으면 중복 지급하지 않는다.
-      if(!player.relics.includes('relic_witchclock')){
-        player.relics.push('relic_witchclock');
-        if(typeof applyRelicEffect==='function') applyRelicEffect('relic_witchclock');
-      }
+      // admin3(무작위 유물)는 마녀의 시계를 항상 보장한다(시간의 마녀/아이온
+      // 관련 콘텐츠 테스트 편의용). 위에서 이미 슬롯 하나를 비워뒀으므로
+      // 여기서 채워도 총 개수는 n을 넘지 않는다.
+      player.relics.push('relic_witchclock');
+      if(typeof applyRelicEffect==='function') applyRelicEffect('relic_witchclock');
     } else {
       player.relics.push('relic_hilt', 'relic_blade');
     }
