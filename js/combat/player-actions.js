@@ -2415,9 +2415,24 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
 
       player.gold = Math.max(0, (player.gold||0) - stake);
-      const chance = Math.min(0.95, s.successChance + fateChance);
+      // 에픽셋 연결 수정(사용자 제보 — 3세트를 맞춰도 베팅/올인엔 전혀 반영이
+      // 안 되던 버그). "운명의 마지막 패" 세트는 luck:true 스킬에서 잭팟
+      // 게이지를 쌓고, 다 찬 상태(jackpotArmed)면 성공률을 90%로 보장해주는
+      // 구조인데, jesterGoldBet/jesterAllIn에는 애초에 luck:true가 없어서
+      // coinflip 등 다른 luck 스킬과 완전히 분리돼 있었다. 두 스킬 정의에
+      // luck:true를 추가하고, 다른 luck 스킬들과 동일하게 epicLuckPre/
+      // epicLuckApplyChance/epicLuckPost를 그대로 연결했다.
+      const epicLuckBet = epicLuckPre(s);
+      // 연패 보정(마스터리 "물주의 감각" 개편, 사용자 요청 — 2차 전직 직후
+      // 저확률 연패로 진행이 막히는 문제 완화): 베팅/올인이 연속 실패할
+      // 때마다 다음 판 성공률이 +10%p씩 누적(최대 3연패=+30%p), 성공하면
+      // 즉시 초기화. battleFlags.goldbetLossStreak로 추적(전투 시작 시
+      // startBattle()이 battleFlags를 통째로 초기화하므로 별도 리셋 불필요).
+      const lossStreak = (player.skills && player.skills.includes('mastery_goldsense')) ? Math.min(3, battleFlags.goldbetLossStreak||0) : 0;
+      const chance = epicLuckApplyChance(Math.min(0.95, s.successChance + fateChance + lossStreak*0.10), epicLuckBet);
       const success = Math.random() < chance;
       if(success){
+        battleFlags.goldbetLossStreak = 0;
         const stakeBonusMult = s.stakeBonusMult + fateMult;
         let dmg = Math.max(1, Math.round(effectiveAtk()*s.baseMult) - edefBet) + Math.round(stake*stakeBonusMult);
         dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, luck:true, onHitMult:onHitMultBet});
@@ -2428,9 +2443,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         playBanner('대성공!');
         const payout = Math.round(stake*s.payoutMult);
         player.gold += payout;
+        epicLuckPost(true, epicLuckBet);
         renderStatus();
         setBattleMsg(`${player.name}의 ${s.name}!`, `승부에서 이겼다! ${enemy.name}에게 ${dmg}의 피해를 입혔다. 판돈 ${stake}G가 ${payout}G로 불어났다!`);
       } else {
+        battleFlags.goldbetLossStreak = Math.min(3, (battleFlags.goldbetLossStreak||0)+1);
+        epicLuckPost(false, epicLuckBet);
         popDamage('빗나감!', 'miss');
         Sound.fail();
         playBanner('실패...', 'luckbad');
@@ -2459,11 +2477,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 로직은 필요 없다).
     if(s.type==='goldinfofee'){
       // 사기 정보 각인(ju_infoscam, 황금 도박사 방어구 각인 — 사용자 요청):
-      // 정보료로 얻는 성공률/배율 보너스가 2배가 되는 대신, 비용 자체도
-      // 2배가 된다.
+      // 정보료로 얻는 성공률/배율 보너스가 2배가 되는 대신, 비용도 오른다.
+      // [밸런스 완화] 기존엔 비용도 그대로 2배(40%→80%)라 사실상 못 쓰는
+      // 각인이었다(사용자 제보). 보너스는 2배 그대로 유지하고, 비용 배율만
+      // 1.5배(40%→60%)로 낮췄다.
       const aIdIS = player.equipment && player.equipment.armor;
       const hasInfoScam = !!(aIdIS && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdIS).includes('ju_infoscam'));
-      const costMultUsed = hasInfoScam ? 2 : 1;
+      const bonusMultUsed = hasInfoScam ? 2 : 1;
+      const costMultUsed = hasInfoScam ? 1.5 : 1;
       const cost = Math.max(s.goldCostMin||0, Math.round((player.gold||0)*(s.goldCostPct||0.4)*costMultUsed));
       if((player.gold||0) < cost){
         setCommandsEnabled(true);
@@ -2472,8 +2493,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         return;
       }
       player.gold -= cost;
-      player.fateBoostChance = (s.chanceBonus||0.4) * costMultUsed;
-      player.fateBoostMult = (s.multBonus||0.5) * costMultUsed;
+      player.fateBoostChance = (s.chanceBonus||0.4) * bonusMultUsed;
+      player.fateBoostMult = (s.multBonus||0.5) * bonusMultUsed;
       renderStatus();
       playCastBurst();
       Sound.buff();

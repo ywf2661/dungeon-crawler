@@ -816,12 +816,12 @@ export(전역): SKILLDB, CHALNA_COMBOS
     // combat/battle-end.js의 승리 골드 계산식에 20% 항을 더하는 것뿐이라 별도
     // 액티브 로직이 없다.
     mastery_goldsense: {name:'물주의 감각', mp:0, type:'passive',
-      desc:'전투에서 승리할 때 얻는 골드가 20% 증가한다.'},
+      desc:'전투에서 승리할 때 얻는 골드가 20% 증가한다. 또한 베팅/올인이 연속으로 실패할 때마다 다음 판 성공률이 10%p씩 오른다(최대 3연패, +30%p) — 한 번이라도 성공하면 초기화된다.'},
     // 레벨10 "베팅": 소지 골드의 10%를 판돈으로 걸고, 성공(50%)하면 판돈의 2배를
     // 돌려받으며 판돈에 비례한 추가 피해까지 들어간다. 실패하면 판돈만 잃고
     // 피해는 0. 골드가 0이면(판돈 자체가 불가능) 확률 없이 평범한 일격만 나간다.
     // 새 타입 'goldbet'로 처리한다(combat/player-actions.js).
-    jesterGoldBet: {name:'베팅', mp:10, type:'goldbet', stakePct:0.1, stakeCap:2000, successChance:0.5, baseMult:1.4, stakeBonusMult:0.5, payoutMult:2.0,
+    jesterGoldBet: {name:'베팅', mp:10, type:'goldbet', luck:true, stakePct:0.1, stakeCap:2000, successChance:0.5, baseMult:1.4, stakeBonusMult:0.5, payoutMult:2.0,
       desc:'소지 골드의 10%(최대 2000G)를 판돈으로 건다. 성공하면 판돈의 2배를 얻고 판돈에 비례한 추가 피해가 들어가지만, 실패하면 판돈만 그대로 잃고 피해는 없다. 골드가 없으면 그냥 평범한 일격이 나간다.'},
     // [리뉴얼] 촉 → 정보료. 기존엔 MP만 쓰는 범용 fateshift 재탕이라 황금
     // 도박사만의 색깔(골드)이 전혀 없었다. 이제 골드를 직접 지불해 다음
@@ -836,7 +836,7 @@ export(전역): SKILLDB, CHALNA_COMBOS
     // 레벨15 궁극기 "올인": 소지 골드 전액을 건다. 성공 확률은 베팅보다 낮지만
     // (판돈이 훨씬 크므로) 기본 피해와 판돈 보너스 배율 모두 더 강하다. 베팅과
     // 동일한 'goldbet' 타입을 재사용하되 수치만 다르게 잡았다.
-    jesterAllIn: {name:'올인', mp:16, cooldown:3, type:'goldbet', stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
+    jesterAllIn: {name:'올인', mp:16, cooldown:3, type:'goldbet', luck:true, stakePct:1.0, stakeCap:10000, successChance:0.45, baseMult:2.5, stakeBonusMult:0.6, payoutMult:2.0,
       desc:'소지 골드 전액(최대 10000G)을 건다. 성공하면 강력한 피해와 함께 판돈의 2배를 돌려받지만, 실패하면 판돈만큼 잃는다. 골드가 없으면 그냥 평범한 강타가 나간다.'},
 
     // ---------- [교체됨] 외상 도박사(jester_debtor) → 사기꾼(구 불운의 채권자) ----------

@@ -186,7 +186,7 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
     ju_bigbet: {slot:'weapon', specId:'jester_goldbet', name:'몰빵 각인', prefix:'몰빵의',
       desc:'베팅의 판돈 상한이 1.5배로 늘어난다. 대신 실패하면 이후 이번 전투에서 얻는 골드가 반토막난다.'},
     ju_infoscam: {slot:'armor', specId:'jester_goldbet', name:'사기 정보 각인', prefix:'사기 정보의',
-      desc:'정보료로 얻는 성공률/배율 보너스가 2배가 되는 대신, 정보료 비용 자체도 2배가 된다.'},
+      desc:'정보료로 얻는 성공률/배율 보너스가 2배가 되는 대신, 정보료 비용이 1.5배가 된다.'},
     ju_debtbet: {slot:'accessory', specId:'jester_goldbet', name:'빚투 각인', prefix:'빚투의',
       desc:'올인에 한해 가진 골드의 150%까지 판돈으로 걸 수 있다. 대신 실패하면 판돈 크기와 무관하게 최대HP 15%의 고정 피해를 입는다.'},
     ju_doubleswap: {slot:'weapon', specId:'jester_debtcollector', name:'겹패 각인', prefix:'겹패의',
