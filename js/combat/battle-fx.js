@@ -88,18 +88,38 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     ['cmd-attack','cmd-skill','cmd-item','cmd-run'].forEach(id=>document.getElementById(id).disabled=!en);
   }
 
+  // 재수정(사용자 제보 — 기관사 포탑 배치 시 데미지 숫자가 겹쳐 보임):
+  // 기존엔 매번 -35~35px 사이 완전 무작위 오프셋만 줬는데, 로봇군단장은
+  // 슬롯이 최대 3개(rig/rig2/omegaRig)라 짧은 간격(약 700ms)으로 연속
+  // 데미지가 뜨는 경우가 흔하고, 좁은 무작위 범위 안에서 우연히 비슷한
+  // 값이 나오면 여전히 겹쳤다. 이제 "현재 화면에 떠 있는 숫자들의 위치"를
+  // 직접 추적해서, 겹치지 않는 위치를 순환식으로 골라 쓰도록 바꿨다.
+  let dmgPopActiveSlots = [];
+  const DMG_POP_OFFSETS = [0, -55, 55, -25, 25, -80, 80];
+  let dmgPopCursor = 0;
   function popDamage(text, cls){
     const stage = document.getElementById('bt-stage');
     const pop = document.createElement('div');
     pop.className = 'dmg-pop'+(cls?(' '+cls):'');
     pop.textContent = text;
-    // 버그 수정(사용자 제보) — 항상 정확히 같은 위치(left:50%)에 떠서, 짧은
-    // 간격으로 여러 번 데미지가 들어가면(멀티히트, 로봇 틱뎀 등) 숫자들이
-    // 완전히 겹쳐 보였다. 매번 약간의 무작위 좌우 오프셋을 줘서 퍼지게 한다.
-    const jitter = Math.round(Math.random()*70-35);
-    pop.style.left = `calc(50% + ${jitter}px)`;
+    const now = Date.now();
+    dmgPopActiveSlots = dmgPopActiveSlots.filter(s=>s.expireAt>now);
+    let offset = DMG_POP_OFFSETS[dmgPopCursor % DMG_POP_OFFSETS.length];
+    let tries = 0;
+    while(dmgPopActiveSlots.some(s=>Math.abs(s.offset-offset)<30) && tries<DMG_POP_OFFSETS.length){
+      dmgPopCursor++;
+      offset = DMG_POP_OFFSETS[dmgPopCursor % DMG_POP_OFFSETS.length];
+      tries++;
+    }
+    dmgPopCursor++;
+    const expireAt = now + 800;
+    dmgPopActiveSlots.push({offset, expireAt});
+    pop.style.left = `calc(50% + ${offset}px)`;
     stage.appendChild(pop);
-    setTimeout(()=>pop.remove(), 800);
+    setTimeout(()=>{
+      pop.remove();
+      dmgPopActiveSlots = dmgPopActiveSlots.filter(s=>s.expireAt>Date.now());
+    }, 800);
   }
 
   function shakeEnemy(){
