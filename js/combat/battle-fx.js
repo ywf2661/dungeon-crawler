@@ -826,7 +826,14 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
           extraInfo = `<div class="si-desc" style="color:var(--gold-bright); margin-top:2px;">📒 지금까지 ${count}회 대출 · 빌리면 빚 ${(player.debt||0)+loan.amount}G</div>`;
         }
         const costBadge = usedOnce ? '전투당 1회' : (cdLeft>0 ? `쿨타임 ${cdLeft}턴` : `MP ${mpCost}`);
-        div.innerHTML = `<div class="si-info"><div class="si-name">${displayName}</div><div class="si-desc">${displayDesc}</div>${extraInfo}</div><div class="si-cost">${costBadge}</div>${reserveBtnHtml}`;
+        // 패시브/액티브 구분(사용자 요청 — 상태창뿐 아니라 전투 중 스킬
+        // 목록에도 동일하게 적용). 여기도 1각/2각 테두리 색(skill-tier1/2)과
+        // 겹치지 않도록 색 대신 아이콘+무채색 태그를 쓴다(상태창의
+        // .skill-kind-tag와 완전히 동일한 스타일 재사용).
+        const kindTagN = s.type==='passive'
+          ? `<span class="skill-kind-tag passive">⚙ 패시브</span>`
+          : `<span class="skill-kind-tag active">⚔ 액티브</span>`;
+        div.innerHTML = `<div class="si-info"><div class="si-name">${displayName} ${kindTagN}</div><div class="si-desc">${displayDesc}</div>${extraInfo}</div><div class="si-cost">${costBadge}</div>${reserveBtnHtml}`;
         if(canUse) div.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
         if(reserveKey){
           const rBtn = div.querySelector('.chalna-reserve-btn');
