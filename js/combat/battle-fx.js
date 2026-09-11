@@ -310,6 +310,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   function checkMechanicOverheat(){
     if(!battleFlags || (battleFlags.pressure||0) < 100) return;
     if(!enemy || enemy.hp<=0 || battleOver) return;
+    // 버그 수정(사용자 제보 — "게이지가 110이었는데 다음 턴에 갑자기 0이
+    // 됐다"): 이 자동방출은 원래 1차 기관사 기본 트리를 위한 안전장치인데,
+    // 전직 구분 없이 모든 기관사에게 걸려 있었다. 폭주 화부(mastery_overheat
+    // 보유)는 정반대로 100을 일부러 넘겨 들고 있다가 임계 폭주로 직접
+    // 터뜨리는 게 핵심 정체성이라(초과분 자해/보너스도 이미 자체적으로
+    // 처리됨), 이 레거시 자동방출에서 제외한다.
+    if(player.skills && player.skills.includes('mastery_overheat')) return;
     const edef = typeof getEffectiveEnemyDef==='function' ? getEffectiveEnemyDef(enemy.def) : enemy.def;
     let dmg = Math.max(1, Math.round((player.mag||0)*2.2) - Math.round(edef*0.5));
     enemy.hp = Math.max(0, enemy.hp-dmg);
