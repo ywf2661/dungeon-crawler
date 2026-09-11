@@ -1126,7 +1126,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const TRIBEAT_HIT_DELAYS = [0, 300, 370, 440, 510, 580, 650, 720, 790, 860];
       setBattleMsg(`${player.name}의 ${s.name}!`, '세 박자를 몰아치는 중...');
       TRIBEAT_HIT_DELAYS.forEach(delay=> setTimeout(()=>{
-        if(typeof spawnSlashImageFx==='function') spawnSlashImageFx();
+        // VFX 색상 통일(사용자 요청) — 기존엔 variant를 안 넘겨서 매 타마다
+        // SLASH_VARIANTS(금빛/핏빛/독기/벽력/심연 등 10종) 중 무작위로 골라
+        // 매번 색이 바뀌었다. 원래의 하늘색(필터 없는 기본 스프라이트, variant
+        // '')로 10타 전부 고정한다.
+        if(typeof spawnSlashImageFx==='function') spawnSlashImageFx({variant:''});
         if(typeof spawnFigureSlashFx==='function') spawnFigureSlashFx();
         Sound.slash();
       }, delay));
