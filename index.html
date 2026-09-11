@@ -566,12 +566,15 @@
   .skill-kind-tag.active{ border-style:solid; }
   .skill-kind-tag.passive{ border-style:dashed; }
 
-  /* 역병숙주 전용 화면 전체 스모그(사용자 요청) — 잠식 스택 수에 비례해
+  /* 역병숙주 전용 화면 스모그(사용자 요청) — 잠식 스택 수에 비례해
      JS(updateVenomSmog())가 --smog-opacity 변수만 갱신한다. 실제 색/그라디언트는
      여기서 한 번만 정의. 중앙은 옅게, 가장자리로 갈수록 짙어지는 비네트
-     형태라 화면 중앙(전투 텍스트)의 가독성은 유지된다. */
+     형태라 화면 중앙(전투 텍스트)의 가독성은 유지된다.
+     [수정] position:absolute + .archway(position:relative, overflow:hidden)
+     안에 배치 — 원래 fixed였을 땐 메시지창/명령 버튼까지 전투 화면 전체를
+     덮어버렸다(사용자 제보). 몬스터가 있는 장면 영역에만 한정한다. */
   .screen-smog{
-    position:fixed; inset:0; pointer-events:none; z-index:3;
+    position:absolute; inset:0; pointer-events:none; z-index:3;
     background: radial-gradient(ellipse at center, rgba(60,150,70,0) 30%, rgba(40,120,60,var(--smog-opacity,0)) 100%);
     transition: background .6s ease-out;
   }
@@ -1134,11 +1137,13 @@
 
   <!-- BATTLE -->
   <div id="screen-battle" class="screen">
-    <!-- 역병숙주 전용 화면 전체 스모그(사용자 요청) — 잠식 스택이 쌓일수록
-         초록빛이 은은히 짙어진다. position:fixed라 부모 포지셔닝과 무관하게
-         항상 화면 전체를 덮으며, pointer-events:none이라 조작을 막지 않는다. -->
-    <div class="screen-smog" id="bt-venom-smog"></div>
     <div class="archway">
+      <!-- 역병숙주 전용 스모그(사용자 요청) — 잠식 스택이 쌓일수록 초록빛이
+           은은히 짙어진다. 버그 수정(사용자 제보) — 기존엔 position:fixed로
+           전투 화면 전체(메시지창/명령 버튼 포함)를 덮어버렸다. .archway는
+           position:relative + overflow:hidden이라, 이 안에 절대 위치로
+           넣으면 몬스터가 있는 장면 영역에만 정확히 한정된다. -->
+      <div class="screen-smog" id="bt-venom-smog"></div>
       <div class="torch-side left"><div class="flame" style="transform:scale(0.85);"></div></div>
       <div class="torch-side right"><div class="flame" style="transform:scale(0.85); animation-delay:.6s;"></div></div>
       <div class="enemy-name-bar">

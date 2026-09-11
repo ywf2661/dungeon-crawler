@@ -128,6 +128,13 @@
   자동방출에서 제외
 - 변경 파일: `combat/battle-fx.js`
 
+### 15. 역병숙주 스모그 범위 버그 수정(사용자 제보 — "전투화면 전체가 아니라 화면 전체를 덮어버림")
+- 원인: `.screen-smog`가 `position:fixed`라 메시지창/명령 버튼까지 포함해
+  전투 화면 전체(사실상 뷰포트 전체)를 덮고 있었음
+- 해결: `.archway`(몬스터가 있는 장면 영역, position:relative+overflow:hidden)
+  내부로 옮기고 `position:absolute`로 변경 — 이제 장면 영역에만 한정됨
+- 변경 파일: `index.html`
+
 ## 최근 검증 상태
 
 - 위 1~5 전부 `node --check` 통과.
