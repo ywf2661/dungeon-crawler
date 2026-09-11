@@ -511,6 +511,16 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     } else {
       addLog(`✦ 유물 [${r.name}]을(를) 손에 넣었다!`, 'gold');
     }
+    // 거꾸로 된 왕관(relic_reversecrown) 전용 획득 토스트(사용자 기획 —
+    // 회랑의 시조 관련 시너지 세트 1단계). 미스터리 유물로 뽑혔을 때는
+    // 아직 정체를 모르는 상태라 스포일러가 되므로 제외하고, 정체가 밝혀진
+    // 채로 실제로 손에 들어온 순간에만 띄운다.
+    if(!isMystery && id==='relic_reversecrown' && typeof showToast==='function'){
+      showToast(
+        `<h3>${r.name}</h3><p>누군가의 왕관인 것 같은데... 왜 뒤집혀 있을까?</p>`,
+        '#c9a86a'
+      );
+    }
   }
 
   // 유물 슬롯이 가득 찬 상태에서 새 유물을 고르면, 먼저 내려놓을 유물을 선택하게 한다.

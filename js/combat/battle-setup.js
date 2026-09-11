@@ -685,12 +685,30 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return true;
   }
 
+  // 거꾸로 된 왕관(relic_reversecrown) 착용자가 회랑의 시조와 조우했을 때
+  // (사용자 기획 — 왕관 시너지 세트). 시조가 유물 자체를 알아본다기보다,
+  // "그렇게 뒤집을 용기조차 없었다"는 자기 회한 쪽으로 반응하게 해서
+  // 왕자/거래의 구체적 내용은 여전히 직접 언급하지 않는다(story.md 8장
+  // 간접 서술 원칙 유지). 역병숙주-시조 조우와 마찬가지로 isTrueFinal
+  // 전투는 런당 1회뿐이라 별도 확률 없이 항상 발동한다.
+  function maybeShowReverseCrownProgenitorDialogue(isTrueFinal){
+    if(!isTrueFinal || enemy.type !== 'progenitor') return false;
+    if(!(player.relics||[]).includes('relic_reversecrown')) return false;
+    showToast(
+      `<h3>${enemy.name}</h3><p>시조의 시선이, 그대가 지닌 무언가에 오래 머문다.<br>"...거꾸로 된 왕관이라." 낡은 왕관 아래로, 씁쓸한 웃음이 스친다. "나였다면, 그렇게 뒤집을 용기조차 없었겠지."</p>`,
+      '#c9a86a'
+    );
+    return true;
+  }
+
   // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 아이온 조우 > 역병숙주-시조
-  // 조우(둘 다 isTrueFinal 전용, enemy.type으로 상호배타적) > 거울 보스 > 아이온
-  // 공명 > 회랑의 기사/시간술사 > 유품 착용자 > 엿듣기 > 마녀의 시계.
+  // 조우 > 거꾸로 된 왕관-시조 조우(셋 다 isTrueFinal 전용, enemy.type/보유
+  // 유물로 상호배타적) > 거울 보스 > 아이온 공명 > 회랑의 기사/시간술사 >
+  // 유품 착용자 > 엿듣기 > 마녀의 시계.
   function maybeShowSpecialEncounterDialogue(isBoss, isFinal, isTrueFinal){
     if(maybeShowAionEncounterDialogue(isTrueFinal)) return;
     if(maybeShowPlagueHostProgenitorDialogue(isTrueFinal)) return;
+    if(maybeShowReverseCrownProgenitorDialogue(isTrueFinal)) return;
     if(maybeShowMirrorBossDialogue(isFinal, isTrueFinal)) return;
     if(maybeShowAionResonanceDialogue()) return;
     if(maybeShowCorridorEncounterDialogue()) return;
