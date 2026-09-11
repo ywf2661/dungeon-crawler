@@ -1631,6 +1631,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.pressure = Math.min(getPressureCap(), pressure + (typeof getPressureGainUsed==='function' ? getPressureGainUsed(s) : s.pressureGainOnUse));
       applyOverheatOverflowDamage(battleFlags.pressure);
       if(typeof updatePressureGauge==='function') updatePressureGauge();
+      // VFX(방향 2 — 게이지 오버로드형, 사용자 기획): 새 이미지 리소스 없이
+      // 압력 게이지 자체가 발동 순간 확 밝아졌다 가라앉는 스파이크로 "압력을
+      // 그 자리에서 터뜨렸다"는 느낌을 준다. 게이지가 갱신된 다음(위 라인)에
+      // 호출해야 최신 수치 위에서 스파이크가 재생된다.
+      if(typeof flashPressureGaugeSpike==='function') flashPressureGaugeSpike();
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, `압력 ${pressure}을(를) 그대로 유지한 채 ${dmg}의 피해를 입혔다! 오히려 압력이 ${battleFlags.pressure}까지 더 쌓였다.`);
       if(checkBattleEnd()) return;

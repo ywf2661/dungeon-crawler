@@ -385,6 +385,10 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       sealEl.style.display = seals>0 ? 'block' : 'none';
       sealEl.textContent = '🔱 '+seals;
     }
+    // 역병숙주 전용 화면 전체 스모그(사용자 요청) — 잠식 스택 비율에 비례해
+    // 초록빛 비네트가 짙어진다. renderStatus()는 venomStacks가 바뀌는 모든
+    // 지점 직후에 이미 호출되고 있어 별도 훅 없이 여기 한 곳만 고치면 된다.
+    if(typeof updateVenomSmog==='function') updateVenomSmog();
   }
 
   function currentLocation(){

@@ -328,6 +328,10 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(typeof checkBattleEnd==='function') checkBattleEnd();
   }
   // 압력 게이지 UI(사용자 요청) — 메카닉일 때만 rig 슬롯 근처에 작은 계기판으로 표시.
+  // 버그 수정(사용자 제보) — 폭주 압력(mastery_overheat) 보유 시 실제 상한은
+  // 150인데 게이지 표시는 항상 "/100"으로 고정돼 있어 헷갈렸다. 이제 실제
+  // 상한(getPressureCap())을 그대로 분모로 쓰고, 100 지점엔 항상 붉은 경계선을
+  // 그어서 "여기부터는 초과분(자해+보너스) 구간"이라는 걸 시각적으로 구분한다.
   function updatePressureGauge(){
     const el = document.getElementById('bt-pressure');
     if(!el) return;
@@ -335,9 +339,44 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     // 다른 메카닉 특성과 달리 이 계기판 자체를 숨긴다.
     if(!player || player.job!=='mechanic' || player.specialization==='mechanic_accumulator' || !isBattleActive()){ el.style.display='none'; return; }
     const p = (battleFlags && battleFlags.pressure) || 0;
+    const cap = (typeof getPressureCap==='function') ? getPressureCap() : 100;
     el.style.display = 'block';
-    el.textContent = `🔥 압력 ${p}/100`;
+    const label = document.getElementById('bt-pressure-label');
+    const fill = document.getElementById('bt-pressure-fill');
+    const mark = document.getElementById('bt-pressure-mark');
+    if(label) label.textContent = `🔥 압력 ${p}/${cap}`;
+    if(fill) fill.style.width = Math.min(100, Math.round(p/cap*100)) + '%';
+    if(mark){
+      if(cap>100){ mark.style.display='block'; mark.style.left = Math.round(100/cap*100) + '%'; }
+      else mark.style.display = 'none';
+    }
     el.classList.toggle('pressure-high', p>=70);
+  }
+  // 폭주 사출(mechanicOverloadDischarge) 전용 스파이크 연출 — 게이지가 순간
+  // 확 밝아졌다 가라앉는다. combat/player-actions.js의 pressuresurge 핸들러가
+  // 데미지 적용 직후 호출한다.
+  function flashPressureGaugeSpike(){
+    const el = document.getElementById('bt-pressure');
+    if(!el) return;
+    el.classList.remove('pressure-spike'); void el.offsetWidth; el.classList.add('pressure-spike');
+  }
+
+  // 역병숙주 전용 화면 전체 스모그(사용자 요청) — 잠식 스택(enemy.venomStacks)이
+  // 상한(getVenomStackCap())에 가까워질수록 초록빛 비네트가 짙어진다.
+  // renderStatus()(explore.js)가 상태 갱신 때마다 호출해준다. 최대치에서도
+  // 불투명도 0.55로 캡을 걸어 텍스트 가독성을 해치지 않는 "은은한" 수준을
+  // 유지한다(사용자 표현 그대로).
+  function updateVenomSmog(){
+    const el = document.getElementById('bt-venom-smog');
+    if(!el) return;
+    if(!player || player.specialization!=='rogue_alchemist' || !isBattleActive() || !enemy){
+      el.style.setProperty('--smog-opacity', 0);
+      return;
+    }
+    const cap = (typeof getVenomStackCap==='function') ? getVenomStackCap() : 10;
+    const stacks = enemy.venomStacks||0;
+    const ratio = cap>0 ? Math.min(1, stacks/cap) : 0;
+    el.style.setProperty('--smog-opacity', (ratio*0.55).toFixed(2));
   }
 
   function updateRigVisuals(){
@@ -629,8 +668,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       const sk = SKILLDB[k];
       const tier = getSkillTier(k);
       const borderColor = tier===1 ? '#5a7a9c' : (tier===2 ? 'var(--violet)' : '#3a2c1c');
+      // 패시브/액티브 구분(사용자 요청) — 1각/2각 구분은 이미 테두리 색으로
+      // 쓰고 있어서, 여기에 또 색을 얹으면 두 구분이 헷갈린다. 대신 아이콘 +
+      // 옅은 배경의 텍스트 태그로 구분해 색상 축과 완전히 분리했다.
+      const isPassive = sk.type==='passive';
+      const kindTag = isPassive
+        ? `<span class="skill-kind-tag passive">⚙ 패시브</span>`
+        : `<span class="skill-kind-tag active">⚔ 액티브</span>`;
       return `<div class="shop-item" style="border-left:3px solid ${borderColor}; padding-left:8px;">
-        <span class="si-info"><span class="si-name"><b>${sk.name}</b></span><br>
+        <span class="si-info"><span class="si-name"><b>${sk.name}</b></span> ${kindTag}<br>
         <span style="font-size:12px; color:var(--parchment-dim);">${sk.desc||''}</span></span>
       </div>`;
     }).join('');

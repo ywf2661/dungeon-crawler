@@ -555,15 +555,73 @@
     border-color:#ff4a3a; color:#ffb3a8; background:#2a0f0dd0;
     box-shadow:0 0 10px #ff4a3a55; animation:elitepulse 1s ease-in-out infinite;
   }
+  /* 스킬 목록 패시브/액티브 구분(사용자 요청) — 1각/2각 테두리 색과
+     완전히 분리된, 아이콘+무채색 태그 방식. 두 축(전직 단계 / 종류)이
+     서로 다른 시각 언어를 쓰도록 의도적으로 색을 안 썼다. */
+  .skill-kind-tag{
+    display:inline-block; font-size:10px; letter-spacing:.02em;
+    padding:1px 6px; border-radius:8px; vertical-align:middle;
+    background:#00000055; border:1px solid #6b5c42; color:var(--parchment-dim);
+  }
+  .skill-kind-tag.active{ border-style:solid; }
+  .skill-kind-tag.passive{ border-style:dashed; }
+
+  /* 역병숙주 전용 화면 전체 스모그(사용자 요청) — 잠식 스택 수에 비례해
+     JS(updateVenomSmog())가 --smog-opacity 변수만 갱신한다. 실제 색/그라디언트는
+     여기서 한 번만 정의. 중앙은 옅게, 가장자리로 갈수록 짙어지는 비네트
+     형태라 화면 중앙(전투 텍스트)의 가독성은 유지된다. */
+  .screen-smog{
+    position:fixed; inset:0; pointer-events:none; z-index:3;
+    background: radial-gradient(ellipse at center, rgba(60,150,70,0) 30%, rgba(40,120,60,var(--smog-opacity,0)) 100%);
+    transition: background .6s ease-out;
+  }
+
   .pressure-gauge{
-    margin:4px auto 0; max-width:180px; padding:4px 10px; border-radius:6px;
-    text-align:center; font-family:var(--font-ui); font-size:11px; letter-spacing:.03em;
+    margin:4px auto 0; max-width:180px; padding:4px 8px 6px; border-radius:6px;
+    font-family:var(--font-ui); font-size:11px; letter-spacing:.03em;
     background:#1a130cd0; border:1px solid #8a6f3f; color:#ffcf6a;
     position:relative; z-index:4;
+  }
+  .pressure-gauge-label{ text-align:center; margin-bottom:3px; }
+  .pressure-gauge-track{
+    position:relative; height:6px; border-radius:3px; background:#00000099;
+    border:1px solid #5a4726; overflow:visible;
+  }
+  .pressure-gauge-fill{
+    height:100%; border-radius:3px 0 0 3px;
+    background:linear-gradient(90deg,#ffcf6a,#ff8a3a);
+    width:0%; transition: width .25s ease-out;
+  }
+  .pressure-gauge-mark{
+    position:absolute; top:-2px; bottom:-2px; width:2px; background:#ff4a3a;
+    box-shadow:0 0 4px #ff4a3a; display:none;
   }
   .pressure-gauge.pressure-high{
     border-color:#ff8a3a; color:#ffb15a; box-shadow:0 0 8px #ff8a3a66;
     animation:elitepulse 1.2s ease-in-out infinite;
+  }
+  .pressure-gauge.pressure-high .pressure-gauge-fill{
+    background:linear-gradient(90deg,#ff8a3a,#ff4a3a);
+    box-shadow:0 0 8px #ff8a3a99;
+  }
+  /* 폭주 사출 VFX(방향 2 — 게이지 오버로드형, 사용자 요청): 새 이미지 리소스
+     없이, 기존 압력 게이지가 발동 순간 확 밝아졌다 가라앉는 스파이크만으로
+     "압력을 그 자리에서 터뜨렸다"는 느낌을 준다. */
+  @keyframes pressurespike{
+    0%{ filter:brightness(1); }
+    25%{ filter:brightness(2.4) saturate(1.4); }
+    100%{ filter:brightness(1); }
+  }
+  .pressure-gauge.pressure-spike{
+    animation: pressurespikeglow .5s ease-out;
+  }
+  @keyframes pressurespikeglow{
+    0%{ box-shadow:0 0 0px #fff2c0; }
+    25%{ box-shadow:0 0 16px #fff2c0; }
+    100%{ box-shadow:0 0 0px #fff2c000; }
+  }
+  .pressure-gauge.pressure-spike .pressure-gauge-fill{
+    animation: pressurespike .5s ease-out;
   }
 
   .cast-burst{
@@ -1076,13 +1134,23 @@
 
   <!-- BATTLE -->
   <div id="screen-battle" class="screen">
+    <!-- 역병숙주 전용 화면 전체 스모그(사용자 요청) — 잠식 스택이 쌓일수록
+         초록빛이 은은히 짙어진다. position:fixed라 부모 포지셔닝과 무관하게
+         항상 화면 전체를 덮으며, pointer-events:none이라 조작을 막지 않는다. -->
+    <div class="screen-smog" id="bt-venom-smog"></div>
     <div class="archway">
       <div class="torch-side left"><div class="flame" style="transform:scale(0.85);"></div></div>
       <div class="torch-side right"><div class="flame" style="transform:scale(0.85); animation-delay:.6s;"></div></div>
       <div class="enemy-name-bar">
         <div class="ename" id="bt-ename">???</div>
         <div class="enemy-hp-outer"><div class="enemy-hp-inner" id="bt-ehp-bar" style="width:100%;"></div></div>
-        <div class="pressure-gauge" id="bt-pressure" style="display:none;"></div>
+        <div class="pressure-gauge" id="bt-pressure" style="display:none;">
+          <div class="pressure-gauge-label" id="bt-pressure-label"></div>
+          <div class="pressure-gauge-track">
+            <div class="pressure-gauge-fill" id="bt-pressure-fill"></div>
+            <div class="pressure-gauge-mark" id="bt-pressure-mark"></div>
+          </div>
+        </div>
       </div>
       <div class="boss-intent-card" id="bt-boss-intent" style="display:none;"></div>
       <div class="enemy-stage" id="bt-stage"></div>
