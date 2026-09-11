@@ -61,6 +61,12 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     // 뜬다(combat/battle-setup.js의 maybeShowWoodenHorseRecognitionDialogue()).
     r_woodenhorse: {name:'낡은 목마 인형', slot:'accessory', desc:'귀퉁이가 닳은 나무 목마. 누군가 오랫동안 아껴 만지던 흔적이 손잡이 부분에 유난히 진하게 남아 있다.',
       stats:{maxhp:15, spd:2},            minDepth:20, rare:true},
+    // 물음표 이벤트 "부서진 톱니 장신구"(events.js) 전용 확정 지급 아이템
+    // (사용자 기획 — 아이온 파편 시리즈, 마녀의 시계 보유자에게만 이벤트
+    // 풀이 열림). 착용 중 아이온(진 최종보스)과 조우하면 전용 1회성 대사가
+    // 뜬다(combat/battle-setup.js의 maybeShowGearShardRecognitionDialogue()).
+    r_gearshard: {name:'부서진 톱니 장신구', slot:'accessory', desc:'금이 간 톱니바퀴 조각. 손에 쥐면 아주 낮은 울림이 느껴지는 것도 같다.',
+      stats:{maxmp:10, mag:3},             minDepth:1,  rare:true},
     r_guardiancharm: {name:'수호자의 부적',   slot:'accessory', desc:'고대 수호자의 힘이 깃든 부적. ✦특성: 전투 중 한 번, 치명적인 공격을 완전히 막아낸다.',
       stats:{def:6, maxhp:10},            minDepth:5,  rare:true, special:{guardianShield:true}},
     r_luckyclover:   {name:'행운의 네잎클로버', slot:'accessory', desc:'우연히 발견한 네 개의 잎. 행운을 가져다준다는 소문이 있다. ✦특성: 희귀 아이템 발견 확률과 획득 골드가 늘어난다.',

@@ -33,7 +33,12 @@ export(전역): showMysteryEvent
       showLostWalletEvent, showMysteriousMageEvent, showInjuredAdventurerEvent, showSealedDoorEvent,
       showBloodThirstyStatueEvent, showDevilsDiceEvent, showFrozenClockmakerEvent,
       showAchosTombstoneEvent, showScratchedPortraitEvent, showPlagueDiaryEvent,
+      showGatekeeperLogEvent, showBrokenArmorStandEvent,
+      showTailorWorkshopEvent, showArchivistNoteEvent, showDiggerToolboxEvent, showJesterPropsEvent,
     ];
+    // "부서진 톱니 장신구"(아이온 파편)는 마녀의 시계 보유자에게만 이벤트
+    // 풀이 열린다(멈춘 시계공방과 같은 게이트, 사용자 기획).
+    if((player.relics||[]).includes('relic_witchclock')) handlers.push(showGearShardEvent);
     // "그때 그 모험가"(재회)는 이전에 부상당한 모험가를 도와준 적이 있을 때만
     // 이벤트 풀에 포함된다 — 안 만난 적 없는 상태에서 재회가 뜨면 앞뒤가 안
     // 맞기 때문에, 이 조건만은 균등 확률 원칙의 예외로 둔다.
@@ -1098,6 +1103,296 @@ export(전역): showMysteryEvent
       player.nurseryEventSeen = true;
       addLog('왠지 더 들여다봐선 안 될 것 같아, 문을 조용히 닫았다.');
       saveGame();
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 31) 닫히지 않는 문 — 문지기(오프닝 origin.js) = 아이온 반전 회수 1단계
+  // (사용자 기획, story.md 9장 최우선 미회수 떡밥). 정체를 밝히지 않고,
+  // 오프닝 마지막 대사("...들어가라. 문은 닫히지 않는다")의 잔향만 남긴다.
+  // "손님"이라는 단어를 역병 시절의 일기장("낯선 손님")과 그대로 이어서
+  // 두 이벤트가 은근히 연결되게 했다. 직업 무관, 일반 이벤트 풀에 포함.
+  function showGatekeeperLogEvent(){
+    const {overlay, panel} = eventOverlay('닫히지 않는 문',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        문지기의 근무일지, 마지막 장만 겨우 남아 있다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-read">근무일지를 읽는다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-take">낡은 종이를 챙긴다 (골드 획득, 대신 다음 전투에서 저주)</button>
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    panel.querySelector('#me-read').addEventListener('click', ()=>{
+      overlay.remove();
+      showDialogueSequence([
+        '"오늘도 그 자리에 서 계셨다. 시계를 만지작거리시며."',
+        '"몇 년째 한 발짝도 움직이지 않으신다. 마치... 누군가를 기다리듯."',
+        '"...설마, 처음 들어왔던 그 손님이신가?"',
+        '그 뒤로는 몇 글자가 젖어 번져 있어, 더는 알아볼 수 없다.',
+      ], {onDone: ()=>{
+        const expGain = 12 + depth*3;
+        const leveled = grantExp(expGain);
+        renderStatus();
+        addLog(`오래된 근무일지를 끝까지 읽었다. (EXP +${expGain})`, 'gold');
+        saveGame();
+        if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      const g = 20 + Math.floor(Math.random()*20) + depth*3;
+      player.gold += g;
+      applyNextBattleCurse();
+      renderStatus();
+      addLog(`낡은 종이를 챙겼다. 골드 +${g}G. 괜히 뒤가 서늘하다(다음 전투 받는 피해 +15%).`, 'warn');
+      saveGame();
+      closeMysteryEvent(overlay);
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('일지를 도로 덮어두고 지나쳤다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 32) 부서진 갑주 걸이 — 아코스 쪽 떡밥 보강(사용자 기획, 왕자 떡밥
+  // 3단계 세트와 균형을 맞춤). 안전 선택지는 EXP, 위험 선택지는 골드
+  // 대신 영구 방어력 소량(낡은 서고와 같은 "직접 이어받는다"는 결).
+  // 회랑의 기사(칼리버X 소지)면 검이 반응하는 전용 문구가 덧붙는다.
+  function showBrokenArmorStandEvent(){
+    const {overlay, panel} = eventOverlay('부서진 갑주 걸이',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        녹슨 갑주 걸이 하나가 덩그러니 놓여 있다. 걸쳐 있어야 할 것은 보이지 않는다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-inspect">걸이를 살펴본다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-take">글귀를 옮겨 새긴다 (영구 방어력 소량 획득)</button>
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    panel.querySelector('#me-inspect').addEventListener('click', ()=>{
+      overlay.remove();
+      showDialogueSequence([
+        '걸이 아래, 벽에 짧은 글귀가 새겨져 있다 — "그가 돌아오면, 이 자리에."',
+        '다른 손으로 몇 번이고 덧새겨진 흔적이 있다. 다른 사람들이, 계속 이어 새긴 것처럼.',
+        '가장 최근 것으로 보이는 한 줄은 유독 힘없이 그어져 있다 — "...이제는, 나도 잘 모르겠다."',
+      ], {onDone: ()=>{
+        const expGain = 12 + depth*3;
+        const leveled = grantExp(expGain);
+        renderStatus();
+        addLog(`오래도록 걸이를 바라봤다. (EXP +${expGain})`, 'gold');
+        saveGame();
+        if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      overlay.remove();
+      const d = Math.max(1, Math.round(player.def*0.05)) + 2;
+      player.def += d;
+      const isKnight = player.specialization === 'paladin_knight';
+      const lines = ['글귀를 손끝으로 옮겨, 그대로 새겨 넣는다.'];
+      if(isKnight) lines.push('칼리버 X가 아주 잠깐, 손안에서 미세하게 떨린다.');
+      showDialogueSequence(lines, {onDone: ()=>{
+        renderStatus();
+        addLog(`걸이의 글귀를 이어 새겼다. 방어력 +${d} (영구)`, 'gold');
+        saveGame();
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('걸이를 뒤로하고 지나쳤다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 33) 부서진 톱니 장신구 — 아이온 파편 시리즈(사용자 기획). 마녀의 시계
+  // 보유자에게만 이벤트 풀이 열린다(멈춘 시계공방과 같은 게이트 —
+  // showMysteryEvent 참고). 보상은 신규 장신구(r_gearshard) 확정 지급이며,
+  // 착용 중 아이온과 조우하면 전용 1회성 대사가 뜬다
+  // (combat/battle-setup.js의 maybeShowAionEncounterDialogue).
+  function showGearShardEvent(){
+    const {overlay, panel} = eventOverlay('부서진 톱니 장신구',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        부서진 톱니 장신구 하나가 바닥에 떨어져 있다. 손에 쥐자, 낮은 울림이 귓가에 스친다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-take">장신구를 쥔다</button>
+        <button class="btn" id="me-skip">그냥 둔다</button>
+      </div>`);
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      overlay.remove();
+      const already = player.equipOwned.includes('r_gearshard');
+      if(!already) player.equipOwned.push('r_gearshard');
+      showDialogueSequence([
+        '"...멈추면, 더는 아무도 잃지 않아도 된다."',
+        '"...그런데 왜, 이렇게 아플까."',
+        '울림은 그것으로 끝이다. 장신구는 다시 그저 차가운 쇳조각일 뿐이다.',
+      ], {onDone: ()=>{
+        renderStatus();
+        addLog(already ? '부서진 톱니 장신구를 다시 손에 쥐었다.' : '부서진 톱니 장신구를 손에 넣었다.', 'gold');
+        saveGame();
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('장신구를 그대로 두고 지나쳤다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 34~37) "회랑의 ○○" 중 아직 물음표 이벤트로 조명되지 않은 4종(재단사/
+  // 금서/굴착꾼/어릿광대) 소규모 조명(사용자 기획 — 물량 확보, 낮은 개발
+  // 비용). 전부 기존 스토리 이벤트와 동일한 템플릿(안전=EXP, 위험=골드+
+  // 저주, 지나간다)이며, 특정 몬스터 조우와는 무관하게 등장한다.
+  function showTailorWorkshopEvent(){
+    const {overlay, panel} = eventOverlay('재단사의 공방',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        손대지 않은 옷감 두루마리가 펼쳐진 채다. 마름질선이 반쯤 그려지다 만 채로 멈춰 있다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-inspect">공방을 살펴본다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-take">가위를 챙긴다 (골드 획득, 대신 다음 전투에서 저주)</button>
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    panel.querySelector('#me-inspect').addEventListener('click', ()=>{
+      overlay.remove();
+      showDialogueSequence([
+        '가위 옆에, 완성 못한 단추 하나가 놓여 있다.',
+      ], {onDone: ()=>{
+        const expGain = 10 + depth*3;
+        const leveled = grantExp(expGain);
+        renderStatus();
+        addLog(`공방을 한참 둘러봤다. (EXP +${expGain})`, 'gold');
+        saveGame();
+        if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      const g = 20 + Math.floor(Math.random()*20) + depth*3;
+      player.gold += g;
+      applyNextBattleCurse();
+      renderStatus();
+      addLog(`가위를 챙겼다. 골드 +${g}G. 괜히 뒤가 서늘하다(다음 전투 받는 피해 +15%).`, 'warn');
+      saveGame();
+      closeMysteryEvent(overlay);
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('공방을 뒤로하고 지나쳤다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+  function showArchivistNoteEvent(){
+    const {overlay, panel} = eventOverlay('서고지기의 마지막 메모',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        책갈피 사이, 접힌 메모 한 장이 끼워져 있다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-inspect">메모를 읽는다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-take">책을 챙긴다 (골드 획득, 대신 다음 전투에서 저주)</button>
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    panel.querySelector('#me-inspect').addEventListener('click', ()=>{
+      overlay.remove();
+      showDialogueSequence([
+        '"이름을 남기지 않는 자에 대해 더 알아내야 한다."',
+        '그 아래, \'위험하다\'는 한 단어만 다급하게 덧붙여져 있다.',
+      ], {onDone: ()=>{
+        const expGain = 10 + depth*3;
+        const leveled = grantExp(expGain);
+        renderStatus();
+        addLog(`메모를 끝까지 읽었다. (EXP +${expGain})`, 'gold');
+        saveGame();
+        if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      const g = 20 + Math.floor(Math.random()*20) + depth*3;
+      player.gold += g;
+      applyNextBattleCurse();
+      renderStatus();
+      addLog(`책을 챙겼다. 골드 +${g}G. 괜히 뒤가 서늘하다(다음 전투 받는 피해 +15%).`, 'warn');
+      saveGame();
+      closeMysteryEvent(overlay);
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('메모를 도로 끼워두고 지나쳤다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+  function showDiggerToolboxEvent(){
+    const {overlay, panel} = eventOverlay('굴착꾼의 공구함',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        녹슨 곡괭이와 함께, 성벽 보수 도면 한 장이 접혀 있다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-inspect">도면을 살펴본다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-take">공구를 챙긴다 (골드 획득, 대신 다음 전투에서 저주)</button>
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    panel.querySelector('#me-inspect').addEventListener('click', ()=>{
+      overlay.remove();
+      showDialogueSequence([
+        '도면 귀퉁이에 작은 글씨로 — "이걸로 충분할까."',
+      ], {onDone: ()=>{
+        const expGain = 10 + depth*3;
+        const leveled = grantExp(expGain);
+        renderStatus();
+        addLog(`도면을 한참 들여다봤다. (EXP +${expGain})`, 'gold');
+        saveGame();
+        if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      const g = 20 + Math.floor(Math.random()*20) + depth*3;
+      player.gold += g;
+      applyNextBattleCurse();
+      renderStatus();
+      addLog(`공구를 챙겼다. 골드 +${g}G. 괜히 뒤가 서늘하다(다음 전투 받는 피해 +15%).`, 'warn');
+      saveGame();
+      closeMysteryEvent(overlay);
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('공구함을 뒤로하고 지나쳤다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+  function showJesterPropsEvent(){
+    const {overlay, panel} = eventOverlay('광대의 소품함',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        낡은 가면과 리본들 사이, 마지막 공연 순서표가 남아 있다.
+      </p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-inspect">순서표를 살펴본다 (안전, 소량 경험치)</button>
+        <button class="btn" id="me-take">가면을 챙긴다 (골드 획득, 대신 다음 전투에서 저주)</button>
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    panel.querySelector('#me-inspect').addEventListener('click', ()=>{
+      overlay.remove();
+      showDialogueSequence([
+        '맨 마지막 줄, \'앙코르\'라고 적혀 있던 자리가 지워지고 물음표로 바뀌어 있다.',
+      ], {onDone: ()=>{
+        const expGain = 10 + depth*3;
+        const leveled = grantExp(expGain);
+        renderStatus();
+        addLog(`순서표를 한참 들여다봤다. (EXP +${expGain})`, 'gold');
+        saveGame();
+        if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
+        renderExplore([]);
+      }});
+    });
+    panel.querySelector('#me-take').addEventListener('click', ()=>{
+      const g = 20 + Math.floor(Math.random()*20) + depth*3;
+      player.gold += g;
+      applyNextBattleCurse();
+      renderStatus();
+      addLog(`가면을 챙겼다. 골드 +${g}G. 괜히 뒤가 서늘하다(다음 전투 받는 피해 +15%).`, 'warn');
+      saveGame();
+      closeMysteryEvent(overlay);
+    });
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog('소품함을 뒤로하고 지나쳤다.');
       closeMysteryEvent(overlay);
     });
   }

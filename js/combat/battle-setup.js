@@ -656,6 +656,16 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       showDialogueSequence(AION_KEEPSAKE_LINE, {title: enemy.name, tone:'grand'});
       return true;
     }
+    // 부서진 톱니 장신구(r_gearshard, 물음표 이벤트 전용 — 아이온 파편
+    // 시리즈): 아코스의 유품과 같은 위치지만, 아이온 "본인"의 파편이라는
+    // 점에서 각도가 다르다(그녀가 직접 자신의 파편을 알아보는 순간).
+    if(player.equipment && player.equipment.accessory === 'r_gearshard'){
+      showDialogueSequence(
+        ['그녀의 시선이 그대의 손끝에 머문다 — 낯익은, 아니 낯익다 못해 아려오는 무언가.', '"...그건, 내게서 떨어져 나간 조각이다." 목소리가 잠시 흔들린다. "어떻게, 여기까지 흘러왔을까."'],
+        {title: enemy.name, tone:'grand'}
+      );
+      return true;
+    }
     return false;
   }
 
