@@ -53,19 +53,33 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 단순화했다)를 전부 반영한 최종 공격력.
   function getEffectiveEnemyAtk(){
     let a = enemy.atk;
+    // 정예 버스트 특성 체감 감쇠 스택(사용자 기획 — "영리한 상한" 방식2).
+    // 예전엔 광폭/사냥꾼/복수/광기가 전부 곱연산으로 쌓여서, 최악의 3특성
+    // 조합(예: 광기+광폭+사냥꾼)이 겹치면 지나치게 세졌다(×2.7 수준). 이제
+    // 발동한 보너스들을 큰 순서대로 정렬해, 1번째는 100%, 2번째는 70%,
+    // 3번째부턴 50%만 반영하는 합연산으로 바꿨다 — 특성 하나만 있을 때의
+    // 위력은 그대로 유지되고, 여러 개가 동시에 터지는 최악의 순간만
+    // 완화된다(3특성 최악 조합 기준 ×2.7 → ×1.96로 완화).
+    const burstBonuses = [];
     if(hasEliteTrait('berserk') && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5){
-      a = Math.round(a*1.3);
+      burstBonuses.push(0.3);
     }
     if(hasEliteTrait('hunter') && player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
-      a = Math.round(a*1.3);
+      burstBonuses.push(0.3);
     }
     if(hasEliteTrait('revenge') && enemy.revengeArmed){
-      a = Math.round(a*1.3);
+      burstBonuses.push(0.3);
       enemy.revengeArmed = false;
     }
     if(hasEliteTrait('madness')){
       enemy.madnessTurn = (enemy.madnessTurn||0) + 1;
-      if(enemy.madnessTurn % 3 === 0) a = Math.round(a*1.6);
+      if(enemy.madnessTurn % 3 === 0) burstBonuses.push(0.6);
+    }
+    if(burstBonuses.length){
+      const DIMINISH_WEIGHTS = [1, 0.7, 0.5, 0.5];
+      burstBonuses.sort((x,y)=>y-x);
+      const totalBonus = burstBonuses.reduce((sum, b, i)=> sum + b*DIMINISH_WEIGHTS[Math.min(i, DIMINISH_WEIGHTS.length-1)], 0);
+      a = Math.round(a*(1+totalBonus));
     }
     // 역병숙주(mastery_venomstacks) 마스터리 "역병 잠식": 잠식 스택 1개당
     // 적 공격력 2% 감소(최대 10스택 -20%). data/equipment.js의

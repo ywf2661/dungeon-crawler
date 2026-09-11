@@ -160,6 +160,14 @@
   아직 개발 안 함
 - 변경 파일: `combat/enemy-turn.js`, `combat/battle-setup.js`, `combat/battle-fx.js`, `combat/player-actions.js`, `explore.js`
 
+### 18. 정예 버스트 특성 곱연산 상한 — 방식2(체감 감쇠) 구현
+- 이전 세션에 "킵"해둔 4번안을 방식2(체감 감쇠)로 확정 개발
+- 광폭/사냥꾼/복수/광기 중 여러 개가 같은 턴에 동시 발동해도, 예전처럼
+  전부 곱연산으로 쌓이지 않고 배율이 큰 순서대로 100%/70%/50%만 반영하는
+  합연산으로 변경 — 단일 특성 위력은 그대로, 최악의 조합만 완화
+  (3특성 최악 기준 ×2.7 → ×1.96, 2특성 최악 기준 ×2.08 → ×1.81)
+- 변경 파일: `combat/enemy-turn.js`(`getEffectiveEnemyAtk()`)
+
 ## 최근 검증 상태
 
 - 위 1~5 전부 `node --check` 통과.
