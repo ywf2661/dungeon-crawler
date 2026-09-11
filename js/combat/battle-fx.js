@@ -82,6 +82,17 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       // 발동한다(20% 확률로 반동 피해도 함께). cooldownTickPending과 동일한
       // "정확히 1번만" 보장 지점을 그대로 재사용한다.
       if(typeof checkMechanicOverheat==='function') checkMechanicOverheat();
+      // 정예 특성 "광기" 예고(사용자 기획 — 정예 대비 체감 개선 세트 A안).
+      // 광기는 3턴 주기 고정이라 완전히 예측 가능하다. 방금 적 턴이 끝난
+      // 시점(enemy.madnessTurn은 이미 이번에 나간 턴까지 반영됨)에서, 다음
+      // 적 턴이 발동 턴인지 미리 계산해 경고한다 — 포션을 "맞은 뒤"가 아니라
+      // "맞기 전"에 마실 여지를 준다.
+      if(enemy && enemy.eliteTraits && enemy.eliteTraits.includes('madness') && !battleOver){
+        const nextMadnessTurn = (enemy.madnessTurn||0) + 1;
+        if(nextMadnessTurn % 3 === 0){
+          showToast(`<h3>⚠ 위험 감지</h3><p>${enemy.name}이(가) 강한 기세를 모으고 있다... 다음 공격이 훨씬 강력할 것이다.</p>`, '#ff4a3a');
+        }
+      }
     }
   }
   function setCommandsEnabled(en){
@@ -452,6 +463,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       const b = document.createElement('div');
       b.className = 'status-badge venom-stack';
       b.textContent = `☠ 역병중첩 ${enemy.venomStacks}/10`;
+      box.appendChild(b);
+    }
+    // 정예 특성 "복수" 상태 뱃지(사용자 기획 — 정예 대비 체감 개선 세트
+    // C안). 예고라기보단 "내가 방금 뭘 건드렸는지"를 명확히 보여주는 쪽 —
+    // revengeArmed는 enemy-turn.js의 handleEliteOnHitTraits()가 내가 공격을
+    // 적중시킬 때마다 세우고, getEffectiveEnemyAtk()가 다음 적 턴에 소비한다.
+    if(enemy && enemy.revengeArmed){
+      const b = document.createElement('div');
+      b.className = 'status-badge expose';
+      b.textContent = '⚡ 복수 태세 — 다음 피격 강화';
       box.appendChild(b);
     }
   }

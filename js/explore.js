@@ -358,6 +358,22 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     // 안의 여러 회복 적용 지점을 전부 손대는 대신, HP가 증가할 때마다 항상
     // 뒤이어 호출되는 이 함수에서 델타를 감지해 사후에 일부를 되돌린다.
     const curseHealPenalty = (isBattleActive() && enemy && enemy.eliteTraits && enemy.eliteTraits.includes('curse')) ? 0.3 : 0;
+    // 정예 특성 "사냥꾼"/"광폭" 즉시 알림(사용자 기획 — 정예 대비 체감 개선
+    // 세트 B안). 발동 시점을 1턴 전에 예고하긴 불가능하지만(적 다음 공격력을
+    // 미리 알 방법이 없음), 최소한 "지금부터 위험 배율이 걸렸다"는 걸
+    // 조용히 넘기지 않고 명시적으로 알려준다. 전투당 1회만(battleFlags 플래그).
+    if(isBattleActive() && enemy && enemy.eliteTraits && battleFlags){
+      if(enemy.eliteTraits.includes('hunter') && !battleFlags.hunterWarned
+         && player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
+        battleFlags.hunterWarned = true;
+        if(typeof showToast==='function') showToast(`<h3>⚠ 위험 감지</h3><p>HP가 위험 수위로 떨어져 ${enemy.name}의 사냥꾼 표적이 되었다! 받는 피해가 늘어난다.</p>`, '#ff4a3a');
+      }
+      if(enemy.eliteTraits.includes('berserk') && !battleFlags.berserkWarned
+         && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5){
+        battleFlags.berserkWarned = true;
+        if(typeof showToast==='function') showToast(`<h3>⚠ 위험 감지</h3><p>${enemy.name}이(가) 이성을 잃기 시작한다! 공격력이 오른다.</p>`, '#ff8a3a');
+      }
+    }
     const equipHealPenalty = typeof getSpecialSum==='function' ? getSpecialSum('healPenaltyPct') : 0;
     const totalHealPenalty = Math.min(0.9, curseHealPenalty + equipHealPenalty);
     if(totalHealPenalty>0 && typeof player._prevHpForCurse==='number' && player.hp > player._prevHpForCurse){

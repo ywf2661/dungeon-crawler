@@ -151,16 +151,16 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   const ELITE_TRAITS = {
     berserk:   {label:'광폭',     desc:'HP 50% 이하일 때 공격력 +30%'},
     lifesteal: {label:'흡혈',     desc:'가한 피해의 20% 회복'},
-    ironskin:  {label:'철갑',     desc:'첫 2턴 받는 피해 -40%'},
+    ironskin:  {label:'철갑',     desc:'첫 1턴 받는 피해 -40%'},
     revenge:   {label:'복수',     desc:'피격 시 다음 공격 +30%'},
     regen:     {label:'재생',     desc:'매 턴 최대HP 4% 회복'},
     undying:   {label:'불사',     desc:'사망 시 1회, HP 25%로 부활'},
     curse:     {label:'저주',     desc:'플레이어가 받는 회복 효과 -30%'},
     madness:   {label:'광기',     desc:'3턴마다 한 번, 그 턴 공격력이 크게 오른다'},
     poison:    {label:'독성',     desc:'공격이 적중하면 중독(3턴) 부여'},
-    reflect:   {label:'반사',     desc:'받는 피해의 15%를 플레이어에게 반사'},
-    manaburn:  {label:'마나포식', desc:'플레이어가 스킬을 쓸 때마다 MP -2'},
-    hunter:    {label:'사냥꾼',   desc:'플레이어 HP 30% 이하일 때 가하는 피해 +40%'},
+    reflect:   {label:'반사',     desc:'받는 피해의 15%를 플레이어에게 반사(1회당 플레이어 최대HP의 10%가 상한)'},
+    manaburn:  {label:'마나포식', desc:'플레이어가 스킬을 쓸 때마다 MP -5'},
+    hunter:    {label:'사냥꾼',   desc:'플레이어 HP 30% 이하일 때 가하는 피해 +30%'},
   };
   const ALL_ELITE_TRAIT_KEYS = Object.keys(ELITE_TRAITS);
   // 몬스터별 전용 풀(사용자 요청 예시 기반 — 표에 없는 "도주/훔치기/주문강화/
@@ -357,7 +357,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       const traitCount = getEliteTraitCount(depth, player && player.difficulty);
       built.eliteTraits = rollEliteTraits(base.type, traitCount);
       // 철갑/불사는 지속 카운터·1회성 플래그가 필요해 여기서 초기값을 함께 심어둔다.
-      if(built.eliteTraits.includes('ironskin')) built.ironskinTurns = 2;
+      // [너프] 사용자 요청 — 첫 2턴 → 첫 1턴으로 줄였다.
+      if(built.eliteTraits.includes('ironskin')) built.ironskinTurns = 1;
       if(built.eliteTraits.includes('undying')) built.usedUndying = false;
     }
     if(isBoss){

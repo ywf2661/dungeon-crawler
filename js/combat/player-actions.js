@@ -442,8 +442,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 정예 특성 "마나포식"(사용자 요청): 스킬을 쓸 때마다 MP를 추가로 깎는다.
     // 무료 시전(freeCast)이었어도 이건 별개로 적용된다 — 스킬을 "쓰는 행위"
     // 자체에 반응하는 특성이라, MP를 실제로 소모했는지와는 무관하다.
+    // [상향] 사용자 요청 — 기존 -2는 체감이 너무 약해서 -5로 올렸다.
     if(typeof hasEliteTrait==='function' && hasEliteTrait('manaburn')){
-      player.mp = Math.max(0, player.mp - 2);
+      player.mp = Math.max(0, player.mp - 5);
     }
 
     if(s.type==='arm'){

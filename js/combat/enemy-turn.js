@@ -57,7 +57,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       a = Math.round(a*1.3);
     }
     if(hasEliteTrait('hunter') && player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
-      a = Math.round(a*1.4);
+      a = Math.round(a*1.3);
     }
     if(hasEliteTrait('revenge') && enemy.revengeArmed){
       a = Math.round(a*1.3);
@@ -92,9 +92,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       const refund = Math.round(dealt*0.4);
       if(refund>0) enemy.hp = Math.min(enemy.maxhp, enemy.hp+refund);
     }
-    // 반사: 받은 피해의 15%를 플레이어에게 반사.
+    // 반사: 받은 피해의 15%를 플레이어에게 반사. [너프] 사용자 요청 —
+    // 상한 없이 그대로 15%였던 걸, 내 최대HP의 10%로 상한을 걸었다(고정
+    // 숫자가 아니라 %로 잡아야 저레벨/고레벨 모두에서 상한의 의미가
+    // 비슷하게 유지된다).
     if(hasEliteTrait('reflect')){
-      const reflectDmg = Math.max(1, Math.round(dealt*0.15));
+      const reflectCap = Math.round((player.maxhp||0)*0.10);
+      const reflectDmg = Math.max(1, Math.min(reflectCap, Math.round(dealt*0.15)));
       player.hp = Math.max(0, player.hp - reflectDmg);
       popDamage('-'+reflectDmg, 'bleed');
       renderStatus();
