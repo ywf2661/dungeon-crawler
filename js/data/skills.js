@@ -716,9 +716,15 @@ export(전역): SKILLDB, CHALNA_COMBOS
     // 0.0006이 추가로 붙는다. 실제 자해/보너스 적용은 combat/player-actions.js의
     // applyOverheatOverflowDamage()가 담당(deployrig pressureOnDeploy 및
     // combat/enemy-turn.js의 rig 압력 틱 양쪽에서 호출됨).
+    // [개편] 사용자 제보 — 압력이 100에 도달할 즈음엔 이미 전투가 끝나
+    // 있어서 레벨15 궁극기(임계 폭주)를 사실상 못 써봤다. 폭주 사출을
+    // 쓰거나 포탑이 틱할 때만 오르던 압력에, 매 라운드 자동으로도 오르는
+    // 기본 상승분(passiveGainPerTurn:10)을 추가했다 — 다른 행동을 하는
+    // 턴에도 꾸준히 쌓여 궁극기 타이밍을 실제 전투 흐름 안으로 앞당긴다
+    // (combat/enemy-turn.js의 enemyTurnReal() 참고).
     mastery_overheat: {name:'폭주 압력', mp:0, type:'passive',
-      pressureCapBonus:50, overflowSelfDmgPerPoint:1.5, ventPowerBonusPerOverflow:0.0006,
-      desc:'압력 상한이 150으로 늘어난다. 100을 넘는 압력은 매번 초과분만큼 자해 피해를 입히지만, 압력 방출 스킬의 위력도 초과분에 비례해 강해진다.'},
+      pressureCapBonus:50, overflowSelfDmgPerPoint:1.5, ventPowerBonusPerOverflow:0.0006, passiveGainPerTurn:10,
+      desc:'압력 상한이 150으로 늘어나고, 매 라운드 압력이 자동으로 10씩 쌓인다. 100을 넘는 압력은 매번 초과분만큼 자해 피해를 입히지만, 압력 방출 스킬의 위력도 초과분에 비례해 강해진다.'},
     // 레벨10 액티브 "폭주 사출": 압력을 소모하지 않고 즉시 압력비례 피해를
     // 준 뒤, 오히려 압력을 25 더 쌓는 스노우볼형 스킬(기존 밸브개방과 정반대
     // 방향). 강철 군단장(구 축압 기술자) 리뉴얼 밸런스 시뮬레이션 결과, 자해

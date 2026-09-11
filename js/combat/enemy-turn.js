@@ -353,6 +353,19 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       const drift = Math.random()*2 - 1;
       battleFlags.luckGauge = Math.max(-3, Math.min(3, (battleFlags.luckGauge||0) + drift));
     }
+    // 폭주 압력(mastery_overheat) 개편(사용자 제보 — 압력이 100에 도달할
+    // 즈음엔 이미 승부가 나 있어서 레벨15 궁극기(임계 폭주)를 사실상 못
+    // 써본다는 문제). 기존엔 폭주 사출을 쓰거나 포탑이 틱할 때만 압력이
+    // 올랐는데, 여기에 "매 라운드 자동으로도 오르는" 기본 상승분을
+    // 더했다 — 다른 행동을 하는 턴에도 압력이 꾸준히 쌓여, 궁극기 발동
+    // 타이밍을 실제 전투 흐름 안으로 앞당긴다. 포탑/폭주사출과 완전히
+    // 별개로 가산되므로 기존 스노우볼 자체는 그대로 유지된다.
+    if(battleFlags && player.skills && player.skills.includes('mastery_overheat')){
+      const cap = (typeof getPressureCap==='function') ? getPressureCap() : 150;
+      battleFlags.pressure = Math.min(cap, (battleFlags.pressure||0) + (SKILLDB.mastery_overheat.passiveGainPerTurn||0));
+      if(typeof applyOverheatOverflowDamage==='function') applyOverheatOverflowDamage(battleFlags.pressure);
+      if(typeof updatePressureGauge==='function') updatePressureGauge();
+    }
     if(enemy && enemy.exposedTurns>0){
       enemy.exposedTurns -= 1;
       updateStatusBadges();
