@@ -114,9 +114,15 @@ export(전역): init, showMaintenanceModal, isAdminName
         // 난이도별 왕관 표시(사용자 제보로 원인 확인 — record 객체에 trueEnding
         // 필드가 아예 없었고, 여기서도 계산을 안 하고 있었다) — 해당 난이도에서
         // 한 번도 안 죽고(deathCount 0) 진 최종보스를 본 기록이 있으면 표시.
-        easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0);
-        normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0);
-        hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0);
+        // 사용자 요청 — 마녀(시간의 마녀 Aiōn) 클리어는 왕관이 아니라 별도의
+        // 마녀모자 배지로 표시하므로, 왕관 판정에서는 bossType이 'timewitch'인
+        // 기록을 제외한다.
+        easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+        normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+        hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+        easyWitchClear = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
+        normalWitchClear = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
+        hardcoreWitchClear = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
         renderDifficultySelect();
       });
     });
@@ -160,9 +166,12 @@ export(전역): init, showMaintenanceModal, isAdminName
     loadRecords().then(records=>{
       normalUnlocked = records.length > 0;
       hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
-      easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0);
-      normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0);
-      hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0);
+      easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+      normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+      hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+      easyWitchClear = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
+      normalWitchClear = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
+      hardcoreWitchClear = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
       renderDifficultySelect();
     }).catch(e=>{ console.warn('기록 불러오기 실패(무시):', e); });
   }

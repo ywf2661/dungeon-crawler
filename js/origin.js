@@ -191,10 +191,63 @@ export(전역): showOriginQuiz
         showDialogueSequence([{text:opt.text, title:who}], {onDone:()=>{
           showDialogueSequence(s.after, {onDone:()=>{
             // 사용자 요청 — 동기와 무관하게 마지막에 공통으로 한 번, 문지기의
-            // 정체를 직접 밝히지 않는 선에서 아주 짧은 복선만 심는다.
-            showDialogueSequence(['문지기가 품속에서 낡은 회중시계를 슬쩍 꺼내 들여다본다. 시간을 재는 것도 같고, 무언가를 기다리는 것도 같다. 이내 시계를 다시 품속에 넣으며 그가 말한다.\n"…들어가라. 문은 닫히지 않는다."'], {title:'문지기', onDone:applyOriginAndStart});
+            // 정체를 직접 밝히지 않는 선에서 짧은 복선을 심는다. 해당 난이도에서
+            // 이미 시간의 마녀 Aiōn을 클리어한 적이 있으면(마녀모자 배지) 더
+            // 짙은 버전 + 마녀의 시계 제안으로 갈라진다.
+            showGatekeeperClosing();
           }});
         }});
+      });
+    });
+  }
+
+  // (사용자 요청 — 마녀모자 난이도 전용 문지기 대사) 해당 난이도에서 시간의
+  // 마녀 Aiōn을 이미 클리어한 적이 있으면(ui/difficulty.js의 isDifficultyWitchCleared),
+  // 문지기가 좀 더 짙은 복선을 흘리며 마녀의 시계를 건넨다 — 받을지 말지는
+  // 플레이어가 고른다. 없으면 기존의 짧은 복선 한 줄로 끝낸다.
+  function showGatekeeperClosing(){
+    const witchCleared = typeof isDifficultyWitchCleared==='function' && isDifficultyWitchCleared(player.difficulty);
+    if(!witchCleared){
+      showDialogueSequence(['문지기가 품속에서 낡은 회중시계를 슬쩍 꺼내 들여다본다. 시간을 재는 것도 같고, 무언가를 기다리는 것도 같다. 이내 시계를 다시 품속에 넣으며 그가 말한다.\n"…들어가라. 문은 닫히지 않는다."'], {title:'문지기', onDone:applyOriginAndStart});
+      return;
+    }
+    showDialogueSequence([
+      '문지기가 품속에서 낡은 회중시계를 꺼내 든다. 유리 덮개는 금이 가 있고, 톱니는 멈춰 있다. 그는 한참을 그 멈춘 시계만 들여다보다가, 나직이 웃는다.\n"…시간이 멈췄던 그 순간을 기억하는 이가, 몇이나 될까. 나는, 기억한다."',
+      '문지기가 시계를 내민다.\n"자, 받아두게. 나를 다시 만나고 싶다면 말이지."',
+    ], {title:'문지기', onDone:showWitchClockOffer});
+  }
+
+  // 위 showGatekeeperClosing()이 마녀모자 난이도에서만 호출하는 선택지 화면 —
+  // 받으면 player.relics에 마녀의 시계를 즉시 채워 넣고(유물 슬롯 1칸 소모),
+  // 거절하면 평소처럼 유물 없이 시작한다. 어느 쪽이든 applyOriginAndStart로 이어진다.
+  function showWitchClockOffer(){
+    const body = document.getElementById('origin-body');
+    if(!body) return;
+    body.innerHTML = `
+      <p style="text-align:center;color:var(--parchment-dim); font-size:13px; letter-spacing:.05em; margin-bottom:14px; font-style:italic;">— 시계를 받겠는가? —</p>
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <button class="btn" data-choice="accept" style="text-align:left; height:auto; padding:12px 14px; white-space:normal; line-height:1.5;">시계를 받는다</button>
+        <button class="btn" data-choice="decline" style="text-align:left; height:auto; padding:12px 14px; white-space:normal; line-height:1.5;">거절한다</button>
+      </div>`;
+    body.querySelectorAll('[data-choice]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        Sound.click();
+        const accepted = btn.dataset.choice === 'accept';
+        body.innerHTML = '';
+        if(accepted){
+          player.relics = player.relics || [];
+          player.relics.push('relic_witchclock');
+          if(typeof applyRelicEffect==='function') applyRelicEffect('relic_witchclock');
+          showDialogueSequence([
+            '문지기가 옅게 웃으며 고개를 끄덕인다.\n"좋아. …이번엔, 조금 더 빨리 만날 수 있겠군."',
+            '"…들어가라. 문은, 아직 닫히지 않는다. 이번엔 나도, 조금 기대해보지."',
+          ], {title:'문지기', onDone:applyOriginAndStart});
+        } else {
+          showDialogueSequence([
+            '문지기의 표정이 살짝 흔들리더니, 이내 옅은 미소로 되돌아간다.\n"…그런가. 강요할 생각은 없다. 그저… 이번엔 물어보고 싶었을 뿐이야."',
+            '"…들어가라. 문은 이제, 닫혀도 된다."',
+          ], {title:'문지기', onDone:applyOriginAndStart});
+        }
       });
     });
   }

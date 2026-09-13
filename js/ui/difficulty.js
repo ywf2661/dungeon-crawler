@@ -2,8 +2,9 @@
 /*
 난이도 선택 데이터 및 UI 렌더.
 export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlocked,
-              easyFlawless, normalFlawless, hardcoreFlawless, isDifficultyUnlocked,
-              isDifficultyFlawless, showToast, renderDifficultySelect
+              easyFlawless, normalFlawless, hardcoreFlawless,
+              easyWitchClear, normalWitchClear, hardcoreWitchClear, isDifficultyUnlocked,
+              isDifficultyFlawless, isDifficultyWitchCleared, showToast, renderDifficultySelect
 의존성: 없음(단, showToast는 다른 여러 모듈에서 범용 토스트 함수로 재사용됨)
 */
 
@@ -21,11 +22,18 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
   let selectedDifficulty = 'easy';
   let normalUnlocked = false;
   let hardcoreUnlocked = false;
-  // 죽지 않고 진 최종보스(무결 엔딩)를 본 적이 있는 난이도인지 — 난이도별로 따로 기록된다.
-  // bootstrap.js가 기록(records)을 불러온 뒤 계산해서 여기에 채워 넣는다.
+  // 죽지 않고 진 최종보스(회랑의 시조)를 본 적이 있는 난이도인지 — 난이도별로 따로
+  // 기록된다. bootstrap.js가 기록(records)을 불러온 뒤 계산해서 여기에 채워 넣는다.
+  // (사용자 요청 — 마녀 조우 조건 분리) 시간의 마녀 Aiōn을 클리어한 기록과는
+  // 구분한다: 이제 이 플래그는 bossType이 'timewitch'가 아닌 진엔딩만 가리킨다.
   let easyFlawless = false;
   let normalFlawless = false;
   let hardcoreFlawless = false;
+  // 해당 난이도에서 시간의 마녀 Aiōn을 클리어한 기록이 있는지(사용자 요청 — 마녀
+  // 조우 조건 분리에 따른 별도 배지). 있으면 왕관 대신 마녀모자를 표시한다.
+  let easyWitchClear = false;
+  let normalWitchClear = false;
+  let hardcoreWitchClear = false;
 
   function isDifficultyUnlocked(id){
     if(id==='easy') return true;
@@ -41,6 +49,12 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
     if(id==='easy') return easyFlawless;
     if(id==='normal') return normalFlawless;
     if(id==='hardcore') return hardcoreFlawless;
+    return false;
+  }
+  function isDifficultyWitchCleared(id){
+    if(id==='easy') return easyWitchClear;
+    if(id==='normal') return normalWitchClear;
+    if(id==='hardcore') return hardcoreWitchClear;
     return false;
   }
   // 토스트 겹침 버그 수정(사용자 제보) — 예전엔 showToast()를 연달아 부르면
@@ -82,8 +96,12 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
     wrap.innerHTML = DIFFICULTIES.map(d=>{
       const unlocked = isDifficultyUnlocked(d.id);
       const flawless = isDifficultyFlawless(d.id);
-      const flawlessMark = flawless ? `<span class="di-flawless" title="이 난이도에서 한 번도 쓰러지지 않고 진 최종보스를 물리쳤다">👑</span> ` : '';
-      return `<div class="diff-card type-${d.id}${d.id===selectedDifficulty?' selected':''}${unlocked?'':' locked'}${flawless?' flawless':''}" data-diff="${d.id}">
+      const witchCleared = isDifficultyWitchCleared(d.id);
+      // 마녀모자가 있으면 왕관 대신 그걸로 대체한다(사용자 요청).
+      const flawlessMark = witchCleared
+        ? `<span class="di-flawless" title="이 난이도에서 시간의 마녀 Aiōn을 물리쳤다">🎩</span> `
+        : (flawless ? `<span class="di-flawless" title="이 난이도에서 한 번도 쓰러지지 않고 진 최종보스를 물리쳤다">👑</span> ` : '');
+      return `<div class="diff-card type-${d.id}${d.id===selectedDifficulty?' selected':''}${unlocked?'':' locked'}${(flawless||witchCleared)?' flawless':''}" data-diff="${d.id}">
         <div class="di-name">${unlocked?'':'🔒 '}${flawlessMark}${d.name}</div>
         <div class="di-desc">${d.desc}</div>
       </div>`;

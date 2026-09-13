@@ -823,6 +823,21 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
           const nonFlawless = records.filter(r=> !(r.trueEnding && (r.deathCount||0)===0));
           recentRunRecord = nonFlawless.length ? nonFlawless[nonFlawless.length-1] : null;
         }catch(e){ recentRunRecord = null; }
+      } else {
+        // (사용자 요청 — 마녀 조우 조건 강화) 마녀의 시계를 들고 있을 때만
+        // 확인하면 되고, 이 난이도에서 회랑의 시조를 클리어한 기록이 있는지
+        // 미리 판정해 combat/battle-setup.js의 progenitorClearedThisDifficulty에
+        // 채워 넣는다(pickEnemy는 동기 함수라 여기서 미리 로드해야 함).
+        const hasWitchClock = (player.relics||[]).includes('relic_witchclock');
+        if(hasWitchClock){
+          try{
+            const records = await loadRecords();
+            progenitorClearedThisDifficulty = records.some(r=>
+              r.difficulty===player.difficulty && r.trueEnding && r.bossType!=='timewitch');
+          }catch(e){ progenitorClearedThisDifficulty = false; }
+        } else {
+          progenitorClearedThisDifficulty = false;
+        }
       }
       setTimeout(()=>startBattle(true, true, isTrueFinal), 400);
     });

@@ -25,6 +25,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   // 직전에 loadRecords()로 채워둔다) — 일반 최종보스의 이름/직업을 여기서
   // 따온다. 기록이 없으면 null로 남아 예전처럼 무작위 직업 폴백이 동작한다.
   let recentRunRecord = null;
+  // (사용자 요청 — 마녀 조우 조건 강화) 마녀의 시계를 보유했더라도, 이 난이도에서
+  // 회랑의 시조를 클리어한 기록이 최소 1회 있어야 시조 대신 아이온이 등장한다.
+  // pickEnemy()는 동기 함수라, explore.js의 renderFinalFloorStep()이 전투 시작
+  // 직전에 loadRecords()로 미리 판정해 여기에 채워 넣는다.
+  let progenitorClearedThisDifficulty = false;
 
   const FINAL_BOSS_BY_JOB = {
     warrior:  {name:'잠식된 전사 용사',   type:'herowarrior',  hp:320, atk:32, def:14, spd:7,  exp:600, gold:[350,450], skills:['heroWarriorSmite']},
@@ -221,7 +226,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   function pickEnemy(isBoss, isFinal, isTrueFinal){
     if(isTrueFinal){
       const hasWitchClock = (player.relics||[]).includes('relic_witchclock');
-      const base = hasWitchClock ? TRUE_FINAL_BOSS_WITCH : TRUE_FINAL_BOSS;
+      // (사용자 요청) 마녀의 시계를 들고 있어도, 이 난이도에서 회랑의 시조를
+      // 클리어한 기록이 없으면 아직 아이온을 만날 수 없다 — 시조가 그대로 등장한다.
+      const canMeetWitch = hasWitchClock && progenitorClearedThisDifficulty;
+      const base = canMeetWitch ? TRUE_FINAL_BOSS_WITCH : TRUE_FINAL_BOSS;
       const scale = 1 + depth*0.05;
       // 사용자 요청 — 시뮬레이션(자연 진행 레벨17, 유물슬롯 보정 포함) 결과
       // 반영: hp/atk에 ×0.77 하향. def는 하향 대상에서 제외(원래도 별도
