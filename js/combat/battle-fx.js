@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnScreenCrackFx, spawnGuardianVfxImage,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnScreenCrackFx, spawnGuardianVfxImage, spawnCaliberXFx,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -372,6 +372,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">${paths}</svg>`;
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 650);
+  }
+
+  // 칼리버 X: 종언 전용 VFX 이미지(사용자 제공).
+  function spawnCaliberXFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.className = 'caliberx-vfx-img';
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 750);
   }
 
   // 시간의 파수꾼 스킬 전용 VFX 이미지(사용자 제공). kind: 'frost'|'void'|'returnstrike'.

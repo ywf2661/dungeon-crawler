@@ -3143,6 +3143,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
     if(s.type==='magic') Sound.magic(); else Sound.slash();
+    // 칼리버 X: 종언 전용 VFX(사용자 제공) — 레벨15 궁극기라 이 게임에서
+    // 가장 큰 이펙트 이미지를 한 번 크게 띄운다.
+    if(key==='paladinCaliberXFinale' && typeof spawnCaliberXFx==='function') spawnCaliberXFx();
     // 연쇄 처형(we_chainexec, 혈맹의 검투사 무기 각인) / 불사의 광기
     // (we_madimmortal, 방어구 각인): 1:1 전투라 "처치하면 재발동"은 성립이
     // 안 돼서(처치=즉시 승리, 다음 적이 없음), 조건을 "최대HP의 30% 이상을
