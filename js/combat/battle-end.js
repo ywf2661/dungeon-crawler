@@ -464,6 +464,17 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         `${player.name}(${jobLabel})의 눈앞에서, 빛이 스러지듯 그녀의 모습이 옅어진다. 마지막으로 남은 것은, 오래도록 참아온 울음이 아니라 — 아주 오랜만의, 편안한 숨소리였다.`,
         '"회랑, 두 번째로 놓아주다."',
       ];
+      // 하드코어 전용 짧은 추가 대사(사용자 요청) — 도망 불가 + 사망 시 레벨1·
+      // 1층부터 재시작이라는 이 난이도만의 특성을 그녀가 알아채고 인정하는 한
+      // 줄. 스토리 골자는 바꾸지 않고, "그대가 왔다" 대사 바로 뒤에 끼워 넣는다
+      // (거꾸로 된 왕관 보너스 줄을 progenitorLines에 끼워 넣던 것과 같은 방식).
+      if(player.difficulty==='hardcore'){
+        const insertAt = witchRepeatLines.findIndex(l=> l && l.text==='"…그리고 그대가 왔다. 처음엔 그저 침입자였지. 하지만 지금은…"');
+        if(insertAt>=0){
+          witchRepeatLines.splice(insertAt+1, 0,
+            {text:'"…이번엔, 뒤로 물러설 곳조차 없었겠군. 쓰러지면 처음부터 다시. 그런데도, 다시 왔다는 건가."', title:'아이온'});
+        }
+      }
       const lines = isWitchRepeat ? witchRepeatLines : isWitch ? [
         '시간의 마녀가 무너져 내리는 순간, 손에 쥐고 있던 낡은 시계가 바닥에 떨어져 산산조각 난다.',
         '베일 아래로 언뜻 드러난 눈가에는, 분노도 원한도 아닌 — 아주 오래 참아온 눈물의 흔적이 있었다.',
