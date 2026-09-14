@@ -135,14 +135,12 @@ export(전역): const Sound
       // 강철 군단장의 정찰/화력/방벽 드론 3종 전용(사용자 제공, 새 트리거).
       droneDeploy: 'audio/sfx/dronedeploy.wav',
       droneAttack: 'audio/sfx/droneattack.wav',
-      // 남은 7슬롯(사용자 요청 — 이번에 전부 채움). 승리는 원본이 다른 SFX
-      // 대비 눈에 띄게 커서(mean -13.6dB/max 0.0dB) ffmpeg로 -5.5dB 낮춰
-      // levelup.wav/coin.wav 수준(mean -19dB/max -4.6dB)에 맞췄다.
+      // 남은 7슬롯 중 6개(사용자 요청 — 승리는 안 어울려서 다시 뺌, 기존
+      // 합성음으로 롤백).
       guard: 'audio/sfx/guard.wav',
       poisonHit: 'audio/sfx/poisonhit.wav',
       fail: 'audio/sfx/fail.wav',
       click: 'audio/sfx/click.wav',
-      victory: 'audio/sfx/victory.wav',
       gameOver: 'audio/sfx/gameover.wav',
       statusApply: 'audio/sfx/statusapply.wav',
     };
@@ -364,9 +362,7 @@ export(전역): const Sound
       });
     }
     function victory(){
-      if(muted) return;
-      if(playSfxBuffer('victory')) return;
-      const c = ensureCtx(); if(!c) return;
+      const c = ensureCtx(); if(!c || muted) return;
       const t = c.currentTime;
       [[0,523],[0.14,659],[0.28,784],[0.42,1047],[0.56,1319]].forEach(([delay,freq])=>{
         const osc = c.createOscillator(); osc.type='triangle'; osc.frequency.setValueAtTime(freq, t+delay);
