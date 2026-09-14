@@ -747,7 +747,13 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         const def = RELICS[id];
         if(def) pool.push({kind:'relic', id, name:def.name});
       });
-      if(!pool.length) return; // 되찾을 만한 게 하나도 안 남았으면 조용히 넘어간다
+      if(!pool.length){
+        // 후보가 하나도 안 남았어도(전부 이미 보유했거나 유물 슬롯이 꽉 참)
+        // 아무 피드백 없이 조용히 사라지지 않도록 로그를 남긴다 — 무덤
+        // 자체는 발견한 순간 소멸(위에서 이미 null 처리됨)한다.
+        addLog('낯익은 무덤을 발견했지만, 이미 전부 가지고 있는 것들뿐이었다.', 'warn');
+        return;
+      }
       const offered = pool.slice().sort(()=>Math.random()-0.5).slice(0,3);
       showGraveChoice(offered);
     }
