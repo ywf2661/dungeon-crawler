@@ -66,6 +66,18 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     exp:1300, gold:[650,850], skills:['aionHaste','aionParadox'],
     dex:'멈춰버린 시간 속에서, 홀로 깨어있는 자.',
   };
+  // 시간의 파수꾼(사용자 기획) — 보통/하드코어 3번째 구간(tierIndex===2)
+  // 노드맵 중간에 반드시 거쳐가는 고정 중간보스. 사람이었던 적 없는 순수한
+  // 시간마법의 부작용/부산물이라 "회랑의 ○○" 몬스터 명명 규칙에서 의도적으로
+  // 제외한다. 스킬 목록의 실제 동작(메아리 큐, 시간 역행)은 이 몬스터
+  // 전용으로 combat/enemy-turn.js에 별도 분기(timeGuardianAction)로 구현되어
+  // 있다 — 일반 enemyAction()의 스킬 순환 로직을 타지 않는다.
+  const TIME_GUARDIAN = {
+    name:'시간의 파수꾼', type:'timeguardian', hp:340, atk:30, def:24, spd:8,
+    exp:500, gold:[300,400], skills:['frostTrajectory','timeRewind'],
+    dex:'사람이었던 적 없는, 멈춘 시간이 스스로 빚어낸 형상.',
+    isBoss:true,
+  };
   function pickFinalBossJob(){
     const ids = JOBS.map(j=>j.id);
     return ids[Math.floor(Math.random()*ids.length)];
@@ -237,6 +249,27 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   };
 
   function pickEnemy(isBoss, isFinal, isTrueFinal){
+    // 시간의 파수꾼(사용자 기획) — 3번째 구간 노드맵 중간의 강제 수렴 노드
+    // (nodemap.js의 'midboss' 타입)에서만 등장하는 고정 중간보스. 다른 모든
+    // 분기보다 우선한다 — 일반/정예/층별보스 풀과는 완전히 무관한 별도
+    // 인카운터이기 때문. 소비 즉시 플래그를 꺼서 다음 전투부터는 정상 로직으로
+    // 돌아간다(정예 강제 배정 플래그들과 동일한 1회성 소비 패턴).
+    if(typeof nodeMidboss!=='undefined' && nodeMidboss){
+      nodeMidboss = false;
+      return scaleEnemyForDifficulty({
+        type: TIME_GUARDIAN.type, name: TIME_GUARDIAN.name, isBoss:true,
+        maxhp: TIME_GUARDIAN.hp, hp: TIME_GUARDIAN.hp,
+        atk: TIME_GUARDIAN.atk, def: TIME_GUARDIAN.def, spd: TIME_GUARDIAN.spd,
+        exp: TIME_GUARDIAN.exp,
+        gold: TIME_GUARDIAN.gold[0] + Math.floor(Math.random()*(TIME_GUARDIAN.gold[1]-TIME_GUARDIAN.gold[0]+1)),
+        skills: TIME_GUARDIAN.skills.slice(),
+        // 메아리 큐(2턴 지연) — combat/enemy-turn.js의 timeGuardianAction()이
+        // 관리한다. 여기서는 빈 상태로만 초기화.
+        echoQueue: [],
+        frostCooldown: 1, // 첫 턴부터 바로 쓰지 않도록 약간의 텀
+        rewindUsed: false,
+      });
+    }
     if(isTrueFinal){
       const hasWitchClock = (player.relics||[]).includes('relic_witchclock');
       // (사용자 요청) 마녀의 시계를 들고 있어도, 이 난이도에서 회랑의 시조를
@@ -845,7 +878,9 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // 2개 + 배경 이미지)라 shorthand로 이미지 URL만 갈아끼운다.
     const archwayEl = document.querySelector('.archway');
     if(archwayEl){
-      const bgFile = getDungeonBgForDepth(depth);
+      // 시간의 파수꾼(사용자 기획) 전용 배경 — 구역별 던전 배경 대신 항상
+      // 고정된 "시간이 멈춘 방" 배경을 쓴다.
+      const bgFile = (enemy.type==='timeguardian') ? 'images/backgrounds/timeguardian_bg.png' : getDungeonBgForDepth(depth);
       archwayEl.style.backgroundImage =
         `radial-gradient(ellipse at 50% 30%, #3a2c1c66 0%, transparent 65%), `
         + `linear-gradient(180deg, #00000000 55%, #171009cc 100%), `

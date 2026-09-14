@@ -89,6 +89,10 @@ export(전역): heroBossSvg, svgMonster
     // 진 최종보스 "시간의 마녀"(아이온) — 마녀의 시계 보유 시 회랑의 시조
     // 대신 등장(combat/battle-setup.js의 pickEnemy() 참고).
     timewitch: 'images/monsters/timewitch.png',
+    // 시간의 파수꾼(사용자 기획) — 3번째 구간(tierIndex===2) 노드맵 중간에
+    // 반드시 거쳐가는 고정 중간보스. combat/battle-setup.js의 TIME_GUARDIAN,
+    // nodemap.js의 'midboss' 노드 타입 참고.
+    timeguardian: 'images/monsters/timeguardian.png',
   };
 
   // 회랑의 시조 전용 스킬 예고/임팩트 포즈 3장(평상시/예고/내려찍기) 경로.

@@ -22,7 +22,15 @@ generateSilentAltarMap()이 만드는 "고요한 제단" 특수 지도를 쓴다
 
 export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
               generateSilentAltarMap, enterNodeMapTier, getVirtualDepth, pickNode, resolveNode,
-              renderNodeMapArea, nodeForcedElite(변수), nodeEliteBoost(변수)
+              renderNodeMapArea, nodeForcedElite(변수), nodeEliteBoost(변수), nodeMidboss(변수)
+
+시간의 파수꾼(사용자 기획): tierIndex===2(사용자가 말하는 "3번째 구간" —
+이 파일 위쪽 주석과 battle-end.js 주석이 서로 다른 기준(0-based vs 1-based)을
+섞어 써서 "N번째 구간" 표현이 파일마다 다를 수 있으니, 실제로는 tierIndex 값
+자체를 source of truth로 본다)의 노드맵 중간에, 보스 행과 완전히 같은 원리
+(이전 행 전체가 한 노드로 수렴, 그 노드가 다음 행 전체로 다시 퍼짐)로
+'midboss' 노드를 하나 강제로 끼워 넣는다. combat/battle-setup.js의
+TIME_GUARDIAN 참고.
 의존성: state.js(player, depth), explore.js(addLog, renderExplore, saveGame 호출),
        relics.js(showRelicAltar/showCurseAltar), shop.js(openShop),
        combat/battle-setup.js(startBattle) — 순환 의존이라 함수 호출 시점에만 참조.
@@ -44,6 +52,10 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
     rest:   {icon:'🔥', label:'휴식',       weight:12},
     event:  {icon:'❓', label:'미지의 사건', weight:18},
     boss:   {icon:'👑', label:'보스',       weight:0},
+    // 시간의 파수꾼(사용자 기획) — 3번째 구간 노드맵 중간에 고정 배치되는
+    // 강제 수렴 노드. weight:0이라 무작위 배정 풀에는 절대 안 뜨고,
+    // generateNodeMap()에서 tierIndex===2일 때만 직접 끼워 넣는다.
+    midboss:{icon:'⏳', label:'???',        weight:0},
   };
   // 구간(타이어)별 행 개수. 사용자 요청 — 1구간(첫 보스 전)은 왕복 없이도
   // 자연스럽게 레벨업할 수 있도록 넉넉하게, 이후 점점 줄여 템포를 올린다.
@@ -61,6 +73,11 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
   // nodeForcedElite와 함께 세팅해야 의미가 있다(정예가 아니면 무시됨).
   // combat/battle-setup.js의 pickEnemy()에서 소비 즉시 꺼진다.
   let nodeEliteBoost = false;
+  // 시간의 파수꾼(사용자 기획) — 3번째 구간(tierIndex===2) 노드맵 중간의
+  // 강제 수렴 노드('midboss' 타입)를 골랐을 때, combat/battle-setup.js의
+  // pickEnemy()가 정상적인 몬스터/보스 풀 대신 고정 중간보스를 내주도록 하는
+  // 1회용 플래그. resolveNode()에서 세우고, pickEnemy() 안에서 소비 즉시 꺼진다.
+  let nodeMidboss = false;
   // 지도 접기/펼치기 상태(사용자 요청 — 지도가 항상 펼쳐져 있으면 장비/유물
   // 같은 다른 메뉴 버튼을 누를 공간이 없어짐). 저장하지 않는 순수 화면 상태다.
   let nodeMapCollapsed = false;
@@ -133,6 +150,27 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
         n.type = pool[Math.floor(Math.random()*pool.length)];
       });
     });
+
+    // 시간의 파수꾼(사용자 기획) — tierIndex===2 노드맵 중간에 강제 수렴
+    // 'midboss' 행을 하나 끼워 넣는다. 보스 행과 완전히 같은 원리(이전 행
+    // 전체가 여기로 모이고, 여기서 다음 행 전체로 다시 퍼짐)라 이미 확정된
+    // 타입 배정이 끝난 뒤, 가장 마지막 단계에서 끼워 넣어야 앞선 인덱스
+    // 기반 로직(specialPool, rows[rowCount-1] 등)이 전혀 영향받지 않는다.
+    // 시간의 파수꾼(사용자 기획) — 보통/하드코어 전용. 쉬움은 지금까지처럼
+    // 순수 절차적 생성 그대로 둔다(원래 기획 요구사항).
+    if(tierIndex===2 && player && player.difficulty!=='easy'){
+      const insertIdx = Math.floor(rowCount/2);
+      const before = rows[insertIdx-1];
+      const after = rows[insertIdx];
+      if(before && after){
+        const midbossNode = {id:`t${tierIndex}midboss`, type:'midboss', connections:[]};
+        // 원래 이 둘 사이에 무작위로 이어져 있던 연결을 걷어내고, 전부
+        // "이전 행 전체 → 미드보스 → 다음 행 전체"로 강제 수렴시킨다.
+        before.forEach(n=>{ n.connections = [midbossNode.id]; });
+        midbossNode.connections = after.map(n=>n.id);
+        rows.splice(insertIdx, 0, [midbossNode]);
+      }
+    }
     return rows;
   }
 
@@ -244,6 +282,16 @@ export(전역): NODE_TYPES, TIER_NODE_COUNTS, getTierNodeCount, generateNodeMap,
         return;
       }
       addLog('공기가 무겁게 가라앉는다… 구간의 끝, 보스가 기다리고 있다!', 'warn');
+      setTimeout(()=>startBattle(true), 400);
+      return;
+    }
+    if(node.type==='midboss'){
+      // 시간의 파수꾼(사용자 기획) — depth는 이 구간 중간 지점 정도로만
+      // 어림잡아 둔다(전투 스케일링용, 실제 스탯은 combat/battle-setup.js의
+      // TIME_GUARDIAN 고정값이라 depth에 크게 좌우되지 않는다).
+      depth = player.tierIndex*10 + 5;
+      nodeMidboss = true;
+      addLog('공기가 얼어붙는다… 시간이 어긋난 무언가가 길을 막아선다.', 'warn');
       setTimeout(()=>startBattle(true), 400);
       return;
     }

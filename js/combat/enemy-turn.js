@@ -582,6 +582,45 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 다른 몬스터는 setBossPoseImage() 안에서 type 체크로 즉시 무시된다.
       if(typeof setBossPoseImage==='function') setBossPoseImage('idle');
       let skillKey = null;
+      // 시간의 파수꾼(사용자 기획) — 메아리 큐 기반 전용 행동 결정. 일반
+      // enemy.skills 순환/보스 예고 로직을 완전히 건너뛰고 여기서 skillKey를
+      // 직접 확정한다. tgEchoMult(전역 아님, 이 클로저 지역 변수)는 메아리
+      // 발동 시 0.6, 그 외엔 1 — 아래 데미지 배율 계산에서 곱해 쓴다.
+      let tgEchoMult = 1;
+      let tgRewindPrefix = ''; // 시간 역행 발동 시 최종 label 앞에 붙일 문구
+      if(enemy.type==='timeguardian'){
+        if(!enemy.echoQueue) enemy.echoQueue = [];
+        if(enemy.echoQueue.length) enemy.echoQueue[0].turnsLeft -= 1;
+        let firedEcho = null;
+        if(enemy.echoQueue.length && enemy.echoQueue[0].turnsLeft<=0){
+          firedEcho = enemy.echoQueue.shift();
+        } else if(!enemy.rewindUsed && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5 && enemy.echoQueue.length){
+          // 시간 역행: HP 50% 이하에서 1회, 대기 중인 메아리를 예고 없이
+          // 즉시 앞당겨 터뜨린다. 이번 턴에 실제로 피해가 나가므로, 이 대사는
+          // setBattleMsg를 바로 부르지 않고 아래 label에 붙여서 최종 데미지
+          // 메시지가 이 문구를 덮어쓰지 않게 한다.
+          enemy.rewindUsed = true;
+          firedEcho = enemy.echoQueue.shift();
+          tgRewindPrefix = `${enemy.name}의 몸이 일그러진다… 시간이 역행하며, `;
+        }
+        if(firedEcho){
+          skillKey = firedEcho.skillKey; // null이면 기본 공격(무거운 참격)의 메아리
+          tgEchoMult = 0.6;
+        } else {
+          if((enemy.frostCooldown||0) <= 0){
+            skillKey = 'frostTrajectory';
+            enemy.frostCooldown = 3;
+          } else {
+            enemy.frostCooldown = (enemy.frostCooldown||0) - 1;
+            skillKey = null; // 기본 공격
+          }
+          // 메아리는 최대 1개만 대기 — 이번에 실제로 고른 행동을 2턴 뒤
+          // 60% 위력으로 큐에 새로 쌓는다(기존 대기 중이던 건 이미 위에서
+          // 소비/폐기됐으므로 덮어써도 안전).
+          enemy.echoQueue = [{skillKey, turnsLeft:2}];
+        }
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+      } else
       // 보스 예고 스킬(사용자 요청 — 어떤 스킬이든 매번 예고). 예고했던 다음
       // 턴이면 그 스킬을 강제로 확정 발동한다.
       if(enemy.isBoss && enemy.aboutToUltimate){
@@ -675,7 +714,33 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       else if(skillKey==='lanternChorus'){ dmg = Math.round(effAtk*2.0); label = `엉겨붙은 등롱 전부가 한꺼번에 타오른다!`; playBanner('등롱의 합창','fx-chorus'); }
       else if(skillKey==='crumblingSand'){ dmg = Math.round(effAtk*1.6); label = `허물어진 모래가 파도처럼 밀려든다!`; playBanner('무너지는 모래','fx-sand'); }
       else if(skillKey==='timeTurningBack'){ dmg = Math.round(effAtk*2.15); label = `쏟아지던 모래가 순간 거꾸로 흐르며 시간을 되감는다!`; playBanner('되돌아오는 시간','fx-timeturn'); }
-      else { dmg = effAtk + Math.floor(Math.random()*3)-1; }
+      // 시간의 파수꾼(사용자 기획) — 결빙의 궤적. 신선 발동이면 플레이어 속도를
+      // 2턴간 낮추고, 메아리(tgEchoMult<1)면 디버프 재적용 없이 피해만 60%로
+      // 재현한다.
+      else if(skillKey==='frostTrajectory'){
+        dmg = Math.round(effAtk*1.7*tgEchoMult);
+        if(tgEchoMult>=1){
+          label = `${enemy.name}이(가) 얼어붙은 궤적을 그으며 짓쳐든다!`;
+          const spdDelta = Math.min(player.spd-1, 3);
+          if(spdDelta>0){
+            battleFlags.tgSpdDebuff = {delta:spdDelta, turnsLeft:2};
+            player.spd -= spdDelta;
+          }
+        } else {
+          label = `과거의 결빙 궤적이 메아리처럼 다시 덮쳐온다!`;
+        }
+      }
+      else {
+        dmg = effAtk + Math.floor(Math.random()*3)-1;
+        // 시간의 파수꾼 기본 공격의 메아리(사용자 기획) — 위력 60%, 전용 대사.
+        if(enemy.type==='timeguardian' && tgEchoMult<1){
+          dmg = Math.round(dmg*tgEchoMult);
+          label = `${enemy.name}의 잔상이 한 박자 늦게 따라와 후려친다!`;
+        }
+      }
+      // 시간 역행 발동 시(사용자 기획) 최종 대사 앞에 붙인다 — 위쪽에서 바로
+      // setBattleMsg를 부르면 아래에서 다시 덮어써지므로 여기서 합친다.
+      if(tgRewindPrefix) label = tgRewindPrefix + label;
 
       if(dmg<=0){
         setBattleMsg(label, `공격이 완전히 빗나갔다!`);

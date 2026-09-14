@@ -57,6 +57,13 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       battleFlags.chalnaSpdBuffDelta = 0;
       battleFlags.chalnaSpdBuffTurns = 0;
     }
+    // 시간의 파수꾼 "결빙의 궤적" 속도 감소 디버프(사용자 기획) — 위와 완전히
+    // 같은 이유로, 전투가 자연 소멸(승리/패배/도망/굴복) 전에 끝나면 델타를
+    // 못 돌려받고 영구히 남을 수 있어 여기서도 같이 정리한다.
+    if(battleFlags && battleFlags.tgSpdDebuff){
+      player.spd += battleFlags.tgSpdDebuff.delta;
+      battleFlags.tgSpdDebuff = null;
+    }
   }
 
   function checkBattleEnd(){

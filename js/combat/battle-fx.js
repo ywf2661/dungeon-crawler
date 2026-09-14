@@ -56,6 +56,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     document.getElementById('cmd-sub').style.display='none';
     document.getElementById('cmd-back-row').style.display='none';
     setCommandsEnabled(true);
+    // 시간의 파수꾼 "결빙의 궤적" 속도 감소 디버프 되돌리기(사용자 기획).
+    // 플레이어 턴이 다시 시작될 때마다 하나씩 줄이고, 0이 되면 원상복구.
+    if(battleFlags && battleFlags.tgSpdDebuff && battleFlags.tgSpdDebuff.turnsLeft>0){
+      battleFlags.tgSpdDebuff.turnsLeft -= 1;
+      if(battleFlags.tgSpdDebuff.turnsLeft<=0){
+        player.spd += battleFlags.tgSpdDebuff.delta;
+        battleFlags.tgSpdDebuff = null;
+      }
+    }
     if(hasRelicFlag('skillLocked')) document.getElementById('cmd-skill').disabled = true;
     const runBtn = document.getElementById('cmd-run');
     // (사용자 요청 — 굴복 시스템) 도망(쉬움 전용, 확률제)과 굴복(보통/하드코어
@@ -275,6 +284,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       card.style.display = 'block';
       card.className = 'boss-intent-card warn';
       card.textContent = `⚠ [${BOSS_SKILL_LABELS[enemy.pendingSkillKey]||'강공격'}] — 다음 턴 발동!`;
+      return;
+    }
+    // 시간의 파수꾼 메아리 예고(사용자 기획) — 대기 중인 메아리가 바로 다음
+    // 턴에 터질 예정이면 알려준다. "시간 역행"(HP50% 이하에서 앞당겨 발동)은
+    // 의도적으로 예고하지 않는 유일한 예외라 여기서 다루지 않는다.
+    if(enemy.type==='timeguardian' && enemy.echoQueue && enemy.echoQueue.length && enemy.echoQueue[0].turnsLeft===1){
+      card.style.display = 'block';
+      card.className = 'boss-intent-card warn';
+      card.textContent = '⏳ 메아리가 다가온다…';
       return;
     }
     if(enemy.eliteTraits && enemy.eliteTraits.length){
