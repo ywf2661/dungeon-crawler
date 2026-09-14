@@ -763,7 +763,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // 무관, 유물 도감의 "획득 시점 등록"과 대칭되는 "조우 시점 등록").
     // 계정 단위 영구 기록이라 storage.js에 비동기로 저장한다 — 전투 흐름
     // 자체에는 영향을 주지 않도록 await 없이 fire-and-forget.
-    if(enemy && enemy.type && typeof addToMonsterDex==='function') addToMonsterDex(enemy.type);
+    // (사용자 요청) 층별보스(BOSSES 8종)도 도감에 포함한다 — 최종보스("잠식된
+    // OO 용사")/진최종보스(회랑의 시조·아이온)는 isFinal로 구분되며, 이들은
+    // 이미 별도 업적/엔딩으로 다뤄지므로 도감 집계 대상에서는 계속 제외한다.
+    if(!isFinal && enemy && enemy.type && typeof addToMonsterDex==='function') addToMonsterDex(enemy.type);
     // 다음 전투 한정 적 공격력 감소(사용자 요청 — 이상한 촛불 이벤트 "촛불을 끈다").
     // 단발성이라 소비 즉시 되돌린다.
     if(player.nextBattleEnemyAtkMult){

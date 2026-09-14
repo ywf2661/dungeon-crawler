@@ -104,20 +104,32 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
   // 진최종보스/층별보스는 이번 1차 범위에서 제외했다(story.md 8-6 다크
   // 판타지 팔레트 유지 — 잠긴 상태는 물음표+회색으로 통일).
   async function showMonsterDex(){
-    const discovered = await loadMonsterDex();
+    const discoveredRaw = await loadMonsterDex();
+    // (사용자 요청) 층별보스도 도감 대상에 포함 — MONSTERS(일반 20종) +
+    // BOSSES(층별보스 8종)를 합쳐서 하나의 도감 목록/분모로 취급한다.
+    // 최종보스/진최종보스(isFinal)는 여전히 제외 대상이라 그 타입들은 절대
+    // 등록되지 않으므로, discoveredRaw를 이 합친 풀로 걸러내는 것만으로
+    // 자연히 제외된다 — 별도 예외처리 불필요.
+    const DEX_MONSTERS = MONSTERS.concat(BOSSES);
+    const monsterTypeSet = new Set(DEX_MONSTERS.map(m=>m.type));
+    // 버그 수정(사용자 제보 — "33/20"처럼 분모를 넘어서는 카운트가 떴던 문제):
+    // 예전 버전에서 최종보스류 타입까지 함께 저장돼버린 계정은 discoveredRaw에
+    // 이 합친 풀 밖의 타입이 섞여 있을 수 있다. 별도 마이그레이션 없이, 표시
+    // 시점에 실제로 이 풀에 속한 타입만 세도록 걸러서 항상 분모를 넘지 않게 한다.
+    const discovered = discoveredRaw.filter(t=>monsterTypeSet.has(t));
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'monsterdex-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
     panel.innerHTML = `<h3>🐾 몬스터 도감</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;margin:-4px 0 10px;">조우: ${discovered.length} / ${MONSTERS.length}</p>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;margin:-4px 0 10px;">조우: ${discovered.length} / ${DEX_MONSTERS.length}</p>
       <div id="monsterdex-list" style="display:flex; flex-direction:column; gap:6px; max-height:340px; overflow-y:auto; padding:2px;"></div>
       <div style="text-align:center; margin-top:10px;"><button class="btn" id="monsterdex-close">닫기</button></div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
     const box = panel.querySelector('#monsterdex-list');
-    MONSTERS.slice().sort((a,b)=>a.minDepth-b.minDepth).forEach(m=>{
+    DEX_MONSTERS.slice().sort((a,b)=>a.minDepth-b.minDepth).forEach(m=>{
       const found = discovered.includes(m.type);
       const row = document.createElement('div');
       row.className = 'relicdex-row' + (found?'':' locked');
