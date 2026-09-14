@@ -3142,7 +3142,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     rogueRegisterHit(s.type==='phys');
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
-    if(s.type==='magic') Sound.magic(); else Sound.slash();
+    if(s.type==='magic') Sound.magic();
+    else if(key==='paladinCaliberXFinale' && typeof Sound.caliberxFinale==='function') Sound.caliberxFinale();
+    else Sound.slash();
     // 칼리버 X: 종언 전용 VFX(사용자 제공) — 레벨15 궁극기라 이 게임에서
     // 가장 큰 이펙트 이미지를 한 번 크게 띄운다.
     if(key==='paladinCaliberXFinale' && typeof spawnCaliberXFx==='function') spawnCaliberXFx();
