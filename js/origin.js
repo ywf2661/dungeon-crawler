@@ -262,5 +262,14 @@ export(전역): showOriginQuiz
     player.originBonuses[originAnswers.q2] = 0.08;
     player.originTraits = [originAnswers.q1, originAnswers.q2];
     saveGame();
-    finishNewGameStart();
+    // (사용자 요청) 보통/하드코어는 마을 진입 전에 유물 제단을 한 번 띄워서
+    // 시작 유물을 직접 고르게 한다. finishNewGameStart()가 townCheckpoint를
+    // 만들기 전에 끝나야 하므로, 반드시 그 호출보다 앞서 실행한다 — 이 순서가
+    // 바뀌면 사망 후 마을 복귀 시 시작 유물이 체크포인트에서 누락된다.
+    // 쉬움은 지금까지처럼 유물 없이 바로 시작.
+    if(player.difficulty!=='easy' && typeof showRelicAltar==='function'){
+      showRelicAltar(0, finishNewGameStart);
+    } else {
+      finishNewGameStart();
+    }
   }

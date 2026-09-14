@@ -566,9 +566,12 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     });
   }
 
-  function showRelicAltar(atDepth){
+  // onDone(선택): 유물 선택(또는 스킵)이 끝난 직후 한 번 호출된다(사용자 요청 —
+  // 보통/하드코어 시작 시 유물 제단을 띄우고, 끝나면 마을 진입으로 이어가기 위함).
+  // 기존 중간층 호출부(explore.js)는 onDone 없이 그대로 호출하므로 동작 그대로.
+  function showRelicAltar(atDepth, onDone){
     const {choices, mysteryIdx} = rollRelicChoices();
-    if(!choices.length) return; // 고를 수 있는 신규 유물이 더 없다
+    if(!choices.length){ if(typeof onDone==='function') onDone(); return; } // 고를 수 있는 신규 유물이 더 없다
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
@@ -629,6 +632,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
         }
         finalizeRelicPick(id, isMystery);
         overlay.remove();
+        if(typeof onDone==='function') onDone();
       });
     });
 
@@ -644,6 +648,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
         saveGame();
         overlay.remove();
         addLog(`골드 ${cost}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
+        if(typeof onDone==='function') onDone();
       });
     }
   }
