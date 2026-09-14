@@ -2290,6 +2290,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
       Sound.magic(); playCastBurst();
+      if(typeof spawnTimeParadoxFx==='function') spawnTimeParadoxFx();
       renderStatus();
       const msg2 = (stacks>0
         ? `쌓아온 시간 조각(${stacks}개)이 한꺼번에 무너지며 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`
