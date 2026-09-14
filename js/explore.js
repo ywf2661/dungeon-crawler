@@ -98,7 +98,15 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 완전히 막힌다. 정상적으로 보스를 잡았다면 battle-end.js가 승리 즉시
       // 다음 구간의 새 지도로 넘겨버리므로, 이 상태 그대로 저장에 남아 있다는
       // 것 자체가 "전투가 중간에 끊겼다"는 신호다 — 감지되면 보스전을 다시 건다.
-      if(player.nodeMap && player.nodeRow===player.nodeMap.length-1){
+      //
+      // 추가 버그 수정(사용자 제보 — 시간의 파수꾼 전투 중 새로고침하면 그냥
+      // 다음 노드를 고르게 됨): 'midboss' 노드는 지도 "중간" 행이라 위
+      // 판정(nodeRow===마지막 행)에 안 걸려서 이 안전장치를 그냥 통과해버렸다.
+      // 그 결과 전투 없이 노드만 "방문 완료" 처리된 채 다음 행을 고를 수
+      // 있게 되어, 사실상 중간보스를 공짜로 건너뛸 수 있는 구멍이 있었다.
+      // 판정 기준을 "마지막 행인지"가 아니라 "현재 노드 타입이 boss/midboss인지"로
+      // 바꿔서, 지도 안 위치와 무관하게 항상 잡아내도록 한다.
+      if(player.nodeMap && player.nodeRow>=0){
         const curRow = player.nodeMap[player.nodeRow];
         const curNode = curRow && curRow.find(n=>n.id===player.nodeCurrentId);
         if(curNode && curNode.type==='boss'){
@@ -115,6 +123,17 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
             addLog('중단됐던 보스전을 다시 시작한다!', 'warn');
             setTimeout(()=>startBattle(true), 300);
           }
+          return;
+        }
+        if(curNode && curNode.type==='midboss'){
+          document.getElementById('statusbar').style.display='flex';
+          showScreen('explore');
+          renderStatus();
+          depth = player.tierIndex*10 + 5;
+          nodeMidboss = true;
+          renderExplore(['모험을 이어간다.']);
+          addLog('중단됐던 조우를 다시 시작한다!', 'warn');
+          setTimeout(()=>startBattle(true), 300);
           return;
         }
       }
