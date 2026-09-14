@@ -773,18 +773,21 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         playBanner('명멸의 틈','fx-voidstep');
         if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('void');
         const stageEl = document.getElementById('bt-stage');
-        if(stageEl){ stageEl.classList.remove('tg-reappear'); stageEl.classList.add('tg-vanishing'); }
+        if(stageEl) stageEl.classList.add('tg-vanishing');
       }
       // 귀환의 일격(사용자 기획) — 명멸 다음 턴, 예고 없이 돌아와 크게
-      // 후려친다. 초상화를 원래대로 되돌리고, VFX 이미지로 "예상 못한
-      // 순간에 되돌아왔다"는 느낌을 준다.
+      // 후려친다. 초상화를 즉시 원래대로 되돌린다(사용자 요청 — "확
+      // 나타나서 베는" 연출). 페이드로 서서히 되돌리지 않고 클래스만
+      // 바로 제거하는 이유: 이 직후 공용 코드(lungeEnemy())가 모든 적
+      // 공격에 공통으로 붙이는 베기 lunge 애니메이션과 animation 속성이
+      // 겹치면 서로를 지워버리기 때문 — "팝인 후 베기"가 되도록 분리한다.
       else if(skillKey==='guardianReturnStrike'){
         dmg = Math.round(effAtk*2.0);
         label = `사라졌던 ${enemy.name}이(가) 예고 없이 돌아와 후려친다!`;
         playBanner('귀환의 일격','fx-voidstep');
         if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('returnstrike');
         const stageEl2 = document.getElementById('bt-stage');
-        if(stageEl2){ stageEl2.classList.remove('tg-vanishing'); stageEl2.classList.add('tg-reappear'); }
+        if(stageEl2) stageEl2.classList.remove('tg-vanishing');
       }
       else {
         dmg = effAtk + Math.floor(Math.random()*3)-1;

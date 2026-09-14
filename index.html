@@ -645,16 +645,15 @@
   .tg-vfx-img.void{ background-image:url('images/vfx/tg_void.png'); animation:tgvfxsink .8s ease-in forwards; }
   .tg-vfx-img.returnstrike{ background-image:url('images/vfx/tg_return.png'); animation:tgvfxpop .55s ease-out forwards; }
 
-  /* 명멸의 틈(사용자 요청) — 몬스터 초상화 자체가 스윽 사라졌다가, 귀환의
-     일격 때 다시 나타난다. opacity 0이 아니라 아주 옅게(0.08) 남겨서
-     "완전히 없어진 버그"처럼 보이지 않게 한다. */
-  @keyframes tgvanish{ to{ opacity:0.08; transform:scale(0.92); filter:brightness(0.3) saturate(0.3);} }
-  @keyframes tgreappear{ from{ opacity:0.08; transform:scale(0.92); filter:brightness(0.3) saturate(0.3);} to{ opacity:1; transform:scale(1); filter:none;} }
+  /* 명멸의 틈(사용자 요청) — 몬스터 초상화가 옆으로 스윽 미끄러지며 사라졌다가,
+     귀환의 일격 때 그 자리에 확 나타나 베는 연출로 이어진다. 재등장은 별도
+     페이드 애니메이션을 쓰지 않고 클래스를 즉시 제거해 "팟" 하고 복귀시킨다
+     — 그래야 곧바로 이어지는 기존 공격 lunge 애니메이션(.enemy-stage.attacking,
+     lungeEnemy()가 모든 적 공격에 이미 공통으로 걸어준다)과 애니메이션
+     속성이 겹쳐 서로를 지우는 문제 없이, "팝인 + 베기"가 자연스럽게 이어진다. */
+  @keyframes tgvanish{ to{ opacity:0.08; transform:translateX(70px) scale(0.85); filter:brightness(0.3) saturate(0.3);} }
   .enemy-stage.tg-vanishing svg, .enemy-stage.tg-vanishing img{
-    animation:tgvanish .6s ease-in forwards;
-  }
-  .enemy-stage.tg-reappear svg, .enemy-stage.tg-reappear img{
-    animation:tgreappear .4s ease-out forwards;
+    animation:tgvanish .55s ease-in forwards;
   }
 
   /* 화면 균열 이펙트(사용자 요청 — 시간의 파수꾼 공격 연출 다양화). 새
