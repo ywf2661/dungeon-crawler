@@ -809,6 +809,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         const imgEl2 = document.querySelector('#bt-stage svg, #bt-stage img');
         if(imgEl2){
           imgEl2.style.transition = 'none';
+          // 강제 리플로우(사용자 제보 — 되돌아왔는데 살짝 어두운 채로 남음):
+          // transition:none을 준 직후 바로 값을 바꾸면 브라우저가 이전
+          // transition을 아직 적용 중인 채로 처리해서 filter가 완전히 안
+          // 지워지고 남는 경우가 있었다. 이 코드베이스 다른 곳(shakeEnemy 등)
+          // 에서도 쓰는 방식대로, 강제로 한 번 리플로우시켜 transition:none이
+          // 확실히 반영된 뒤에 값을 지운다.
+          void imgEl2.offsetWidth;
           imgEl2.style.opacity = '';
           imgEl2.style.transform = '';
           imgEl2.style.filter = '';
