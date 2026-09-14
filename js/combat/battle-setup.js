@@ -860,8 +860,22 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     }
     // 사기꾼 "조작된 도박판" — 룰렛이 돌아가는 느낌으로, 내 스탯 상승과 적
     // 스탯 하락을 나란히 보여준다.
+    // 사기꾼 "조작된 도박판" — 룰렛이 돌아가는 느낌으로, 내 스탯 상승과 적
+    // 스탯 하락을 나란히 보여준다. (사용자 요청 — 텍스트 나열 대신 좌우
+    // 박스로 단순화: 내 쪽은 초록, 적 쪽은 빨강. 적 이름 대신 "적"으로
+    // 일반화해서 어떤 몬스터를 만나든 항상 같은 모양으로 보이게 함)
     if(riggedTableResult){
-      showToast(`<h3>🎰 조작된 도박판</h3><p>당신의 ${riggedTableResult.label.p} +12%<br>${enemy.name}의 ${riggedTableResult.label.e} -12%</p>`, '#e6c34a');
+      showToast(`<h3>🎰 조작된 도박판</h3>
+        <div style="display:flex; gap:8px; justify-content:center; margin-top:6px;">
+          <div style="flex:1; padding:8px 10px; border-radius:6px; background:#8fd66a22; border:1px solid #8fd66a; text-align:center;">
+            <div style="font-size:12px; opacity:.85;">내 ${riggedTableResult.label.p}</div>
+            <div style="font-weight:bold; color:#8fd66a;">+12%</div>
+          </div>
+          <div style="flex:1; padding:8px 10px; border-radius:6px; background:#ff6a5a22; border:1px solid #ff6a5a; text-align:center;">
+            <div style="font-size:12px; opacity:.85;">적 ${riggedTableResult.label.e}</div>
+            <div style="font-weight:bold; color:#ff6a5a;">-12%</div>
+          </div>
+        </div>`, '#e6c34a');
     }
     if(battleFlags.creed){
       showToast(`<h3>📜 계율</h3><p>이번 전투의 계율: <b>${creedLabel}</b><br>유지할수록 공격력이 오르고, 어기면 즉시 상실한다.</p>`, '#d9c07a');
