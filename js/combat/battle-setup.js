@@ -5,7 +5,7 @@
 보스 예고 스킬 이름 데이터(사용자 요청 — 보스전 리뉴얼).
 export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pickFinalBossJob,
               canEnrage, triggerEnragePhase, getDifficultyMonsterMult, scaleEnemyForDifficulty,
-              pickEnemy, startBattle, BOSS_SKILL_LABELS
+              pickEnemy, startBattle, BOSS_SKILL_LABELS, pendingRematchSpec(굴복 재도전용, 신규)
 의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS 등), Sound(sound.js), showToast(ui/difficulty.js),
        monster-visuals.js(getDungeonBgForDepth — 전투 시작 시 던전 배경 갱신)
 주의(신규 — 보스전 리뉴얼): 3페이즈(최후의 발악)는 기존 ENRAGE_STEPS_FINAL/TRUE
@@ -25,6 +25,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   // 직전에 loadRecords()로 채워둔다) — 일반 최종보스의 이름/직업을 여기서
   // 따온다. 기록이 없으면 null로 남아 예전처럼 무작위 직업 폴백이 동작한다.
   let recentRunRecord = null;
+  // (사용자 요청 — 굴복 시스템) 굴복 직후 같은 노드로 돌아왔을 때, 몬스터를
+  // 다시 무작위로 굴리지 않고 정확히 같은 개체(같은 타입 + 정예 여부/특성)로
+  // 재등장시키기 위한 고정 스펙. player-actions.js의 playerSurrender()가
+  // 굴복 시점에 채워 넣고, pickEnemy()가 소비 즉시 비운다(1회용).
+  let pendingRematchSpec = null;
   // (사용자 요청 — 마녀 조우 조건 강화) 마녀의 시계를 보유했더라도, 이 난이도에서
   // 회랑의 시조를 클리어한 기록이 최소 1회 있어야 시조 대신 아이온이 등장한다.
   // pickEnemy()는 동기 함수라, explore.js의 renderFinalFloorStep()이 전투 시작
@@ -328,17 +333,34 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       const fallback = MONSTERS.filter(m=>tierPool.native.includes(m.type) && atDepth>=m.minDepth);
       return pickWeightedMonster(sub.length?sub:(fallback.length?fallback:MONSTERS.filter(m=>atDepth>=m.minDepth)), atDepth);
     }
+    // (사용자 요청 — 굴복 재도전) 직전에 굴복한 노드로 돌아온 경우, 몬스터를
+    // 다시 굴리지 않고 저장해둔 스펙 그대로 재구성한다. isBoss 일치 여부까지
+    // 확인해 엉뚱한 종류의 노드에 잘못 적용되는 일이 없게 한다.
+    let rematchBase = null, rematchElite = null;
+    if(pendingRematchSpec && pendingRematchSpec.isBoss===isBoss){
+      rematchBase = isBoss
+        ? BOSSES.find(m=>m.type===pendingRematchSpec.type)
+        : MONSTERS.find(m=>m.type===pendingRematchSpec.type);
+      rematchElite = pendingRematchSpec;
+      pendingRematchSpec = null;
+    }
     const pool = isBoss ? BOSSES.filter(m=>depth>=m.minDepth) : null;
-    const base = isBoss
-      ? (pool[Math.floor(Math.random()*pool.length)] || BOSSES[0])
-      : (pickTieredMonster(depth) || MONSTERS[0]);
+    // 첫 층별보스(depth===5)는 항상 감시자의 석판으로 고정한다(사용자 요청 —
+    // 전 난이도 동일). 원래도 이 depth에서는 minDepth<=5인 보스가 감시자의
+    // 석판(minDepth:6)뿐이라 무작위 풀이 사실상 비어 BOSSES[0] 폴백으로
+    // 우연히 항상 같은 결과였지만, 이제 명시적으로 고정해 배열 순서가
+    // 바뀌어도 깨지지 않게 한다.
+    const base = rematchBase || (isBoss
+      ? (depth===5 ? BOSSES.find(m=>m.type==='watchertablet')
+        : (pool[Math.floor(Math.random()*pool.length)] || BOSSES[0]))
+      : (pickTieredMonster(depth) || MONSTERS[0]));
     const scale = 1 + depth*0.06;
     // 엘리트: 보스가 아닌 일반 몬스터 중 낮은 확률로 강화판이 등장한다. 처치 시 유물이 확정으로 주어진다.
     // 정예: 노드맵의 '정예 전투' 노드를 골랐으면(nodeForcedElite) 확정으로
     // 정예가 나온다 — 이 경우 nodemap.js의 resolveNode()가 플래그를 세워둔다.
     // 그 외엔 예전처럼 낮은 확률로 무작위 등장한다(구간 없이 시작하는 보스소굴
     // 등 레거시 경로용으로 남겨둠).
-    const isElite = !isBoss && (nodeForcedElite || (depth>=3 && Math.random()<0.10));
+    const isElite = rematchElite ? !!rematchElite.isElite : (!isBoss && (nodeForcedElite || (depth>=3 && Math.random()<0.10)));
     nodeForcedElite = false;
     // 더 강한 정예(사용자 요청 — 피투성이 도전자 이벤트 "도발한다" 전용).
     // nodemap.js에 nodeForcedElite와 함께 선언된 nodeEliteBoost 플래그를 여기서
@@ -363,7 +385,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     };
     if(isElite){
       const traitCount = getEliteTraitCount(depth, player && player.difficulty);
-      built.eliteTraits = rollEliteTraits(base.type, traitCount);
+      built.eliteTraits = (rematchElite && rematchElite.eliteTraits) ? rematchElite.eliteTraits.slice() : rollEliteTraits(base.type, traitCount);
       // 철갑/불사는 지속 카운터·1회성 플래그가 필요해 여기서 초기값을 함께 심어둔다.
       // [너프] 사용자 요청 — 첫 2턴 → 첫 1턴으로 줄였다.
       if(built.eliteTraits.includes('ironskin')) built.ironskinTurns = 1;

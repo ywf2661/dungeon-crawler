@@ -58,8 +58,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setCommandsEnabled(true);
     if(hasRelicFlag('skillLocked')) document.getElementById('cmd-skill').disabled = true;
     const runBtn = document.getElementById('cmd-run');
+    // (사용자 요청 — 굴복 시스템) 도망(쉬움 전용, 확률제)과 굴복(보통/하드코어
+    // 전용, 확정 성공 + 골드 대가)은 같은 버튼 자리를 난이도에 따라 바꿔 쓴다 —
+    // 둘 다 "이번 조우를 중단하고 재도전한다"는 같은 역할이라 동시에 보일
+    // 필요가 없다.
     const canFlee = !player || player.difficulty==='easy';
-    runBtn.style.display = canFlee ? '' : 'none';
+    runBtn.style.display = '';
+    runBtn.innerHTML = canFlee
+      ? '<span class="icon">💨</span>도망'
+      : '<span class="icon">🏳️</span>굴복';
     updatePlayerStatusBadges();
     updateRigVisuals();
     updatePressureGauge();

@@ -1,7 +1,7 @@
 "use strict";
 /*
-플레이어 턴 행동 4종 — 공격/스킬/아이템/도망.
-export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, playerRun
+플레이어 턴 행동 4종 — 공격/스킬/아이템/도망. + 굴복(신규, 보통/하드코어 전용 도망 대체 수단).
+export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, playerRun, playerSurrender
 의존성: state.js, data/skills.js(SKILLDB), relics.js, data/equipment.js, combat/battle-fx.js,
         combat/battle-end.js, combat/enemy-turn.js(적 턴 호출)
 */
@@ -3344,6 +3344,57 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       setBattleMsg('도망칠 수 없었다!', '');
       enemyTurn();
     }
+  }
+
+  // 굴복(사용자 요청) — 보통/하드코어(도망 불가 난이도) 전용 탈출 수단. 도망과
+  // 반대 성격: 확률 없이 항상 성공하지만, 소지 골드의 일정 비율을 대가로
+  // 낸다(getRelicSkipCost와 동일한 "쓸수록 비싸지는" 패턴 재사용, 세션당
+  // 누적 — player.surrenderCount). 노드를 되돌리는 로직은 도망 성공 분기와
+  // 완전히 동일하되, 재도전 시 몬스터가 다시 무작위로 굴리지 않도록
+  // combat/battle-setup.js의 pendingRematchSpec에 지금 상대의 스펙(타입 +
+  // 정예 여부/특성)을 저장해둔다 — "이번 시도만 중단"이지 "이 조우를 회피"하는
+  // 것은 아니라는 설계 의도(체력 소모로 깎아먹는 어뷰징 방지를 위해, 재등장
+  // 시 몬스터는 항상 풀피로 리셋된다).
+  function getSurrenderCostPct(){
+    const n = player.surrenderCount||0;
+    if(n===0) return 0.30;
+    if(n===1) return 0.60;
+    return 0.85;
+  }
+  function playerSurrender(){
+    if(battleOver) return;
+    setCommandsEnabled(false);
+    battleOver = true;
+    revertDiceDelta();
+    if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
+    if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
+    const cost = Math.round(player.gold * getSurrenderCostPct());
+    player.gold = Math.max(0, player.gold - cost);
+    player.surrenderCount = (player.surrenderCount||0) + 1;
+    let ledgerMsg = '';
+    if(hasRelicFlag('killAtkStack') && player.ledgerStack>0){
+      player.atk = Math.max(1, player.atk - player.ledgerStack);
+      player.ledgerStack = 0;
+      ledgerMsg = ' 망자의 장부에 쌓인 힘이 모래처럼 흩어졌다.';
+    }
+    if(typeof pendingRematchSpec!=='undefined'){
+      pendingRematchSpec = {
+        type: enemy.type, isBoss: !!enemy.isBoss, isElite: !!enemy.isElite,
+        eliteTraits: enemy.eliteTraits ? enemy.eliteTraits.slice() : null,
+      };
+    }
+    if(player.nodeMap && player.nodeRow >= 0){
+      player.nodeRow -= 1;
+      if(player.nodeVisited && player.nodeVisited.length) player.nodeVisited.pop();
+      player.nodeCurrentId = player.nodeRow>=0 ? (player.nodeVisited[player.nodeVisited.length-1] || null) : null;
+    }
+    setBattleMsg('굴복했다...', '');
+    setTimeout(()=>{
+      showScreen('explore');
+      renderExplore([{text:`무릎을 꿇고 골드 ${cost}G를 던지듯 내밀었다. 상대는 그것을 챙기고는 순순히 물러났다.`+ledgerMsg, cls:'warn'}]);
+      renderStatus();
+      saveGame();
+    }, 700);
   }
 
   // 패의 마술사 공용 헬퍼: battleFlags.cardHand(최대 3장)를 검사해 트리플(3장 모두

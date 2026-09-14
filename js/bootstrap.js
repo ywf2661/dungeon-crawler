@@ -139,7 +139,14 @@ export(전역): init, showMaintenanceModal, isAdminName
     const namewrapEl = document.getElementById('namewrap-status');
     if(namewrapEl) namewrapEl.addEventListener('click', ()=>{ if(typeof openStatusSheet==='function') openStatusSheet(); });
     document.getElementById('cmd-item').addEventListener('click', ()=>{ Sound.click(); openSub('item'); });
-    document.getElementById('cmd-run').addEventListener('click', ()=>{ Sound.click(); playerRun(); });
+    document.getElementById('cmd-run').addEventListener('click', ()=>{
+      Sound.click();
+      // (사용자 요청 — 굴복 시스템) 버튼 라벨은 resetCommandUI()가 난이도에
+      // 맞춰 이미 바꿔뒀으니, 여기서는 실행할 함수만 난이도로 분기한다.
+      const canFlee = !player || player.difficulty==='easy';
+      if(canFlee) playerRun();
+      else if(typeof playerSurrender==='function') playerSurrender();
+    });
     document.getElementById('cmd-back').addEventListener('click', ()=>{ Sound.click(); closeSub(); });
     document.getElementById('name-input').addEventListener('keydown', e=>{
       if(e.key==='Enter'){
