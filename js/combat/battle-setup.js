@@ -374,6 +374,19 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       const fallback = MONSTERS.filter(m=>tierPool.native.includes(m.type) && atDepth>=m.minDepth);
       return pickWeightedMonster(sub.length?sub:(fallback.length?fallback:MONSTERS.filter(m=>atDepth>=m.minDepth)), atDepth);
     }
+    // 층별보스 고정 배치(사용자 요청 — A안: 무작위 풀 대신 depth별로 완전
+    // 고정). 예전엔 BOSSES.filter(minDepth<=depth) 중 무작위 추첨이었는데,
+    // 이제 어떤 보스가 나올지 미리 알 수 있게(그리고 각자의 스토리를 그
+    // 층에 정확히 대응시키게) depth 10/20/30/40/50에 하나씩 고정한다.
+    // data/monsters.js의 BOSSES에서 나머지 3종(재봉인형/등롱/모래)은 소스만
+    // 남기고 주석 처리했다 — 이 맵에도 등장하지 않는다.
+    const FLOOR_BOSS_BY_DEPTH = {
+      10: 'watchertablet',   // 감시자의 석판
+      20: 'bladedbloom',     // 넝쿨진 칼날꽃(정원사) — 사용자 요청으로 2번째 자리
+      30: 'hornedwarden',    // 열쇠 두른 파수꾼(왕자의 방을 봉인한 문지기) — 칼날꽃과 자리 교체
+      40: 'clockheart',      // 고쳐지지 않는 시계(시계공의 미완성 유작)
+      50: 'hollowprophet',   // 빈 옷의 예언자
+    };
     // (사용자 요청 — 굴복 재도전) 직전에 굴복한 노드로 돌아온 경우, 몬스터를
     // 다시 굴리지 않고 저장해둔 스펙 그대로 재구성한다. isBoss 일치 여부까지
     // 확인해 엉뚱한 종류의 노드에 잘못 적용되는 일이 없게 한다.
@@ -385,18 +398,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       rematchElite = pendingRematchSpec;
       pendingRematchSpec = null;
     }
-    const pool = isBoss ? BOSSES.filter(m=>depth>=m.minDepth) : null;
-    // 버그 수정(사용자 제보 — 하드코어에서 첫 층별보스가 석판이 아니라 빈 옷의
-    // 예언자로 뜸): 첫 층별보스의 실제 depth는 5가 아니라 10이다 — 이 프로젝트의
-    // 보스 사이클은 5층이 아니라 10층 단위(nodemap.js의 resolveNode(), 보스
-    // 노드에서 depth를 tierIndex*10+10으로 강제 세팅함 — 최초 구간은
-    // tierIndex=0이라 10)로 통일되어 있는데, 처음 이 조건을 depth===5로 잘못
-    // 넣어서 실제로는 한 번도 발동하지 않고 있었다(그래서 depth 10 시점엔
-    // minDepth<=10인 감시자의 석판(6)과 빈 옷의 예언자(8)가 둘 다 무작위 풀에
-    // 들어가 있었던 것). depth===10으로 고쳐 실제로 항상 고정되게 한다.
     const base = rematchBase || (isBoss
-      ? (depth===10 ? BOSSES.find(m=>m.type==='watchertablet')
-        : (pool[Math.floor(Math.random()*pool.length)] || BOSSES[0]))
+      ? (BOSSES.find(m=>m.type===FLOOR_BOSS_BY_DEPTH[depth]) || BOSSES[0])
       : (pickTieredMonster(depth) || MONSTERS[0]));
     const scale = 1 + depth*0.06;
     // 엘리트: 보스가 아닌 일반 몬스터 중 낮은 확률로 강화판이 등장한다. 처치 시 유물이 확정으로 주어진다.

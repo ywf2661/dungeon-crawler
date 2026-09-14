@@ -65,9 +65,13 @@ export(전역): heroBossSvg, svgMonster
     clockheart: 'images/monsters/clockheart.png',
     // 2차 신규 4종 — 참고 이미지랑 겹치지 않는 새 컨셉(석판/재봉인형/등롱/모래시계)
     watchertablet: 'images/monsters/watchertablet.png',
-    threadmannequin: 'images/monsters/threadmannequin.png',
-    sinlantern: 'images/monsters/sinlantern.png',
-    unstoppingsand: 'images/monsters/unstoppingsand.png',
+    // 층별보스 정리(A안, 사용자 요청) — 이번엔 사용하지 않는 3종의 이미지
+    // 등록을 주석 처리한다(data/monsters.js의 BOSSES 주석 처리와 짝). 파일
+    // 자체는 images/monsters/에 그대로 남아있다 — 나중에 다시 쓸 수도 있어
+    // 삭제 대신 주석만 해뒀다.
+    // threadmannequin: 'images/monsters/threadmannequin.png',
+    // sinlantern: 'images/monsters/sinlantern.png',
+    // unstoppingsand: 'images/monsters/unstoppingsand.png',
     // 일반 몬스터 이미지 없던 5종 재해석(사용자 요청 — 원혼/언데드기사/하피/
     // 레이스/광신도를 독창적인 컨셉으로 새로 디자인). 아직 실제 그림은 없고
     // 경로만 미리 등록해뒀다 — 위 보스들과 동일한 패턴으로, 이 경로에 그림을

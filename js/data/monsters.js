@@ -91,22 +91,42 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS
     // 파수인, 오우거→재봉인형, 크라켄→칼날꽃, 파수꾼→등롱, 처형자→태엽 심장,
     // 악마 군주→모래. (참고: 기존 데이터에 '회랑의 리치'가 실수로 두 번 중복
     // 등록되어 있었는데, 이번에 함께 정리했다.)
+    // 층별보스 고정 배치(사용자 요청 — A안: 8종 중 5종만 남기고 정리, 나머지
+    // 3종은 소스만 남기고 주석 처리). 실제 배치는 combat/battle-setup.js의
+    // FLOOR_BOSS_BY_DEPTH를 참고 — depth 10=석판/20=문지기/30=칼날꽃/
+    // 40=태엽심장/50=예언자로 고정. minDepth 필드는 더 이상 무작위 풀
+    // 필터링에 쓰이지 않지만(고정 배치라 필요 없음), "원래 몇 층쯤을
+    // 염두에 뒀던 디자인인지" 참고용으로 남겨둔다.
     {type:'watchertablet',  name:'감시자의 석판',     minDepth:6,  hp:90,  atk:16, def:6,  spd:7,  exp:80,  gold:[60,90],   skills:['carvedBrand','unblinkingGaze'],
       dex:'낡은 석판에 새겨진 눈이, 깜빡임도 없이 지나는 모든 것을 지켜본다.'},
-    {type:'hollowprophet',  name:'빈 옷의 예언자',    minDepth:8,  hp:130, atk:20, def:10, spd:9,  exp:140, gold:[100,150], skills:['lockedVoices','prophecyFlame'], weakness:'dot',
+    // 빈 옷의 예언자 — 사용자 요청으로 층별보스 5번째(depth 50, 고정 배치
+    // 중 가장 깊은 자리)로 재배치. 원래 minDepth8(초반 조우) 기준 스탯이라,
+    // 그대로 두면 depth 50 스케일링 이후에도 clockheart(depth40 고정) 결과값
+    // 보다 약해지는 역전 현상이 있었다 — hp/atk/def/exp/gold를 depth 50
+    // 자리에 맞게 상향 조정했다(스케일 공식은 pickEnemy()의 scale=1+depth*0.06
+    // 그대로, 시드값만 변경).
+    {type:'hollowprophet',  name:'빈 옷의 예언자',    minDepth:50, hp:240, atk:25, def:22, spd:10, exp:200, gold:[140,190], skills:['lockedVoices','prophecyFlame'], weakness:'dot',
       dex:'속은 텅 비었으나, 그 안에는 여전히 다 읽지 못한 별자리가 빛나고 있다.'},
-    {type:'hornedwarden',   name:'뿔 두른 파수인',    minDepth:12, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['judgmentKey','whisperingHorn'],
-      dex:'뿔 달린 투구 아래, 누구의 얼굴이었는지는 이미 잊혔다.'},
+    {type:'hornedwarden',   name:'열쇠 두른 파수꾼',  minDepth:30, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['judgmentKey','whisperingHorn'],
+      dex:'수많은 열쇠들 틈에, 유독 작고 낡은 금빛 열쇠 하나가 놓여 있다.'},
+    /* 층별보스 정리(A안, 사용자 요청) — 이번엔 사용하지 않음. 이미지/스탯/
+       스킬 데이터는 소스만 남겨두고 무작위 풀에서도, 고정 배치에서도 완전히
+       제외한다. 나중에 다시 쓸 수도 있어 삭제 대신 주석 처리만 해뒀다.
     {type:'threadmannequin',name:'붉은 실의 재봉인형', minDepth:14, hp:150, atk:24, def:10, spd:5,  exp:160, gold:[110,150], skills:['threadWinds','scissorGreeting'],
       dex:'실이 스스로 옷감을 짜듯, 인형이 스스로 움직인다.'},
-    {type:'bladedbloom',    name:'넝쿨진 칼날꽃',     minDepth:16, hp:180, atk:23, def:12, spd:6,  exp:200, gold:[130,170], skills:['petalBloodletting','bladeStemSweep'],
-      dex:'꽃잎 대신 칼날이 돋아난, 이 회랑에서만 피는 꽃.'},
+    */
+    {type:'bladedbloom',    name:'넝쿨진 칼날꽃',     minDepth:20, hp:180, atk:23, def:12, spd:6,  exp:200, gold:[130,170], skills:['petalBloodletting','bladeStemSweep'],
+      dex:'정원사는 사라졌지만, 손에 쥔 낡은 전정가위만은 여전히 놓지 않았다.'},
+    /*
     {type:'sinlantern',     name:'죄의 등롱',         minDepth:18, hp:210, atk:26, def:18, spd:3,  exp:260, gold:[160,220], skills:['burningSin','lanternChorus'],
       dex:'등불 안에서 타오르는 건 기름이 아니라, 오래 묵은 죄책감이다.'},
-    {type:'clockheart',     name:'잠들지 않는 태엽 심장', minDepth:20, hp:235, atk:27, def:20, spd:4, exp:300, gold:[170,230], skills:['pulseShockwave','rustedChainBind'], weakness:'dot',
-      dex:'멈춘 시간 속에서도, 이 심장만은 홀로 째깍거림을 멈추지 않는다.'},
+    */
+    {type:'clockheart',     name:'고쳐지지 않는 시계', minDepth:40, hp:235, atk:27, def:20, spd:4, exp:300, gold:[170,230], skills:['pulseShockwave','rustedChainBind'], weakness:'dot',
+      dex:'시계공은 사라졌지만, 그가 놓지 못한 연장들만은 여전히 곁에 남아 있다.'},
+    /*
     {type:'unstoppingsand', name:'멈추지 않는 모래',   minDepth:28, hp:260, atk:32, def:16, spd:9,  exp:380, gold:[220,300], skills:['crumblingSand','timeTurningBack'], weakness:'dot',
       dex:'다 흘러내렸어야 할 모래가, 여전히 위에서 아래로 떨어지고 있다.'},
+    */
   ];
 
 

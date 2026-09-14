@@ -337,8 +337,9 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     let total = Math.max(weaponBoost, nonWeaponBoost);
     // 보스 약점(사용자 요청 — 정예/보스 리뉴얼 1차): weakness:'dot'인 보스는
     // 지속피해에 특히 취약해 피해량이 2배(+100%)가 된다. data/monsters.js의
-    // BOSSES 데이터에 시범 적용된 3개 보스 한정(잠들지 않는 태엽 심장/멈추지
-    // 않는 모래/빈 옷의 예언자). 이건 장비 중첩 규칙과 무관하게 항상 별도로 더해진다.
+    // BOSSES 데이터에 시범 적용된 보스 한정(고쳐지지 않는 시계/빈 옷의 예언자,
+    // 원래 함께 시범 적용됐던 '멈추지 않는 모래'는 A안 정리로 현재 미사용).
+    // 이건 장비 중첩 규칙과 무관하게 항상 별도로 더해진다.
     if(typeof enemy!=='undefined' && enemy && enemy.weakness==='dot') total += 1.0;
     return total;
   }
