@@ -261,7 +261,12 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         maxhp: TIME_GUARDIAN.hp, hp: TIME_GUARDIAN.hp,
         atk: TIME_GUARDIAN.atk, def: TIME_GUARDIAN.def, spd: TIME_GUARDIAN.spd,
         exp: TIME_GUARDIAN.exp,
-        gold: TIME_GUARDIAN.gold[0] + Math.floor(Math.random()*(TIME_GUARDIAN.gold[1]-TIME_GUARDIAN.gold[0]+1)),
+        // 버그 수정(사용자 제보 — 파수꾼 처치 후 소지금이 NaN/null이 됨):
+        // 다른 몬스터는 전부 gold를 [최소,최대] 배열로 두고 승리 시
+        // battle-end.js가 enemy.gold[0]/[1]로 뽑는데, 여기서만 실수로 이미
+        // 계산된 숫자 하나를 넣어버려서 그 배열 인덱싱이 깨지고 있었다.
+        // 다른 보스들과 동일하게 배열 그대로 넘긴다.
+        gold: TIME_GUARDIAN.gold.slice(),
         skills: TIME_GUARDIAN.skills.slice(),
         // 메아리 큐(2턴 지연) — combat/enemy-turn.js의 timeGuardianAction()이
         // 관리한다. 여기서는 빈 상태로만 초기화.

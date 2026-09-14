@@ -33,6 +33,7 @@ export(전역): const Sound
       truefinalboss: ['audio/bgm/truefinalboss.mp3'],
       // 마녀의 시계 보유 시 시조 대신 등장하는 시간의 마녀(아이온) 전용.
       witchboss: ['audio/bgm/witchboss.mp3'],
+      timeguardian: ['audio/bgm/timeguardian.mp3'],
     };
     let bgmAudioEl = null, bgmPlaylist = [], bgmPlaylistIdx = 0;
     // 모드별로 "마지막에 재생하던 트랙 인덱스"를 기억한다(사용자 요청 —

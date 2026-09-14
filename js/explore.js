@@ -361,10 +361,14 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       const isWitchBattle = !!(enemy && enemy.isTrueFinal && enemy.type==='timewitch');
       const isTrueFinalBattle = !!(enemy && enemy.isTrueFinal && !isWitchBattle);
       const isFinalBattle = !!(enemy && enemy.isFinal && !enemy.isTrueFinal);
+      // 시간의 파수꾼(사용자 기획) 전용 BGM — 중간보스라 일반/최종보스류와는
+      // 완전히 별개 트랙을 쓴다.
+      const isGuardianBattle = !!(enemy && enemy.type==='timeguardian');
       Sound.setBgmMode(
         isWitchBattle ? 'witchboss' :
         isTrueFinalBattle ? 'truefinalboss' :
-        isFinalBattle ? 'finalboss' : 'battle'
+        isFinalBattle ? 'finalboss' :
+        isGuardianBattle ? 'timeguardian' : 'battle'
       );
     } else if(id==='title' || id==='gameover'){
       Sound.setBgmMode('explore');
