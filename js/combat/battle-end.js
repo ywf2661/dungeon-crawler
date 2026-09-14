@@ -155,6 +155,11 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       }
       const leveled = grantExp(enemy.exp);
       const isFinalKill = !!enemy.isFinal;
+      // 몬스터 도감(사용자 요청) — 최종보스/진최종보스는 일반 몬스터·층별보스와
+      // 달리 '조우'가 아니라 '처치'했을 때만 도감에 등록한다(조우 시점 등록은
+      // combat/battle-setup.js의 startBattle()이 isFinal일 때 이미 건너뛰고
+      // 있으므로, 여기서 처치 시점에만 별도로 등록해준다).
+      if(isFinalKill && enemy.type && typeof addToMonsterDex==='function') addToMonsterDex(enemy.type);
       if(leveled.includes(10) && !player.jobChosenAt10){
         player.jobAdvancePending = true;
       }

@@ -106,11 +106,13 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
   async function showMonsterDex(){
     const discoveredRaw = await loadMonsterDex();
     // (사용자 요청) 층별보스도 도감 대상에 포함 — MONSTERS(일반 20종) +
-    // BOSSES(층별보스 8종)를 합쳐서 하나의 도감 목록/분모로 취급한다.
-    // 최종보스/진최종보스(isFinal)는 여전히 제외 대상이라 그 타입들은 절대
-    // 등록되지 않으므로, discoveredRaw를 이 합친 풀로 걸러내는 것만으로
-    // 자연히 제외된다 — 별도 예외처리 불필요.
-    const DEX_MONSTERS = MONSTERS.concat(BOSSES);
+    // BOSSES(층별보스 8종) + 최종보스류(잠식된 OO 용사 6종 + 회랑의 시조/
+    // 아이온 2종, 총 8종 — 처치 시점에만 등록됨, combat/battle-end.js 참고)를
+    // 합쳐서 하나의 도감 목록/분모로 취급한다.
+    const FINAL_DEX_ENTRIES = Object.values(FINAL_BOSS_BY_JOB)
+      .concat([TRUE_FINAL_BOSS, TRUE_FINAL_BOSS_WITCH])
+      .map(b=>({type:b.type, name:b.name, minDepth:50, dex:b.dex}));
+    const DEX_MONSTERS = MONSTERS.concat(BOSSES).concat(FINAL_DEX_ENTRIES);
     const monsterTypeSet = new Set(DEX_MONSTERS.map(m=>m.type));
     // 버그 수정(사용자 제보 — "33/20"처럼 분모를 넘어서는 카운트가 떴던 문제):
     // 예전 버전에서 최종보스류 타입까지 함께 저장돼버린 계정은 discoveredRaw에

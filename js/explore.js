@@ -382,6 +382,9 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('sb-hp-val').textContent = `${Math.max(0,player.hp)}/${player.maxhp}`;
     document.getElementById('sb-mp-bar').style.width = Math.max(0,(player.mp/player.maxmp*100))+'%';
     document.getElementById('sb-mp-val').textContent = `${Math.max(0,player.mp)}/${player.maxmp}`;
+    // 경험치 바(사용자 요청) — HP/MP 바와 같은 구조로 하단에 추가.
+    document.getElementById('sb-exp-bar').style.width = Math.max(0,Math.min(100, (player.exp/player.expNext*100)))+'%';
+    document.getElementById('sb-exp-val').textContent = `${player.exp}/${player.expNext}`;
     document.getElementById('gold-display').textContent = '💰 '+player.gold;
     // 정예의 인장(사용자 요청 — 골드 위에 인장 개수도 표시). 인장이 하나도
     // 없으면(대부분의 직업 초반, 또는 애초에 인장을 못 쓰는 상황) 굳이 "0개"를

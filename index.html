@@ -97,7 +97,7 @@
   #statusbar .namewrap{flex-shrink:0; min-width:0; max-width:min(112px, 28vw); overflow:hidden;}
   .barwrap{flex:1; display:flex; flex-direction:column; gap:3px; min-width:80px;}
   .barrow{display:flex; align-items:center; gap:4px;}
-  .barlabel{width:14px; flex-shrink:0; font-size:10.5px; color:var(--parchment-dim); font-family:var(--font-ui);}
+  .barlabel{width:22px; flex-shrink:0; font-size:10.5px; color:var(--parchment-dim); font-family:var(--font-ui);}
   .bar-outer{flex:1; min-width:22px; height:8px; background:#0f0b07; border:1px solid #4a3a24; border-radius:3px; overflow:hidden;}
   .bar-inner{height:100%; transition:width .4s ease;}
   .bar-hp{background:linear-gradient(90deg,var(--rust),var(--rust-bright));}
@@ -1074,6 +1074,11 @@
         <div class="barlabel">MP</div>
         <div class="bar-outer"><div class="bar-inner bar-mp" id="sb-mp-bar" style="width:100%;"></div></div>
         <div class="barval" id="sb-mp-val">10/10</div>
+      </div>
+      <div class="barrow">
+        <div class="barlabel">EXP</div>
+        <div class="bar-outer"><div class="bar-inner bar-exp" id="sb-exp-bar" style="width:0%;"></div></div>
+        <div class="barval" id="sb-exp-val">0/0</div>
       </div>
     </div>
     <div id="gold-display-wrap" style="display:flex; flex-direction:column; align-items:flex-end; gap:1px; flex-shrink:0;">

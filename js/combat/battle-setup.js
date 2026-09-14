@@ -37,18 +37,25 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   let progenitorClearedThisDifficulty = false;
 
   const FINAL_BOSS_BY_JOB = {
-    warrior:  {name:'잠식된 전사 용사',   type:'herowarrior',  hp:320, atk:32, def:14, spd:7,  exp:600, gold:[350,450], skills:['heroWarriorSmite']},
-    mage:     {name:'잠식된 마법사 용사', type:'heromage',     hp:280, atk:38, def:9,  spd:8,  exp:600, gold:[350,450], skills:['heroMageBurst']},
-    rogue:    {name:'잠식된 도적 용사',   type:'herorogue',    hp:290, atk:35, def:10, spd:13, exp:600, gold:[350,450], skills:['heroRogueSlash']},
-    paladin:  {name:'잠식된 성기사 용사', type:'heropaladin',  hp:340, atk:29, def:16, spd:6,  exp:600, gold:[350,450], skills:['heroPaladinSmite','heal']},
-    mechanic: {name:'잠식된 기관사 용사', type:'heromechanic', hp:310, atk:32, def:12, spd:9,  exp:600, gold:[350,450], skills:['heroMechanicBlast']},
-    jester:   {name:'잠식된 도박사 용사',   type:'herojester',   hp:285, atk:35, def:10, spd:11, exp:600, gold:[350,450], skills:['heroJesterGamble']},
+    warrior:  {name:'잠식된 전사 용사',   type:'herowarrior',  hp:320, atk:32, def:14, spd:7,  exp:600, gold:[350,450], skills:['heroWarriorSmite'],
+      dex:'한때 강인한 전사였으나, 이제는 침입자를 물리치는 것밖에 남지 않았다.'},
+    mage:     {name:'잠식된 마법사 용사', type:'heromage',     hp:280, atk:38, def:9,  spd:8,  exp:600, gold:[350,450], skills:['heroMageBurst'],
+      dex:'지팡이를 놓지 못한 채, 마지막 주문만을 계속 되뇐다.'},
+    rogue:    {name:'잠식된 도적 용사',   type:'herorogue',    hp:290, atk:35, def:10, spd:13, exp:600, gold:[350,450], skills:['heroRogueSlash'],
+      dex:'그림자에 숨어들던 몸놀림이, 이제는 이 회랑을 벗어나지 못하는 데에만 쓰인다.'},
+    paladin:  {name:'잠식된 성기사 용사', type:'heropaladin',  hp:340, atk:29, def:16, spd:6,  exp:600, gold:[350,450], skills:['heroPaladinSmite','heal'],
+      dex:'지키겠다던 맹세가, 이제는 침입자를 막아서는 데에만 쓰인다.'},
+    mechanic: {name:'잠식된 기관사 용사', type:'heromechanic', hp:310, atk:32, def:12, spd:9,  exp:600, gold:[350,450], skills:['heroMechanicBlast'],
+      dex:'식어버린 보일러 안에서도, 압력만은 여전히 차오른다.'},
+    jester:   {name:'잠식된 도박사 용사',   type:'herojester',   hp:285, atk:35, def:10, spd:11, exp:600, gold:[350,450], skills:['heroJesterGamble'],
+      dex:'마지막으로 걸었던 판돈을 쥔 손이, 아직도 펴지지 않는다.'},
   };
   // 단 한 번도 쓰러지지 않고(deathCount===0) 50층에 도달했을 때만 등장하는 진짜 최종보스.
   // 일반 최종보스(잠식된 OO 용사)보다, 그리고 여느 보스들보다도 훨씬 강하다.
   const TRUE_FINAL_BOSS = {
     name:'회랑의 시조', type:'progenitor', hp:460, atk:32, def:22, spd:10,
     exp:1200, gold:[600,800], skills:['trueBossJudgment','heal'],
+    dex:'낡은 왕관을 쓴 채, 이 죽은 왕국을 홀로 지켜왔다.',
   };
   // 마녀의 시계(relic_witchclock) 보유 시, 회랑의 시조 대신 등장하는 진 최종보스
   // "시간의 마녀"(아이온) — B안: 대역(시조)을 보낼 필요 없이 자신의 물건을
@@ -57,6 +64,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   const TRUE_FINAL_BOSS_WITCH = {
     name:'시간의 마녀 Aiōn', type:'timewitch', hp:440, atk:34, def:20, spd:14,
     exp:1300, gold:[650,850], skills:['aionHaste','aionParadox'],
+    dex:'멈춰버린 시간 속에서, 홀로 깨어있는 자.',
   };
   function pickFinalBossJob(){
     const ids = JOBS.map(j=>j.id);
@@ -345,13 +353,16 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       pendingRematchSpec = null;
     }
     const pool = isBoss ? BOSSES.filter(m=>depth>=m.minDepth) : null;
-    // 첫 층별보스(depth===5)는 항상 감시자의 석판으로 고정한다(사용자 요청 —
-    // 전 난이도 동일). 원래도 이 depth에서는 minDepth<=5인 보스가 감시자의
-    // 석판(minDepth:6)뿐이라 무작위 풀이 사실상 비어 BOSSES[0] 폴백으로
-    // 우연히 항상 같은 결과였지만, 이제 명시적으로 고정해 배열 순서가
-    // 바뀌어도 깨지지 않게 한다.
+    // 버그 수정(사용자 제보 — 하드코어에서 첫 층별보스가 석판이 아니라 빈 옷의
+    // 예언자로 뜸): 첫 층별보스의 실제 depth는 5가 아니라 10이다 — 이 프로젝트의
+    // 보스 사이클은 5층이 아니라 10층 단위(nodemap.js의 resolveNode(), 보스
+    // 노드에서 depth를 tierIndex*10+10으로 강제 세팅함 — 최초 구간은
+    // tierIndex=0이라 10)로 통일되어 있는데, 처음 이 조건을 depth===5로 잘못
+    // 넣어서 실제로는 한 번도 발동하지 않고 있었다(그래서 depth 10 시점엔
+    // minDepth<=10인 감시자의 석판(6)과 빈 옷의 예언자(8)가 둘 다 무작위 풀에
+    // 들어가 있었던 것). depth===10으로 고쳐 실제로 항상 고정되게 한다.
     const base = rematchBase || (isBoss
-      ? (depth===5 ? BOSSES.find(m=>m.type==='watchertablet')
+      ? (depth===10 ? BOSSES.find(m=>m.type==='watchertablet')
         : (pool[Math.floor(Math.random()*pool.length)] || BOSSES[0]))
       : (pickTieredMonster(depth) || MONSTERS[0]));
     const scale = 1 + depth*0.06;
