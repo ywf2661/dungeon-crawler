@@ -292,6 +292,19 @@
   .node-btn.node-visited-skip{opacity:0.35; cursor:default; filter:grayscale(0.6);}
   .node-btn.node-locked{opacity:0.4; cursor:not-allowed; filter:grayscale(0.4);}
   .node-btn:disabled{pointer-events:none;}
+  @keyframes midbosspulse{
+    0%,100%{box-shadow:0 0 8px #9a6ad655, inset 0 0 3px #c9a8ff66;}
+    50%{box-shadow:0 0 22px #a875ffcc, inset 0 0 8px #d9c2ffaa;}
+  }
+  /* 시간의 파수꾼 노드(사용자 요청) — 보라색 기운이 감도는 정체불명 노드.
+     locked 상태의 grayscale/opacity를 덮어써서, 아직 못 가더라도 이 노드만은
+     또렷하게 눈에 띄도록 한다("???" 라벨과 어우러져 불길한 예감을 줌). */
+  .node-btn.node-midboss{
+    border-color:#9a6ad6 !important; color:#e6d9ff !important;
+    animation:midbosspulse 2.2s ease-in-out infinite;
+  }
+  .node-btn.node-midboss.node-locked{ opacity:0.75; filter:none; }
+  .node-btn.node-midboss.node-visited-skip{ opacity:0.5; filter:none; }
 
   .explore-log{
     flex:1; min-height:0; background:#0f0b07aa; border:1px solid #3a2c1c;

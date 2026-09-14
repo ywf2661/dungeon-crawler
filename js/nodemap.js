@@ -395,6 +395,9 @@ TIME_GUARDIAN 참고.
         const def = mustHide ? {icon:'❓', label:'???'} : (NODE_TYPES[n.type] || NODE_TYPES.combat);
         let cls = 'node-btn';
         let clickable = false;
+        // 시간의 파수꾼 노드(사용자 요청) — 상태(과거/다음/잠김)와 무관하게
+        // 항상 보라색 기운이 감돌도록 별도 클래스를 얹는다.
+        if(n.type==='midboss') cls += ' node-midboss';
         if(isPast){
           cls += isChosenHere ? ' node-visited-chosen' : ' node-visited-skip';
         } else if(isNext){
