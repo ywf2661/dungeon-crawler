@@ -135,6 +135,16 @@ export(전역): const Sound
       // 강철 군단장의 정찰/화력/방벽 드론 3종 전용(사용자 제공, 새 트리거).
       droneDeploy: 'audio/sfx/dronedeploy.wav',
       droneAttack: 'audio/sfx/droneattack.wav',
+      // 남은 7슬롯(사용자 요청 — 이번에 전부 채움). 승리는 원본이 다른 SFX
+      // 대비 눈에 띄게 커서(mean -13.6dB/max 0.0dB) ffmpeg로 -5.5dB 낮춰
+      // levelup.wav/coin.wav 수준(mean -19dB/max -4.6dB)에 맞췄다.
+      guard: 'audio/sfx/guard.wav',
+      poisonHit: 'audio/sfx/poisonhit.wav',
+      fail: 'audio/sfx/fail.wav',
+      click: 'audio/sfx/click.wav',
+      victory: 'audio/sfx/victory.wav',
+      gameOver: 'audio/sfx/gameover.wav',
+      statusApply: 'audio/sfx/statusapply.wav',
     };
     const sfxBuffers = {};
     function preloadSfx(){
@@ -229,7 +239,9 @@ export(전역): const Sound
       });
     }
     function guard(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('guard')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       const osc = c.createOscillator(); osc.type = 'square';
       osc.frequency.setValueAtTime(180, t);
@@ -283,7 +295,9 @@ export(전역): const Sound
       osc.connect(g); g.connect(sfxGain); osc.start(t); osc.stop(t+0.2);
     }
     function poisonHit(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('poisonHit')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       const src = c.createBufferSource(); src.buffer = noiseBuffer(c, 0.22);
       const bp = c.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=900; bp.Q.value=4;
@@ -305,7 +319,9 @@ export(전역): const Sound
       });
     }
     function fail(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('fail')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       const osc = c.createOscillator(); osc.type='sawtooth';
       osc.frequency.setValueAtTime(300, t); osc.frequency.exponentialRampToValueAtTime(90, t+0.3);
@@ -326,7 +342,9 @@ export(전역): const Sound
       });
     }
     function click(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('click')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       const osc = c.createOscillator(); osc.type='square'; osc.frequency.setValueAtTime(700, t);
       const g = c.createGain(); g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.05);
@@ -346,7 +364,9 @@ export(전역): const Sound
       });
     }
     function victory(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('victory')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       [[0,523],[0.14,659],[0.28,784],[0.42,1047],[0.56,1319]].forEach(([delay,freq])=>{
         const osc = c.createOscillator(); osc.type='triangle'; osc.frequency.setValueAtTime(freq, t+delay);
@@ -356,7 +376,9 @@ export(전역): const Sound
       });
     }
     function gameOver(){
-      const c = ensureCtx(); if(!c || muted) return;
+      if(muted) return;
+      if(playSfxBuffer('gameOver')) return;
+      const c = ensureCtx(); if(!c) return;
       const t = c.currentTime;
       [[0,392],[0.22,349],[0.44,261]].forEach(([delay,freq])=>{
         const osc = c.createOscillator(); osc.type='sine'; osc.frequency.setValueAtTime(freq, t+delay);
@@ -366,8 +388,12 @@ export(전역): const Sound
       });
     }
 
-    // 상태이상 부여음: burn=폭발음, poison=산성 지글거림, bleed=베인 소리
+    // 상태이상 부여음: 사용자 제공 통합 음원이 있으면 그걸 우선 쓰고,
+    // 없으면(로딩 전 등) 기존처럼 타입별 합성음으로 대체한다 —
+    // burn=폭발음, poison=산성 지글거림, bleed=베인 소리.
     function statusApply(type){
+      if(muted) return;
+      if(playSfxBuffer('statusApply')) return;
       if(type==='burn') bomb();
       else if(type==='poison') poisonHit();
       else if(type==='bleed') slash();
