@@ -821,6 +821,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // OO 용사")/진최종보스(회랑의 시조·아이온)는 isFinal로 구분되며, 이들은
     // 이미 별도 업적/엔딩으로 다뤄지므로 도감 집계 대상에서는 계속 제외한다.
     if(!isFinal && enemy && enemy.type && typeof addToMonsterDex==='function') addToMonsterDex(enemy.type);
+    // 시간의 파수꾼 등장 토스트(사용자 요청) — 조우 순간 1회.
+    if(enemy && enemy.type==='timeguardian' && typeof showToast==='function'){
+      showToast(`<h3>⏳ 시간의 파수꾼</h3><p>갑주 틈새로 깨진 시계 파편이 흘러내린다. 반 박자 늦은 잔상이, 본체보다 먼저 움직인다.</p>`, '#9a6ad6');
+    }
     // 다음 전투 한정 적 공격력 감소(사용자 요청 — 이상한 촛불 이벤트 "촛불을 끈다").
     // 단발성이라 소비 즉시 되돌린다.
     if(player.nextBattleEnemyAtkMult){

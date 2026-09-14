@@ -127,6 +127,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
       tickMultiBattleBuff();
       document.getElementById('bt-stage').classList.add('dying');
+      // 시간의 파수꾼 퇴장 토스트(사용자 요청) — 처치 순간 1회.
+      if(enemy.type==='timeguardian' && typeof showToast==='function'){
+        showToast(`<h3>⏳ 흩어지는 파수꾼</h3><p>갑주가 시계 파편으로 부서져 내리고, 반 박자 늦게 따라오던 잔상마저 조용히 사라진다.</p>`, '#9a6ad6');
+      }
       let g = enemy.gold[0]+Math.floor(Math.random()*(enemy.gold[1]-enemy.gold[0]+1));
       const curseRewardMult = getCurseRewardMult();
       // 물주의 감각(mastery_goldsense, 황금 도박사): 승리 골드 +20%. 기존 계산식에
