@@ -136,6 +136,26 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
           setTimeout(()=>startBattle(true), 300);
           return;
         }
+        // 버그 수정(사용자 제보 — "몬스터를 만나 죽기 직전에 새로고침하면
+        // 다음 노드로 넘어가는 꼼수"): 일반 전투/정예 노드도 boss/midboss와
+        // 완전히 같은 문제를 안고 있다 — pickNode()가 이미 nodeRow/
+        // nodeCurrentId/nodeVisited를 옮기고 saveGame()한 뒤에야 실제 전투가
+        // 시작되므로, 그 사이(또는 전투 도중 죽기 직전)에 새로고침하면
+        // 저장된 상태는 "이 노드는 이미 지나왔다"로만 남는다. 중간 행이라
+        // 보스처럼 진행이 막히는 게 아니라, 오히려 전투 없이 다음 노드를
+        // 바로 고를 수 있게 되어버린다 — 즉 위험한 전투를 사실상 공짜로
+        // 회피하는 구멍이었다. combat/elite도 동일하게 감지해 전투를 다시 건다.
+        if(curNode && (curNode.type==='combat' || curNode.type==='elite')){
+          document.getElementById('statusbar').style.display='flex';
+          showScreen('explore');
+          renderStatus();
+          depth = getVirtualDepth();
+          if(curNode.type==='elite') nodeForcedElite = true;
+          renderExplore(['모험을 이어간다.']);
+          addLog('중단됐던 전투를 다시 시작한다!', 'warn');
+          setTimeout(()=>startBattle(false), 300);
+          return;
+        }
       }
       document.getElementById('statusbar').style.display='flex';
       showScreen('explore');
