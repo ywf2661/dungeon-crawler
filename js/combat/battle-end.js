@@ -438,7 +438,33 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 목소리 대사 다음에 타이틀 자체를 마지막 대사로 한 번 더 짚어준다.
     if(isTrueEnding){
       const isWitch = enemy && enemy.type==='timewitch';
-      const lines = isWitch ? [
+      // (사용자 요청) 이 난이도에서 마녀(Aiōn)를 이미 클리어한 적이 있다면(마녀모자
+      // 배지가 이미 켜져 있다면) 이번이 2회차 이상이라는 뜻 — 정체를 완전히
+      // 풀어놓는 전용 대화 엔딩으로 갈라진다. 이 시점엔 아직 이번 판 기록이
+      // 저장 전이므로(bootstrap.js의 btn-ending-title 핸들러가 나중에 addRecord),
+      // 플래그가 이미 참이라면 확실히 "이전 회차의 클리어"다.
+      const isWitchRepeat = isWitch && typeof isDifficultyWitchCleared==='function' && isDifficultyWitchCleared(player.difficulty);
+      const witchRepeatLines = [
+        '시계가 산산조각 나며 쓰러진 그녀의 곁에, 조용히 다가가 앉는다. 처음으로, 도망치지 않고.',
+        {text:'"…또 왔군. 한 번으로 충분하지 않았나."', title:'아이온'},
+        {text:'"…아니. 그런 뜻이 아니야. 그저, 이런 식으로 두 번이나 얼굴을 마주할 줄은 몰랐다는 것뿐이다."', title:'아이온'},
+        '그녀가 부서진 시계 조각을 손끝으로 쓸어본다.',
+        {text:'"알고 싶은가. 내가 왜 이 죽은 왕국을 아직도 붙들고 있는지."', title:'아이온'},
+        {text:'"…아코스였다. 회랑 최고의 기사. 그를 잃는 게, 견딜 수 없었다."', title:'아이온'},
+        {text:'"역병이 이 땅을 삼켰을 때, 나는 시간을 다룰 줄 알았다. 그래서 왕에게 말했지 — \'멈추면, 아무도 더는 죽지 않는다\'고."', title:'아이온'},
+        {text:'"거짓말은 아니었다. 정말로, 아무도 죽지 않았어. 다만… 아무도 다시 살아나지도 못했지."', title:'아이온'},
+        '그녀가 고개를 젓는다.',
+        {text:'"구원이라 불렀다. 사실은, 놓아주지 못한 것뿐이었는데."', title:'아이온'},
+        {text:'"이 회랑을 만든 뒤로, 나는 계속 스스로에게 물었다 — 언젠가 누군가 와서, 이걸 끝내주지 않을까."', title:'아이온'},
+        {text:'"…그리고 그대가 왔다. 처음엔 그저 침입자였지. 하지만 지금은…"', title:'아이온'},
+        '그녀가 처음으로 옅게, 그러나 분명하게 웃는다.',
+        {text:'"고맙다. 두 번이나, 나 대신 이 매듭을 끊어줘서."', title:'아이온'},
+        {text:'"…시계는 이제 완전히 멈췄다. 더는 되감을 수 없겠지. 그래도 괜찮다."', title:'아이온'},
+        {text:'"이제야, 정말로 놓아줄 수 있게 되었다."', title:'아이온'},
+        `${player.name}(${jobLabel})의 눈앞에서, 빛이 스러지듯 그녀의 모습이 옅어진다. 마지막으로 남은 것은, 오래도록 참아온 울음이 아니라 — 아주 오랜만의, 편안한 숨소리였다.`,
+        '"회랑, 두 번째로 놓아주다."',
+      ];
+      const lines = isWitchRepeat ? witchRepeatLines : isWitch ? [
         '시간의 마녀가 무너져 내리는 순간, 손에 쥐고 있던 낡은 시계가 바닥에 떨어져 산산조각 난다.',
         '베일 아래로 언뜻 드러난 눈가에는, 분노도 원한도 아닌 — 아주 오래 참아온 눈물의 흔적이 있었다.',
         '멈춰 있던 회랑의 시간이, 그제야 다시 흐르기 시작한다.',
@@ -470,8 +496,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       })();
       showDialogueSequence(lines, {tone:'grand', onDone: ()=>{
         showScreen('ending');
-        document.getElementById('ending-title').textContent = isWitch ? '회랑, 마침내 시간을 되찾다' : '회랑, 마침내 안식에 들다';
-        document.getElementById('ending-summary').textContent = isWitch
+        document.getElementById('ending-title').textContent = isWitchRepeat ? '회랑, 두 번째로 놓아주다' : (isWitch ? '회랑, 마침내 시간을 되찾다' : '회랑, 마침내 안식에 들다');
+        document.getElementById('ending-summary').textContent = isWitchRepeat
+          ? `레벨 ${player.level}, 소지금 ${player.gold}G — 같은 이름을, 같은 손으로 두 번째 놓아주었다는 증명을 품고서.`
+          : isWitch
           ? `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 다시 흐르기 시작한 시간을, 가장 먼저 두 눈으로 지켜보았다는 증명을 품고서.`
           : `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 그 무엇보다 값진, 단 한 번도 무릎 꿇지 않았다는 증명을 품고서. `
             + `회랑의 문은 이제 열리지 않는다. 지킬 것도, 가둘 것도 남지 않았기 때문이다.`;
