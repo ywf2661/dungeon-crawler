@@ -754,8 +754,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           playBanner('결빙의 궤적','fx-frost');
           if(typeof spawnFrostFlashFx==='function') spawnFrostFlashFx(false);
           // 연출 다양화(사용자 요청) — 섬광만으론 밋밋하다는 피드백에 따라
-          // 화면 균열 이펙트를 추가로 겹친다.
+          // 화면 균열 이펙트 + 전용 VFX 이미지를 추가로 겹친다.
           if(typeof spawnScreenCrackFx==='function') spawnScreenCrackFx();
+          if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('frost');
         } else {
           label = `과거의 결빙 궤적이 메아리처럼 다시 덮쳐온다!`;
           playBanner('메아리 · 결빙의 궤적','fx-frost');
@@ -766,11 +767,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 피해는 0으로 둬서 아래 dmg<=0 공용 분기(빗나감 처리 + 조기 반환)를
       // 그대로 재사용한다. 실제 "다음 플레이어 턴 무효화"는
       // data/equipment.js의 getEffectiveEnemyDef()가 enemy.vanishedTurns를
-      // 보고 처리한다(이 파일에서는 예고 배너만 담당).
+      // 보고 처리한다(이 파일에서는 예고 배너/VFX만 담당).
       else if(skillKey==='guardianVanish'){
         dmg = 0;
         label = `${enemy.name}이(가) 명멸의 틈으로 스며들며 사라진다…`;
         playBanner('명멸의 틈','fx-voidstep');
+        if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('void');
       }
       // 귀환의 일격(사용자 기획) — 명멸 다음 턴, 예고 없이 돌아와 크게
       // 후려친다. 화면 균열 이펙트로 "예상 못한 순간에 되돌아왔다"는 느낌을 준다.
@@ -779,6 +781,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         label = `사라졌던 ${enemy.name}이(가) 예고 없이 돌아와 후려친다!`;
         playBanner('귀환의 일격','fx-voidstep');
         if(typeof spawnScreenCrackFx==='function') spawnScreenCrackFx();
+        if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('returnstrike');
       }
       else {
         dmg = effAtk + Math.floor(Math.random()*3)-1;

@@ -621,6 +621,29 @@
      이름 교체 방식을 쓴다). */
   .frost-flash-fx.echo{ animation-name: frostflashecho; }
 
+  /* 시간의 파수꾼 스킬 전용 VFX 이미지 3종(사용자 제공, images/vfx/tg_*.png).
+     기존 .frost-flash-fx(섬광)/.screen-crack-fx(균열)에 겹쳐서 함께 재생된다
+     — 하나만으론 밋밋하다는 사용자 피드백을 이번엔 이미지 레이어까지
+     더해서 보강한다. */
+  @keyframes tgvfxpop{
+    0%{opacity:0; transform:translate(-50%,-50%) scale(0.6);}
+    30%{opacity:1; transform:translate(-50%,-50%) scale(1.12);}
+    100%{opacity:0; transform:translate(-50%,-50%) scale(1.25);}
+  }
+  @keyframes tgvfxsink{
+    0%{opacity:0; transform:translate(-50%,-50%) scale(1.1);}
+    30%{opacity:1; transform:translate(-50%,-50%) scale(1);}
+    100%{opacity:0; transform:translate(-50%,-50%) scale(0.55);}
+  }
+  .tg-vfx-img{
+    position:absolute; left:50%; top:42%; width:260px; height:260px;
+    background-size:contain; background-repeat:no-repeat; background-position:center;
+    pointer-events:none; z-index:7;
+  }
+  .tg-vfx-img.frost{ background-image:url('images/vfx/tg_frost.png'); animation:tgvfxpop .7s ease-out forwards; }
+  .tg-vfx-img.void{ background-image:url('images/vfx/tg_void.png'); animation:tgvfxsink .8s ease-in forwards; }
+  .tg-vfx-img.returnstrike{ background-image:url('images/vfx/tg_return.png'); animation:tgvfxpop .55s ease-out forwards; }
+
   /* 화면 균열 이펙트(사용자 요청 — 시간의 파수꾼 공격 연출 다양화). 새
      이미지 리소스 없이 SVG 번개형 균열 6가닥을 매번 살짝 다른 각도/길이로
      그려서 짧게 번쩍였다 사라진다. */
