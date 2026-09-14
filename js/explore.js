@@ -133,7 +133,13 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
           }
           return;
         }
-        if(curNode && curNode.type==='midboss'){
+        // 버그 수정(사용자 제보 — 파수꾼을 이기고 나서 새로고침 후 이어하기를
+        // 하면 다시 싸우게 됨): 승리 직후~다음 노드로 이동하기 전 사이에는
+        // nodeCurrentId가 여전히 이 미드보스 노드를 가리키고 있어서, "아직
+        // 싸우는 중"이었을 때와 저장된 상태만으로는 구별이 안 됐다.
+        // player.midbossCleared(처치 시 battle-end.js가 세움)로 이미 이긴
+        // 상대인지 확인해, 이긴 상대는 다시 걸지 않고 평소처럼 지도만 보여준다.
+        if(curNode && curNode.type==='midboss' && !player.midbossCleared){
           document.getElementById('statusbar').style.display='flex';
           showScreen('explore');
           renderStatus();

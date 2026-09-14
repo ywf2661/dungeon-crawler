@@ -128,8 +128,18 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       tickMultiBattleBuff();
       document.getElementById('bt-stage').classList.add('dying');
       // 시간의 파수꾼 퇴장 토스트(사용자 요청) — 처치 순간 1회.
-      if(enemy.type==='timeguardian' && typeof showToast==='function'){
-        showToast(`<h3>⏳ 흩어지는 파수꾼</h3><p>갑주가 시계 파편으로 부서져 내리고, 반 박자 늦게 따라오던 잔상마저 조용히 사라진다.</p>`, '#9a6ad6');
+      if(enemy.type==='timeguardian'){
+        // 버그 수정(사용자 제보 — 파수꾼을 이기고 나서 새로고침 후 이어하기를
+        // 하면 다시 싸우게 됨): pickNode()가 노드 선택 시점에 이미
+        // nodeCurrentId를 이 노드로 옮겨두고, 승리해도 "다음 노드로 이동"은
+        // 플레이어가 직접 클릭해야 일어난다 — 즉 승리 직후~다음 노드 클릭
+        // 전 사이에는 저장된 상태만 보면 "아직 싸우는 중"이었을 때와
+        // 구별이 안 됐다. 처치 여부를 별도로 기록해, explore.js의 중단된
+        // 전투 재개 감지 로직이 이미 이긴 상대는 다시 걸지 않도록 한다.
+        player.midbossCleared = true;
+        if(typeof showToast==='function'){
+          showToast(`<h3>⏳ 흩어지는 파수꾼</h3><p>갑주가 시계 파편으로 부서져 내리고, 반 박자 늦게 따라오던 잔상마저 조용히 사라진다.</p>`, '#9a6ad6');
+        }
       }
       let g = enemy.gold[0]+Math.floor(Math.random()*(enemy.gold[1]-enemy.gold[0]+1));
       const curseRewardMult = getCurseRewardMult();
