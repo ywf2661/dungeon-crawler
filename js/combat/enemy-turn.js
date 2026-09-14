@@ -614,10 +614,14 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
             enemy.frostCooldown = (enemy.frostCooldown||0) - 1;
             skillKey = null; // 기본 공격
           }
-          // 메아리는 최대 1개만 대기 — 이번에 실제로 고른 행동을 2턴 뒤
-          // 60% 위력으로 큐에 새로 쌓는다(기존 대기 중이던 건 이미 위에서
-          // 소비/폐기됐으므로 덮어써도 안전).
-          enemy.echoQueue = [{skillKey, turnsLeft:2}];
+          // 버그 수정(사용자 제보 — "스킬을 잘 안 쓴다"): 큐가 비어있지 않은데도
+          // 매 턴 무조건 덮어쓰고 있어서, 대기 중이던 메아리가 발동 직전에
+          // 계속 지워지고 있었다. "최대 1개만 대기"는 유지하되, 이미 뭔가
+          // 대기 중이면 이번 턴 행동은 큐에 넣지 않는다(대기 중인 메아리가
+          // 실제로 발동할 때까지 보존).
+          if(!enemy.echoQueue.length){
+            enemy.echoQueue.push({skillKey, turnsLeft:2});
+          }
         }
         if(typeof updateBossIntentCard==='function') updateBossIntentCard();
       } else
