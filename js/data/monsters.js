@@ -94,7 +94,7 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS
     {type:'watchertablet',  name:'감시자의 석판',     minDepth:6,  hp:90,  atk:16, def:6,  spd:7,  exp:80,  gold:[60,90],   skills:['carvedBrand','unblinkingGaze'],
       dex:'낡은 석판에 새겨진 눈이, 깜빡임도 없이 지나는 모든 것을 지켜본다.'},
     {type:'hollowprophet',  name:'빈 옷의 예언자',    minDepth:8,  hp:130, atk:20, def:10, spd:9,  exp:140, gold:[100,150], skills:['lockedVoices','prophecyFlame'], weakness:'dot',
-      dex:'속은 텅 비었으나, 옷자락만은 여전히 예언하듯 흔들린다.'},
+      dex:'속은 텅 비었으나, 그 안에는 여전히 다 읽지 못한 별자리가 빛나고 있다.'},
     {type:'hornedwarden',   name:'뿔 두른 파수인',    minDepth:12, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['judgmentKey','whisperingHorn'],
       dex:'뿔 달린 투구 아래, 누구의 얼굴이었는지는 이미 잊혔다.'},
     {type:'threadmannequin',name:'붉은 실의 재봉인형', minDepth:14, hp:150, atk:24, def:10, spd:5,  exp:160, gold:[110,150], skills:['threadWinds','scissorGreeting'],
