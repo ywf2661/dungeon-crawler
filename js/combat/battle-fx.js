@@ -82,18 +82,12 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       // 발동한다(20% 확률로 반동 피해도 함께). cooldownTickPending과 동일한
       // "정확히 1번만" 보장 지점을 그대로 재사용한다.
       if(typeof checkMechanicOverheat==='function') checkMechanicOverheat();
-      // 정예 특성 "광기" 예고(사용자 기획 — 정예 대비 체감 개선 세트 A안).
-      // 광기는 3턴 주기 고정이라 완전히 예측 가능하다. 방금 적 턴이 끝난
-      // 시점(enemy.madnessTurn은 이미 이번에 나간 턴까지 반영됨)에서, 다음
-      // 적 턴이 발동 턴인지 미리 계산해 경고한다 — 포션을 "맞은 뒤"가 아니라
-      // "맞기 전"에 마실 여지를 준다.
-      if(enemy && enemy.eliteTraits && enemy.eliteTraits.includes('madness') && !battleOver){
-        const nextMadnessTurn = (enemy.madnessTurn||0) + 1;
-        if(nextMadnessTurn % 3 === 0){
-          showToast(`<h3>⚠ 위험 감지</h3><p>${enemy.name}이(가) 강한 기세를 모으고 있다... 다음 공격이 훨씬 강력할 것이다.</p>`, '#ff4a3a');
-        }
-      }
     }
+    // (사용자 요청 — 정예 특성 경고를 토스트 대신 상시 카드로 통일) 광기 예고를
+    // 포함해 매번 여기서 갱신한다. 이전엔 cooldownTickPending 시점에만 광기
+    // 토스트를 1회 띄웠지만, 이제 카드가 상태를 계속 반영하므로 조건 게이팅이
+    // 필요 없다.
+    if(typeof updateBossIntentCard==='function') updateBossIntentCard();
   }
   function setCommandsEnabled(en){
     ['cmd-attack','cmd-skill','cmd-item','cmd-run'].forEach(id=>document.getElementById(id).disabled=!en);
@@ -259,18 +253,43 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 보스 다음 행동 미리보기 카드(사용자 요청 — 보스전 리뉴얼). 예고 상태가
   // 아니면 "다음 행동: 알 수 없음"(운빨을 그대로 인정), 예고 상태면 어떤
   // 필살기가 다음 턴 확정 발동하는지 보여줘 플레이어가 대응할 수 있게 한다.
+  // (사용자 요청 — 정예 특성 경고를 토스트 대신 이 카드로 통일) 보스 텔레그래프가
+  // 없으면, 정예 특성(광기 예고/광폭화·사냥꾼 발동 중) 상태를 같은 카드에
+  // 이어서 보여준다. 우선순위: 보스 스킬 예고 > 광기 예고 > 광폭화/사냥꾼(둘 다
+  // 활성이면 함께 표시). 광폭화/사냥꾼은 매번 살아있는 HP 조건을 그대로
+  // 확인하므로(enemy-turn.js의 getEffectiveEnemyAtk와 동일한 조건), 체력이
+  // 회복되어 조건을 벗어나면 카드도 자동으로 사라진다 — 예전 토스트의 "한 번
+  // 뜨고 끝"과 달리 실제 상태를 그대로 반영한다.
   function updateBossIntentCard(){
     const card = document.getElementById('bt-boss-intent');
     if(!card) return;
-    // 사용자 요청: 예고된 다음 행동이 있을 때만 카드를 보여준다. 평소 상태
-    // ("다음 행동: 알 수 없음")는 그냥 숨겨서 보스 이름을 가리지 않게 한다.
-    if(!enemy || !enemy.isBoss || !(enemy.telegraphed || enemy.aboutToUltimate)){
-      card.style.display = 'none';
+    if(!enemy || battleOver){ card.style.display = 'none'; return; }
+    if(enemy.isBoss && (enemy.telegraphed || enemy.aboutToUltimate)){
+      card.style.display = 'block';
+      card.className = 'boss-intent-card warn';
+      card.textContent = `⚠ [${BOSS_SKILL_LABELS[enemy.pendingSkillKey]||'강공격'}] — 다음 턴 발동!`;
       return;
     }
-    card.style.display = 'block';
-    card.className = 'boss-intent-card warn';
-    card.textContent = `⚠ [${BOSS_SKILL_LABELS[enemy.pendingSkillKey]||'강공격'}] — 다음 턴 발동!`;
+    if(enemy.eliteTraits && enemy.eliteTraits.length){
+      const lines = [];
+      if(enemy.eliteTraits.includes('madness')){
+        const nextMadnessTurn = (enemy.madnessTurn||0) + 1;
+        if(nextMadnessTurn % 3 === 0) lines.push('⚠ 광기 — 다음 턴 강공격!');
+      }
+      if(enemy.eliteTraits.includes('berserk') && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5){
+        lines.push('💢 광폭화 — 공격력 상승 중');
+      }
+      if(enemy.eliteTraits.includes('hunter') && player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
+        lines.push('🎯 사냥꾼 표적 — 받는 피해 증가 중');
+      }
+      if(lines.length){
+        card.style.display = 'block';
+        card.className = 'boss-intent-card warn';
+        card.textContent = lines.join(' / ');
+        return;
+      }
+    }
+    card.style.display = 'none';
   }
 
   function playBanner(text, cls){
