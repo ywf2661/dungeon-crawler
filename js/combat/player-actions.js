@@ -2650,8 +2650,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         player.hp = Math.max(0, player.hp - selfCost);
       }
       renderStatus();
-      Sound.bomb();
-      playBanner('불멸의 순교!');
+      if(typeof Sound.martyrUltimate==='function') Sound.martyrUltimate(); else Sound.bomb();
+      if(typeof spawnMartyrFx==='function') spawnMartyrFx();
+      playBanner('불멸의 순교!','fx-chorus');
       setBattleMsg(`${player.name}의 ${s.name}!`, `그동안 바쳐온 희생(${count}회)을 전부 힘으로 되돌려 ${enemy.name}에게 ${dmg}의 피해를 입혔다!${reviveMsg}${eternalReturnMsg}`);
       if(checkBattleEnd()) return;
       enemyTurn();

@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnScreenCrackFx, spawnGuardianVfxImage, spawnCaliberXFx,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnScreenCrackFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -382,6 +382,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.className = 'caliberx-vfx-img';
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 750);
+  }
+
+  // 불멸의 순교(순교자 레벨15 궁극기) 전용 VFX 이미지(사용자 제공).
+  function spawnMartyrFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.className = 'martyr-vfx-img';
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 800);
   }
 
   // 시간의 파수꾼 스킬 전용 VFX 이미지(사용자 제공). kind: 'frost'|'void'|'returnstrike'.
