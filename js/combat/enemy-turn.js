@@ -624,12 +624,19 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
             enemy.vanishedTurns = 1;
             enemy.vanishCooldown = 5;
           } else {
+            // 버그 수정(사용자 제보 — "초상화가 아예 안 없어진다", 즉 명멸의
+            // 틈이 사실상 발동을 안 하고 있었음): 이 감소를 기본 공격 분기
+            // 안에만 넣어놔서, 결빙의 궤적이 나가는 턴엔 vanishCooldown이
+            // 전혀 줄어들지 않고 있었다 — 그래서 명멸까지 도달하는 데 매우
+            // 오래 걸렸다(사실상 거의 안 뜨는 수준). 어떤 행동을 고르든
+            // (결빙의 궤적이든 기본 공격이든) 이 "새 행동을 고르는 턴"에는
+            // 항상 한 번씩 줄어들도록 위치를 옮긴다.
+            enemy.vanishCooldown = Math.max(0, (enemy.vanishCooldown||0) - 1);
             if((enemy.frostCooldown||0) <= 0){
               skillKey = 'frostTrajectory';
               enemy.frostCooldown = 3;
             } else {
               enemy.frostCooldown = (enemy.frostCooldown||0) - 1;
-              enemy.vanishCooldown = Math.max(0, (enemy.vanishCooldown||0) - 1);
               skillKey = null; // 기본 공격
             }
             // 버그 수정(사용자 제보 — "스킬을 잘 안 쓴다"): 큐가 비어있지 않은데도
