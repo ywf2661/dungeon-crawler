@@ -52,6 +52,14 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.fateBoostMult===undefined) player.fateBoostMult = 0;
       if(player.endingSeen===undefined) player.endingSeen = false;
       if(player.deathCount===undefined) player.deathCount = 0;
+      // 버그 수정(사용자 제보 — 이어하기 시 소지금이 NaN/null로 표기됨,
+      // 시간의 파수꾼 전투 중 나갔다 들어온 경우). 정확한 오염 경로를 코드
+      // 리뷰만으로는 100% 특정하지 못했지만, 저장 시점에 NaN이었다면 JSON이
+      // NaN을 못 담아 null로 직렬화되므로 "NaN 아니면 null"로 보이는 게
+      // 정확히 이 패턴과 일치한다. 근본 원인과 무관하게 불러오는 시점에
+      // 항상 유효한 숫자로 되돌리는 안전장치를 걸어둔다(몬스터 도감 33/20
+      // 버그 때 쓴 것과 같은 "표시 시점에 자연 복구" 방식).
+      if(typeof player.gold!=='number' || isNaN(player.gold)) player.gold = 0;
       // 노드맵 시스템(신규) — 예전 세이브에는 이 필드들이 없으므로 안전하게
       // 채워 넣는다. tierIndex는 기존에 저장된 depth로부터 역산한다(예:
       // depth=7이었다면 5층 보스를 이미 넘긴 뒤였을 테니 tierIndex=1로 복구,

@@ -3368,8 +3368,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     revertDiceDelta();
     if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
     if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
-    const cost = Math.round(player.gold * getSurrenderCostPct());
-    player.gold = Math.max(0, player.gold - cost);
+    const cost = Math.round((player.gold||0) * getSurrenderCostPct());
+    player.gold = Math.max(0, (player.gold||0) - cost);
     player.surrenderCount = (player.surrenderCount||0) + 1;
     let ledgerMsg = '';
     if(hasRelicFlag('killAtkStack') && player.ledgerStack>0){
