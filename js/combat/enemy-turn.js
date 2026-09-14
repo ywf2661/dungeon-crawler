@@ -778,8 +778,18 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         dmg = 0;
         label = `${enemy.name}이(가) 명멸의 틈으로 스며들며 사라진다…`;
         playBanner('명멸의 틈','fx-voidstep');
-        const stageEl = document.getElementById('bt-stage');
-        if(stageEl) stageEl.classList.add('tg-vanishing');
+        // 버그 수정(사용자 제보 — 명멸의 틈은 잘 뜨는데 초상화가 페이드아웃이
+        // 안 됨): 클래스+키프레임 방식이 다른 CSS 규칙과 얽혀 안 먹혔을
+        // 가능성이 있어, 이번엔 인라인 스타일로 직접 opacity/transform을
+        // 강제 설정한다 — 인라인 스타일은 클래스 기반 규칙보다 항상 우선
+        // 적용되므로 다른 규칙과 부딪힐 여지가 없다.
+        const imgEl = document.querySelector('#bt-stage svg, #bt-stage img');
+        if(imgEl){
+          imgEl.style.transition = 'opacity .7s ease-in, transform .7s ease-in, filter .7s ease-in';
+          imgEl.style.opacity = '0';
+          imgEl.style.transform = 'translateX(80px) scale(0.8)';
+          imgEl.style.filter = 'brightness(0.3) saturate(0.3)';
+        }
         // 연출 순서 조정(사용자 제보 — "사라지는 느낌이 안 든다"): 보이드
         // VFX 이미지(260px, 꽤 큼)가 캐릭터랑 동시에 뜨면 자리를 덮어버려서
         // 정작 페이드 동작 자체가 눈에 안 들어왔다. 캐릭터가 먼저 눈에 띄게
@@ -788,17 +798,21 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
       // 귀환의 일격(사용자 기획) — 명멸 다음 턴, 예고 없이 돌아와 크게
       // 후려친다. 초상화를 즉시 원래대로 되돌린다(사용자 요청 — "확
-      // 나타나서 베는" 연출). 페이드로 서서히 되돌리지 않고 클래스만
-      // 바로 제거하는 이유: 이 직후 공용 코드(lungeEnemy())가 모든 적
-      // 공격에 공통으로 붙이는 베기 lunge 애니메이션과 animation 속성이
-      // 겹치면 서로를 지워버리기 때문 — "팝인 후 베기"가 되도록 분리한다.
+      // 나타나서 베는" 연출). transition을 끈 채로 스타일을 지워 즉시
+      // 원래 상태로 스냅되게 하고, 곧바로 공용 lungeEnemy() 베기 애니메이션이
+      // 이어지게 한다.
       else if(skillKey==='guardianReturnStrike'){
         dmg = Math.round(effAtk*2.0);
         label = `사라졌던 ${enemy.name}이(가) 예고 없이 돌아와 후려친다!`;
         playBanner('귀환의 일격','fx-voidstep');
         if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('returnstrike');
-        const stageEl2 = document.getElementById('bt-stage');
-        if(stageEl2) stageEl2.classList.remove('tg-vanishing');
+        const imgEl2 = document.querySelector('#bt-stage svg, #bt-stage img');
+        if(imgEl2){
+          imgEl2.style.transition = 'none';
+          imgEl2.style.opacity = '';
+          imgEl2.style.transform = '';
+          imgEl2.style.filter = '';
+        }
       }
       else {
         dmg = effAtk + Math.floor(Math.random()*3)-1;
