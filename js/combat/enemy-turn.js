@@ -589,38 +589,59 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       let tgEchoMult = 1;
       let tgRewindPrefix = ''; // 시간 역행 발동 시 최종 label 앞에 붙일 문구
       if(enemy.type==='timeguardian'){
-        if(!enemy.echoQueue) enemy.echoQueue = [];
-        if(enemy.echoQueue.length) enemy.echoQueue[0].turnsLeft -= 1;
-        let firedEcho = null;
-        if(enemy.echoQueue.length && enemy.echoQueue[0].turnsLeft<=0){
-          firedEcho = enemy.echoQueue.shift();
-        } else if(!enemy.rewindUsed && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5 && enemy.echoQueue.length){
-          // 시간 역행: HP 50% 이하에서 1회, 대기 중인 메아리를 예고 없이
-          // 즉시 앞당겨 터뜨린다. 이번 턴에 실제로 피해가 나가므로, 이 대사는
-          // setBattleMsg를 바로 부르지 않고 아래 label에 붙여서 최종 데미지
-          // 메시지가 이 문구를 덮어쓰지 않게 한다.
-          enemy.rewindUsed = true;
-          firedEcho = enemy.echoQueue.shift();
-          tgRewindPrefix = `${enemy.name}의 몸이 일그러진다… 시간이 역행하며, `;
-        }
-        if(firedEcho){
-          skillKey = firedEcho.skillKey; // null이면 기본 공격(무거운 참격)의 메아리
-          tgEchoMult = 0.6;
+        // 귀환의 일격(사용자 기획) — 지난 턴에 명멸의 틈으로 사라졌었다면,
+        // 이번 턴은 무조건 예고 없는 강타로 복귀한다. 메아리 큐/결빙의 궤적
+        // 판단보다 최우선이다.
+        if(enemy.vanishedTurns>0){
+          enemy.vanishedTurns = 0;
+          skillKey = 'guardianReturnStrike';
         } else {
-          if((enemy.frostCooldown||0) <= 0){
-            skillKey = 'frostTrajectory';
-            enemy.frostCooldown = 3;
-          } else {
-            enemy.frostCooldown = (enemy.frostCooldown||0) - 1;
-            skillKey = null; // 기본 공격
+          if(!enemy.echoQueue) enemy.echoQueue = [];
+          if(enemy.echoQueue.length) enemy.echoQueue[0].turnsLeft -= 1;
+          let firedEcho = null;
+          if(enemy.echoQueue.length && enemy.echoQueue[0].turnsLeft<=0){
+            firedEcho = enemy.echoQueue.shift();
+          } else if(!enemy.rewindUsed && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5 && enemy.echoQueue.length){
+            // 시간 역행: HP 50% 이하에서 1회, 대기 중인 메아리를 예고 없이
+            // 즉시 앞당겨 터뜨린다. 이번 턴에 실제로 피해가 나가므로, 이 대사는
+            // setBattleMsg를 바로 부르지 않고 아래 label에 붙여서 최종 데미지
+            // 메시지가 이 문구를 덮어쓰지 않게 한다.
+            enemy.rewindUsed = true;
+            firedEcho = enemy.echoQueue.shift();
+            tgRewindPrefix = `${enemy.name}의 몸이 일그러진다… 시간이 역행하며, `;
           }
-          // 버그 수정(사용자 제보 — "스킬을 잘 안 쓴다"): 큐가 비어있지 않은데도
-          // 매 턴 무조건 덮어쓰고 있어서, 대기 중이던 메아리가 발동 직전에
-          // 계속 지워지고 있었다. "최대 1개만 대기"는 유지하되, 이미 뭔가
-          // 대기 중이면 이번 턴 행동은 큐에 넣지 않는다(대기 중인 메아리가
-          // 실제로 발동할 때까지 보존).
-          if(!enemy.echoQueue.length){
-            enemy.echoQueue.push({skillKey, turnsLeft:2});
+          if(firedEcho){
+            skillKey = firedEcho.skillKey; // null이면 기본 공격(무거운 참격)의 메아리
+            tgEchoMult = 0.6;
+          } else if((enemy.vanishCooldown||0) <= 0){
+            // 명멸의 틈(사용자 기획) — 다크홀식 회피+반격 기믹. 이번 턴은
+            // 공격하지 않고 사라진다 — 다음 플레이어 턴 한정으로
+            // data/equipment.js의 getEffectiveEnemyDef()가 사실상 무적 수준의
+            // 방어력을 돌려주게 만들어(독 등 지속피해는 그 계산을 거치지
+            // 않으므로 그대로 적용됨) "공격이 안 먹힌다"를 구현한다. 다음
+            // 파수꾼 턴엔 위 guardianReturnStrike로 예고 없이 돌아와 강타한다.
+            skillKey = 'guardianVanish';
+            enemy.vanishedTurns = 1;
+            enemy.vanishCooldown = 5;
+          } else {
+            if((enemy.frostCooldown||0) <= 0){
+              skillKey = 'frostTrajectory';
+              enemy.frostCooldown = 3;
+            } else {
+              enemy.frostCooldown = (enemy.frostCooldown||0) - 1;
+              enemy.vanishCooldown = Math.max(0, (enemy.vanishCooldown||0) - 1);
+              skillKey = null; // 기본 공격
+            }
+            // 버그 수정(사용자 제보 — "스킬을 잘 안 쓴다"): 큐가 비어있지 않은데도
+            // 매 턴 무조건 덮어쓰고 있어서, 대기 중이던 메아리가 발동 직전에
+            // 계속 지워지고 있었다. "최대 1개만 대기"는 유지하되, 이미 뭔가
+            // 대기 중이면 이번 턴 행동은 큐에 넣지 않는다(대기 중인 메아리가
+            // 실제로 발동할 때까지 보존). 명멸/귀환의 일격은 애초에 이 분기를
+            // 안 타므로 메아리로 쌓이지 않는다(의도적 — 공격이 아닌 회피
+            // 행동을 반복 재생하는 건 어색해서 제외).
+            if(!enemy.echoQueue.length){
+              enemy.echoQueue.push({skillKey, turnsLeft:2});
+            }
           }
         }
         if(typeof updateBossIntentCard==='function') updateBossIntentCard();
@@ -732,11 +753,32 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           }
           playBanner('결빙의 궤적','fx-frost');
           if(typeof spawnFrostFlashFx==='function') spawnFrostFlashFx(false);
+          // 연출 다양화(사용자 요청) — 섬광만으론 밋밋하다는 피드백에 따라
+          // 화면 균열 이펙트를 추가로 겹친다.
+          if(typeof spawnScreenCrackFx==='function') spawnScreenCrackFx();
         } else {
           label = `과거의 결빙 궤적이 메아리처럼 다시 덮쳐온다!`;
           playBanner('메아리 · 결빙의 궤적','fx-frost');
           if(typeof spawnFrostFlashFx==='function') spawnFrostFlashFx(true);
         }
+      }
+      // 명멸의 틈(사용자 기획) — 파수꾼이 이번 턴은 공격하지 않고 사라진다.
+      // 피해는 0으로 둬서 아래 dmg<=0 공용 분기(빗나감 처리 + 조기 반환)를
+      // 그대로 재사용한다. 실제 "다음 플레이어 턴 무효화"는
+      // data/equipment.js의 getEffectiveEnemyDef()가 enemy.vanishedTurns를
+      // 보고 처리한다(이 파일에서는 예고 배너만 담당).
+      else if(skillKey==='guardianVanish'){
+        dmg = 0;
+        label = `${enemy.name}이(가) 명멸의 틈으로 스며들며 사라진다…`;
+        playBanner('명멸의 틈','fx-voidstep');
+      }
+      // 귀환의 일격(사용자 기획) — 명멸 다음 턴, 예고 없이 돌아와 크게
+      // 후려친다. 화면 균열 이펙트로 "예상 못한 순간에 되돌아왔다"는 느낌을 준다.
+      else if(skillKey==='guardianReturnStrike'){
+        dmg = Math.round(effAtk*2.0);
+        label = `사라졌던 ${enemy.name}이(가) 예고 없이 돌아와 후려친다!`;
+        playBanner('귀환의 일격','fx-voidstep');
+        if(typeof spawnScreenCrackFx==='function') spawnScreenCrackFx();
       }
       else {
         dmg = effAtk + Math.floor(Math.random()*3)-1;

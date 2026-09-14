@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnScreenCrackFx,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -295,6 +295,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       card.textContent = '⏳ 메아리가 다가온다…';
       return;
     }
+    // 명멸의 틈 상태 표시(사용자 기획) — 공격이 왜 안 통하는지 알 수 있게
+    // 상태만 알려준다("귀환의 일격"이 언제 올지는 의도적으로 예고하지 않음 —
+    // 다크홀식 기습이 이 기믹의 핵심).
+    if(enemy.type==='timeguardian' && enemy.vanishedTurns>0){
+      card.style.display = 'block';
+      card.className = 'boss-intent-card warn';
+      card.textContent = '🌀 명멸의 틈 — 지금은 공격이 통하지 않는다';
+      return;
+    }
     if(enemy.eliteTraits && enemy.eliteTraits.length){
       const lines = [];
       if(enemy.eliteTraits.includes('madness')){
@@ -335,6 +344,34 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.className = 'frost-flash-fx'+(isEcho?' echo':'');
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 700);
+  }
+
+  // 화면 균열 이펙트(사용자 요청 — 시간의 파수꾼 공격 연출 다양화). 매번
+  // 살짝 다른 중심점/각도로 번개형 균열 6가닥을 그려서 반복돼도 똑같아
+  // 보이지 않게 한다.
+  function spawnScreenCrackFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.className = 'screen-crack-fx';
+    const cx = 46 + Math.random()*8, cy = 40 + Math.random()*10;
+    const branches = 6;
+    let paths = '';
+    for(let i=0;i<branches;i++){
+      const angle = (Math.PI*2/branches)*i + (Math.random()*0.5-0.25);
+      let x = cx, y = cy;
+      let d = `M ${x.toFixed(1)} ${y.toFixed(1)}`;
+      const segs = 3 + Math.floor(Math.random()*2);
+      for(let s=0;s<segs;s++){
+        x += Math.cos(angle)*(8+Math.random()*6) + (Math.random()*6-3);
+        y += Math.sin(angle)*(8+Math.random()*6) + (Math.random()*6-3);
+        d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+      }
+      paths += `<path d="${d}"/>`;
+    }
+    el.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">${paths}</svg>`;
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 650);
   }
 
   // ---------- 메카닉 로봇 비주얼 ----------

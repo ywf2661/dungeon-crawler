@@ -267,6 +267,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         // 관리한다. 여기서는 빈 상태로만 초기화.
         echoQueue: [],
         frostCooldown: 1, // 첫 턴부터 바로 쓰지 않도록 약간의 텀
+        vanishCooldown: 2, // 명멸의 틈(사용자 기획) — 이것도 초반엔 약간의 텀
+        vanishedTurns: 0,
         rewindUsed: false,
       });
     }

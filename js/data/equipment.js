@@ -512,6 +512,14 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   }
 
   function getEffectiveEnemyDef(base){
+    // 명멸의 틈(사용자 기획, 시간의 파수꾼 전용) — 파수꾼이 사라져 있는 동안
+    // (enemy.vanishedTurns>0, 딱 한 번의 플레이어 턴만 지속) 플레이어의
+    // 공격/스킬이 사실상 전부 무의미해지도록 방어력을 터무니없이 높게
+    // 돌려준다. 이 함수를 모든 플레이어 공격/스킬의 데미지 계산이 거치므로
+    // (아래 주석 참고) 여기 한 곳만 고치면 전 스킬에 자동 반영된다. 독/
+    // 지속피해(도트)는 이 함수를 거치지 않는 별도 고정 틱 구조라 자연히
+    // 예외로 남는다(사용자 요청 — "독딜은 예외").
+    if(enemy && enemy.type==='timeguardian' && enemy.vanishedTurns>0) return base + 99999;
     let pierce = 0;
     const hpRatio = player.maxhp>0 ? player.hp/player.maxhp : 1;
     if(epicSetTier('warrior')>=3 && hpRatio<=0.5) pierce += 0.3;
