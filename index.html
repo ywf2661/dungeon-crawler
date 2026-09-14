@@ -641,8 +641,21 @@
     pointer-events:none; z-index:7;
   }
   .tg-vfx-img.frost{ background-image:url('images/vfx/tg_frost.png'); animation:tgvfxpop .7s ease-out forwards; }
+  .tg-vfx-img.frost.echo{ opacity:0.6; }
   .tg-vfx-img.void{ background-image:url('images/vfx/tg_void.png'); animation:tgvfxsink .8s ease-in forwards; }
   .tg-vfx-img.returnstrike{ background-image:url('images/vfx/tg_return.png'); animation:tgvfxpop .55s ease-out forwards; }
+
+  /* 명멸의 틈(사용자 요청) — 몬스터 초상화 자체가 스윽 사라졌다가, 귀환의
+     일격 때 다시 나타난다. opacity 0이 아니라 아주 옅게(0.08) 남겨서
+     "완전히 없어진 버그"처럼 보이지 않게 한다. */
+  @keyframes tgvanish{ to{ opacity:0.08; transform:scale(0.92); filter:brightness(0.3) saturate(0.3);} }
+  @keyframes tgreappear{ from{ opacity:0.08; transform:scale(0.92); filter:brightness(0.3) saturate(0.3);} to{ opacity:1; transform:scale(1); filter:none;} }
+  .enemy-stage.tg-vanishing svg, .enemy-stage.tg-vanishing img{
+    animation:tgvanish .6s ease-in forwards;
+  }
+  .enemy-stage.tg-reappear svg, .enemy-stage.tg-reappear img{
+    animation:tgreappear .4s ease-out forwards;
+  }
 
   /* 화면 균열 이펙트(사용자 요청 — 시간의 파수꾼 공격 연출 다양화). 새
      이미지 리소스 없이 SVG 번개형 균열 6가닥을 매번 살짝 다른 각도/길이로
