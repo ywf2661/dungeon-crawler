@@ -12,15 +12,15 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
   /* ============ 직업(클래스) ============ */
   const JOBS = [
     {id:'warrior', name:'전사', icon:'⚔️',
-      desc:'강인한 육체로 적을 압도하는 근접 전사. 체력과 방어력이 뛰어나다.',
+      desc:'강인한 육체로 적을 압도하는 근접 전사.',
       statMods:{maxhp:8, maxmp:-2, atk:3, def:2, mag:-3, spd:-1},
       skillLevels:{1:'powerstrike', 3:'guard', 5:'warcry', 7:'crushingblow', 10:'earthrend'}},
     {id:'mage', name:'마법사', icon:'🔮',
-      desc:'원소 마법으로 적을 멀리서 불태우는 술사. 마력은 강하나 몸이 약하다.',
+      desc:'원소 마법으로 적을 멀리서 불태우는 술사.',
       statMods:{maxhp:-8, maxmp:10, atk:-3, def:-2, mag:6, spd:0},
       skillLevels:{1:'fireball', 3:'icelance', 5:'thunderbolt', 7:'blizzard', 10:'meteor'}},
     {id:'rogue', name:'도적', icon:'🗡️',
-      desc:'빠른 몸놀림과 급소 공격으로 승부하는 자. 속도가 매우 빠르다.',
+      desc:'빠른 몸놀림과 급소 공격으로 승부하는 자.',
       statMods:{maxhp:-3, maxmp:0, atk:2, def:-2, mag:-2, spd:6},
       skillLevels:{1:'doubleslash', 3:'backstab', 5:'draintouch', 7:'shadowslash', 10:'assassinate'}},
     {id:'paladin', name:'성기사', icon:'🛡️',
