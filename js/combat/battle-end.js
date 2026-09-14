@@ -375,20 +375,30 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           const oldRelicSlots = player.relicSlots;
           const oldAltarsSeen = (player.relicAltarsSeen||[]).slice();
           const oldCurseSeen = (player.curseAltarsSeen||[]).slice();
-          const oldEquipOwned = (player.equipOwned||[]).slice();
           const oldDeathCount = player.deathCount;
           const oldSkipsUsed = player.relicSkipsUsed;
           const oldCandleUsed = player.candleUsed;
           const name = player.name, jobId = player.job, diff = player.difficulty;
+          // 묘비 이벤트(사용자 기획) — 캐릭터당 무덤은 항상 최대 1개, "가장
+          // 깊이 도달했던 죽음"만 남긴다. 이번 사망의 tierIndex가 기존 무덤보다
+          // 낮으면(이미 그보다 깊이 가본 뒤 다시 초반에 죽은 경우) 덮어쓰지
+          // 않는다 — 하드코어 특유의 반복 도전에서 더 깊이 갔던 기록이 얕은
+          // 재도전 죽음에 지워지지 않게 하기 위함.
+          const oldGrave = player.hardcoreGrave;
+          const newGrave = (!oldGrave || player.tierIndex>=oldGrave.tierIndex) ? {
+            tierIndex: player.tierIndex,
+            equipOwned: (player.equipOwned||[]).slice(),
+            relics: (player.relics||[]).slice(),
+          } : oldGrave;
 
           player = newPlayer(name, jobId, diff);
           player.relicSlots = oldRelicSlots;
           player.relicAltarsSeen = oldAltarsSeen;
           player.curseAltarsSeen = oldCurseSeen;
-          player.equipOwned = oldEquipOwned;
           player.deathCount = oldDeathCount;
           player.relicSkipsUsed = oldSkipsUsed;
           player.candleUsed = oldCandleUsed;
+          player.hardcoreGrave = newGrave;
           oldRelics.forEach(id=> applyRelicEffect(id));
           player.relics = oldRelics.slice();
         } else {
@@ -711,6 +721,67 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       renderStatus();
       renderExplore([{text:logText, cls:'gold'}]);
       saveGame();
+      // 묘비 이벤트(사용자 기획) — 이번에 클리어한 구간(clearedTier)이 저장된
+      // 무덤의 구간과 일치하면, 사망 당시 장비/유물 중 셋(부족하면 있는 만큼)을
+      // 보여주고 하나만 되찾게 한다. 보상 선택 오버레이가 방금 닫힌 직후라
+      // 약간의 텀을 두고 별개의 순간으로 띄운다.
+      setTimeout(maybeShowGraveRecovery, 700);
+    }
+    // 묘비 이벤트 후보 산정 + UI. player.hardcoreGrave가 이번에 클리어한
+    // 구간(clearedTier)과 일치할 때만 발동하고, 성공 여부와 무관하게 즉시
+    // 소멸시킨다(1회성 — 같은 무덤을 반복해서 우려먹지 않도록).
+    function maybeShowGraveRecovery(){
+      if(player.difficulty!=='hardcore' || !player.hardcoreGrave) return;
+      if(player.hardcoreGrave.tierIndex !== clearedTier) return;
+      const grave = player.hardcoreGrave;
+      player.hardcoreGrave = null;
+      const pool = [];
+      (grave.equipOwned||[]).forEach(id=>{
+        if((player.equipOwned||[]).includes(id)) return; // 이미 갖고 있으면 후보에서 제외
+        const def = typeof getItemDef==='function' ? getItemDef(id) : null;
+        if(def) pool.push({kind:'equip', id, name:def.name});
+      });
+      (grave.relics||[]).forEach(id=>{
+        if((player.relics||[]).includes(id)) return;
+        if((player.relics||[]).length >= player.relicSlots) return; // 슬롯이 꽉 차 있으면 애초에 후보에서 제외
+        const def = RELICS[id];
+        if(def) pool.push({kind:'relic', id, name:def.name});
+      });
+      if(!pool.length) return; // 되찾을 만한 게 하나도 안 남았으면 조용히 넘어간다
+      const offered = pool.slice().sort(()=>Math.random()-0.5).slice(0,3);
+      showGraveChoice(offered);
+    }
+    function showGraveChoice(offered){
+      const goverlay = document.createElement('div');
+      goverlay.className = 'shop-overlay';
+      goverlay.id = 'grave-overlay';
+      const gpanel = document.createElement('div');
+      gpanel.className = 'shop-panel';
+      gpanel.innerHTML = `<h3>⚰️ 낯익은 무덤</h3>
+        <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">이전에 이곳에서 스러진 자의 흔적이 남아있다. 하나만 챙길 수 있다.</p>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${offered.map((o,i)=>`<button class="btn grave-pick" data-idx="${i}" style="text-align:left; padding:10px 12px;">${o.kind==='relic'?'✨':'⚔️'} ${o.name}</button>`).join('')}
+        </div>`;
+      goverlay.appendChild(gpanel);
+      document.getElementById('app').appendChild(goverlay);
+      gpanel.querySelectorAll('.grave-pick').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          Sound.click();
+          const picked = offered[Number(btn.dataset.idx)];
+          if(picked.kind==='equip'){
+            player.equipOwned = player.equipOwned || [];
+            if(!player.equipOwned.includes(picked.id)) player.equipOwned.push(picked.id);
+          } else {
+            player.relics = player.relics || [];
+            player.relics.push(picked.id);
+            if(typeof applyRelicEffect==='function') applyRelicEffect(picked.id);
+          }
+          goverlay.remove();
+          renderStatus();
+          addLog(`묘비에서 [${picked.name}]을(를) 되찾았다.`, 'gold');
+          saveGame();
+        });
+      });
     }
     panel.querySelector('#reward-heal').addEventListener('click', ()=>{
       const choice = applyBossReward('heal', nextTier);
