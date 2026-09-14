@@ -651,9 +651,9 @@
      — 그래야 곧바로 이어지는 기존 공격 lunge 애니메이션(.enemy-stage.attacking,
      lungeEnemy()가 모든 적 공격에 이미 공통으로 걸어준다)과 애니메이션
      속성이 겹쳐 서로를 지우는 문제 없이, "팝인 + 베기"가 자연스럽게 이어진다. */
-  @keyframes tgvanish{ to{ opacity:0.08; transform:translateX(70px) scale(0.85); filter:brightness(0.3) saturate(0.3);} }
+  @keyframes tgvanish{ to{ opacity:0; transform:translateX(80px) scale(0.8); filter:brightness(0.3) saturate(0.3);} }
   .enemy-stage.tg-vanishing svg, .enemy-stage.tg-vanishing img{
-    animation:tgvanish .55s ease-in forwards;
+    animation:tgvanish .7s ease-in forwards;
   }
 
   /* 화면 균열 이펙트(사용자 요청 — 시간의 파수꾼 공격 연출 다양화). 새

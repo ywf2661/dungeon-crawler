@@ -771,9 +771,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         dmg = 0;
         label = `${enemy.name}이(가) 명멸의 틈으로 스며들며 사라진다…`;
         playBanner('명멸의 틈','fx-voidstep');
-        if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('void');
         const stageEl = document.getElementById('bt-stage');
         if(stageEl) stageEl.classList.add('tg-vanishing');
+        // 연출 순서 조정(사용자 제보 — "사라지는 느낌이 안 든다"): 보이드
+        // VFX 이미지(260px, 꽤 큼)가 캐릭터랑 동시에 뜨면 자리를 덮어버려서
+        // 정작 페이드 동작 자체가 눈에 안 들어왔다. 캐릭터가 먼저 눈에 띄게
+        // 빠져나간 뒤에(250ms) 그 자리에 균열이 남는 순서로 바꾼다.
+        setTimeout(()=>{ if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('void'); }, 250);
       }
       // 귀환의 일격(사용자 기획) — 명멸 다음 턴, 예고 없이 돌아와 크게
       // 후려친다. 초상화를 즉시 원래대로 되돌린다(사용자 요청 — "확
@@ -959,7 +963,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 나서 오히려 HP바/흔들림보다 더 크게 어긋나 보인 것. 애니메이션의 미세한
       // 피크보다 HP바/흔들림 같은 즉각적인 신호가 더 지배적이라고 판단해,
       // 소리도 다시 즉시(다른 연출과 같은 tick) 재생하도록 되돌린다.
-      if(mitigated>0) Sound.hit();
+      // 시간의 파수꾼 전용 공격음(사용자 요청) — 플레이어 베기음을 피치
+      // 다운해서 재사용(칼을 휘두르는 존재라는 정체성에 맞춰).
+      if(mitigated>0){
+        if(enemy.type==='timeguardian') Sound.guardianSlash();
+        else Sound.hit();
+      }
 
       // 정예 특성 — 흡혈(가한 피해의 20% 회복)/독성(적중 시 플레이어 중독 3턴 부여).
       if(mitigated>0 && enemy.eliteTraits && enemy.eliteTraits.length){

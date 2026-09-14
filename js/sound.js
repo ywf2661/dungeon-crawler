@@ -158,13 +158,16 @@ export(전역): const Sound
     }
     // name에 해당하는 실제 음원이 로드돼 있으면 재생하고 true를 반환한다.
     // 아직 로딩 전이거나 파일이 없으면 false를 반환 — 호출부가 기존 합성
-    // SFX로 자연스럽게 대체(fallback)하도록 한다.
-    function playSfxBuffer(name){
+    // SFX로 자연스럽게 대체(fallback)하도록 한다. rate(선택): 재생 속도=피치
+    // 배율. 기존 호출부는 인자를 안 넘기므로 기본값 1로 지금까지와 동일하게
+    // 동작한다.
+    function playSfxBuffer(name, rate){
       const c = ensureCtx(); if(!c) return false;
       const buf = sfxBuffers[name];
       if(!buf) return false;
       const src = c.createBufferSource();
       src.buffer = buf;
+      if(rate && rate!==1) src.playbackRate.value = rate;
       src.connect(sfxGain);
       src.start(0);
       return true;
@@ -395,6 +398,16 @@ export(전역): const Sound
       else if(type==='bleed') slash();
     }
 
+    // 시간의 파수꾼 전용 공격음(사용자 요청) — 새 음원 없이, 플레이어의
+    // 베기 효과음(slash.wav)을 살짝 낮은 피치(0.78배속)로 틀어서 "같은
+    // 칼이지만 더 무겁고 낯선 존재가 휘두르는" 느낌을 낸다. 음원이 아직
+    // 로딩 전이면 기존 hit() 합성음으로 대체한다.
+    function guardianSlash(){
+      if(muted) return;
+      if(playSfxBuffer('slash', 0.78)) return;
+      hit();
+    }
+
     // ---- 배경음(BGM): 저음 드론 + 간헐적 아르페지오를 실시간 스케줄링하는 루프 ----
     const SCALE_EXPLORE = [220, 261.6, 293.7, 329.6, 392, 440]; // A minor 계열, 잔잔하게
     const SCALE_BATTLE   = [220, 246.9, 277.2, 329.6, 369.9, 440]; // 살짝 긴장감 있는 스케일
@@ -512,7 +525,7 @@ export(전역): const Sound
     return {
       ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
-      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack,
+      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash,
       setMuted, toggleMuted, isMuted,
     };
   })();
