@@ -645,32 +645,11 @@
   .tg-vfx-img.void{ background-image:url('images/vfx/tg_void.png'); animation:tgvfxsink .8s ease-in forwards; }
   .tg-vfx-img.returnstrike{ background-image:url('images/vfx/tg_return.png'); animation:tgvfxpop .55s ease-out forwards; }
 
-  /* 칼리버 X: 종언 전용 VFX 이미지(사용자 제공, images/vfx/caliberx_finale.png).
-     레벨15 궁극기라 이 게임에서 가장 큰 사이즈로 잡았다 — 적 위치에 크게
-     한 번 번쩍이고 사라진다. */
-  @keyframes caliberxpop{
-    0%{opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-4deg);}
-    28%{opacity:1; transform:translate(-50%,-50%) scale(1.08) rotate(2deg);}
-    100%{opacity:0; transform:translate(-50%,-50%) scale(1.2) rotate(2deg);}
-  }
-  .caliberx-vfx-img{
-    position:absolute; left:50%; top:42%; width:280px; height:280px;
-    background-image:url('images/vfx/caliberx_finale.png');
-    background-size:contain; background-repeat:no-repeat; background-position:center;
-    pointer-events:none; z-index:7;
-    animation:caliberxpop .65s ease-out forwards;
-  }
-
-  /* 불멸의 순교(순교자 레벨15 궁극기) 전용 VFX 이미지(사용자 제공,
-     images/vfx/martyr_ultimate.png). 칼리버 X 종언과 같은 팝 애니메이션을
-     재사용하되, 색/이미지만 다르다. */
-  .martyr-vfx-img{
-    position:absolute; left:50%; top:42%; width:300px; height:300px;
-    background-image:url('images/vfx/martyr_ultimate.png');
-    background-size:contain; background-repeat:no-repeat; background-position:center;
-    pointer-events:none; z-index:7;
-    animation:caliberxpop .7s ease-out forwards;
-  }
+  /* 칼리버 X: 종언 / 불멸의 순교 전용 VFX 이미지는 combat/battle-fx.js의
+     spawnCaliberXFx()/spawnMartyrFx()에서 인라인 스타일로 직접 제어한다
+     (명멸의 틈 페이드와 동일한 이유 — 클래스+키프레임 방식이 다른 CSS
+     규칙과 얽혀 안 먹혔던 전례가 있어, 항상 우선 적용되는 인라인 방식으로
+     통일했다). */
   /* 명멸의 틈 페이드는 클래스+키프레임 대신 인라인 스타일로 직접 제어한다
      (combat/enemy-turn.js) — 다른 CSS 규칙과 우선순위가 얽혀 안 먹혔을 수
      있어, 항상 이기는 인라인 스타일 방식으로 바꿨다. */

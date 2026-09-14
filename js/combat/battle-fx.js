@@ -374,23 +374,51 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 650);
   }
 
-  // 칼리버 X: 종언 전용 VFX 이미지(사용자 제공).
+  // 칼리버 X: 종언 전용 VFX 이미지(사용자 제공). 명멸의 틈 페이드 때와 같은
+  // 이유(클래스+키프레임 방식이 다른 CSS 규칙과 얽혀 안 먹혔던 전례)로,
+  // 여기서도 인라인 스타일을 직접 타이밍대로 바꾸는 방식으로 구현한다 —
+  // 클래스 기반보다 항상 우선 적용되어 다른 규칙과 부딪힐 여지가 없다.
   function spawnCaliberXFx(){
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
     const el = document.createElement('div');
-    el.className = 'caliberx-vfx-img';
+    el.style.cssText = "position:absolute; left:50%; top:42%; width:280px; height:280px; "
+      + "background-image:url('images/vfx/caliberx_finale.png'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-4deg);";
     stage.appendChild(el);
+    void el.offsetWidth; // 강제 리플로우 — 초기 상태가 확실히 반영된 뒤에 전환 시작
+    el.style.transition = 'opacity .22s ease-out, transform .22s ease-out';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1.08) rotate(2deg)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .4s ease-in, transform .4s ease-in';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%,-50%) scale(1.2) rotate(2deg)';
+    }, 260);
     setTimeout(()=>el.remove(), 750);
   }
 
-  // 불멸의 순교(순교자 레벨15 궁극기) 전용 VFX 이미지(사용자 제공).
+  // 불멸의 순교(순교자 레벨15 궁극기) 전용 VFX 이미지(사용자 제공). 위와
+  // 동일한 인라인 스타일 방식.
   function spawnMartyrFx(){
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
     const el = document.createElement('div');
-    el.className = 'martyr-vfx-img';
+    el.style.cssText = "position:absolute; left:50%; top:42%; width:300px; height:300px; "
+      + "background-image:url('images/vfx/martyr_ultimate.png'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-4deg);";
     stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .22s ease-out, transform .22s ease-out';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1.08) rotate(2deg)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .45s ease-in, transform .45s ease-in';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%,-50%) scale(1.2) rotate(2deg)';
+    }, 280);
     setTimeout(()=>el.remove(), 800);
   }
 
