@@ -592,6 +592,35 @@
     transition: background .6s ease-out;
   }
 
+  /* 시간의 파수꾼 "결빙의 궤적" 전용 화면 이펙트(사용자 요청 — 배너만으론
+     밋밋하다는 피드백). 새 이미지 리소스 없이 순수 CSS 라디얼 그라디언트로
+     짧게 얼어붙는 듯한 섬광을 낸다 — .screen-smog(역병숙주 지속형 안개)와
+     달리 이건 1회성(스킬 발동 순간만 잠깐)이라 클래스를 즉석에서 만들었다
+     지운다(playBanner와 동일한 수명주기 패턴).
+     [메아리 버전(.echo)] — 신선 발동보다 옅게(최대 불투명도 0.6배) 해서
+     "다시 한번 덮쳐오지만 위력은 약하다"는 걸 시각적으로도 구분한다. */
+  @keyframes frostflash{
+    0%{opacity:0; transform:scale(0.85);}
+    22%{opacity:1; transform:scale(1.04);}
+    100%{opacity:0; transform:scale(1.18);}
+  }
+  @keyframes frostflashecho{
+    0%{opacity:0; transform:scale(0.85);}
+    22%{opacity:0.6; transform:scale(1.04);}
+    100%{opacity:0; transform:scale(1.18);}
+  }
+  .frost-flash-fx{
+    position:absolute; inset:0; pointer-events:none; z-index:5;
+    background: radial-gradient(ellipse at center,
+      rgba(190,225,255,0.65) 0%, rgba(140,180,255,0.35) 42%, rgba(140,180,255,0) 76%);
+    animation: frostflash .65s ease-out forwards;
+  }
+  /* 메아리 버전은 별도 키프레임(frostflashecho)으로 애니메이션 이름 자체를
+     바꿔치기한다 — 정적 opacity 오버라이드는 animation의 opacity 키프레임에
+     매 프레임 덮어써져 효과가 없기 때문(.slash-img-fx.flip과 동일한 이유로
+     이름 교체 방식을 쓴다). */
+  .frost-flash-fx.echo{ animation-name: frostflashecho; }
+
   .pressure-gauge{
     margin:4px auto 0; max-width:180px; padding:4px 8px 6px; border-radius:6px;
     font-family:var(--font-ui); font-size:11px; letter-spacing:.03em;
@@ -679,6 +708,7 @@
   .fx-banner.fx-chorus{color:#ffcf6a; border-color:#ffbf4a; font-size:18px; text-shadow:0 0 14px #ffbf4acc, 0 1px 3px #000;}
   .fx-banner.fx-sand{color:#d9c07a; border-color:#c9ab5a; text-shadow:0 0 8px #c9ab5a77, 0 1px 3px #000;}
   .fx-banner.fx-timeturn{color:#7ad6ff; border-color:#5ac9ff; font-size:18px; text-shadow:0 0 14px #5ac9ffcc, 0 1px 3px #000;}
+  .fx-banner.fx-frost{color:#c9d8ff; border-color:#a8c0ff; font-size:18px; text-shadow:0 0 14px #a8c0ffcc, 0 1px 3px #000;}
   @keyframes bannerpop{
     0%{opacity:0; transform:translate(-50%,8px) scale(0.8);}
     20%{opacity:1; transform:translate(-50%,0) scale(1.05);}

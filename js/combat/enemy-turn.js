@@ -730,8 +730,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
             battleFlags.tgSpdDebuff = {delta:spdDelta, turnsLeft:2};
             player.spd -= spdDelta;
           }
+          playBanner('결빙의 궤적','fx-frost');
+          if(typeof spawnFrostFlashFx==='function') spawnFrostFlashFx(false);
         } else {
           label = `과거의 결빙 궤적이 메아리처럼 다시 덮쳐온다!`;
+          playBanner('메아리 · 결빙의 궤적','fx-frost');
+          if(typeof spawnFrostFlashFx==='function') spawnFrostFlashFx(true);
         }
       }
       else {

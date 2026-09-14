@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -324,6 +324,17 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.textContent = text;
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 1150);
+  }
+
+  // 시간의 파수꾼 "결빙의 궤적" 전용 화면 이펙트(사용자 요청 — 텍스트 배너만으론
+  // 밋밋하다는 피드백). isEcho면 더 옅은 버전(frostflashecho)을 쓴다.
+  function spawnFrostFlashFx(isEcho){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.className = 'frost-flash-fx'+(isEcho?' echo':'');
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 700);
   }
 
   // ---------- 메카닉 로봇 비주얼 ----------
