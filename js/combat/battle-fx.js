@@ -346,66 +346,40 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 700);
   }
 
-  // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출(사용자 요청) — 여느
-  // 궁극기들과 달리 3단계로 나눈다: ①화면 균열이 서서히 커지며 나타남
-  // →②그 자리에서 VFX 이미지가 팟 나타남→③천천히 회전하며 옅어져 사라짐.
-  // 전부 인라인 스타일+transition 방식(칼리버X/순교자 궁극기 때와 동일한
-  // 이유로 클래스+키프레임 대신 이 방식을 쓴다).
+  // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출 — 사용자가 준 10프레임
+  // 스프라이트 시트(크랙이 자라나다 파편/톱니가 뭉치고 마지막엔 검은 구멍으로
+  // 붕괴하는 전체 과정을 손으로 그려둔 것)를 그대로 프레임 애니메이션으로
+  // 재생한다. 이전에 CSS로 흉내 냈던 "균열 성장→VFX 팝인→회전 페이드"
+  // 3단계 연출은 이제 이 스프라이트 시트 자체가 전부 담고 있어 불필요해져
+  // 제거했다.
   function spawnTimeParadoxFx(){
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
-    // 1단계: 균열이 서서히 자란다(기존 즉발 플래시형 균열과 달리, scale+opacity로
-    // 0.45초에 걸쳐 커지도록 해서 "조금씩 금이 간다"는 느낌을 준다).
-    const crackEl = document.createElement('div');
-    crackEl.style.cssText = 'position:absolute; inset:0; pointer-events:none; z-index:6; opacity:0; transform:scale(0.5);';
-    const cx = 46 + Math.random()*8, cy = 40 + Math.random()*10;
-    const branches = 7;
-    let paths = '';
-    for(let i=0;i<branches;i++){
-      const angle = (Math.PI*2/branches)*i + (Math.random()*0.5-0.25);
-      let x = cx, y = cy;
-      let d = `M ${x.toFixed(1)} ${y.toFixed(1)}`;
-      const segs = 3 + Math.floor(Math.random()*2);
-      for(let s=0;s<segs;s++){
-        x += Math.cos(angle)*(8+Math.random()*6) + (Math.random()*6-3);
-        y += Math.sin(angle)*(8+Math.random()*6) + (Math.random()*6-3);
-        d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
+    const el = document.createElement('div');
+    el.style.cssText = 'position:absolute; left:50%; top:42%; width:300px; height:300px; '
+      + "background-image:url('images/vfx/time_paradox_f01.png'); "
+      + 'background-size:contain; background-repeat:no-repeat; background-position:center; '
+      + 'pointer-events:none; z-index:7; transform:translate(-50%,-50%); '
+      + 'opacity:0; transition:opacity .15s ease-out;';
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.opacity = '1';
+    const frameCount = 10, frameMs = 160;
+    let i = 1;
+    const timer = setInterval(()=>{
+      i++;
+      if(i>frameCount){
+        clearInterval(timer);
+        // 마지막 프레임(붕괴 완료)에서 잠깐 멈췄다가 옅어지며 사라진다.
+        setTimeout(()=>{
+          el.style.transition = 'opacity .5s ease-in';
+          el.style.opacity = '0';
+          setTimeout(()=>el.remove(), 550);
+        }, 250);
+        return;
       }
-      paths += `<path d="${d}"/>`;
-    }
-    crackEl.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" style="width:100%;height:100%;"><g fill="none" stroke="#c9a8ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 5px #b088ffcc) drop-shadow(0 0 10px #7a5adf88);">${paths}</g></svg>`;
-    stage.appendChild(crackEl);
-    void crackEl.offsetWidth;
-    crackEl.style.transition = 'opacity .45s ease-out, transform .45s ease-out';
-    crackEl.style.opacity = '1';
-    crackEl.style.transform = 'scale(1)';
-
-    // 2단계: 균열이 다 자란 뒤(450ms), 그 자리에서 VFX가 팟 나타난다.
-    setTimeout(()=>{
-      const vfxEl = document.createElement('div');
-      vfxEl.style.cssText = "position:absolute; left:50%; top:42%; width:300px; height:300px; "
-        + "background-image:url('images/vfx/time_paradox.png'); background-size:contain; "
-        + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
-        + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(0deg);";
-      stage.appendChild(vfxEl);
-      void vfxEl.offsetWidth;
-      vfxEl.style.transition = 'opacity .25s ease-out, transform .25s ease-out';
-      vfxEl.style.opacity = '1';
-      vfxEl.style.transform = 'translate(-50%,-50%) scale(1) rotate(0deg)';
-
-      // 3단계(사용자 요청 — "천천히 돌면서 사라진다"): 잠깐 멈췄다가, 1.3초에
-      // 걸쳐 천천히 회전하면서 옅어진다. 균열도 비슷한 타이밍에 같이 사라진다.
-      setTimeout(()=>{
-        vfxEl.style.transition = 'opacity 1.3s ease-in, transform 1.3s ease-in';
-        vfxEl.style.opacity = '0';
-        vfxEl.style.transform = 'translate(-50%,-50%) scale(1.15) rotate(75deg)';
-      }, 200);
-      crackEl.style.transition = 'opacity 1s ease-in';
-      crackEl.style.opacity = '0';
-
-      setTimeout(()=>vfxEl.remove(), 1600);
-    }, 450);
-    setTimeout(()=>crackEl.remove(), 2000);
+      el.style.backgroundImage = `url('images/vfx/time_paradox_f${String(i).padStart(2,'0')}.png')`;
+    }, frameMs);
   }
 
   // 화면 균열 이펙트(사용자 요청 — 시간의 파수꾼 공격 연출 다양화). 매번
