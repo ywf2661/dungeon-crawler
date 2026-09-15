@@ -588,6 +588,11 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 발동 시 0.6, 그 외엔 1 — 아래 데미지 배율 계산에서 곱해 쓴다.
       let tgEchoMult = 1;
       let tgRewindPrefix = ''; // 시간 역행 발동 시 최종 label 앞에 붙일 문구
+      let tgEchoBonus = null; // 메아리 재설계(사용자 제보 — "그냥 더 약하게
+      // 치는 거잖아"): 대기 중이던 메아리를 이번 턴 전체를 대체하는 약한
+      // 단독 행동으로 쓰지 않고, 이번 턴의 진짜 행동에 60% 위력만큼
+      // "얹어서" 같이 터뜨리는 보너스로 바꾼다 — 메아리가 뜨는 턴은
+      // 오히려 더 아픈 턴이 된다.
       if(enemy.type==='timeguardian'){
         // 귀환의 일격(사용자 기획) — 지난 턴에 명멸의 틈으로 사라졌었다면,
         // 이번 턴은 무조건 예고 없는 강타로 복귀한다. 메아리 큐/결빙의 궤적
@@ -599,55 +604,53 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           if(!enemy.echoQueue) enemy.echoQueue = [];
           if(enemy.echoQueue.length) enemy.echoQueue[0].turnsLeft -= 1;
           let firedEcho = null;
+          let echoIsRewind = false;
           if(enemy.echoQueue.length && enemy.echoQueue[0].turnsLeft<=0){
             firedEcho = enemy.echoQueue.shift();
           } else if(!enemy.rewindUsed && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5 && enemy.echoQueue.length){
             // 시간 역행: HP 50% 이하에서 1회, 대기 중인 메아리를 예고 없이
-            // 즉시 앞당겨 터뜨린다. 이번 턴에 실제로 피해가 나가므로, 이 대사는
-            // setBattleMsg를 바로 부르지 않고 아래 label에 붙여서 최종 데미지
-            // 메시지가 이 문구를 덮어쓰지 않게 한다.
+            // 즉시 앞당겨 터뜨린다. 이건 "예고 없는 기습"이 핵심이라 아래
+            // 일반 메아리(스택형)와 다르게 그 턴을 그대로 단독 대체한다.
             enemy.rewindUsed = true;
             firedEcho = enemy.echoQueue.shift();
+            echoIsRewind = true;
             tgRewindPrefix = `${enemy.name}의 몸이 일그러진다… 시간이 역행하며, `;
           }
-          if(firedEcho){
+          if(firedEcho && echoIsRewind){
             skillKey = firedEcho.skillKey; // null이면 기본 공격(무거운 참격)의 메아리
             tgEchoMult = 0.6;
-          } else if((enemy.vanishCooldown||0) <= 0){
-            // 명멸의 틈(사용자 기획) — 다크홀식 회피+반격 기믹. 이번 턴은
-            // 공격하지 않고 사라진다 — 다음 플레이어 턴 한정으로
-            // data/equipment.js의 getEffectiveEnemyDef()가 사실상 무적 수준의
-            // 방어력을 돌려주게 만들어(독 등 지속피해는 그 계산을 거치지
-            // 않으므로 그대로 적용됨) "공격이 안 먹힌다"를 구현한다. 다음
-            // 파수꾼 턴엔 위 guardianReturnStrike로 예고 없이 돌아와 강타한다.
-            skillKey = 'guardianVanish';
-            enemy.vanishedTurns = 1;
-            enemy.vanishCooldown = 5;
           } else {
-            // 버그 수정(사용자 제보 — "초상화가 아예 안 없어진다", 즉 명멸의
-            // 틈이 사실상 발동을 안 하고 있었음): 이 감소를 기본 공격 분기
-            // 안에만 넣어놔서, 결빙의 궤적이 나가는 턴엔 vanishCooldown이
-            // 전혀 줄어들지 않고 있었다 — 그래서 명멸까지 도달하는 데 매우
-            // 오래 걸렸다(사실상 거의 안 뜨는 수준). 어떤 행동을 고르든
-            // (결빙의 궤적이든 기본 공격이든) 이 "새 행동을 고르는 턴"에는
-            // 항상 한 번씩 줄어들도록 위치를 옮긴다.
-            enemy.vanishCooldown = Math.max(0, (enemy.vanishCooldown||0) - 1);
-            if((enemy.frostCooldown||0) <= 0){
-              skillKey = 'frostTrajectory';
-              enemy.frostCooldown = 3;
+            // 이번 턴의 실제 행동을 평소 우선순위 그대로 고른다.
+            if((enemy.vanishCooldown||0) <= 0){
+              // 명멸의 틈(사용자 기획) — 다크홀식 회피+반격 기믹. 이번 턴은
+              // 공격하지 않고 사라진다 — 다음 플레이어 턴 한정으로
+              // data/equipment.js의 getEffectiveEnemyDef()가 사실상 무적 수준의
+              // 방어력을 돌려주게 만들어(독 등 지속피해는 그 계산을 거치지
+              // 않으므로 그대로 적용됨) "공격이 안 먹힌다"를 구현한다. 다음
+              // 파수꾼 턴엔 위 guardianReturnStrike로 예고 없이 돌아와 강타한다.
+              skillKey = 'guardianVanish';
+              enemy.vanishedTurns = 1;
+              enemy.vanishCooldown = 5;
             } else {
-              enemy.frostCooldown = (enemy.frostCooldown||0) - 1;
-              skillKey = null; // 기본 공격
+              enemy.vanishCooldown = Math.max(0, (enemy.vanishCooldown||0) - 1);
+              if((enemy.frostCooldown||0) <= 0){
+                skillKey = 'frostTrajectory';
+                enemy.frostCooldown = 3;
+              } else {
+                enemy.frostCooldown = (enemy.frostCooldown||0) - 1;
+                skillKey = null; // 기본 공격
+              }
+              // "최대 1개만 대기" — 이미 뭔가 대기 중이면 이번 턴 행동은 큐에
+              // 넣지 않는다(대기 중인 메아리가 실제로 발동할 때까지 보존).
+              if(!enemy.echoQueue.length){
+                enemy.echoQueue.push({skillKey, turnsLeft:2});
+              }
             }
-            // 버그 수정(사용자 제보 — "스킬을 잘 안 쓴다"): 큐가 비어있지 않은데도
-            // 매 턴 무조건 덮어쓰고 있어서, 대기 중이던 메아리가 발동 직전에
-            // 계속 지워지고 있었다. "최대 1개만 대기"는 유지하되, 이미 뭔가
-            // 대기 중이면 이번 턴 행동은 큐에 넣지 않는다(대기 중인 메아리가
-            // 실제로 발동할 때까지 보존). 명멸/귀환의 일격은 애초에 이 분기를
-            // 안 타므로 메아리로 쌓이지 않는다(의도적 — 공격이 아닌 회피
-            // 행동을 반복 재생하는 건 어색해서 제외).
-            if(!enemy.echoQueue.length){
-              enemy.echoQueue.push({skillKey, turnsLeft:2});
+            // 대기 중이던 메아리가 마침 이번 턴에 발동할 차례였다면, 이번 턴의
+            // 진짜 행동(위에서 고른 것)에 보너스로 얹는다. 명멸의 틈으로
+            // 나가는 턴은 공격 자체가 없으니 얹지 않고 그냥 흘려보낸다.
+            if(firedEcho && skillKey!=='guardianVanish'){
+              tgEchoBonus = firedEcho;
             }
           }
         }
@@ -841,6 +844,19 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 시간 역행 발동 시(사용자 기획) 최종 대사 앞에 붙인다 — 위쪽에서 바로
       // setBattleMsg를 부르면 아래에서 다시 덮어써지므로 여기서 합친다.
       if(tgRewindPrefix) label = tgRewindPrefix + label;
+
+      // 메아리 보너스(사용자 요청 — 스택형 재설계) — 이번 턴의 진짜 행동
+      // 위에 대기 중이던 메아리를 60% 위력만큼 더한다. 두 번째 데미지
+      // 이벤트를 새로 만드는 대신 하나의 dmg/label에 합쳐서, 방어/회피/
+      // 생명유지 판정 파이프라인을 두 번 타지 않게 한다(전투 파일 간
+      // 결합도가 높아 그쪽을 건드리는 게 훨씬 위험하다고 판단).
+      if(tgEchoBonus){
+        const bonusDmg = tgEchoBonus.skillKey==='frostTrajectory'
+          ? Math.round(effAtk*1.7*0.6)
+          : Math.round(effAtk*1.4*0.6);
+        dmg += bonusDmg;
+        label += ` 거기에 한 박자 늦은 메아리가 곧바로 겹쳐 든다!`;
+      }
 
       if(dmg<=0){
         setBattleMsg(label, `공격이 완전히 빗나갔다!`);
