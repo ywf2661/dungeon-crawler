@@ -2291,6 +2291,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
       Sound.magic(); playCastBurst();
       if(typeof spawnTimeParadoxFx==='function') spawnTimeParadoxFx();
+      if(typeof shakeScreen==='function') shakeScreen();
       renderStatus();
       const msg2 = (stacks>0
         ? `쌓아온 시간 조각(${stacks}개)이 한꺼번에 무너지며 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`
@@ -2298,7 +2299,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         + (timeStopKept ? ' 시간 정지 각인이 조각을 그대로 지켜냈다!' : '');
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
-      enemyTurn();
+      // 버그 수정(사용자 제보 — "이펙트가 끝나기 전에 적 턴이 넘어간다"):
+      // spawnTimeParadoxFx()는 24프레임×70ms(1680ms) + 정지 180ms + 페이드
+      // 550ms = 총 2410ms짜리 연출인데, enemyTurn()을 곧바로 불러서 이
+      // 연출이 절반도 안 끝난 상태에서 다음 턴이 겹쳐 보이고 있었다.
+      // VFX 지속시간만큼 지연시킨다.
+      setTimeout(()=>{ enemyTurn(); }, 2410);
       return;
     }
 

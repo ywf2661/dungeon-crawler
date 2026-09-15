@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnScreenCrackFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnScreenCrackFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -415,6 +415,25 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 이유(클래스+키프레임 방식이 다른 CSS 규칙과 얽혀 안 먹혔던 전례)로,
   // 여기서도 인라인 스타일을 직접 타이밍대로 바꾸는 방식으로 구현한다 —
   // 클래스 기반보다 항상 우선 적용되어 다른 규칙과 부딪힐 여지가 없다.
+  // 화면 전체 흔들림(사용자 요청 — 시간의 역설 발동 연출). 클래스+키프레임
+  // 대신 인라인 스타일을 직접 여러 번 바꾸는 방식으로 구현한다(이 세션에서
+  // 여러 번 겪은 것처럼, 클래스 기반 애니메이션이 다른 CSS 규칙과 얽혀
+  // 안 먹혔던 전례가 있어 — 이 방식은 그럴 여지가 없다). 진폭이 점점
+  // 줄어들다 원래 자리로 돌아온다, 총 길이 약 240ms.
+  function shakeScreen(){
+    const el = document.getElementById('screen-battle');
+    if(!el) return;
+    const offsets = [[-7,0],[7,-5],[-6,4],[5,-3],[-3,2],[2,-1],[0,0]];
+    let i = 0;
+    (function step(){
+      if(i>=offsets.length) return;
+      const [x,y] = offsets[i];
+      el.style.transform = `translate(${x}px, ${y}px)`;
+      i++;
+      setTimeout(step, 35);
+    })();
+  }
+
   function spawnCaliberXFx(){
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
