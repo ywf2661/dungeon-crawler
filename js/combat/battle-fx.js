@@ -346,17 +346,17 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 700);
   }
 
-  // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출 — 사용자가 준 10프레임
-  // 스프라이트 시트(크랙이 자라나다 파편/톱니가 뭉치고 마지막엔 검은 구멍으로
-  // 붕괴하는 전체 과정을 손으로 그려둔 것)를 그대로 프레임 애니메이션으로
-  // 재생한다. 이전에 CSS로 흉내 냈던 "균열 성장→VFX 팝인→회전 페이드"
-  // 3단계 연출은 이제 이 스프라이트 시트 자체가 전부 담고 있어 불필요해져
-  // 제거했다.
+  // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출 — 사용자가 준 24프레임
+  // 라벨링된 스프라이트 시트(충전→균열 형성/확산→그물망→파열→공허 노출/
+  // 확장→완전 붕괴→정점→잔류→소멸→재구성→종료의 전체 서사를 담은 것)를
+  // 그대로 프레임 애니메이션으로 재생한다. 이전 10프레임 버전보다 훨씬
+  // 세밀한 단계라 프레임 수만 늘리고(24), 한 프레임당 시간은 살짝 줄여서
+  // (95ms) 전체 재생 시간이 지나치게 늘어지지 않게 했다(24×95ms≈2.3초).
   function spawnTimeParadoxFx(){
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
     const el = document.createElement('div');
-    el.style.cssText = 'position:absolute; left:50%; top:42%; width:300px; height:300px; '
+    el.style.cssText = 'position:absolute; left:50%; top:42%; width:260px; height:340px; '
       + "background-image:url('images/vfx/time_paradox_f01.png'); "
       + 'background-size:contain; background-repeat:no-repeat; background-position:center; '
       + 'pointer-events:none; z-index:7; transform:translate(-50%,-50%); '
@@ -364,18 +364,18 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     stage.appendChild(el);
     void el.offsetWidth;
     el.style.opacity = '1';
-    const frameCount = 10, frameMs = 160;
+    const frameCount = 24, frameMs = 95;
     let i = 1;
     const timer = setInterval(()=>{
       i++;
       if(i>frameCount){
         clearInterval(timer);
-        // 마지막 프레임(붕괴 완료)에서 잠깐 멈췄다가 옅어지며 사라진다.
+        // 마지막 프레임(종료)에서 잠깐 멈췄다가 옅어지며 사라진다.
         setTimeout(()=>{
           el.style.transition = 'opacity .5s ease-in';
           el.style.opacity = '0';
           setTimeout(()=>el.remove(), 550);
-        }, 250);
+        }, 200);
         return;
       }
       el.style.backgroundImage = `url('images/vfx/time_paradox_f${String(i).padStart(2,'0')}.png')`;
