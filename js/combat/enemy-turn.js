@@ -823,10 +823,19 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
       else {
         dmg = effAtk + Math.floor(Math.random()*3)-1;
-        // 시간의 파수꾼 기본 공격의 메아리(사용자 기획) — 위력 60%, 전용 대사.
-        if(enemy.type==='timeguardian' && tgEchoMult<1){
-          dmg = Math.round(dmg*tgEchoMult);
-          label = `${enemy.name}의 잔상이 한 박자 늦게 따라와 후려친다!`;
+        // 시간의 파수꾼 기본 공격 — 사용자 제보("평타가 약하다")로 전용
+        // 배율(1.4배)과 전용 대사를 추가해 다른 몬스터의 밋밋한 기본 공격과
+        // 차별화한다. 메아리로 재현될 때(tgEchoMult<1)는 기존처럼 그 결과값에
+        // 다시 0.6배를 곱한다(즉 신선 발동 기준 1.4배가 메아리에서 0.84배로
+        // 줄어드는 흐름 — 원래 있던 "메아리는 약하다" 설계와 자연히 맞물림).
+        if(enemy.type==='timeguardian'){
+          if(tgEchoMult>=1){
+            dmg = Math.round(dmg*1.4);
+            label = `${enemy.name}이(가) 무거운 참격을 내리찍는다!`;
+          } else {
+            dmg = Math.round(dmg*1.4*tgEchoMult);
+            label = `${enemy.name}의 잔상이 한 박자 늦게 따라와 후려친다!`;
+          }
         }
       }
       // 시간 역행 발동 시(사용자 기획) 최종 대사 앞에 붙인다 — 위쪽에서 바로
