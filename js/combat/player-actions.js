@@ -2289,7 +2289,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
-      Sound.magic(); playCastBurst();
+      Sound.timeParadox(); playCastBurst();
       if(typeof spawnTimeParadoxFx==='function') spawnTimeParadoxFx();
       if(typeof shakeScreen==='function') shakeScreen();
       renderStatus();

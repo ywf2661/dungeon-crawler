@@ -145,6 +145,7 @@ export(전역): const Sound
       statusApply: 'audio/sfx/statusapply.wav',
       caliberxFinale: 'audio/sfx/caliberxfinale.wav',
       martyrUltimate: 'audio/sfx/martyrultimate.wav',
+      timeParadox: 'audio/sfx/timeparadox.wav',
     };
     const sfxBuffers = {};
     function preloadSfx(){
@@ -425,6 +426,14 @@ export(전역): const Sound
       bomb();
     }
 
+    // 시간의 역설(시간술사 레벨15 궁극기) 전용 효과음(사용자 제공, 2.4초).
+    // 로딩 전이면 기존 magic()으로 대체.
+    function timeParadox(){
+      if(muted) return;
+      if(playSfxBuffer('timeParadox')) return;
+      magic();
+    }
+
     // ---- 배경음(BGM): 저음 드론 + 간헐적 아르페지오를 실시간 스케줄링하는 루프 ----
     const SCALE_EXPLORE = [220, 261.6, 293.7, 329.6, 392, 440]; // A minor 계열, 잔잔하게
     const SCALE_BATTLE   = [220, 246.9, 277.2, 329.6, 369.9, 440]; // 살짝 긴장감 있는 스케일
@@ -542,7 +551,7 @@ export(전역): const Sound
     return {
       ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
-      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate,
+      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox,
       setMuted, toggleMuted, isMuted,
     };
   })();
