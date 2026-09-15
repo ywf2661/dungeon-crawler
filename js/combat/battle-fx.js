@@ -346,17 +346,18 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 700);
   }
 
-  // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출 — 사용자가 준 24프레임
-  // 라벨링된 스프라이트 시트(충전→균열 형성/확산→그물망→파열→공허 노출/
-  // 확장→완전 붕괴→정점→잔류→소멸→재구성→종료의 전체 서사를 담은 것)를
-  // 그대로 프레임 애니메이션으로 재생한다. 이전 10프레임 버전보다 훨씬
-  // 세밀한 단계라 프레임 수만 늘리고(24), 한 프레임당 시간은 살짝 줄여서
-  // (95ms) 전체 재생 시간이 지나치게 늘어지지 않게 했다(24×95ms≈2.3초).
+  // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출 — 사용자가 새로 준 24프레임
+  // 루프형 스프라이트 시트(보라색 포탈, 256px 6x4 그리드)를 프레임 애니메이션
+  // 으로 재생한다. 이번 시트는 원본 자체가 각 프레임 중심이 이미 거의 안 흔들
+  // 렸지만(centroid 오차 ±3~4px 수준), 그래도 알파 채널 무게중심 기준으로
+  // 자동 정렬해 프레임마다 살짝 남아있던 흔들림까지 제거했다(전처리 단계에서
+  // 처리 — 여기 JS는 그 결과물을 그대로 재생만 한다). 재생 속도도 기존
+  // 95ms/프레임에서 70ms/프레임으로 올렸다(24×70ms≈1.7초, 사용자 요청).
   function spawnTimeParadoxFx(){
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
     const el = document.createElement('div');
-    el.style.cssText = 'position:absolute; left:50%; top:42%; width:260px; height:340px; '
+    el.style.cssText = 'position:absolute; left:50%; top:42%; width:260px; height:260px; '
       + "background-image:url('images/vfx/time_paradox_f01.png'); "
       + 'background-size:contain; background-repeat:no-repeat; background-position:center; '
       + 'pointer-events:none; z-index:7; transform:translate(-50%,-50%); '
@@ -364,18 +365,18 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     stage.appendChild(el);
     void el.offsetWidth;
     el.style.opacity = '1';
-    const frameCount = 24, frameMs = 95;
+    const frameCount = 24, frameMs = 70;
     let i = 1;
     const timer = setInterval(()=>{
       i++;
       if(i>frameCount){
         clearInterval(timer);
-        // 마지막 프레임(종료)에서 잠깐 멈췄다가 옅어지며 사라진다.
+        // 마지막 프레임에서 잠깐 멈췄다가 옅어지며 사라진다.
         setTimeout(()=>{
           el.style.transition = 'opacity .5s ease-in';
           el.style.opacity = '0';
           setTimeout(()=>el.remove(), 550);
-        }, 200);
+        }, 180);
         return;
       }
       el.style.backgroundImage = `url('images/vfx/time_paradox_f${String(i).padStart(2,'0')}.png')`;
