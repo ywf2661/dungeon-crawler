@@ -2312,10 +2312,19 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       let dmg = Math.max(1, Math.round(effectiveMag()*mult) - edef);
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
       enemy.hp = Math.max(0, enemy.hp-dmg);
-      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
       Sound.timeParadox(); playCastBurst();
       if(typeof spawnTimeParadoxFx==='function') spawnTimeParadoxFx();
-      if(typeof shakeScreen==='function') shakeScreen();
+      // [보강] 사용자 피드백 — 24프레임 애니메이션이 시작하기도 전에 데미지
+      // 숫자/화면 흔들림이 먼저 떠버려서 "결과를 먼저 보고 슬라이드쇼만
+      // 구경하는" 느낌이었음. 배너로 예고만 먼저 띄우고, 숫자/흔들림/HP바
+      // 갱신은 애니메이션이 절정에 오르는 시점(560ms)까지 미룬다 — enemy.hp
+      // 자체는 이미 위에서 즉시 깎여 있어 checkBattleEnd() 등 로직엔 영향 없음.
+      playBanner('붕괴하는 시간!', 'fx-paradox');
+      setTimeout(()=>{
+        if(battleOver) return;
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
+        if(typeof shakeScreen==='function') shakeScreen();
+      }, 560);
       renderStatus();
       const msg2 = (stacks>0
         ? `쌓아온 시간 조각(${stacks}개)이 한꺼번에 무너지며 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`
@@ -2696,6 +2705,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       renderStatus();
       if(typeof Sound.martyrUltimate==='function') Sound.martyrUltimate(); else Sound.bomb();
       if(typeof spawnMartyrFx==='function') spawnMartyrFx();
+      // [보강] 사용자 피드백 — 배너/이미지는 있는데 화면이 안 흔들려서
+      // 타격감이 약함. shakeScreen()만 추가(새 이미지 불필요).
+      if(typeof shakeScreen==='function') shakeScreen();
       playBanner('불멸의 순교!','fx-chorus');
       setBattleMsg(`${player.name}의 ${s.name}!`, `그동안 바쳐온 희생(${count}회)을 전부 힘으로 되돌려 ${enemy.name}에게 ${dmg}의 피해를 입혔다!${reviveMsg}${eternalReturnMsg}`);
       if(checkBattleEnd()) return;
@@ -3192,7 +3204,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     else Sound.slash();
     // 칼리버 X: 종언 전용 VFX(사용자 제공) — 레벨15 궁극기라 이 게임에서
     // 가장 큰 이펙트 이미지를 한 번 크게 띄운다.
-    if(key==='paladinCaliberXFinale' && typeof spawnCaliberXFx==='function') spawnCaliberXFx();
+    // [보강] 사용자 피드백 — 이미지는 제일 큰데 배너/화면 흔들림이 없어
+    // 심심하게 느껴짐. 새 이미지 없이 배너+shakeScreen만 추가.
+    if(key==='paladinCaliberXFinale'){
+      if(typeof spawnCaliberXFx==='function') spawnCaliberXFx();
+      if(typeof shakeScreen==='function') shakeScreen();
+      playBanner('칼리버 X — 종언!', 'fx-caliberx');
+    }
     // 연쇄 처형(we_chainexec, 혈맹의 검투사 무기 각인) / 불사의 광기
     // (we_madimmortal, 방어구 각인): 1:1 전투라 "처치하면 재발동"은 성립이
     // 안 돼서(처치=즉시 승리, 다음 적이 없음), 조건을 "최대HP의 30% 이상을
