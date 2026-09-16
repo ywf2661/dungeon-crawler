@@ -208,7 +208,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // battleFlags.rig 슬롯 체계를 그대로 재사용하되 슬롯은 1개(battleFlags.necroPet)
       // 뿐이다. 도적 소속이 되면서 소환수 화력도 마력이 아니라 도적의 주력
       // 스탯인 공격력에 연동하도록 바꿨다(combat/enemy-turn.js, player-actions.js 참고).
-      {id:'rogue_conjurer', name:'망령 소환사', icon:'👻',
+      {id:'rogue_conjurer', name:'원혼 강탈자', icon:'👻',
         desc:'쓰러뜨린 것들의 흔적을 불러들여, 그 힘을 빌려 쓴다.',
         masteryName:'망자 도감', masteryDesc:'몬스터 도감에 등록된 몬스터 하나를 "소환 계약"으로 지정할 수 있게 된다(마을에서 언제든 변경 가능).', masterySkillId:'mastery_gravebond',
         activeName:'강령 소환', activeDesc:'소환 계약으로 지정한 몬스터를 4턴간 불러내 자동으로 공격하게 한다.', activeSkillId:'necroSummon',
