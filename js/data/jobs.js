@@ -119,7 +119,12 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       {id:'warrior_purist', name:'일격의 구도자', icon:'🎯',
         desc:'화려한 스킬 따위 필요 없다. 오직 검 한 자루, 일격 하나만을 극한까지 갈고닦은 구도자.',
         masteryName:'순일격', masteryDesc:'기본 공격의 피해가 항상 30% 증가한다.', masterySkillId:'mastery_purestrike',
-        activeName:null, activeDesc:null, activeSkillId:null,
+        // [추가] "간파" — 이 직업이 유일하게 쓸 수 있는 스킬인 방어태세(guard,
+        // MP 0이라 maxmp=0이어도 쓸 수 있는 유일한 스킬)에 얹은 전용 효과.
+        // 별도 skillId를 새로 만들지 않고 combat/enemy-turn.js의 방어 판정부에서
+        // player.specialization==='warrior_purist'로 직접 분기한다 — activeSkillId는
+        // 여전히 null이지만, 전직 각성 안내 문구/UI에 노출되도록 이름/설명만 채운다.
+        activeName:'간파', activeDesc:'방어태세를 쓰면 40% 확률로 적 공격을 완전히 무효화하고 그 자리에서 곧장 되받아친다. 실패해도 방어 효과는 그대로 유지된다.', activeSkillId:null,
         // 레벨12: 메아리 타격(짝수 번째 기본 공격 강화), 레벨15: 쌍격의 파문(확률로
         // 기본 공격이 한 번 더 나감). 전부 combat/player-actions.js의 playerAttack()
         // 안에서 직접 처리한다.
@@ -302,10 +307,16 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // 사기꾼(id는 jester_debtcollector 재사용 — 기존 세이브 자동 전환):
       // 운 실패를 "채무"로 쌓아두는 대신, 도박 자체를 조작하는 사기도박 컨셉으로
       // 리뉴얼(사용자 요청 — "도박사인데 담보 대출은 도박이랑 상관없다").
+      // [교체] L10 자리가 원래 자동발동 패시브(조작된 도박판)라 스펙 전용 킷에
+      // 데미지 기여가 0이었음(다른 13개 전직은 전부 L10이 수동 데미지 액티브) —
+      // 사용자 요청으로 그 스탯 조작 효과를 마스터리(손버릇)에 합치고, L10
+      // 자리는 새 데미지 액티브 "이중주사위"로 교체했다. 마스터리 이름도
+      // "조작된 도박판"으로 바꿔 두 효과를 한 이름 아래 묶는다(mastery_goldsense가
+      // 이미 효과 2개를 한 패시브에 담는 것과 동일 패턴).
       {id:'jester_debtcollector', name:'사기꾼', icon:'🎲',
         desc:'정직하게 걸지 않는다. 패를 조작하고, 주사위를 속이고, 실패해도 손을 한 번 더 놀린다.',
-        masteryName:'손버릇', masteryDesc:'운 스킬이 실패하면 같은 스킬이 무료로 한 번 더 자동 발동된다.', masterySkillId:'mastery_luckdebt',
-        activeName:'조작된 도박판', activeDesc:'전투 시작 시 내 무작위 능력치 하나가 오르고 적의 무작위 능력치 하나가 떨어진다(자동 발동, 선택 UI 없음).', activeSkillId:'jesterRiggedTable',
+        masteryName:'조작된 도박판', masteryDesc:'운 스킬이 실패하면 같은 스킬이 무료로 한 번 더 자동 발동된다. 또한 전투 시작 시 내 무작위 능력치 하나가 오르고 적의 무작위 능력치 하나가 떨어진다(자동 발동, 선택 UI 없음).', masterySkillId:'mastery_luckdebt',
+        activeName:'이중주사위', activeDesc:'주사위 두 개를 동시에 굴려 더 높은 눈을 채택한다. 두 눈이 같으면(더블) 피해가 크게 증폭된다.', activeSkillId:'jesterDoubleDice',
         skillLevels: {12:'jesterRiggedDice', 15:'jesterFateSwap'}},
     ],
   };

@@ -479,7 +479,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     player.riggedTableDelta = null;
   }
   function applyRiggedTable(){
-    if(!(player.skills && player.skills.includes('jesterRiggedTable'))) return null;
+    // [변경] 트리거 스킬이 jesterRiggedTable(구 L10 패시브)에서 mastery_luckdebt
+    // (손버릇+조작된 도박판이 합쳐진 마스터리)로 바뀌었다 — 스킬 데이터 쪽
+    // 주석 참고.
+    if(!(player.skills && player.skills.includes('mastery_luckdebt'))) return null;
     const STAT_LABEL = {atk:'공격력', mag:'마력', def:'방어력', spd:'속도'};
     const playerStats = ['atk','mag','def','spd'];
     const enemyStats = ['atk','def','spd'];

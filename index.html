@@ -655,6 +655,32 @@
      이름 교체 방식을 쓴다). */
   .frost-flash-fx.echo{ animation-name: frostflashecho; }
 
+  /* 사기꾼 "이중주사위" 전용 연출(spawnDualDiceFx, combat/battle-fx.js). 새
+     이미지 리소스 없이 주사위 글리프 2개가 나란히 짧게 눈을 바꾸다 멈춘다.
+     더블(같은 눈)이면 금색 펄스가 한 번 더 얹힌다. */
+  @keyframes dualdiceenter{
+    0%{opacity:0; transform:translate(-50%,-50%) translateY(-8px) scale(0.8);}
+    30%{opacity:1; transform:translate(-50%,-50%) translateY(0) scale(1.08);}
+    100%{opacity:1; transform:translate(-50%,-50%) translateY(0) scale(1);}
+  }
+  @keyframes dualdicepulse{
+    0%{ text-shadow:0 0 0 rgba(255,210,90,0); }
+    50%{ text-shadow:0 0 18px rgba(255,210,90,0.9); }
+    100%{ text-shadow:0 0 0 rgba(255,210,90,0); }
+  }
+  .dual-dice-fx{
+    position:absolute; left:50%; top:38%; transform:translate(-50%,-50%);
+    display:flex; gap:14px; pointer-events:none; z-index:6;
+    animation: dualdiceenter .3s ease-out;
+  }
+  .dual-dice-fx .die{
+    font-size:48px; filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+  }
+  .dual-dice-fx.double .die{
+    animation: dualdicepulse .5s ease-in-out 2;
+    color:#ffd25a;
+  }
+
   /* 시간의 파수꾼 스킬 전용 VFX 이미지 3종(사용자 제공, images/vfx/tg_*.png).
      기존 .frost-flash-fx(섬광)/.screen-crack-fx(균열)에 겹쳐서 함께 재생된다
      — 하나만으론 밋밋하다는 사용자 피드백을 이번엔 이미지 레이어까지

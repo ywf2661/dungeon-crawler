@@ -330,9 +330,16 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 붙는다. 여러 태그를 가진 몬스터는 전부 발동한다.
       const necroTraits = rig.kind==='undead' ? (rig.skills||[]) : [];
       if(necroTraits.includes('smash')) dmg = Math.round(dmg*1.25);
+      // 처형(pierce, 해골 전사/일부 보스 전용): 적이 빈사 상태(HP 30% 이하)면
+      // 추가로 더 깊이 꿰뚫는다.
+      let pierceMsg = '';
+      if(necroTraits.includes('pierce') && enemy.maxhp && (enemy.hp/enemy.maxhp)<=0.3){
+        dmg = Math.round(dmg*1.5);
+        pierceMsg = ' 빈사 상태의 적을 놓치지 않고 깊이 꿰뚫었다.';
+      }
       enemy.hp = Math.max(0, enemy.hp - dmg);
       updateEnemyHpBar(); popDamage('-'+dmg, 'rig');
-      let necroTraitMsg = '';
+      let necroTraitMsg = pierceMsg;
       if(necroTraits.includes('bite')){
         const lifesteal = Math.max(1, Math.round(dmg*0.25));
         player.hp = Math.min(player.maxhp, player.hp + lifesteal);
@@ -771,6 +778,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       if(skillKey==='smash'){ dmg = Math.round(effAtk*1.6); label = `${enemy.name}이(가) 강타를 날린다!`; }
       else if(skillKey==='bite'){ dmg = Math.round(effAtk*1.4); label = `${enemy.name}이(가) 물어뜯는다!`; }
       else if(skillKey==='curse'){ dmg = Math.round(effAtk*1.3); label = `${enemy.name}이(가) 저주를 건다!`; }
+      // 해골 전사 전용(신규 태그 — 사용자 요청, 후반부 몬스터가 죄다 'smash'로
+      // 몰려있어 태그 다양성이 부족했던 것도 함께 보완). necroPet 쪽에선
+      // 빈사 상태 적 처형 보너스로 다르게 동작한다(아래 tickActiveRig() 참고).
+      else if(skillKey==='pierce'){ dmg = Math.round(effAtk*1.5); label = `${enemy.name}이(가) 뼈 조각을 창처럼 내찔러 꿰뚫는다!`; }
       else if(skillKey==='heroWarriorSmite'){ dmg = Math.round(effAtk*2.0); label = `${enemy.name}이(가) 필멸의 참격을 내리찍는다!`; }
       else if(skillKey==='heroMageBurst'){ dmg = Math.round(effAtk*2.2); label = `${enemy.name}이(가) 멸망의 화염구를 쏘아보낸다!`; }
       else if(skillKey==='heroRogueSlash'){ dmg = Math.round(effAtk*1.9); label = `${enemy.name}이(가) 그림자처럼 스며들어 베어낸다!`; }
@@ -970,7 +981,23 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         player.buffDefTurns -= 1;
         if(player.buffDefTurns <= 0){ player.buffDefTurns = 0; player.buffDefMult = 1; }
       }
-      if(player.guardingNextHit){ mitigated = Math.round(mitigated*0.4); player.guardingNextHit=false; }
+      // 간파(일격의 구도자 전용, 사용자 요청): 방어 시 확률로 적 공격을 완전히
+      // 무효화하고 그 자리에서 곧장 되받아친다. 실패하면 다른 전사 분기와
+      // 동일하게 방어 감소(40%)만 적용된다. 메시지/반격 처리는 아래
+      // player.puristParrySuccess 분기에서 이어서 한다.
+      if(player.guardingNextHit){
+        if(player.specialization==='warrior_purist' && Math.random()<0.4){
+          mitigated = 0;
+          player.puristParrySuccess = true;
+          // 메아리 타격(warriorPuristEcho, L12)이 있으면 다음 기본 공격에서
+          // 자동으로 메아리가 발동하도록 예약한다 — player-actions.js의
+          // playerAttack() 참고.
+          if(player.skills && player.skills.includes('warriorPuristEcho')) player.puristParryEchoArmed = true;
+        } else {
+          mitigated = Math.round(mitigated*0.4);
+        }
+        player.guardingNextHit=false;
+      }
 
       let counterOathChance = 0;
       if(player.buffCounterTurns > 0){
@@ -1179,6 +1206,25 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
 
       renderStatus();
+      // 간파 성공(일격의 구도자) — 일반 피해 메시지 대신 무효화+즉시 반격으로
+      // 마무리한다. 이미 mitigated=0이라 위쪽 흡혈/반사류 효과는 자연히
+      // 전부 발동하지 않는다(전부 mitigated>0 가드가 걸려 있음).
+      if(player.puristParrySuccess){
+        player.puristParrySuccess = false;
+        setBattleMsg(label, `${player.name}이(가) 완벽하게 간파했다! 공격이 전혀 먹히지 않는다!${extraMsg}`);
+        setTimeout(()=>{
+          const edefPP = getEffectiveEnemyDef(enemy.def);
+          let counterDmg = Math.max(1, effectiveAtk() + Math.floor(Math.random()*4)-1 - edefPP);
+          if(player.skills && player.skills.includes('mastery_purestrike')) counterDmg = Math.round(counterDmg*1.3);
+          enemy.hp = Math.max(0, enemy.hp-counterDmg);
+          updateEnemyHpBar(); shakeEnemy(); popDamage('-'+counterDmg,'crit');
+          Sound.slash();
+          setBattleMsg(`${player.name}의 간파!`, `빈틈을 놓치지 않고 곧장 되받아쳐 ${counterDmg}의 피해를 입혔다!`);
+          if(checkBattleEnd()) return;
+          resetCommandUI();
+        }, 400);
+        return;
+      }
       setBattleMsg(label, `${player.name}은(는) ${mitigated}의 피해를 입었다.${extraMsg}`);
 
       const counterChance = getSpecialSum('counterChance') + counterOathChance;

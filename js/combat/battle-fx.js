@@ -370,6 +370,36 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 700);
   }
 
+  // 사기꾼 "이중주사위" 전용 연출(사용자 요청 — 나란히 굴러가는 주사위 2개).
+  // 새 이미지 없이 주사위 글리프 2개를 짧게 무작위로 바꾸다(굴러가는 느낌)
+  // 최종 눈에 멈춘다. 더블(같은 눈)이면 .double 클래스로 금색 펄스를 얹는다.
+  // spawnFrostFlashFx()와 동일한 "생성 → setTimeout 제거" 수명주기.
+  function spawnDualDiceFx(face1, face2, isDouble){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+    const el = document.createElement('div');
+    el.className = 'dual-dice-fx';
+    const d1 = document.createElement('span'); d1.className = 'die';
+    const d2 = document.createElement('span'); d2.className = 'die';
+    d1.textContent = FACES[Math.floor(Math.random()*6)];
+    d2.textContent = FACES[Math.floor(Math.random()*6)];
+    el.appendChild(d1); el.appendChild(d2);
+    stage.appendChild(el);
+    let ticks = 0;
+    const spin = setInterval(()=>{
+      d1.textContent = FACES[Math.floor(Math.random()*6)];
+      d2.textContent = FACES[Math.floor(Math.random()*6)];
+      ticks++;
+      if(ticks>=4){
+        clearInterval(spin);
+        d1.textContent = face1; d2.textContent = face2;
+        if(isDouble) el.classList.add('double');
+      }
+    }, 70);
+    setTimeout(()=>el.remove(), 950);
+  }
+
   // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출 — 사용자가 새로 준 24프레임
   // 루프형 스프라이트 시트(보라색 포탈, 256px 6x4 그리드)를 프레임 애니메이션
   // 으로 재생한다. 이번 시트는 원본 자체가 각 프레임 중심이 이미 거의 안 흔들

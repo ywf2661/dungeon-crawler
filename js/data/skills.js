@@ -858,14 +858,28 @@ export(전역): SKILLDB, CHALNA_COMBOS
     // 호출한다(!isRetry로 감싸 재귀 2회 이상 안 이어지게 방지) — 1차 스킬
     // 로직 자체는 안 건드리고 결과만 지켜보는 훅이라 예전 방식과 동일한
     // 호환 패턴이다.
-    mastery_luckdebt: {name:'손버릇', mp:0, type:'passive',
-      desc:'운 스킬이 실패하면 같은 스킬이 무료로 한 번 더 자동 발동된다(재시도가 또 실패하면 거기서 끝).'},
-    // 레벨10 "조작된 도박판"(자동 발동 패시브, 선택 UI 없음 — 계율/불확실성의
-    // 주사위와 동일한 방식): 전투 시작 시 내 스탯(공/마/방/속) 중 무작위 1개
-    // +12%, 적 스탯(공/방/속) 중 무작위 1개 -12%를 이번 전투 내내 적용한다.
-    // 실제 적용/연출은 combat/battle-setup.js의 startBattle()에서 처리.
+    // [합침] 원래 손버릇(재시도)만 담당했으나, L10 "조작된 도박판" 패시브를
+    // 이 마스터리로 흡수했다(사용자 요청 — mastery_goldsense가 효과 2개를
+    // 한 패시브에 담는 것과 동일 패턴). 스탯 조작 실제 적용/연출은 그대로
+    // combat/battle-setup.js의 startBattle()/applyRiggedTable()이 처리하며,
+    // 트리거 조건만 jesterRiggedTable → mastery_luckdebt로 바뀌었다.
+    mastery_luckdebt: {name:'조작된 도박판', mp:0, type:'passive', statBoostPct:0.12, statDebuffPct:0.12,
+      desc:'운 스킬이 실패하면 같은 스킬이 무료로 한 번 더 자동 발동된다(재시도가 또 실패하면 거기서 끝). 또한 전투가 시작되면 도박판이 은밀히 조작되어, 내 무작위 능력치 하나가 12% 오르고 적의 무작위 능력치 하나가 12% 떨어진다(이번 전투 내내 유지).'},
+    // [레거시] 구 L10 패시브 — mastery_luckdebt로 흡수되어 더 이상 jobs.js에서
+    // 참조하지 않는다. 이미 습득한 기존 세이브의 스킬 배열에 문자열로 남아있을
+    // 수 있어 삭제하지 않고 죽은 정의만 남겨둔다(다른 교체 스킬들과 동일 패턴).
     jesterRiggedTable: {name:'조작된 도박판', mp:0, type:'passive', statBoostPct:0.12, statDebuffPct:0.12,
       desc:'전투가 시작되면 도박판이 은밀히 조작된다. 내 무작위 능력치 하나가 12% 오르고, 적의 무작위 능력치 하나가 12% 떨어진다(이번 전투 내내 유지).'},
+    // 레벨10 "이중주사위"(신규 데미지 액티브 — 사용자 요청, 이전엔 이 자리가
+    // 패시브라 사기꾼 전용 킷에 데미지 기여가 0이었음): 기존 'dicecast'
+    // 타입(wildcard가 쓰는 로직)을 doubleRoll 플래그로 확장해 재사용한다 —
+    // 주사위 둘을 굴려 높은 눈을 채택하고, 두 눈이 같으면(더블) doubleBonusMult
+    // 배율이 추가로 곱해진다. 실제 분기는 combat/player-actions.js dicecast
+    // 블록 참고. 속임수 주사위(jesterRiggedDice, L12)가 있으면 "주사위류
+    // 스킬"에 일괄 적용되므로 이 스킬의 두 굴림도 함께 4~6으로 고정된다(더블
+    // 확률이 1/6→1/3로 자연히 오르는 시너지).
+    jesterDoubleDice: {name:'이중주사위', mp:11, type:'dicecast', doubleRoll:true, doubleBonusMult:1.6,
+      desc:'주사위 두 개를 동시에 굴려 더 높은 눈을 채택한다. 두 눈이 같으면(더블) 피해가 크게 증폭된다.'},
     // 레벨12 "속임수 주사위"(패시브): 주사위류 스킬(dicecast 타입)의 눈이
     // 항상 4/5/6 중에서만 나오게 조작한다. combat/player-actions.js의
     // dicecast 분기에서 이 스킬 보유 여부를 확인해 굴림 범위를 좁힌다.

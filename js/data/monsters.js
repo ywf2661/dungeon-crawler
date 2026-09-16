@@ -2,7 +2,7 @@
 /*
 몬스터 도감 데이터 테이블(정적 데이터, 로직 없음).
 의존성 없음.
-export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS
+export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
 */
 
   /* ============ 몬스터 도감 ============ */
@@ -28,7 +28,7 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS
       dex:'발소리만 남아 정처 없이 회랑을 떠돈다. 정작 발은, 어디에도 보이지 않는다.'},
     {type:'spider',  name:'숲망꾼',        minDepth:3,  hp:28, atk:9,  def:3,  spd:7,  exp:18, gold:[9,16],  skills:['bite'],
       dex:'존재하지 않는 숲의 거미줄을, 여전히 짜고 있다.'},
-    {type:'skeleton',name:'해골 전사',     minDepth:3,  hp:32, atk:9,  def:4,  spd:5,  exp:20, gold:[8,18],  skills:[],
+    {type:'skeleton',name:'해골 전사',     minDepth:3,  hp:32, atk:9,  def:4,  spd:5,  exp:20, gold:[8,18],  skills:['pierce'],
       dex:'녹슨 갑주 안, 뼈마디가 그저 예전의 훈련을 몸으로 기억하고 있을 뿐이다.'},
     {type:'ghost',   name:'옭아맨 통곡',   minDepth:5,  hp:30, atk:10, def:2,  spd:11, exp:24, gold:[12,20], skills:['curse'],
       dex:'형체 없는 통곡이 사슬처럼 발목을 휘감아 온다.'},
@@ -129,6 +129,21 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS
     */
   ];
 
+  // 망령 소환사(rogue_conjurer)가 보스를 소환 계약으로 지정했을 때 쓰는 전용
+  // 특성 태그(사용자 제보 — 버그 수정). 보스의 skills 필드는 보스 자신의 AI
+  // 공격 패턴 키(예: carvedBrand)라 necroPet 특성 판정(bite/smash/curse/heal/
+  // pierce, combat/enemy-turn.js의 tickActiveRig())과 문자열이 전혀 겹치지
+  // 않아, 지금까지는 보스를 계약해도 특성이 하나도 안 붙고 있었다 — 도감에서
+  // 가장 강한 몬스터를 계약해도 가장 밋밋한 펫이 되는 버그. 보스별로 컨셉에
+  // 맞는 태그를 따로 매핑한다. combat/player-actions.js의 necrosummon2
+  // 캐스트에서 monsterData.skills보다 이 맵을 우선 참조한다.
+  const BOSS_PET_TRAITS = {
+    watchertablet: ['curse','smash'],
+    hollowprophet: ['curse','heal'],
+    hornedwarden:  ['pierce','curse'],
+    bladedbloom:   ['bite','smash'],
+    clockheart:    ['smash','curse'],
+  };
 
   // 10층 단위로 재편성했다(사용자 요청). 각 구역은 배경 이미지(dungeon1.png~
   // dungeon6.png, images/backgrounds/)와 1:1로 대응되며, monster-visuals.js의

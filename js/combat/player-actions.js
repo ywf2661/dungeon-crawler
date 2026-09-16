@@ -93,10 +93,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     let echoTriggeredThisAction = false;
     if(player.skills && player.skills.includes('warriorPuristEcho') && battleFlags){
       battleFlags.basicAtkCount = (battleFlags.basicAtkCount||0) + 1;
-      if(battleFlags.basicAtkCount % 2 === 0){
+      // 간파(guard 전용, 일격의 구도자 레벨10) 성공 직후의 다음 공격은 짝수
+      // 여부와 상관없이 메아리가 자동 발동한다(사용자 요청) — "방어를 정확히
+      // 읽어내면 다음 일격이 반드시 메아리처럼 꽂힌다"는 인과 연결. 성공 여부는
+      // combat/enemy-turn.js의 방어 판정부에서 player.puristParryEchoArmed로 세팅.
+      if(battleFlags.basicAtkCount % 2 === 0 || player.puristParryEchoArmed){
         dmg = Math.round(dmg*1.25);
-        echoMsg = ' 메아리치는 두 번째 타격이 더욱 강하게 꽂혔다!';
+        echoMsg = player.puristParryEchoArmed ? ' 간파의 여운을 타고 일격이 메아리처럼 꽂혔다!' : ' 메아리치는 두 번째 타격이 더욱 강하게 꽂혔다!';
         echoTriggeredThisAction = true;
+        player.puristParryEchoArmed = false;
       }
     }
     // 번개계약 파동(mageElementWave)이 남긴 "다음 공격 확정 치명타"를 기본 공격에도
@@ -1237,14 +1242,21 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const contractType = player.necroSummonType;
       const monsterPool = (typeof MONSTERS!=='undefined' ? MONSTERS : []).concat(typeof BOSSES!=='undefined' ? BOSSES : []);
       const monsterData = monsterPool.find(m=>m.type===contractType);
-      const dmgPerTick = Math.max(1, Math.round((monsterData?monsterData.atk:10)*0.6 + (player.atk||0)*0.25));
+      // [조정] 몬스터 선택이 화력 차이로 더 크게 드러나도록 몬스터 atk 비중을
+      // 올리고(0.6→0.9) 플레이어 atk 비중을 낮췄다(0.25→0.18) — 사용자 제보,
+      // "제일 센 몬스터를 계약해도 그리 세지 않다".
+      const dmgPerTick = Math.max(1, Math.round((monsterData?monsterData.atk:10)*0.9 + (player.atk||0)*0.18));
       const petName = monsterData ? monsterData.name : '이름 모를 것';
-      // 원본 몬스터의 skills 태그(bite/smash/curse/heal)를 그대로 물려받아
-      // 소환수마다 다른 특성이 붙는다(combat/enemy-turn.js의 tickActiveRig()가
-      // rig.skills를 읽어 실제 효과를 적용) — "어떤 몬스터를 계약했는지"가
-      // 화력 수치뿐 아니라 전투 방식 자체를 바꾸게 하기 위함.
-      const petSkills = monsterData ? (monsterData.skills||[]) : [];
-      const traitLabels = {bite:'흡혈', smash:'강타', curse:'저주 전이', heal:'가끔 회복'};
+      // 원본 몬스터의 skills 태그(bite/smash/curse/heal/pierce)를 그대로
+      // 물려받아 소환수마다 다른 특성이 붙는다(combat/enemy-turn.js의
+      // tickActiveRig()가 rig.skills를 읽어 실제 효과를 적용) — "어떤 몬스터를
+      // 계약했는지"가 화력 수치뿐 아니라 전투 방식 자체를 바꾸게 하기 위함.
+      // 보스는 monsterData.skills가 보스 전용 AI 공격 키(예: carvedBrand)라
+      // 이 태그 체계와 안 겹치므로, data/monsters.js의 BOSS_PET_TRAITS를
+      // 우선 참조한다(버그 수정 — 예전엔 보스를 계약하면 특성이 하나도 안 붙었음).
+      const bossTraits = (typeof BOSS_PET_TRAITS!=='undefined') ? BOSS_PET_TRAITS[contractType] : null;
+      const petSkills = bossTraits || (monsterData ? (monsterData.skills||[]) : []);
+      const traitLabels = {bite:'흡혈', smash:'강타', curse:'저주 전이', heal:'가끔 회복', pierce:'처형'};
       const traitMsg = petSkills.length ? ` (특성: ${petSkills.map(t=>traitLabels[t]||t).join('/')})` : '';
       const existingPet = battleFlags.necroPet;
       if(existingPet && existingPet.turnsLeft>0 && existingPet.monsterType===contractType){
@@ -2847,10 +2859,16 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 이미 반영됨 — 여기서는 페널티를 "거는" 시점만 처리).
       const cIdDR = player.equipment && player.equipment.accessory;
       const hasDiceReveal = !!(cIdDR && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdDR).includes('ju_dicereveal'));
-      const roll = hasDiceReveal ? 6 : (rigged ? (4 + Math.floor(Math.random()*3)) : (1 + Math.floor(Math.random()*6)));
+      const rollOneDie = ()=> hasDiceReveal ? 6 : (rigged ? (4 + Math.floor(Math.random()*3)) : (1 + Math.floor(Math.random()*6)));
+      const roll = rollOneDie();
+      // 이중주사위(jesterDoubleDice, doubleRoll:true): 주사위를 하나 더 굴려
+      // 높은 눈을 채택하고, 두 눈이 같으면(더블) doubleBonusMult를 추가로 곱한다.
+      const roll2 = s.doubleRoll ? rollOneDie() : null;
       if(hasDiceReveal) battleFlags.dicerevealPenaltyTurns = 2;
       const diceMults = s.diceMults || [0.6,1.1,1.7,2.4,3.2,4.5];
-      const mult = diceMults[roll-1];
+      const finalFace = roll2!==null ? Math.max(roll, roll2) : roll;
+      const isDouble = roll2!==null && roll===roll2;
+      const mult = diceMults[finalFace-1] * (isDouble ? (s.doubleBonusMult||1.6) : 1);
       const epicLuck = epicLuckPre(s);
       const edef = getEffectiveEnemyDef(enemy.def);
       let dmg = Math.max(1, Math.round(effectiveAtk()*mult) - edef);
@@ -2858,18 +2876,32 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, luck:true, onHitMult});
       consumeAtkBuff();
       rogueRegisterHit(true);
-      const success = roll>=4;
+      const success = finalFace>=4;
       epicLuckPost(success, epicLuck);
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy();
-      popDamage('-'+dmg, roll===6?'crit':undefined);
+      popDamage('-'+dmg, (finalFace===6||isDouble)?'crit':undefined);
       Sound.slash();
-      const diceFace = ['⚀','⚁','⚂','⚃','⚄','⚅'][roll-1];
-      playBanner(roll===6 ? `${diceFace} 잭팟!` : `${diceFace} 눈 ${roll}`);
+      const diceFace = ['⚀','⚁','⚂','⚃','⚄','⚅'][finalFace-1];
+      let msg2;
+      if(roll2!==null){
+        const diceFace2 = ['⚀','⚁','⚂','⚃','⚄','⚅'][roll2-1];
+        if(typeof spawnDualDiceFx==='function') spawnDualDiceFx(['⚀','⚁','⚂','⚃','⚄','⚅'][roll-1], diceFace2, isDouble);
+        if(isDouble){
+          Sound.coin();
+          playBanner(`${diceFace}${diceFace2} 더블!`);
+          msg2 = `두 주사위가 나란히 ${finalFace}을(를) 가리켰다! 완벽하게 조작된 눈이다! ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`;
+        } else {
+          playBanner(`${diceFace}${diceFace2} 눈 ${finalFace}`);
+          msg2 = `주사위 두 개 중 더 높은 ${finalFace}을(를) 골라냈다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+        }
+      } else {
+        playBanner(roll===6 ? `${diceFace} 잭팟!` : `${diceFace} 눈 ${roll}`);
+        msg2 = `주사위 눈이 ${roll}이(가) 나왔다! ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+        if(roll===6) msg2 = `주사위가 6을 가리켰다! 운명이 그대의 손을 들어준다! ${enemy.name}에게 ${dmg}의 짜릿한 피해를 입혔다!`;
+        else if(roll===1) msg2 = `주사위가 1... 초라한 눈이지만, 그래도 공격은 공격이다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+      }
       renderStatus();
-      let msg2 = `주사위 눈이 ${roll}이(가) 나왔다! ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
-      if(roll===6) msg2 = `주사위가 6을 가리켰다! 운명이 그대의 손을 들어준다! ${enemy.name}에게 ${dmg}의 짜릿한 피해를 입혔다!`;
-      else if(roll===1) msg2 = `주사위가 1... 초라한 눈이지만, 그래도 공격은 공격이다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
       if(checkBattleEnd()) return;
       enemyTurn();
