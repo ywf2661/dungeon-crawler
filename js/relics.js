@@ -457,7 +457,11 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   const BLADE_HILT_IDS = ['relic_blade', 'relic_hilt'];
   const BLADE_HILT_MYSTERY_CHANCE = 0.22;
 
-  function rollRelicChoices(){
+  // namedCount: 이름이 보이는 자리 수(기본 2 = 기존 그대로). 각성의 제단(시작 유물
+  // 제단 NG+ 확장, ui/difficulty.js의 getAwakeningTier() 참고)에서 3을 넘겨
+  // 전체 선택지를 3장→4장으로 늘리는 데 재사용한다.
+  function rollRelicChoices(namedCount){
+    namedCount = namedCount || 2;
     const owned = player.relics||[];
     const namedPool = RELIC_ALTAR_POOL.filter(id=> !BLADE_HILT_IDS.includes(id) && !owned.includes(id));
     const shuffled = namedPool.slice();
@@ -468,8 +472,8 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     const unclaimedBladeHilt = BLADE_HILT_IDS.filter(id=>!owned.includes(id));
     if(!shuffled.length && !unclaimedBladeHilt.length) return {choices:[], mysteryIdx:-1};
 
-    // 이름이 보이는 두 자리 — 칼날/칼자루는 여기 절대 포함되지 않는다.
-    const named = shuffled.slice(0, 2);
+    // 이름이 보이는 자리 — 칼날/칼자루는 여기 절대 포함되지 않는다.
+    const named = shuffled.slice(0, namedCount);
 
     // ？？？ 자리의 실제 정체를 정한다: 낮은 확률로 미획득 칼날/칼자루, 그 외에는 평범한 유물.
     let mysteryId = null;
@@ -568,9 +572,16 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
 
   // onDone(선택): 유물 선택(또는 스킵)이 끝난 직후 한 번 호출된다(사용자 요청 —
   // 보통/하드코어 시작 시 유물 제단을 띄우고, 끝나면 마을 진입으로 이어가기 위함).
-  // 기존 중간층 호출부(explore.js)는 onDone 없이 그대로 호출하므로 동작 그대로.
-  function showRelicAltar(atDepth, onDone){
-    const {choices, mysteryIdx} = rollRelicChoices();
+  // 기존 중간층 호출부(explore.js/nodemap.js)는 opts 없이 그대로 호출하므로 동작 그대로.
+  // opts(선택, 각성의 제단 전용 — ui/difficulty.js의 getAwakeningTier() 참고):
+  //   namedCount: 이름이 보이는 자리 수(기본 2, 즉 전체 3장). 3을 넘기면 4장이 된다.
+  //   freeReroll: true면 제단당 1회 무료로 선택지를 다시 굴릴 수 있는 버튼이 생긴다.
+  function showRelicAltar(atDepth, onDone, opts){
+    opts = opts || {};
+    const namedCount = opts.namedCount || 2;
+    let rerollLeft = opts.freeReroll ? 1 : 0;
+    let choices, mysteryIdx;
+    ({choices, mysteryIdx} = rollRelicChoices(namedCount));
     if(!choices.length){ if(typeof onDone==='function') onDone(); return; } // 고를 수 있는 신규 유물이 더 없다
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
     const overlay = document.createElement('div');
@@ -584,73 +595,93 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
       : `<p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:0 0 8px;">유물 슬롯 ${slotUsage}/${player.relicSlots}</p>`;
     const skipCost = getRelicSkipCost();
     const canSkip = player.gold >= skipCost;
-    panel.innerHTML = `<h3>✦ 유물 제단 ✦</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 6px;">세 개의 유물이 그대를 기다리고 있다. 하나를 선택하라.</p>
-      ${slotNote}
-      <p class="relic-lock-msg" id="relic-lock-msg">내용을 살펴보는 중…</p>
-      <div class="relic-grid">
-      ${choices.map((id,i)=>{
-        if(i===mysteryIdx){
-          return `<button class="relic-card type-mystery" data-id="${id}" disabled>
-            <div class="relic-type">？？？</div>
-            <div class="relic-name">알 수 없는 유물</div>
-            <div class="relic-desc">무엇이 담겨 있는지는 손에 넣기 전까지 알 수 없다.</div>
-          </button>`;
-        }
-        const r = RELICS[id];
-        return `<button class="relic-card type-${r.type}" data-id="${id}" disabled>
-          <div class="relic-type">${typeLabel[r.type]}</div>
-          <div class="relic-name">${r.name}</div>
-          <div class="relic-desc">${r.desc}</div>
-        </button>`;
-      }).join('')}
-      </div>
-      <div style="text-align:center; margin-top:10px;">
-        <button class="link-btn" id="relic-skip-btn" disabled>${canSkip ? `고르지 않는다 (골드 ${skipCost} 소모)` : `고르지 않는다 (골드 부족, ${skipCost} 필요)`}</button>
-      </div>`;
+    const countWord = {2:'세', 3:'네'}[choices.length] || String(choices.length);
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
 
-    const LOCK_MS = 1500;
-    setTimeout(()=>{
-      panel.classList.remove('relic-panel-locked');
-      panel.querySelectorAll('.relic-card').forEach(btn=>{ btn.disabled = false; });
+    function renderCards(){
+      panel.innerHTML = `<h3>✦ 유물 제단 ✦</h3>
+        <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 6px;">${countWord} 개의 유물이 그대를 기다리고 있다. 하나를 선택하라.</p>
+        ${slotNote}
+        <p class="relic-lock-msg" id="relic-lock-msg">내용을 살펴보는 중…</p>
+        <div class="relic-grid">
+        ${choices.map((id,i)=>{
+          if(i===mysteryIdx){
+            return `<button class="relic-card type-mystery" data-id="${id}" disabled>
+              <div class="relic-type">？？？</div>
+              <div class="relic-name">알 수 없는 유물</div>
+              <div class="relic-desc">무엇이 담겨 있는지는 손에 넣기 전까지 알 수 없다.</div>
+            </button>`;
+          }
+          const r = RELICS[id];
+          return `<button class="relic-card type-${r.type}" data-id="${id}" disabled>
+            <div class="relic-type">${typeLabel[r.type]}</div>
+            <div class="relic-name">${r.name}</div>
+            <div class="relic-desc">${r.desc}</div>
+          </button>`;
+        }).join('')}
+        </div>
+        <div style="text-align:center; margin-top:10px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+          ${rerollLeft>0 ? `<button class="link-btn" id="relic-reroll-btn" disabled>다시 굴린다 (무료, 1회)</button>` : ''}
+          <button class="link-btn" id="relic-skip-btn" disabled>${canSkip ? `고르지 않는다 (골드 ${skipCost} 소모)` : `고르지 않는다 (골드 부족, ${skipCost} 필요)`}</button>
+        </div>`;
+
+      const LOCK_MS = 1500;
+      setTimeout(()=>{
+        panel.classList.remove('relic-panel-locked');
+        panel.querySelectorAll('.relic-card').forEach(btn=>{ btn.disabled = false; });
+        const skipBtn = panel.querySelector('#relic-skip-btn');
+        if(skipBtn && canSkip) skipBtn.disabled = false;
+        const rerollBtn = panel.querySelector('#relic-reroll-btn');
+        if(rerollBtn) rerollBtn.disabled = false;
+        const msg = panel.querySelector('#relic-lock-msg');
+        if(msg) msg.remove();
+      }, LOCK_MS);
+
+      panel.querySelectorAll('.relic-card').forEach((btn,i)=>{
+        btn.addEventListener('click', ()=>{
+          if(btn.disabled) return;
+          const id = btn.dataset.id;
+          const isMystery = (i===mysteryIdx);
+          if(getRelicSlotUsage() >= player.relicSlots){
+            showRelicSwapPrompt(id, overlay, isMystery);
+            return;
+          }
+          finalizeRelicPick(id, isMystery);
+          overlay.remove();
+          if(typeof onDone==='function') onDone();
+        });
+      });
+
+      const rerollBtn = panel.querySelector('#relic-reroll-btn');
+      if(rerollBtn){
+        rerollBtn.addEventListener('click', ()=>{
+          if(rerollBtn.disabled) return;
+          rerollLeft -= 1;
+          panel.classList.add('relic-panel-locked');
+          ({choices, mysteryIdx} = rollRelicChoices(namedCount));
+          renderCards();
+        });
+      }
+
       const skipBtn = panel.querySelector('#relic-skip-btn');
-      if(skipBtn && canSkip) skipBtn.disabled = false;
-      const msg = panel.querySelector('#relic-lock-msg');
-      if(msg) msg.remove();
-    }, LOCK_MS);
-
-    panel.querySelectorAll('.relic-card').forEach((btn,i)=>{
-      btn.addEventListener('click', ()=>{
-        if(btn.disabled) return;
-        const id = btn.dataset.id;
-        const isMystery = (i===mysteryIdx);
-        if(getRelicSlotUsage() >= player.relicSlots){
-          showRelicSwapPrompt(id, overlay, isMystery);
-          return;
-        }
-        finalizeRelicPick(id, isMystery);
-        overlay.remove();
-        if(typeof onDone==='function') onDone();
-      });
-    });
-
-    const skipBtn = panel.querySelector('#relic-skip-btn');
-    if(skipBtn){
-      skipBtn.addEventListener('click', ()=>{
-        if(skipBtn.disabled) return;
-        const cost = getRelicSkipCost();
-        if(player.gold < cost) return;
-        player.gold -= cost;
-        player.relicSkipRerollCount = (player.relicSkipRerollCount||0) + 1;
-        renderStatus();
-        saveGame();
-        overlay.remove();
-        addLog(`골드 ${cost}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
-        if(typeof onDone==='function') onDone();
-      });
+      if(skipBtn){
+        skipBtn.addEventListener('click', ()=>{
+          if(skipBtn.disabled) return;
+          const cost = getRelicSkipCost();
+          if(player.gold < cost) return;
+          player.gold -= cost;
+          player.relicSkipRerollCount = (player.relicSkipRerollCount||0) + 1;
+          renderStatus();
+          saveGame();
+          overlay.remove();
+          addLog(`골드 ${cost}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
+          if(typeof onDone==='function') onDone();
+        });
+      }
     }
+
+    renderCards();
   }
 
   // 저주 제단: 유물 제단과 달리 단 하나의 저주만 제시하며, 받아들일지 떠날지 직접 선택한다.

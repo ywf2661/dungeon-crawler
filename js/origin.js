@@ -268,7 +268,8 @@ export(전역): showOriginQuiz
     // 바뀌면 사망 후 마을 복귀 시 시작 유물이 체크포인트에서 누락된다.
     // 쉬움은 지금까지처럼 유물 없이 바로 시작.
     if(player.difficulty!=='easy' && typeof showRelicAltar==='function'){
-      showRelicAltar(0, finishNewGameStart);
+      const tier = typeof getAwakeningTier==='function' ? getAwakeningTier() : undefined;
+      showRelicAltar(0, finishNewGameStart, tier);
     } else {
       finishNewGameStart();
     }

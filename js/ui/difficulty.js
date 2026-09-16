@@ -4,7 +4,7 @@
 export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlocked,
               easyFlawless, normalFlawless, hardcoreFlawless,
               easyWitchClear, normalWitchClear, hardcoreWitchClear, isDifficultyUnlocked,
-              isDifficultyFlawless, isDifficultyWitchCleared, showToast, renderDifficultySelect
+              isDifficultyFlawless, isDifficultyWitchCleared, getAwakeningTier, showToast, renderDifficultySelect
 의존성: 없음(단, showToast는 다른 여러 모듈에서 범용 토스트 함수로 재사용됨)
 */
 
@@ -57,6 +57,15 @@ export(전역): DIFFICULTIES, selectedDifficulty, normalUnlocked, hardcoreUnlock
     if(id==='normal') return normalWitchClear;
     if(id==='hardcore') return hardcoreWitchClear;
     return false;
+  }
+  // 각성의 제단(시작 유물 제단 NG+ 확장, relics.js의 showRelicAltar 참고) —
+  // 난이도 3종 × (진엔딩/마녀클리어) 기록 6개 중 몇 개를 달성했는지로 티어를
+  // 매긴다. 파워 보상은 없음(밸런스 재검토 불필요) — 선택지 개수와 무료 리롤만
+  // 늘려주는 순수 QoL 보상.
+  function getAwakeningTier(){
+    const count = [easyFlawless, normalFlawless, hardcoreFlawless,
+      easyWitchClear, normalWitchClear, hardcoreWitchClear].filter(Boolean).length;
+    return { namedCount: count>=1 ? 3 : 2, freeReroll: count>=3 };
   }
   // 토스트 겹침 버그 수정(사용자 제보) — 예전엔 showToast()를 연달아 부르면
   // (예: 정예 몬스터 조우 시 불확실성의 주사위+조작된 도박판+계율+정예 특성이
