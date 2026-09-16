@@ -35,6 +35,7 @@ export(전역): player, enemy, depth, town, log, battleOver, subMode, battleFlag
 
   function renderJobSelect(){
     const wrap = document.getElementById('job-select');
+    const detail = document.getElementById('job-detail');
     const adminUnlocked = isAdminNameEntered();
     // 현재 선택된 직업이 잠긴 상태로 바뀌었다면(예: admin이라고 쳤다가 지운 경우)
     // 시작 시 잠긴 직업으로 게임이 시작되는 사고를 막기 위해 기본 직업으로 되돌린다.
@@ -44,20 +45,29 @@ export(전역): player, enemy, depth, town, log, battleOver, subMode, battleFlag
     wrap.innerHTML = JOBS.map(j=>{
       const locked = ADMIN_ONLY_JOB_IDS.includes(j.id) && !adminUnlocked;
       return `
-      <div class="job-card${j.id===selectedJobId?' selected':''}${locked?' locked':''}" data-job="${j.id}" data-locked="${locked}">
-        <div class="ji-icon">${locked?'🔒':j.icon}</div>
-        <div class="ji-name">${j.name}</div>
-        <div class="ji-desc">${locked?'준비 중인 직업입니다.':j.desc}</div>
+      <div class="job-chip${j.id===selectedJobId?' selected':''}${locked?' locked':''}" data-job="${j.id}" data-locked="${locked}">
+        <span class="ji-icon">${locked?'🔒':j.icon}</span>
+        <span class="ji-name">${j.name}</span>
       </div>
     `;
     }).join('');
-    wrap.querySelectorAll('.job-card').forEach(c=>{
+    wrap.querySelectorAll('.job-chip').forEach(c=>{
       c.addEventListener('click', ()=>{
         if(c.dataset.locked === 'true') return;
         selectedJobId = c.dataset.job;
         renderJobSelect();
       });
     });
+
+    const selectedJob = JOBS.find(j=>j.id===selectedJobId) || JOBS[0];
+    const selectedLocked = ADMIN_ONLY_JOB_IDS.includes(selectedJob.id) && !adminUnlocked;
+    detail.innerHTML = `
+      <div class="jd-icon">${selectedLocked?'🔒':selectedJob.icon}</div>
+      <div>
+        <div class="jd-name">${selectedJob.name}</div>
+        <div class="jd-desc">${selectedLocked?'준비 중인 직업입니다.':selectedJob.desc}</div>
+      </div>
+    `;
   }
 
   // 이름 입력칸을 타이핑하는 즉시 admin 잠금 상태가 갱신되게 한다. 이 스크립트는

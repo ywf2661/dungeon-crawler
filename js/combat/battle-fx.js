@@ -527,11 +527,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 반대편 슬롯의 다른 로봇은 그대로 보인다.
   function renderOneRigSlot(el, rig){
     if(!rig){
-      el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('rig-wide'); el.classList.remove('rig-top'); el.classList.remove('rig-shield'); el.classList.remove('rig-hover');
+      el.style.display = 'none'; el.innerHTML = ''; el.classList.remove('rig-wide'); el.classList.remove('rig-top'); el.classList.remove('rig-shield'); el.classList.remove('rig-hover'); el.classList.remove('rig-necro');
       return;
     }
-    el.innerHTML = svgRig(rig.kind) + `<div class="rig-turns">${rig.turnsLeft}턴</div>`;
+    // 강령술사 소환수(rig.monsterType이 있으면)는 몬스터 도감의 실제 이미지를
+    // 그대로 재사용한다(svgMonster) — 기존 로봇 3종은 monsterType이 없으므로
+    // svgRig(rig.kind) 그대로 유지된다.
+    const visual = rig.monsterType ? svgMonster(rig.monsterType) : svgRig(rig.kind);
+    el.innerHTML = visual + `<div class="rig-turns">${rig.turnsLeft}턴</div>`;
     el.style.display = 'block';
+    el.classList.toggle('rig-necro', !!rig.monsterType);
     el.classList.toggle('rig-wide', rig.kind==='omega');
     // 강철 군단장의 정찰/화력/방벽/긴급배치(필러) 로봇은 기존 포탑류(bottom:-100px,
     // 머리만 보이는 연출)와 달리 화면 위쪽 구석에 전체가 온전히 보이게 그린다.
@@ -641,6 +646,14 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(slotOmega){
       const rO = (battleFlags && battleFlags.omegaRig && battleFlags.omegaRig.turnsLeft>0) ? battleFlags.omegaRig : null;
       renderOneRigSlot(slotOmega, rO);
+    }
+    // 강령술사(망령 소환사) 전용 소환수 슬롯 — 화면 하단, 플레이어 쪽 근처에
+    // 배치(index.html/#bt-necropet, CSS로 별도 위치 지정. 기존 rig 슬롯들은
+    // 전부 화면 위쪽(.rig-top)이라 이 슬롯만 레이아웃이 다르다).
+    const slotNecro = document.getElementById('bt-necropet');
+    if(slotNecro){
+      const rN = (battleFlags && battleFlags.necroPet && battleFlags.necroPet.turnsLeft>0) ? battleFlags.necroPet : null;
+      renderOneRigSlot(slotNecro, rN);
     }
   }
   // 로봇이 사격한 순간 해당 슬롯을 짧게 번쩍여, "지금 이 로봇이 쐈다"는 게

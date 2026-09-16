@@ -337,6 +337,10 @@ TIME_GUARDIAN 참고.
     const btnShop = document.getElementById('btn-shop');
     const btnExchange = document.getElementById('btn-exchange');
     const btnBlacksmith = document.getElementById('btn-blacksmith');
+    // 강령술사(망령 소환사) 전용 소환 계약 버튼 — 다른 마을 전용 버튼(교환소/
+    // 대장간)과 동일하게 마을에서만 노출하되, mastery_gravebond를 가진 캐릭터만.
+    const btnNecropact = document.getElementById('btn-necropact');
+    const hasNecropact = !!(player.skills && player.skills.includes('mastery_gravebond'));
     if(!area) return; // index.html에 아직 마크업이 없으면 조용히 무시(안전장치)
     if(!player.nodeMap || town || inBossDen){
       area.style.display = 'none';
@@ -347,6 +351,7 @@ TIME_GUARDIAN 참고.
       if(btnShop) btnShop.style.display = town ? 'block' : 'none';
       if(btnExchange) btnExchange.style.display = town ? 'block' : 'none';
       if(btnBlacksmith) btnBlacksmith.style.display = town ? 'block' : 'none';
+      if(btnNecropact) btnNecropact.style.display = (town && hasNecropact) ? 'block' : 'none';
       return;
     }
     area.style.display = 'block';
@@ -357,6 +362,7 @@ TIME_GUARDIAN 참고.
     if(btnShop) btnShop.style.display = 'none';
     if(btnExchange) btnExchange.style.display = 'none';
     if(btnBlacksmith) btnBlacksmith.style.display = 'none';
+    if(btnNecropact) btnNecropact.style.display = 'none';
 
     const totalSteps = player.nodeMap.length;
     const progressLabel = document.getElementById('node-map-progress');

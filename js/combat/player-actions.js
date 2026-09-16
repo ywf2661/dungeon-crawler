@@ -420,6 +420,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    // 강령 소환(necroSummon)은 마을에서 소환 계약(player.necroSummonType)을
+    // 먼저 지정해둬야 시전할 수 있다. MP를 깎기 전에 막아야 한다(로봇군단의
+    // 규율 가드와 동일한 이유).
+    if(s.type==='necrosummon2' && !player.necroSummonType){
+      setCommandsEnabled(true);
+      setBattleMsg('망자 도감', '아직 소환 계약을 맺지 않았다! 마을에서 먼저 몬스터를 소환 계약으로 지정해야 한다.');
+      return;
+    }
+
     const freeCast = mpCost>0 && hasRelicFlag('freeCastChance') && Math.random() < getRelicSum('freeCastChance');
     if(isRetry){
       // 손버릇(사기꾼) 재시도 — 완전 무료, MP를 아예 건드리지 않는다.
@@ -1214,6 +1223,41 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(role.kind==='recon') msg2 += ' 적의 급소가 드러나 받는 피해가 늘어난다.';
       if(role.kind==='shield') msg2 += ` 가동 중엔 받는 피해의 ${Math.round((role.shieldPct||0)*100)}%를 대신 막아준다.`;
       setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='necrosummon2'){
+      // 강령 소환(도적 - 망령 소환사 액티브): 마을에서 지정해둔 소환 계약
+      // (player.necroSummonType)의 원본 몬스터 데이터를 그대로 가져와 화력을
+      // 산출한다 — 강한 몬스터를 잡을수록 소환수도 강해지는 구조. 이미
+      // 소환수가 살아있으면 지속시간만 갱신한다(중첩 스노우볼 방지). 도적
+      // 소속이라 마력이 아니라 도적의 주력 스탯인 공격력을 사용한다.
+      const contractType = player.necroSummonType;
+      const monsterPool = (typeof MONSTERS!=='undefined' ? MONSTERS : []).concat(typeof BOSSES!=='undefined' ? BOSSES : []);
+      const monsterData = monsterPool.find(m=>m.type===contractType);
+      const dmgPerTick = Math.max(1, Math.round((monsterData?monsterData.atk:10)*0.6 + (player.atk||0)*0.25));
+      const petName = monsterData ? monsterData.name : '이름 모를 것';
+      // 원본 몬스터의 skills 태그(bite/smash/curse/heal)를 그대로 물려받아
+      // 소환수마다 다른 특성이 붙는다(combat/enemy-turn.js의 tickActiveRig()가
+      // rig.skills를 읽어 실제 효과를 적용) — "어떤 몬스터를 계약했는지"가
+      // 화력 수치뿐 아니라 전투 방식 자체를 바꾸게 하기 위함.
+      const petSkills = monsterData ? (monsterData.skills||[]) : [];
+      const traitLabels = {bite:'흡혈', smash:'강타', curse:'저주 전이', heal:'가끔 회복'};
+      const traitMsg = petSkills.length ? ` (특성: ${petSkills.map(t=>traitLabels[t]||t).join('/')})` : '';
+      const existingPet = battleFlags.necroPet;
+      if(existingPet && existingPet.turnsLeft>0 && existingPet.monsterType===contractType){
+        existingPet.turnsLeft = s.summonTurns||4;
+        existingPet.dmgPerTick = dmgPerTick;
+        existingPet.skills = petSkills;
+      } else {
+        battleFlags.necroPet = {kind:'undead', monsterType:contractType, name:petName, turnsLeft:s.summonTurns||4, dmgPerTick, skills:petSkills};
+      }
+      renderStatus();
+      updateRigVisuals();
+      Sound.magic();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${petName}의 원혼을 불러냈다.${traitMsg}`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;

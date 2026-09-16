@@ -200,6 +200,19 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         // 레벨12: 잠식 dot 피해의 일부를 자동으로 흡혈. 레벨15: 체액 흡수의
         // 자기 전용 스택 보너스와 흡수 비율이 함께 강화되는 궁극 패시브.
         skillLevels: {12:'rogueVenomRefine', 15:'rogueVenomTriple'}},
+      // 망령 소환사(rogue_conjurer, 사용자 요청 — 원래 독립 7번째 기본직업
+      // "강령술사"였다가 도적 3번째 브랜치로 재배치됨): 몬스터 도감에 등록된
+      // (=처치해본 적 있는) 몬스터 하나를 "소환 계약"으로 지정해두면(마을에서만
+      // 변경 가능, player.necroSummonType), 전투 중 강령 소환으로 그 몬스터를
+      // 4턴간 불러내 자동 공격하게 한다. 기관사 강철 군단장(mechanic_accumulator)의
+      // battleFlags.rig 슬롯 체계를 그대로 재사용하되 슬롯은 1개(battleFlags.necroPet)
+      // 뿐이다. 도적 소속이 되면서 소환수 화력도 마력이 아니라 도적의 주력
+      // 스탯인 공격력에 연동하도록 바꿨다(combat/enemy-turn.js, player-actions.js 참고).
+      {id:'rogue_conjurer', name:'망령 소환사', icon:'👻',
+        desc:'쓰러뜨린 것들의 흔적을 불러들여, 그 힘을 빌려 쓴다.',
+        masteryName:'망자 도감', masteryDesc:'몬스터 도감에 등록된 몬스터 하나를 "소환 계약"으로 지정할 수 있게 된다(마을에서 언제든 변경 가능).', masterySkillId:'mastery_gravebond',
+        activeName:'강령 소환', activeDesc:'소환 계약으로 지정한 몬스터를 4턴간 불러내 자동으로 공격하게 한다.', activeSkillId:'necroSummon',
+        skillLevels: {12:'necroEmpower', 15:'necroLastRites'}},
     ],
     paladin: [
       {id:'paladin_martyr', name:'순교자', icon:'✝',

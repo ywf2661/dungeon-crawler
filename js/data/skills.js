@@ -915,6 +915,30 @@ export(전역): SKILLDB, CHALNA_COMBOS
       desc:'스킬을 사용할 때마다 카드 한 장을 자동으로 뽑는다(최대 3장). 페어/스트레이트/트리플이 완성되면 즉시 추가 피해를 입히고 손을 비운다.'},
     jesterExchange: {name:'패 교환', mp:5, desc:'원치 않는 카드 한 장을 새 카드로 교체한다. 이미 세 장이 있으면 마지막 카드를 대신 교체한다',
       type:'cardexchange'},
+
+    // ---------- 도적 - 망령 소환사(rogue_conjurer) 전용 ----------
+    // (원래 독립 7번째 기본직업 "강령술사"였다가 사용자 요청으로 도적 3번째
+    // 브랜치로 재배치됨 — 1차 기본 킷 5개는 도적의 기존 킷과 역할이 겹쳐
+    // 전부 삭제했다.) 기관사 강철 군단장(mechanic_accumulator)의
+    // battleFlags.rig 슬롯 체계를 그대로 재사용하되, 슬롯은 battleFlags.necroPet
+    // 하나뿐이다 — 화력보다 "몬스터 도감에서 누구를 소환 계약으로 고를지"가
+    // 핵심 재미이므로 다중 슬롯으로 부풀리지 않는다. 도적 소속이라 소환수
+    // 화력도 마력이 아니라 도적의 주력 스탯인 공격력에 연동한다.
+    mastery_gravebond: {name:'망자 도감', mp:0, type:'passive',
+      desc:'몬스터 도감에 등록된(=처치해본 적 있는) 몬스터 하나를 "소환 계약"으로 지정할 수 있게 된다(마을에서 언제든 변경 가능). 강한 몬스터를 잡을수록 소환수도 강해진다.'},
+    // 새 타입 'necrosummon2' — player-actions.js에서 player.necroSummonType
+    // (마을에서 지정)을 읽어 battleFlags.necroPet을 채운다. 소환 계약이 없으면
+    // 시전 실패(안내 로그만 남김). 재시전 시 지속시간만 4로 갱신되고 중첩되지
+    // 않는다(스노우볼 방지).
+    necroSummon: {name:'강령 소환', mp:12, type:'necrosummon2', summonTurns:4,
+      desc:'소환 계약으로 지정한 몬스터를 4턴간 불러내 자동으로 공격하게 한다(이미 소환되어 있으면 지속시간만 갱신).'},
+    // 레벨12 패시브 — necroPet 데미지 계산에 자신의 ATK 일부를 더한다.
+    // 실제 적용은 combat/enemy-turn.js의 tickActiveRig()에서 player.skills 체크로 가산.
+    necroEmpower: {name:'강령 증폭', mp:0, type:'passive', necroEmpowerRatio:0.15,
+      desc:'소환수의 공격력이 자신의 공격력의 15%만큼 늘어난다.'},
+    // 레벨15 패시브 — necroPet이 지속시간 만료로 소멸하는 순간 마지막 폭발 피해를 준다.
+    necroLastRites: {name:'최후의 봉헌', mp:0, type:'passive', lastRitesMult:1.5,
+      desc:'소환수가 지속시간이 다해 사라질 때, 소환수 공격력의 150%에 달하는 폭발 피해를 마지막으로 남긴다.'},
   };
 
   // 찰나검사(warrior_chalna) 콤보 6종 — beat 두 개를 알파벳순으로 정렬해

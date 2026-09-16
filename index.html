@@ -166,13 +166,44 @@
   }
 
   /* ---------- job select ----------
-     직업 수가 늘어나도(예: 4개→5개) 줄 수가 그대로 유지되도록 3열로 배치한다.
-     화면 전체(#screen-title)가 스크롤되므로 여기서는 별도 스크롤을 두지 않는다. */
+     직업 수가 계속 늘어나도(현재 7종) 세로 공간이 무한정 늘지 않도록,
+     아이콘 칩 그리드(선택만 담당) + 선택된 직업 상세 패널(설명은 여기 한 곳에만
+     표시) 구조로 분리했다. 칩은 몇 줄이 되든 줄바꿈만 될 뿐 레이아웃이 안 무너진다. */
   .job-select{
     display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start;
-    gap:8px; width:100%; max-width:420px;
+    gap:7px; width:100%; max-width:420px;
     flex-shrink:0;
   }
+  .job-chip{
+    display:flex; align-items:center; gap:5px;
+    background:#1e150d;
+    border:1px solid #4a3a24; border-radius:16px; padding:6px 12px 6px 9px;
+    cursor:pointer; transition:all .12s;
+  }
+  .job-chip:hover{border-color:var(--gold);}
+  .job-chip.selected{
+    border-color:var(--gold-bright);
+    box-shadow:0 0 0 1px var(--gold-bright), 0 0 12px #e6c34a44;
+    background:#2f2314;
+  }
+  .job-chip .ji-icon{font-size:16px; line-height:1;}
+  .job-chip .ji-name{font-family:var(--font-ui); font-size:12px; color:var(--parchment); font-weight:600;}
+  .job-chip.locked{opacity:.4; cursor:not-allowed;}
+  .job-chip.locked:hover{border-color:#4a3a24;}
+
+  .job-detail{
+    display:flex; align-items:center; gap:12px; text-align:left;
+    width:100%; max-width:420px;
+    background:#1e150d; border:1px solid #4a3a24; border-radius:6px;
+    padding:12px 14px;
+  }
+  .job-detail .jd-icon{font-size:30px; line-height:1; flex-shrink:0;}
+  .job-detail .jd-name{font-family:var(--font-ui); font-size:14.5px; color:var(--gold-bright); font-weight:600;}
+  .job-detail .jd-desc{font-size:11.5px; color:var(--parchment-dim); font-style:italic; margin-top:3px; line-height:1.4;}
+
+  /* .job-card: 전직(2차 분기) 선택 화면(job-advancement.js)에서 계속 쓰는
+     카드형 스타일. 타이틀 화면 직업 선택은 위 .job-chip/.job-detail로 분리됐지만,
+     분기 수가 적은(보통 2~3개) 전직 화면은 기존 카드형이 더 알아보기 쉬워 유지한다. */
   .job-card{
     flex:0 0 calc((100% - 16px)/3);
     background:#1e150d;
@@ -188,9 +219,8 @@
   .job-card .ji-icon{font-size:21px; line-height:1;}
   .job-card .ji-name{font-family:var(--font-ui); font-size:12.5px; color:var(--parchment); margin-top:5px; font-weight:600;}
   .job-card .ji-desc{font-size:9.5px; color:var(--parchment-dim); font-style:italic; margin-top:4px; line-height:1.35;}
-  
   .job-card.locked{opacity:.4; cursor:not-allowed;}
-.job-card.locked:hover{border-color:#4a3a24;}
+  .job-card.locked:hover{border-color:#4a3a24;}
 
 
   /* ---------- difficulty select ---------- */
@@ -1139,6 +1169,35 @@
 .rig-slot.rig-wide img{
   object-fit:cover; object-position:center bottom; transform:none;
 }
+/* 강령술사(망령 소환사) 소환수 전용 슬롯 — 기존 로봇 슬롯들이 전부 화면
+   위쪽(적 쪽) 배치인 것과 달리, 화면 하단·중앙(플레이어 쪽 근처)에 작게
+   띄운다(사용자 확정). */
+.rig-slot.rig-slot-necro{
+  bottom:4px; top:auto; left:50%; right:auto; width:110px; height:110px;
+  transform:translateX(-50%);
+}
+/* 사용자 피드백 — 몬스터 원본 그림이 전부 정면 초상화라, 그대로 작게 넣으면
+   "작은 얼굴이 카메라를 빤히 쳐다보는" 느낌이라 어색했다. object-fit:cover +
+   object-position을 위로 당겨 얼굴 위쪽 일부를 슬롯 밖으로 밀어내고, 아래
+   mask-image로 머리 위쪽을 안개처럼 옅게 흩어지게 해서 "유령이 흐릿하게
+   떠 있는" 인상으로 바꿨다(초상화가 아니라 형상의 잔재처럼 보이게).*/
+.rig-slot.rig-slot-necro img, .rig-slot.rig-slot-necro svg{ object-fit:cover; object-position:center 15%; transform:none; }
+.rig-slot.rig-slot-necro .rig-turns{ top:auto; bottom:-2px; }
+/* .rig-necro — 되살아난 몬스터라는 걸 알아보게 하는 창백한 유령 필터 +
+   불규칙한 흔들림(정찰/화력/방벽 드론의 규칙적인 righover와 다르게, 유령
+   다운 흔들림을 주려고 별도 keyframe을 쓴다). */
+.rig-necro img, .rig-necro svg{
+  filter:grayscale(65%) brightness(0.78) blur(0.4px) drop-shadow(0 0 8px #7fd4ffcc);
+  opacity:0.88;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 22%, black 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 22%, black 100%);
+}
+.rig-necro{ animation:necrosway 3.4s ease-in-out infinite; }
+@keyframes necrosway{
+  0%,100%{ transform:translateX(-50%) translateY(0) rotate(0deg); }
+  30%{ transform:translateX(-50%) translateY(-5px) rotate(-1.5deg); }
+  65%{ transform:translateX(-50%) translateY(-2px) rotate(1deg); }
+}
 .rig-turns{
   /* rig-slot이 훨씬 커지고 아래로 내려가면서, 기존 bottom:-2px 기준으로는
      화면 밖(잘리는 영역)에 배지가 숨어버린다. 이제 슬롯 "안쪽" 좌표로 보이는
@@ -1224,6 +1283,7 @@
     <button class="btn btn-primary" id="btn-continue" style="display:none;">이어서 하다</button>
     <input type="text" id="name-input" placeholder="그대의 이름은?" maxlength="10">
     <div class="job-select" id="job-select"></div>
+    <div class="job-detail" id="job-detail"></div>
     <div class="difficulty-select" id="difficulty-select"></div>
     <button class="btn" id="btn-start">새로 시작하다</button>
     <button class="link-btn" id="btn-delete-save" style="display:none;">저장 데이터 삭제</button>
@@ -1262,6 +1322,7 @@
       <button class="btn" id="btn-relics">✦ 유물</button>
       <button class="btn" id="btn-exchange" style="display:none;">🔱 정예의 교환소</button>
       <button class="btn" id="btn-blacksmith" style="display:none;">🔨 대장간</button>
+      <button class="btn" id="btn-necropact" style="display:none;">🕯 소환 계약</button>
     </div>
   </div>
 
@@ -1295,6 +1356,10 @@
        <!-- 강철 군단장 전용 오메가 고정 슬롯. rig/rig2 풀과 분리된 3번째 자리이며,
             기존 .rig-wide 스타일(중앙 하단, 좌우 대칭 구도)을 그대로 재사용한다. -->
        <div class="rig-slot rig-wide" id="bt-rigomega"></div>
+       <!-- 강령술사(망령 소환사) 전용 소환수 슬롯. 기존 로봇 슬롯 3종은 전부
+            화면 위쪽(적 쪽) 배치인 것과 달리, 이 슬롯은 화면 하단·플레이어
+            쪽에 두어 "내 편"이라는 느낌을 준다(사용자 확정). -->
+       <div class="rig-slot rig-slot-necro" id="bt-necropet"></div>
        <div class="player-status-badges" id="bt-player-status"></div>
     </div>
     <div class="battle-lower">

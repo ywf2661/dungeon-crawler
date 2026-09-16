@@ -632,7 +632,19 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       battleFlags.firstActionUsed = true;
       mult *= (1+getSpecialSum('firstActionBonus'));
     }
+    // 선공의 감각(relic_firststrike): 전투 첫 공격 1회 한정 확정 치명타.
+    if(hasRelicFlag('guaranteedCritFirstTurn') && battleFlags && !battleFlags.firstCritUsed){
+      battleFlags.firstCritUsed = true;
+      mult *= 1.5;
+    }
     let result = Math.max(1, Math.round(dmg*mult));
+    // 처형인의 낫(relic_headsman): 이번 피해로 적 체력이 executeThreshold
+    // 비율 이하로 떨어지면 그대로 처치한다. 보스/진최종보스는 예외.
+    const executeThreshold = getRelicSum('executeThreshold');
+    if(executeThreshold>0 && enemy && enemy.hp>0 && !enemy.isBoss && !enemy.isFinal && !enemy.isTrueFinal){
+      const remainRatio = (enemy.hp-result)/enemy.maxhp;
+      if(remainRatio>0 && remainRatio<=executeThreshold) result = enemy.hp;
+    }
     return Math.max(1, result);
   }
 

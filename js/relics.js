@@ -131,6 +131,16 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     // (동전의 양면/부서진 저울/낙인찍힌 주사위)은 이번엔 보류.
     relic_scaleweight:  {type:'wild', name:'저울추', desc:'자신의 체력 비율이 적보다 낮으면 가하는 피해 +25%, 반대로 적의 체력 비율이 더 낮으면 오히려 -15%. 체력이 같으면 아무 변화 없다.', effect:{scaleWeight:true}},
     relic_infectedwound:{type:'wild', name:'전염된 상처', desc:'공격이 적중할 때마다 20% 확률로 적에게 감염을 걸거나 중첩시킨다(최대 5중첩, 중첩마다 도트 피해가 늘어난다).', effect:{infectedWoundChance:0.20}},
+
+    // 신규 2종(사용자 요청 — 재미 기획 라운드, 상태이상과 무관한 별도 방향).
+    // 처형인의 낫: 공격 피해가 적 체력을 executeThreshold 비율 이하로 남기면
+    // 그대로 처치한다. data/equipment.js의 applyOutgoingDamageMods() 맨 끝에서
+    // "이번 피해 적용 후 남을 체력 비율"을 계산해 판정한다(보스/진최종보스 제외).
+    relic_headsman:    {type:'wild', name:'처형인의 낫', desc:'적을 공격해 체력을 15% 이하로 떨어뜨리면 그대로 처치한다(보스 제외).', effect:{executeThreshold:0.15}},
+    // 선공의 감각: 전투 중 첫 공격이 확정 치명타(1.5배)가 된다. 장신구 강화
+    // "시간의 모래"(firstActionBonus)와 같은 "전투 첫 행동 1회 소모" 패턴을
+    // 재사용하되, 서로 다른 battleFlags 플래그(firstCritUsed)를 써서 간섭하지 않는다.
+    relic_firststrike: {type:'blessing', name:'선공의 감각', desc:'전투에서 처음 가하는 공격은 항상 치명타(피해 +50%)가 된다.', effect:{guaranteedCritFirstTurn:true}},
   };
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
   const RELIC_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type!=='curse');

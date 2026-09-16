@@ -1,8 +1,8 @@
 "use strict";
 /*
 이전 모험 기록 렌더 + 유물 도감 표시(획득한 유물의 현재 상태를 설명에 덧붙인다) + 몬스터 도감 + 업적 판정/도감.
-export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, checkAchievements, showAchievements,
-              showAchievementToast
+export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, showNecroContractPicker,
+              checkAchievements, showAchievements, showAchievementToast
 의존성: player(state.js), RELICS(relics.js), MONSTERS(data/monsters.js), ACHIEVEMENTS(data/achievements.js),
         loadRelicDex/loadMonsterDex/loadAchievements/unlockAchievement(storage.js)
 주의: checkAchievements(player, record, records)는 bootstrap.js의 addRecord() 직후,
@@ -146,6 +146,56 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
       box.appendChild(row);
     });
     panel.querySelector('#monsterdex-close').addEventListener('click', ()=> overlay.remove());
+  }
+
+  // 소환 계약 지정(도적 - 망령 소환사 전용, mastery_gravebond 보유 시에만
+  // 마을 화면 버튼으로 열림). showMonsterDex()와 동일한 패턴이지만, 발견한
+  // 몬스터 중 하나를 클릭해 player.necroSummonType으로 지정하는 게 목적이라
+  // 최종보스류(진최종보스/마녀/시간의 파수꾼)는 밸런스상 후보에서 제외한다 —
+  // 일반 몬스터(MONSTERS)+층별보스(BOSSES)만 후보 풀로 쓴다.
+  async function showNecroContractPicker(){
+    const discovered = await loadMonsterDex();
+    const pool = MONSTERS.concat(BOSSES).filter(m=>discovered.includes(m.type));
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'necropact-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    const currentName = (() => {
+      const cur = MONSTERS.concat(BOSSES).find(m=>m.type===player.necroSummonType);
+      return cur ? cur.name : '없음';
+    })();
+    panel.innerHTML = `<h3>🕯 소환 계약</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;margin:-4px 0 10px;">현재 계약: ${currentName}. 처치해본 적 있는 몬스터만 계약할 수 있다.</p>
+      <div id="necropact-list" style="display:flex; flex-direction:column; gap:6px; max-height:340px; overflow-y:auto; padding:2px;"></div>
+      <div style="text-align:center; margin-top:10px;"><button class="btn" id="necropact-close">닫기</button></div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    const box = panel.querySelector('#necropact-list');
+    if(!pool.length){
+      box.innerHTML = `<p style="text-align:center;color:var(--parchment-dim);font-size:13px;font-style:italic;padding:10px 0;">아직 계약할 수 있는 몬스터가 없다. 몬스터를 처치해 도감에 등록해야 한다.</p>`;
+    } else {
+      pool.slice().sort((a,b)=>a.minDepth-b.minDepth).forEach(m=>{
+        const row = document.createElement('button');
+        row.className = 'relicdex-row';
+        row.style.cursor = 'pointer';
+        row.style.textAlign = 'left';
+        if(m.type===player.necroSummonType) row.style.borderColor = 'var(--gold-bright)';
+        row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:var(--gold-bright); font-family:'Cinzel';">${m.name}</span><span style="color:var(--parchment-dim); font-size:11.5px;">공격력 ${m.atk}</span>
+          </div>
+          <div class="relic-desc" style="margin-top:3px;">${m.dex || ''}</div>`;
+        row.addEventListener('click', ()=>{
+          player.necroSummonType = m.type;
+          saveGame();
+          Sound.click();
+          overlay.remove();
+          showNecroContractPicker();
+        });
+        box.appendChild(row);
+      });
+    }
+    panel.querySelector('#necropact-close').addEventListener('click', ()=> overlay.remove());
   }
 
   // 현재 보유 중인 유물 목록 (탐험 화면에서 언제든 확인 가능)

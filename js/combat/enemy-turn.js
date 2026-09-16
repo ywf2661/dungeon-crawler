@@ -199,8 +199,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 생긴다 — 실제로 발생했던 회귀였다.)
   function tickRigsThenProceed(){
     // 강철 군단장의 오메가 전용 슬롯(omegaRig)도 rig/rig2와 동일한 방식으로
-    // 라운드당 한 번씩 순서대로 틱한다(rig -> rig2 -> omegaRig -> 적 실제 턴).
-    tickRigSlotOnce('rig', ()=> tickRigSlotOnce('rig2', ()=> tickRigSlotOnce('omegaRig', enemyTurnReal)));
+    // 라운드당 한 번씩 순서대로 틱한다(rig -> rig2 -> omegaRig -> necroPet ->
+    // 적 실제 턴). 강령술사의 소환수(necroPet)도 같은 battleFlags[slotKey] 제너릭
+    // 구조를 그대로 재사용한다 — tickActiveRig가 slotKey만 받으므로 새 분기 불필요.
+    tickRigSlotOnce('rig', ()=> tickRigSlotOnce('rig2', ()=> tickRigSlotOnce('omegaRig', ()=> tickRigSlotOnce('necroPet', enemyTurnReal))));
   }
   function tickRigSlotOnce(slotKey, next){
     if(battleFlags && battleFlags[slotKey] && battleFlags[slotKey].turnsLeft>0){
@@ -316,11 +318,39 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
       if(battleFlags.legionCommandTurns>0){ legionMult += (battleFlags.legionCommandMult||0); }
       const legionBonus = legionMult>1 ? Math.round(rig.dmgPerTick*(legionMult-1)) : 0;
-      const dmg = Math.max(1, rig.dmgPerTick + pressureBonus + legionBonus);
+      // 강령 증폭(necroEmpower, 도적 - 망령 소환사 레벨12) — 소환수(undead)
+      // 데미지에 자신의 공격력 일부를 더한다(도적 소속이라 마력이 아니라
+      // 공격력 연동). 다른 소환수/로봇 종류에는 영향 없음.
+      const necroBonus = (rig.kind==='undead' && player.skills && player.skills.includes('necroEmpower'))
+        ? Math.round((player.atk||0)*(SKILLDB.necroEmpower.necroEmpowerRatio||0.15)) : 0;
+      let dmg = Math.max(1, rig.dmgPerTick + pressureBonus + legionBonus + necroBonus);
+      // 강령술사 소환수 특성(사용자 요청 — "소환수별로 다른 포인트가 있으면
+      // 좋겠다") — 원본 몬스터의 skills 태그(bite/smash/curse/heal, player-actions.js의
+      // necrosummon2가 rig.skills에 그대로 물려줌)에 따라 매 틱마다 다른 효과가
+      // 붙는다. 여러 태그를 가진 몬스터는 전부 발동한다.
+      const necroTraits = rig.kind==='undead' ? (rig.skills||[]) : [];
+      if(necroTraits.includes('smash')) dmg = Math.round(dmg*1.25);
       enemy.hp = Math.max(0, enemy.hp - dmg);
       updateEnemyHpBar(); popDamage('-'+dmg, 'rig');
+      let necroTraitMsg = '';
+      if(necroTraits.includes('bite')){
+        const lifesteal = Math.max(1, Math.round(dmg*0.25));
+        player.hp = Math.min(player.maxhp, player.hp + lifesteal);
+        necroTraitMsg += ` 흡혈로 ${player.name}이(가) ${lifesteal} 회복했다.`;
+      }
+      if(necroTraits.includes('curse') && enemy.hp>0){
+        enemy.exposedTurns = Math.max(enemy.exposedTurns||0, 2);
+        enemy.exposePierce = Math.max(enemy.exposePierce||0, 0.15);
+        necroTraitMsg += ' 저주가 옮아 적의 방어가 흔들린다.';
+      }
+      if(necroTraits.includes('heal') && Math.random()<0.35 && player.hp<player.maxhp){
+        const healAmt = Math.max(1, Math.round(player.maxhp*0.06));
+        player.hp = Math.min(player.maxhp, player.hp + healAmt);
+        necroTraitMsg += ` 원혼이 ${player.name}을(를) ${healAmt}만큼 어루만졌다.`;
+      }
+      if(necroTraitMsg) renderStatus();
       // 로봇 공격음(사용자 요청) — 오메가 유닛은 폭발음, 정찰/화력/방벽 드론
-      // 3종은 전용 드론 공격음, 그 외(포탑/필러)는 기존 타격음 그대로.
+      // 3종은 전용 드론 공격음, 그 외(포탑/필러/언데드)는 기존 타격음 그대로.
       if(rig.kind==='omega') Sound.bomb();
       else if(['recon','firepower','shield'].includes(rig.kind)) Sound.droneAttack();
       else Sound.hit();
@@ -337,7 +367,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 눈에 보이게 한다(사용자 요청 — 로봇이 실제로 화면에 있다는 걸 체감하게
       // 만드는 핵심 연출).
       flashRigSlot(slotKey);
-      setBattleMsg(`${rig.name}이(가) 자동으로 사격한다!`, `${dmg}의 추가 피해!${pressureMsg}`);
+      setBattleMsg(`${rig.name}이(가) 자동으로 사격한다!`, `${dmg}의 추가 피해!${pressureMsg}${necroTraitMsg}`);
       rig.turnsLeft -= 1;
       let expired = rig.turnsLeft<=0;
       // 불멸의 명령 각인(me_undyingcommand, 강철 군단장 장신구 각인 —
@@ -352,12 +382,22 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           expired = false;
         }
       }
+      // 최후의 봉헌(necroLastRites, 망령 소환사 레벨15) — 소환수가 지속시간
+      // 만료로 소멸하는 순간(재배치 등으로 유지되는 경우는 제외) 마지막 폭발
+      // 피해를 한 번 더 남긴다.
+      let lastRitesMsg = '';
+      if(expired && rig.kind==='undead' && player.skills && player.skills.includes('necroLastRites') && enemy.hp>0){
+        const lastRitesDmg = Math.max(1, Math.round(rig.dmgPerTick*(SKILLDB.necroLastRites.lastRitesMult||1.5)));
+        enemy.hp = Math.max(0, enemy.hp - lastRitesDmg);
+        updateEnemyHpBar(); popDamage('-'+lastRitesDmg, 'crit');
+        lastRitesMsg = ` 소멸하며 마지막 봉헌으로 ${lastRitesDmg}의 폭발 피해를 남겼다!`;
+      }
       if(expired) battleFlags[slotKey] = null;
       renderStatus();
       updateRigVisuals();
       if(checkBattleEnd()) return;
       setTimeout(()=>{
-        if(expired){ setBattleMsg(`${rig.name}의 가동이 멈췄다.`, ''); }
+        if(expired){ setBattleMsg(`${rig.name}의 가동이 멈췄다.`, lastRitesMsg.trim()); }
         setTimeout(()=> onDone(), expired?500:250);
       }, expired?250:0);
     }, 450);
