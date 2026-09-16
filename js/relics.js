@@ -7,11 +7,18 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
               applyOutgoingDamageMods, revertDiceDelta, rollDiceEffectForBattle, getHourglassMult,
               RELICS, RELIC_ALTAR_POOL/FLOORS, CURSE_ALTAR_POOL/FLOORS, getRelicSlotUsage,
               getCurseCount / getCurseRewardMult / getCurseEpicBonus, getRelicDef,
+              getCurseSealBypassChance, isCurseSealActive,
               applyRelicEffect, removeRelic, BLADE_HILT_IDS, rollRelicChoices, finalizeRelicPick,
-              showRelicSwapPrompt, showRelicAltar, showCurseAltar,RELIC_SKIP_GOLD_COST
+              showRelicSwapPrompt, showRelicAltar, showCurseAltar, getRelicSkipCost
               findEquipmentForDepth, findRareDropForDepth, findEpicDropForDepth,
               applyMerchantSealPurchase
 의존성: player/enemy/depth(state.js), EQUIPMENT류(data/equipment.js), Sound(sound.js)
+주의: applyRelicEffect()에 저주술사(mastery_curseweaver, mage_curseweaver) 전용 예외 처리가
+     추가되어 있다 — 저주(type:'curse')의 수치형 페널티를 절반만 받고, 저주를 받아들일
+     때마다 마력이 영구히 오른다. 또한 isCurseSealActive()가 온오프형 봉인(스킬 봉인/
+     물약 봉인/무회복)에도 저주 개수 비례 확률로 저항할 수 있게 한다 — 아래 해당 함수
+     내부 주석 참고. hasRelicFlag('skillLocked')/hasRelicFlag('potionLocked')를 직접
+     검사하던 곳(combat/player-actions.js)은 이제 isCurseSealActive(...)를 대신 호출한다.
 */
 
   const DICE_EFFECT_LABELS = {
@@ -68,9 +75,25 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     relic_brokencompass:{type:'contract', name:'깨진 나침반',   desc:'<span class="relic-neg">현재 깊이를 알 수 없게 된다.</span> <span class="relic-pos">대신 골드와 희귀 아이템 획득 확률이 오른다.</span>', effect:{hideDepth:true, goldPctMult:0.25, rareDropPctBonus:0.03, epicDropBonus:0.25}},
 
     relic_heartlessdoll:{type:'curse', name:'심장 없는 인형', desc:'최대 HP가 절반으로 줄어든다.', effect:{maxhpPct:-0.5}},
-    relic_leadfeet:     {type:'curse', name:'납으로 된 발',   desc:'속도가 크게 감소한다.', effect:{spdFlat:-8}},
+    // [제거됨] 아래 2개는 사용자 요청으로 저주 제단 목록에서 뺐다 — "납으로 된
+    // 발"은 속도 감소가 체감이 거의 없어 의미 없는 저주였고, "침묵의 서약"은
+    // 스킬을 아예 못 쓰게 만들어 일부 스킬 의존형 빌드는 진행 자체가 막히는
+    // 문제가 있었다. deprecated:true만 붙이고 삭제하지 않는다 — 이미 이 저주를
+    // 갖고 있는 저장된 캐릭터가 있을 수 있어 데이터 자체를 지우면 크래시난다.
+    // CURSE_ALTAR_POOL이 deprecated를 걸러내므로 새로 뽑히지는 않는다.
+    relic_leadfeet:     {type:'curse', deprecated:true, name:'납으로 된 발',   desc:'속도가 크게 감소한다.', effect:{spdFlat:-8}},
     relic_hungrycorridor:{type:'curse', name:'굶주린 회랑',   desc:'포션을 쓸 수 없고, 레벨업으로도 체력·마나가 가득 차지 않는다.', effect:{noPostBattleHeal:true, potionLocked:true}},
-    relic_silentoath:   {type:'curse', name:'침묵의 서약',   desc:'스킬을 사용할 수 없게 된다.', effect:{skillLocked:true}},
+    relic_silentoath:   {type:'curse', deprecated:true, name:'침묵의 서약',   desc:'스킬을 사용할 수 없게 된다.', effect:{skillLocked:true}},
+    // 신규 저주 3종(사용자 요청 — 위 2개를 빼고 대신 채움). 전부 "불편하지만
+    // 진행은 가능한" 수준으로 잡았다 — 스킬 봉인처럼 진행 자체를 막지 않는다.
+    // enemyAtkPct는 새 effect 키다 — combat/battle-setup.js의
+    // scaleEnemyForDifficulty()에서 getRelicSum('enemyAtkPct')로 확인해 적용한다
+    // (새 저주를 더 추가할 때도 이 키만 재사용하면 코드 수정 없이 동작).
+    // dmgTakenPctMult/maxmpPct는 이미 다른 시스템에서 쓰던 기존 effect 키를
+    // 그대로 재사용한 것이라 별도 코드가 필요 없다.
+    relic_ragingshadow: {type:'curse', name:'그림자의 포효', desc:'이 구간에서 마주치는 모든 적의 공격력이 30% 오른다.', effect:{enemyAtkPct:0.30}},
+    relic_flayedhide:   {type:'curse', name:'벗겨진 가죽',   desc:'받는 피해가 20% 늘어난다.', effect:{dmgTakenPctMult:0.20}},
+    relic_driedwell:    {type:'curse', name:'말라버린 샘',   desc:'최대 마나가 절반으로 줄어든다.', effect:{maxmpPct:-0.5}},
 
     relic_witchclock:   {type:'wild', name:'마녀의 시계',   desc:'속도가 15 이상이면 매 턴 확률적으로(15↑10%, 20↑20%, 25↑30%) 적에게 턴을 넘기지 않고 한 번 더 행동한다.', effect:{extraActionBySpd:true}},
     relic_reversecrown: {type:'wild', name:'거꾸로 된 왕관', desc:'체력이 75% 이상이면 피해가 줄고, 낮을수록 가한 피해가 가속도로 커진다.', effect:{lowHpScalingDmg:true}},
@@ -82,6 +105,19 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
 
     relic_voidtome:    {type:'contract', name:'공허의 서',   desc:'<span class="relic-neg">최대 MP -50%.</span> <span class="relic-pos">대신 모든 스킬 피해 +35%.</span> (일반 공격에는 적용되지 않는다)', effect:{maxmpPct:-0.5, skillDmgPctMult:0.35}},
 
+    // 신규 계약형 유물 2종(사용자 요청 — 재미 기획 라운드, 수치까지 확정).
+    // 정체된 맹세: atkPct/defPct/magPct/maxhpPct/maxmpPct/spdFlat은 relics.js가
+    // 이미 "획득 즉시 반영 + relicAppliedDeltas에 기록 + 제단에서 교체 시 자동
+    // 역산"하는 기존 인프라를 그대로 쓴다(applyRelicEffect/removeRelic 참고) —
+    // 즉 유물을 내려놓는 순간 스탯 보너스도 정확히 함께 사라진다(사용자가
+    // 명시적으로 요구한 부분). noExpGain은 combat/battle-end.js의 grantExp()
+    // 맨 앞에서 체크해 경험치 자체를 완전히 무효화한다.
+    relic_frozenvow:   {type:'contract', name:'정체된 맹세', desc:'<span class="relic-pos">모든 주요 능력치(공격력·방어력·마력·최대HP·최대MP·속도)가 즉시 큰 폭으로 오른다.</span> <span class="relic-neg">대신 더 이상 레벨업하지 않는다(경험치가 완전히 무효화된다).</span>', effect:{atkPct:0.18, defPct:0.18, magPct:0.18, maxhpPct:0.18, maxmpPct:0.18, spdFlat:4, noExpGain:true}},
+    // 결투자의 서약: "가하는 피해"는 eliteBossDmgPctMult(정예/보스 한정,
+    // data/equipment.js), "받는 피해"는 normalDmgTakenPctMult(일반 몬스터
+    // 한정, combat/enemy-turn.js)로 각각 조건부 분기해서 처리한다.
+    relic_duelistoath: {type:'contract', name:'결투자의 서약', desc:'<span class="relic-neg">일반 몬스터를 상대로 받는 피해가 50% 늘어난다.</span> <span class="relic-pos">대신 정예/보스를 상대로 가하는 피해가 30% 늘어난다.</span>', effect:{normalDmgTakenPctMult:0.50, eliteBossDmgPctMult:0.30}},
+
     relic_mirrorshard: {type:'wild', name:'거울의 파편',     desc:'받은 피해의 10%를 공격한 적에게 그대로 반사한다.', effect:{mirrorReflectPct:0.10}},
     relic_dice:        {type:'wild', name:'불확실성의 주사위', desc:'전투 시작 시 공격력/마력/방어력/최대HP +30%, 속도 +10, 받는 피해 +30% 중 하나가 무작위로 선택되어 전투가 끝날 때까지 유지된다.', effect:{diceRoll:true}},
     relic_flask:       {type:'wild', name:'연금술사의 플라스크', desc:'포션을 사용할 때마다 다음 공격의 피해가 +20%씩 늘어난다(최대 3스택, 최대 +60%). 공격 시 스택을 모두 소모한다.', effect:{flaskPotionBoost:true}},
@@ -90,15 +126,30 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     relic_emptysack:   {type:'wild', name:'빈 자루의 각오', desc:'물약/상급 물약/에테르가 모두 떨어지면, 벼랑 끝에 몰린 만큼 가한 피해가 크게 오른다.', effect:{emptySackDmg:true}},
 
     relic_merchantseal:{type:'blessing', name:'상인의 그림자 인장', desc:'상점에서 아이템을 구매할 때마다 공격력이 오른다(최대 10스택, 스택당 현재 공격력의 +2%).', effect:{merchantSeal:true}},
+
+    // 신규 변수(wild) 유물 2종(사용자 요청 — 재미 기획 라운드). 나머지 3안
+    // (동전의 양면/부서진 저울/낙인찍힌 주사위)은 이번엔 보류.
+    relic_scaleweight:  {type:'wild', name:'저울추', desc:'자신의 체력 비율이 적보다 낮으면 가하는 피해 +25%, 반대로 적의 체력 비율이 더 낮으면 오히려 -15%. 체력이 같으면 아무 변화 없다.', effect:{scaleWeight:true}},
+    relic_infectedwound:{type:'wild', name:'전염된 상처', desc:'공격이 적중할 때마다 20% 확률로 적에게 감염을 걸거나 중첩시킨다(최대 5중첩, 중첩마다 도트 피해가 늘어난다).', effect:{infectedWoundChance:0.20}},
   };
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
   const RELIC_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type!=='curse');
   const RELIC_ALTAR_FLOORS = [6,12,18,24,36,42,48];
-  const CURSE_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type==='curse');
+  const CURSE_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type==='curse' && !RELICS[id].deprecated);
   const CURSE_ALTAR_FLOORS = [9,21,33,44];
 
   // 유물 제단에서 "고르지 않는다"를 선택할 때 소모되는 골드. 횟수 제한 대신 골드 비용으로 대체.
-  const RELIC_SKIP_GOLD_COST = 1000;
+  // 유물 제단 "고르지 않는다" 비용 — 원래 고정 1000이었으나(사용자 요청),
+  // 대장간 재추첨과 동일한 패턴(500/800/1000)의 에스컬레이션으로 변경.
+  // player.relicSkipRerollCount는 게임 전체에 걸쳐 누적되고, 사망 시엔
+  // 체크포인트(explore.js의 makeTownCheckpoint/applyTownCheckpoint)를 통해
+  // "직전 마을 당시의 누적 횟수"로 자동 복원된다.
+  function getRelicSkipCost(){
+    const n = player.relicSkipRerollCount||0;
+    if(n===0) return 500;
+    if(n===1) return 800;
+    return 1000;
+  }
 
   // 저주를 감수할수록 보상이 커진다: 저주 1개 → 골드/드랍 +10%, 2개 이상 → +25%, 3개 이상 → 에픽 확률 추가 보너스.
   // 저주형은 유물 슬롯을 차지하지 않는다 — 저주는 페널티 그 자체가 대가이므로,
@@ -110,6 +161,22 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   function getCurseCount(){
     return (player.relics||[]).filter(id=>{ const r=RELICS[id]; return r && r.type==='curse'; }).length;
   }
+  // 임시 계약 각인(me_tempcurse, 저주술사 무기 각인 — 사용자 요청): 전투당
+  // 1회, 저주 폭발/각인/만개 세 스킬 전부가 이번 전투 한정으로 저주를 1개
+  // 더 짊어진 것처럼 계산하게 해준다(실제 유물창엔 안 남는 가짜 저주).
+  // getCurseCount() 자체를 바꾸면 보상 배율(getCurseRewardMult 등) 같은
+  // 무관한 시스템까지 같이 부풀려지므로, 전투 데미지 계산 전용으로 별도
+  // 함수를 둔다.
+  function getCombatCurseCount(){
+    const base = getCurseCount();
+    const wIdTC = player.equipment && player.equipment.weapon;
+    const hasTempCurse = wIdTC && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdTC).includes('me_tempcurse');
+    if(hasTempCurse && battleFlags && !battleFlags.tempCurseUsed){
+      battleFlags.tempCurseUsed = true;
+      return base + 1;
+    }
+    return base;
+  }
   function getCurseRewardMult(){
     const c = getCurseCount();
     if(c>=2) return 0.25;
@@ -120,7 +187,186 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     return getCurseCount()>=3 ? 0.05 : 0;
   }
 
+  // ---------- 외상 도박사(jester_debtor) 빚 시스템 ----------
+  // getCurseCount류와 같은 위치에 둔 이유: 둘 다 "장기간 누적되는 메타 자원이
+  // 전투 파이프라인에 계속 영향을 주는" 같은 성격의 시스템이기 때문.
+  //
+  // 대출 3종: 여러 번 대출 가능(같은 종류 중복 포함), 빚과 원금이 함께 늘어난다.
+  // buff는 대출 시점의 "현재" 공/마력 기준 퍼센트로 즉시·영구 적용된다(relics.js의
+  // atkPct 계산과 동일한 방식 — 여러 번 빌리면 자연히 복리처럼 쌓인다). 전액
+  // 상환하면 clearDebtorLoans()가 이 buff를 정확히 회수한다.
+  const DEBTOR_LOANS = {
+    small:  {name:'소액 대출', amount:500,  buff:{atk:0.10}, penaltyLabel:'물약 회복 효율 저하'},
+    medium: {name:'중액 대출', amount:1500, buff:{atk:0.15, mag:0.15}, penaltyLabel:'받는 피해 증가'},
+    large:  {name:'거액 대출', amount:4000, buff:{atk:0.30, mag:0.30}, penaltyLabel:'회복 봉인'},
+  };
+  const DEBT_GRACE_FLOORS = 10; // 대출 후 이 층수 안에 못 갚으면 황금고블린이 강제로 찾아온다
+  const DEBT_INTEREST_RATE = 0.04; // 매 층 이동 시 남은 빚에 붙는 이자율
+
+  // 상환 비율(0=한 푼도 안 갚음 ~ 1=완전 상환). 대출 이력 자체가 없으면(원금 0)
+  // 페널티 계산상 "완전 상환"과 동일하게 취급해 0으로 나누기를 피한다.
+  function getDebtRepaymentRatio(){
+    if(!player.debtPrincipal || player.debtPrincipal<=0) return 1;
+    return Math.max(0, Math.min(1, 1 - (player.debt/player.debtPrincipal)));
+  }
+  // 심각도(0=완전 상환 ~ 1=한 푼도 안 갚음) — 페널티 강도에 직접 곱하는 값이라
+  // repaymentRatio의 반대 개념으로 따로 둔다(호출부 가독성 목적).
+  function getDebtSeverity(){ return 1 - getDebtRepaymentRatio(); }
+
+  // 소액 대출 페널티: 물약 회복 효율 저하. 대출 횟수만큼, 그리고 심각도만큼 심해진다.
+  function getDebtorPotionMult(){
+    const n = (player.loanCounts && player.loanCounts.small) || 0;
+    if(n<=0) return 1;
+    return Math.max(0.1, 1 - 0.2*n*getDebtSeverity());
+  }
+  // 중액 대출 페널티: 받는 피해 증가.
+  function getDebtorDmgTakenMult(){
+    const n = (player.loanCounts && player.loanCounts.medium) || 0;
+    if(n<=0) return 1;
+    return 1 + 0.15*n*getDebtSeverity();
+  }
+  // 거액 대출 페널티: 회복 봉인. 저주술사의 봉인 저항(isCurseSealActive, "심각도가
+  // 낮을수록 뚫을 확률이 높다")과 정반대 방향의 확률 계산이다 — 여기서는 "심각도가
+  // 높을수록(안 갚았을수록) 봉인이 실제로 발동할 확률이 높다." 대출 횟수는 확률에
+  // 반영하지 않는다(토글형 페널티라 몇 번 빌렸든 "발동 여부"만 문제이지, 강도가
+  // 배로 세지는 개념이 아니기 때문 — 온전히 상환율에만 의존).
+  function isDebtHealSealActive(){
+    const n = (player.loanCounts && player.loanCounts.large) || 0;
+    if(n<=0) return false;
+    return Math.random() < getDebtSeverity();
+  }
+
+  // 대출 실행: 즉시 공격력/마력을 올리고 빚·원금을 함께 늘린다. 이번이 이
+  // 빚 사이클의 첫 대출이면(debtBorrowedAtDepth가 비어있으면) 황금고블린
+  // 유예기간의 기준 깊이를 지금 깊이로 기록한다.
+  function applyDebtorLoan(loanKey){
+    const loan = DEBTOR_LOANS[loanKey];
+    if(!loan) return;
+    player.loanCounts = player.loanCounts || {small:0, medium:0, large:0};
+    player.loanCounts[loanKey] = (player.loanCounts[loanKey]||0) + 1;
+    if(player.debtBorrowedAtDepth==null) player.debtBorrowedAtDepth = depth;
+    player.debt = (player.debt||0) + loan.amount;
+    player.debtPrincipal = (player.debtPrincipal||0) + loan.amount;
+    player.debtAppliedDelta = player.debtAppliedDelta || {};
+    if(loan.buff.atk){
+      const d = Math.round(player.atk*loan.buff.atk);
+      player.atk += d;
+      player.debtAppliedDelta.atk = (player.debtAppliedDelta.atk||0) + d;
+    }
+    if(loan.buff.mag){
+      const d = Math.round(player.mag*loan.buff.mag);
+      player.mag += d;
+      player.debtAppliedDelta.mag = (player.debtAppliedDelta.mag||0) + d;
+    }
+  }
+  // 전액 상환(또는 황금고블린 승리/일시불 정산) 시, 대출로 얻은 스탯을 정확히
+  // 회수하고 모든 빚 관련 상태를 초기화한다.
+  function clearDebtorLoans(){
+    const d = player.debtAppliedDelta || {};
+    if(d.atk) player.atk = Math.max(1, player.atk - d.atk);
+    if(d.mag) player.mag = Math.max(0, player.mag - d.mag);
+    player.debtAppliedDelta = {};
+    player.loanCounts = {small:0, medium:0, large:0};
+    player.debt = 0;
+    player.debtPrincipal = 0;
+    player.debtBorrowedAtDepth = null;
+  }
+  // 상점 "빚 갚기"(shop.js)에서 쓰는 실제 상환 처리. amount만큼 갚고(빚보다 많이
+  // 내면 빚만큼만 차감 — 호출부에서 미리 min(보유 골드, 남은 빚)으로 제한해야
+  // 함), 다 갚으면 자동으로 clearDebtorLoans()까지 처리한다. 실제로 갚인 금액을
+  // 반환한다.
+  function repayDebt(amount){
+    const pay = Math.max(0, Math.min(amount, player.debt||0));
+    if(pay<=0) return 0;
+    player.debt -= pay;
+    if(player.debt<=0) clearDebtorLoans();
+    return pay;
+  }
+
+  // 황금고블린: 빚을 오래 방치하면(DEBT_GRACE_FLOORS 층 이내 미청산, 또는 올인
+  // 대출로 강제 예약) 마주치는 이벤트. 유물/저주 제단과 같은 트리거 패턴
+  // (explore.js의 proceedAdvance()에서 호출)이지만, "전투로 이어질 수 있다"는
+  // 점이 달라 오버레이에서 곧장 startBattle(..., true)를 호출한다(4번째 인자
+  // isDebtCollector — combat/battle-setup.js 참고).
+  function showDebtCollectorEvent(){
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'debtcollector-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel relic-panel relic-panel-locked';
+    const canPayoff = player.gold >= player.debt;
+    // 빚 액수가 클수록 고블린도 더 위협적인 모습으로 찾아온다(combat/battle-setup.js
+    // 의 DEBT_COLLECTOR_TIERS와 동일한 구간). 담판을 고르기 전에 미리 경고해준다.
+    const tier = getDebtCollectorTier();
+    const tierWarnHtml = tier.label
+      ? `<p style="text-align:center;color:#ff9a7a;font-size:12px;margin:0 0 8px;">빚이 크게 불어나 있다 — 이번엔 <b>${tier.label}황금고블린</b>이 찾아왔다. 평소보다 훨씬 강하다!</p>`
+      : '';
+    panel.innerHTML = `<h3 style="color:#ffd76a;">💰 황금고블린 💰</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
+        금색 정장을 빼입고 금니를 번뜩이는 고블린이 두꺼운 장부를 옆구리에 낀 채 앞을 가로막는다.<br>
+        "아아, 우리 단골손님이시군요. 슬슬... 정리를 좀 해야 하지 않겠어요?"
+      </p>
+      <p style="text-align:center;color:#ffd76a;font-size:13px;margin:0 0 10px;">남은 빚: ${player.debt}G</p>
+      ${tierWarnHtml}
+      <p class="relic-lock-msg" id="dc-lock-msg">내용을 살펴보는 중…</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        <button class="btn" id="dc-payoff" disabled>${canPayoff ? `일시불 정산 (${player.debt}G)` : `일시불 정산 (골드 부족)`}</button>
+        <button class="btn btn-danger" id="dc-fight" disabled>담판(전투)</button>
+      </div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+
+    const LOCK_MS = 1500;
+    setTimeout(()=>{
+      panel.classList.remove('relic-panel-locked');
+      const payoffBtn = panel.querySelector('#dc-payoff');
+      if(payoffBtn && canPayoff) payoffBtn.disabled = false;
+      panel.querySelector('#dc-fight').disabled = false;
+      const msg = panel.querySelector('#dc-lock-msg');
+      if(msg) msg.remove();
+    }, LOCK_MS);
+
+    panel.querySelector('#dc-payoff').addEventListener('click', ()=>{
+      if(panel.querySelector('#dc-payoff').disabled) return;
+      if(player.gold < player.debt) return;
+      player.gold -= player.debt;
+      const paidOff = player.debt;
+      clearDebtorLoans();
+      renderStatus();
+      saveGame();
+      overlay.remove();
+      addLog(`황금고블린에게 ${paidOff}G를 일시불로 정산했다. 고블린이 흡족한 미소를 지으며 물러난다.`, 'gold');
+    });
+    panel.querySelector('#dc-fight').addEventListener('click', ()=>{
+      if(panel.querySelector('#dc-fight').disabled) return;
+      overlay.remove();
+      startBattle(false, false, false, true);
+    });
+  }
+
   function getRelicDef(id){ return RELICS[id]; }
+
+  // 저주술사(mastery_curseweaver) 전용: 온오프형 저주 봉인(스킬 봉인/물약 봉인/
+  // 무회복)을 완전히 무력화하지는 못하지만, 저주를 짊어질수록(개수 비례) 확률적으로
+  // 뚫고 나올 수 있게 한다. 수치형 페널티 완화(절반)와 같은 "저주가 힘의 원천이
+  // 된다" 테마를 온오프형 봉인에도 동일하게 적용한 것 — 저주 1개당 15%p, 최대 60%.
+  function getCurseSealBypassChance(){
+    if(!(player.skills && player.skills.includes('mastery_curseweaver'))) return 0;
+    return Math.min(0.6, getCurseCount()*0.15);
+  }
+  // 봉인형 저주 플래그(skillLocked/potionLocked/noPostBattleHeal)가 "이번에" 실제로
+  // 발동할지를 판정한다. 저주술사가 아니거나 저주가 아예 없으면 항상 hasRelicFlag()
+  // 그대로 따른다(true=봉인 작동, false=봉인 없음 또는 이번엔 뚫음). bypassLabel을
+  // 주면, 뚫었을 때 배너로 알려준다(매 시도마다 다시 굴리므로 매번 결과가 다를 수 있음).
+  function isCurseSealActive(flagName, bypassLabel){
+    if(!hasRelicFlag(flagName)) return false;
+    const bypass = getCurseSealBypassChance();
+    if(bypass>0 && Math.random() < bypass){
+      if(bypassLabel && typeof playBanner==='function') playBanner(bypassLabel, 'pact-fire');
+      return false;
+    }
+    return true;
+  }
 
   // atkPct/defPct/magPct/maxhpPct/maxmpPct/spdFlat/mpZero 는 획득 즉시 스탯에 반영한다.
   // 슬롯 교체로 유물을 버릴 때 정확히 되돌릴 수 있도록, 실제로 변한 값(before/after 차이)을
@@ -129,7 +375,18 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     const relic = RELICS[id];
     if(!relic) return;
     const before = {atk:player.atk, def:player.def, mag:player.mag, maxhp:player.maxhp, hp:player.hp, maxmp:player.maxmp, mp:player.mp, spd:player.spd};
-    const e = relic.effect;
+    let e = relic.effect;
+    // 저주 계약(mastery_curseweaver, 저주술사): 저주(type:'curse')의 수치형(퍼센트/고정치)
+    // 페널티를 절반만 받는다. noPostBattleHeal/potionLocked/skillLocked처럼 온오프형
+    // 봉인 효과는 "절반"의 의미가 없어 그대로 적용된다(설계상 의도적 범위 제한).
+    if(relic.type==='curse' && player.skills && player.skills.includes('mastery_curseweaver')){
+      const mitigated = {};
+      Object.keys(e).forEach(k=>{
+        const v = e[k];
+        mitigated[k] = (typeof v === 'number' && v < 0) ? v*0.5 : v;
+      });
+      e = mitigated;
+    }
     if(e.atkPct) player.atk = Math.max(1, player.atk + Math.round(player.atk*e.atkPct));
     if(e.defPct) player.def = Math.max(0, player.def + Math.round(player.def*e.defPct));
     if(e.magPct) player.mag = Math.max(0, player.mag + Math.round(player.mag*e.magPct));
@@ -145,6 +402,11 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     }
     if(e.spdFlat) player.spd += e.spdFlat;
     if(e.mpZero){ player.maxmp = 0; player.mp = 0; }
+    // 저주 계약(mastery_curseweaver): 저주를 받아들일 때마다("이번 유물이 저주일 때") 마력이
+    // 영구히 오른다 — "저주를 획득할 때마다 강력해진다"는 컨셉의 핵심 보상.
+    if(relic.type==='curse' && player.skills && player.skills.includes('mastery_curseweaver')){
+      player.mag = Math.max(0, player.mag + 4);
+    }
     const delta = {};
     Object.keys(before).forEach(k=>{ const diff = player[k]-before[k]; if(diff!==0) delta[k]=diff; });
     player.relicAppliedDeltas = player.relicAppliedDeltas || {};
@@ -249,10 +511,24 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     } else {
       addLog(`✦ 유물 [${r.name}]을(를) 손에 넣었다!`, 'gold');
     }
+    // 거꾸로 된 왕관(relic_reversecrown) 전용 획득 토스트(사용자 기획 —
+    // 회랑의 시조 관련 시너지 세트 1단계). 미스터리 유물로 뽑혔을 때는
+    // 아직 정체를 모르는 상태라 스포일러가 되므로 제외하고, 정체가 밝혀진
+    // 채로 실제로 손에 들어온 순간에만 띄운다.
+    if(!isMystery && id==='relic_reversecrown' && typeof showToast==='function'){
+      showToast(
+        `<h3>${r.name}</h3><p>누군가의 왕관인 것 같은데... 왜 뒤집혀 있을까?</p>`,
+        '#c9a86a'
+      );
+    }
   }
 
   // 유물 슬롯이 가득 찬 상태에서 새 유물을 고르면, 먼저 내려놓을 유물을 선택하게 한다.
   // (한 번 열리면 반드시 하나를 내려놓아야 하며, 취소할 수 없다.)
+  // 주의: 저주(type:'curse')는 애초에 유물 슬롯을 차지하지 않으며(getRelicSlotUsage
+  // 참고), showCurseAltar()의 안내 문구("저주를 가져가면 두 번 다시 떼어낼 수 없다")
+  // 그대로 영구히 지니는 것이 규칙이다. 그래서 이 교체 목록에는 저주를 아예 표시하지
+  // 않는다(player.relics 자체는 저주도 함께 담고 있지만, 여기서는 필터링한다).
   function showRelicSwapPrompt(newId, altarOverlay, isMystery){
     const newR = RELICS[newId];
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
@@ -265,7 +541,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     panel.innerHTML = `<h3>유물 슬롯이 가득 찼다</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">[${nameForPrompt}]을(를) 담으려면, 지니고 있는 유물 하나를 내려놓아야 한다.</p>
       <div class="relic-grid">
-      ${player.relics.map(id=>{
+      ${player.relics.filter(id=>{ const r=RELICS[id]; return r && r.type!=='curse'; }).map(id=>{
         const r = RELICS[id];
         return `<button class="relic-card type-${r.type}" data-id="${id}">
           <div class="relic-type">${typeLabel[r.type]}</div>
@@ -290,9 +566,12 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     });
   }
 
-  function showRelicAltar(atDepth){
+  // onDone(선택): 유물 선택(또는 스킵)이 끝난 직후 한 번 호출된다(사용자 요청 —
+  // 보통/하드코어 시작 시 유물 제단을 띄우고, 끝나면 마을 진입으로 이어가기 위함).
+  // 기존 중간층 호출부(explore.js)는 onDone 없이 그대로 호출하므로 동작 그대로.
+  function showRelicAltar(atDepth, onDone){
     const {choices, mysteryIdx} = rollRelicChoices();
-    if(!choices.length) return; // 고를 수 있는 신규 유물이 더 없다
+    if(!choices.length){ if(typeof onDone==='function') onDone(); return; } // 고를 수 있는 신규 유물이 더 없다
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
@@ -303,7 +582,8 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     const slotNote = slotUsage>=player.relicSlots
       ? `<p style="text-align:center;color:#ff9a7a;font-size:12px;margin:0 0 8px;">유물 슬롯(${player.relicSlots})이 가득 찼다. 새 유물을 고르면 하나를 내려놓아야 한다.</p>`
       : `<p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:0 0 8px;">유물 슬롯 ${slotUsage}/${player.relicSlots}</p>`;
-    const canSkip = player.gold >= RELIC_SKIP_GOLD_COST;
+    const skipCost = getRelicSkipCost();
+    const canSkip = player.gold >= skipCost;
     panel.innerHTML = `<h3>✦ 유물 제단 ✦</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 6px;">세 개의 유물이 그대를 기다리고 있다. 하나를 선택하라.</p>
       ${slotNote}
@@ -326,7 +606,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
       }).join('')}
       </div>
       <div style="text-align:center; margin-top:10px;">
-        <button class="link-btn" id="relic-skip-btn" disabled>${canSkip ? `고르지 않는다 (골드 ${RELIC_SKIP_GOLD_COST} 소모)` : `고르지 않는다 (골드 부족, ${RELIC_SKIP_GOLD_COST} 필요)`}</button>
+        <button class="link-btn" id="relic-skip-btn" disabled>${canSkip ? `고르지 않는다 (골드 ${skipCost} 소모)` : `고르지 않는다 (골드 부족, ${skipCost} 필요)`}</button>
       </div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
@@ -352,6 +632,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
         }
         finalizeRelicPick(id, isMystery);
         overlay.remove();
+        if(typeof onDone==='function') onDone();
       });
     });
 
@@ -359,12 +640,15 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     if(skipBtn){
       skipBtn.addEventListener('click', ()=>{
         if(skipBtn.disabled) return;
-        if(player.gold < RELIC_SKIP_GOLD_COST) return;
-        player.gold -= RELIC_SKIP_GOLD_COST;
+        const cost = getRelicSkipCost();
+        if(player.gold < cost) return;
+        player.gold -= cost;
+        player.relicSkipRerollCount = (player.relicSkipRerollCount||0) + 1;
         renderStatus();
         saveGame();
         overlay.remove();
-        addLog(`골드 ${RELIC_SKIP_GOLD_COST}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
+        addLog(`골드 ${cost}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
+        if(typeof onDone==='function') onDone();
       });
     }
   }
@@ -375,17 +659,26 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     if(!pool.length) return; // 이미 모든 저주를 갖고 있다
     const id = pool[Math.floor(Math.random()*pool.length)];
     const r = RELICS[id];
+    // 저주술사(mastery_curseweaver)는 예전처럼 영구 저주 — 저주가 계속 쌓여야
+    // 의미 있는 직업이라 해제되면 오히려 손해다. 그 외 직업은 "이 구간 한정"
+    // 임시 저주로 바뀐다 — 구간 보스를 잡으면 자동 해제되고 정화 보상을 받는다
+    // (재설계 이유: 예전엔 영구 페널티 대비 보상이 너무 약해서 저주술사 외엔
+    // 아무도 저주 제단을 고를 이유가 없었다).
+    const isCurseweaver = !!(player.skills && player.skills.includes('mastery_curseweaver'));
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'curse-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel relic-panel relic-panel-locked';
+    const introText = isCurseweaver
+      ? '이 제단에서 저주를 가져가면, 그것은 두 번 다시 떼어낼 수 없다.<br>대신 저주를 짊어질수록 이후의 보상이 커진다.'
+      : '이 제단에서 저주를 가져가면, 그것은 이 구간이 끝날 때까지 그대를 옭아맨다.<br>구간의 보스를 넘어서면 저주는 풀리고, 견뎌낸 대가로 몸이 단단해진다.';
     panel.innerHTML = `<h3 style="color:#d99fff;">☠ 피로 물든 제단 ☠</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">이 제단에서 저주를 가져가면, 그것은 두 번 다시 떼어낼 수 없다.<br>대신 저주를 짊어질수록 이후의 보상이 커진다.</p>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">${introText}</p>
       <p class="relic-lock-msg" id="curse-lock-msg">내용을 살펴보는 중…</p>
       <div class="relic-grid">
         <button class="relic-card type-curse" id="curse-card" disabled>
-          <div class="relic-type">저주</div>
+          <div class="relic-type">저주${isCurseweaver?'':' (이 구간 한정)'}</div>
           <div class="relic-name">${r.name}</div>
           <div class="relic-desc">${r.desc}</div>
         </button>
@@ -413,6 +706,10 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     panel.querySelector('#curse-accept').addEventListener('click', ()=>{
       if(panel.querySelector('#curse-accept').disabled) return;
       finalizeRelicPick(id);
+      if(!isCurseweaver){
+        player.tempCurses = player.tempCurses || {};
+        player.tempCurses[id] = player.tierIndex;
+      }
       overlay.remove();
     });
   }
@@ -424,7 +721,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   }
 
   function findRareDropForDepth(){
-    const pool = Object.keys(RARE_EQUIPMENT).filter(id=>RARE_EQUIPMENT[id].minDepth<=depth && !player.equipOwned.includes(id));
+    const pool = Object.keys(RARE_EQUIPMENT).filter(id=>RARE_EQUIPMENT[id].minDepth<=depth && !player.equipOwned.includes(id) && !RARE_EQUIPMENT[id].keepsakeOnly);
     if(!pool.length) return null;
     return pool[Math.floor(Math.random()*pool.length)];
   }

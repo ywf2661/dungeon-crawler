@@ -39,11 +39,21 @@ export(전역): init, showMaintenanceModal, isAdminName
 
     // 점검 중: 아이디(이름 입력)가 'admin'이 아니면 시작/이어하기 모두 점검중 모달만 띄운다.
     document.getElementById('btn-start').addEventListener('click', ()=>{
-      if(!isAdminName()){ showMaintenanceModal(); return; }
+      //if(!isAdminName()){ showMaintenanceModal(); return; }
+      // 이름 입력 필수화(사용자 요청) — 비어있으면 시작을 막고 입력칸을 강조한다.
+      const nameEl = document.getElementById('name-input');
+      if(!nameEl.value.trim()){
+        nameEl.classList.remove('input-error'); void nameEl.offsetWidth;
+        nameEl.classList.add('input-error');
+        nameEl.placeholder = '이름을 입력해야 시작할 수 있다';
+        nameEl.focus();
+        Sound.click();
+        return;
+      }
       startGame(false);
     });
     document.getElementById('btn-continue').addEventListener('click', ()=>{
-      if(!isAdminName()){ showMaintenanceModal(); return; }
+      //if(!isAdminName()){ showMaintenanceModal(); return; }
       startGame(true);
     });
     document.getElementById('btn-delete-save').addEventListener('click', async ()=>{
@@ -53,12 +63,17 @@ export(전역): init, showMaintenanceModal, isAdminName
       document.getElementById('btn-delete-save').style.display='none';
     });
     document.getElementById('btn-relicdex').addEventListener('click', ()=>{ showRelicDex(); });
+    document.getElementById('btn-monsterdex').addEventListener('click', ()=>{ showMonsterDex(); });
+    document.getElementById('btn-achievements').addEventListener('click', ()=>{ showAchievements(); });
+    document.getElementById('btn-records').addEventListener('click', ()=>{ showRecords(); });
     document.getElementById('btn-restart').addEventListener('click', ()=>{
       // player는 이미 쓰러진 시점에 마을로 옮겨져 체력이 회복되고 골드가 절반이 되었다.
       showScreen('explore');
       renderStatus();
       renderExplore(['다시 회랑 어귀에 섰다. 소지품과 체력이 정비되었다.']);
       saveGame();
+      // 직전 층별보스 보상을 다시 고를 기회 제공(사용자 요청, 하드코어 제외).
+      if(typeof maybeOfferRewardRedo==='function') maybeOfferRewardRedo();
     });
     document.getElementById('btn-ending-title').addEventListener('click', async ()=>{
       const job = getJob(player);
@@ -69,8 +84,22 @@ export(전역): init, showMaintenanceModal, isAdminName
         name: player.name, jobLabel, level: player.level,
         deathCount: player.deathCount||0, ts: Date.now(),
         difficulty: player.difficulty||'easy',
+        // 난이도별 왕관 표시(사용자 제보 — 원래 되던 게 안 보임)의 근거 필드.
+        // records.js의 showRecords()도 이 필드(r.trueEnding)를 읽어 뱃지를
+        // 붙이는데, 정작 이 record 객체엔 한 번도 채워진 적이 없었다.
+        trueEnding: !!player.trueEndingSeen,
+        // 일반 최종보스("잠식된 OO 용사")가 이 기록의 이름/직업을 따르게
+        // 하려면 원문 job id가 필요하다(jobLabel은 이미 아이콘까지 붙은
+        // 표시용 문자열이라 역으로 파싱하기엔 부적합).
+        job: player.job,
+        // 진 최종보스 두 종(회랑의 시조/시간의 마녀 Aiōn)을 업적에서 구분하기
+        // 위한 필드. enemy는 아직 리셋 전이라(explore.js의 새 게임 시작 시점에만
+        // null로 초기화됨) 이 시점엔 방금 물리친 보스를 그대로 가리킨다.
+        bossType: (enemy && enemy.type) || null,
       };
-      await addRecord(record);
+      const allRecords = await addRecord(record);
+      // player가 리셋(deleteSave)되기 전, 이번 판 결과 + 누적 기록으로 업적을 판정한다.
+      const newlyUnlocked = await checkAchievements(player, record, allRecords);
       await deleteSave();
       window.__savedGame = null;
       document.getElementById('continue-info').style.display='none';
@@ -78,28 +107,50 @@ export(전역): init, showMaintenanceModal, isAdminName
       document.getElementById('btn-delete-save').style.display='none';
       document.getElementById('statusbar').style.display='none';
       showScreen('title');
+      if(newlyUnlocked.length) showAchievementToast(newlyUnlocked);
       loadRecords().then(records=>{
-        renderRecords(records);
         normalUnlocked = records.length > 0;
         hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
+        // 난이도별 왕관 표시(사용자 제보로 원인 확인 — record 객체에 trueEnding
+        // 필드가 아예 없었고, 여기서도 계산을 안 하고 있었다) — 해당 난이도에서
+        // 한 번도 안 죽고(deathCount 0) 진 최종보스를 본 기록이 있으면 표시.
+        // 사용자 요청 — 마녀(시간의 마녀 Aiōn) 클리어는 왕관이 아니라 별도의
+        // 마녀모자 배지로 표시하므로, 왕관 판정에서는 bossType이 'timewitch'인
+        // 기록을 제외한다.
+        easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+        normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+        hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+        easyWitchClear = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
+        normalWitchClear = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
+        hardcoreWitchClear = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
         renderDifficultySelect();
       });
     });
     document.getElementById('btn-advance').addEventListener('click', onAdvance);
-    document.getElementById('btn-rest').addEventListener('click', onRest);
     document.getElementById('btn-shop').addEventListener('click', openShop);
     document.getElementById('btn-equip').addEventListener('click', openEquipment);
     document.getElementById('btn-relics').addEventListener('click', showMyRelics);
-    document.getElementById('btn-town').addEventListener('click', onReturnTown);
-    document.getElementById('btn-bossden').addEventListener('click', enterBossDen);
+    document.getElementById('btn-exchange').addEventListener('click', openExchange);
+    document.getElementById('btn-blacksmith').addEventListener('click', openBlacksmith);
     document.getElementById('cmd-attack').addEventListener('click', ()=>{ Sound.click(); playerAttack(); });
     document.getElementById('cmd-skill').addEventListener('click', ()=>{ Sound.click(); openSub('skill'); });
+    // 상태창(사용자 요청) — 상단 이름/레벨 영역을 누르면 언제든(전투 중이든
+    // 마을이든) 열 수 있다.
+    const namewrapEl = document.getElementById('namewrap-status');
+    if(namewrapEl) namewrapEl.addEventListener('click', ()=>{ if(typeof openStatusSheet==='function') openStatusSheet(); });
     document.getElementById('cmd-item').addEventListener('click', ()=>{ Sound.click(); openSub('item'); });
-    document.getElementById('cmd-run').addEventListener('click', ()=>{ Sound.click(); playerRun(); });
+    document.getElementById('cmd-run').addEventListener('click', ()=>{
+      Sound.click();
+      // (사용자 요청 — 굴복 시스템) 버튼 라벨은 resetCommandUI()가 난이도에
+      // 맞춰 이미 바꿔뒀으니, 여기서는 실행할 함수만 난이도로 분기한다.
+      const canFlee = !player || player.difficulty==='easy';
+      if(canFlee) playerRun();
+      else if(typeof playerSurrender==='function') playerSurrender();
+    });
     document.getElementById('cmd-back').addEventListener('click', ()=>{ Sound.click(); closeSub(); });
     document.getElementById('name-input').addEventListener('keydown', e=>{
       if(e.key==='Enter'){
-        if(!isAdminName()){ showMaintenanceModal(); return; }
+        //if(!isAdminName()){ showMaintenanceModal(); return; }
         startGame(false);
       }
     });
@@ -120,9 +171,14 @@ export(전역): init, showMaintenanceModal, isAdminName
     }).catch(e=>{ console.warn('불러오기 실패(무시):', e); });
 
     loadRecords().then(records=>{
-      renderRecords(records);
       normalUnlocked = records.length > 0;
       hardcoreUnlocked = records.some(r=> r.difficulty==='normal' || r.difficulty==='hardcore');
+      easyFlawless = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+      normalFlawless = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+      hardcoreFlawless = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0 && r.bossType!=='timewitch');
+      easyWitchClear = records.some(r=> r.difficulty==='easy' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
+      normalWitchClear = records.some(r=> r.difficulty==='normal' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
+      hardcoreWitchClear = records.some(r=> r.difficulty==='hardcore' && r.trueEnding && (r.deathCount||0)===0 && r.bossType==='timewitch');
       renderDifficultySelect();
     }).catch(e=>{ console.warn('기록 불러오기 실패(무시):', e); });
   }

@@ -11,9 +11,137 @@
 export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, tickActiveRig,
               enemyTurnReal, processDotsSequentially, enemyAction, finishEnemyTurn, applyDot,
               applySkillDots, applySkillModifiers, effectiveAtk, consumeAtkBuff,
-              getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus
+              getBloodPactDodgeBonus, getTimeWarpExtraChance, getCreedAtkBonus, getLuckWaveBonus,
+              getVenomDmgPerStack, hasEliteTrait, getEffectiveEnemyAtk, handleEliteOnHitTraits,
+              checkLastStand, getVenomAbsorbBonus
+주의(신규 — 보스전 리뉴얼): 보스는 스킬을 쓰기로 결정될 때마다(치유 제외)
+     즉시 발동하는 대신 한 턴 예고("힘을 끌어모은다")부터 하고, 그 다음
+     보스 턴에 enemy.pendingSkillKey를 강제로 확정 발동시킨다(실제 데미지
+     계산은 이미 있던 skillKey 분기를 그대로 재사용). 처음엔 분노 게이지가
+     차야만 필살기 하나만 예고하는 구조였는데, 사용자 피드백으로 "스킬을
+     쓸 때마다 전부 예고"로 다시 만들었다 — 분노 게이지 관련 코드는 전부
+     제거했다. 최후의 발악(3페이즈)은 checkLastStand()가 그대로 담당한다.
 의존성: state.js, relics.js, combat/battle-fx.js, combat/battle-end.js
+주의(신규 — 정예 특성): hasEliteTrait/getEffectiveEnemyAtk/handleEliteOnHitTraits가
+     combat/battle-setup.js가 배정한 enemy.eliteTraits를 읽어 전투 중 효과를
+     발동시킨다. handleEliteOnHitTraits는 combat/battle-fx.js의 updateEnemyHpBar()가
+     enemy.hp 감소를 감지할 때마다 호출한다(철갑 환불/반사/복수 예약) —
+     player-actions.js에 흩어진 개별 피해 적용 지점을 손대지 않기 위한 설계.
+주의: applySkillModifiers()에 저주술사(mageCurseNova)의 s.curseCountBonus 처리가 추가되어
+     있다 — 기존 statusSynergyBonus와 완전히 동일한 패턴(보유 개수만큼 곱연산 배율)이라
+     별도 신규 헬퍼 없이 relics.js의 getCurseCount()를 직접 호출한다.
+     triggerAfterimageStrike()는 고정된 일반 공격이 아니라, battleFlags.afterimageQueue
+     (combat/player-actions.js가 스킬 사용 직후 기록)를 읽어 방금 쓴 스킬의 이름·타격
+     횟수·연출을 그대로 재현하되 총 피해는 그 스킬이 실제로 낸 피해의 50%로 절반만
+     입힌다(연속 베기 같은 다단히트 스킬은 다단히트 연출 그대로, 단발 스킬은 단발로).
+     환영 은신(직접 피해 없는 defbuff)처럼 대응 스킬 없이 예약되는 경우를 대비한
+     방어적 처리로, queue가 비어 있으면 effectiveAtk() 기반 기본 강타로 대체된다
+     (현재 환영검사의 스킬 구성상 실제로는 항상 queue가 채워져 있지만, 안전장치로
+     남겨둔다).
 */
+
+  /* ============ 정예 특성(사용자 요청) 헬퍼 ============ */
+  // 데이터/배정은 combat/battle-setup.js의 ELITE_TRAITS·rollEliteTraits()가 담당하고,
+  // 실제 전투 중 효과 발동은 대부분 이 파일에 모아뒀다.
+  function hasEliteTrait(key){
+    return !!(enemy && enemy.eliteTraits && enemy.eliteTraits.includes(key));
+  }
+  // 광폭(HP50%↓ 공격력+30%)/사냥꾼(플레이어HP30%↓ 피해+40%)/복수(피격 후 1회
+  // 다음 공격+30%, handleEliteOnHitTraits가 예약)/광기(3턴마다 그 턴 공격력
+  // 크게 상승 — "추가 행동"을 문자대로 구현하면 enemyAction()의 여러 종료
+  // 지점을 전부 손대야 해서, 대신 주기적으로 강화된 한 방을 주는 방식으로
+  // 단순화했다)를 전부 반영한 최종 공격력.
+  function getEffectiveEnemyAtk(){
+    let a = enemy.atk;
+    // 정예 버스트 특성 체감 감쇠 스택(사용자 기획 — "영리한 상한" 방식2).
+    // 예전엔 광폭/사냥꾼/복수/광기가 전부 곱연산으로 쌓여서, 최악의 3특성
+    // 조합(예: 광기+광폭+사냥꾼)이 겹치면 지나치게 세졌다(×2.7 수준). 이제
+    // 발동한 보너스들을 큰 순서대로 정렬해, 1번째는 100%, 2번째는 70%,
+    // 3번째부턴 50%만 반영하는 합연산으로 바꿨다 — 특성 하나만 있을 때의
+    // 위력은 그대로 유지되고, 여러 개가 동시에 터지는 최악의 순간만
+    // 완화된다(3특성 최악 조합 기준 ×2.7 → ×1.96로 완화).
+    const burstBonuses = [];
+    if(hasEliteTrait('berserk') && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5){
+      burstBonuses.push(0.3);
+    }
+    if(hasEliteTrait('hunter') && player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
+      burstBonuses.push(0.3);
+    }
+    if(hasEliteTrait('revenge') && enemy.revengeArmed){
+      burstBonuses.push(0.3);
+      enemy.revengeArmed = false;
+    }
+    if(hasEliteTrait('madness')){
+      enemy.madnessTurn = (enemy.madnessTurn||0) + 1;
+      if(enemy.madnessTurn % 3 === 0) burstBonuses.push(0.6);
+    }
+    if(burstBonuses.length){
+      const DIMINISH_WEIGHTS = [1, 0.7, 0.5, 0.5];
+      burstBonuses.sort((x,y)=>y-x);
+      const totalBonus = burstBonuses.reduce((sum, b, i)=> sum + b*DIMINISH_WEIGHTS[Math.min(i, DIMINISH_WEIGHTS.length-1)], 0);
+      a = Math.round(a*(1+totalBonus));
+    }
+    // 역병숙주(mastery_venomstacks) 마스터리 "역병 잠식": 잠식 스택 1개당
+    // 적 공격력 2% 감소(최대 10스택 -20%). data/equipment.js의
+    // getEffectiveEnemyDef()와 대칭되는 처리. 잠식 갑주(re_corrosion, 방어구
+    // 각인)를 꼈으면 스택당 3%(최대 -30%)로 커진다(대신 getVenomDmgPerStack()
+    // 에서 자체 dot 피해가 25% 줄어든다 — 아래 참고).
+    if(enemy && (enemy.venomStacks||0)>0){
+      const aIdCor = player.equipment && player.equipment.armor;
+      const hasCorrosion = !!(aIdCor && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdCor).includes('re_corrosion'));
+      const debuffPer = hasCorrosion ? 0.03 : 0.02, debuffCap = hasCorrosion ? 0.3 : 0.2;
+      a = Math.round(a * (1 - Math.min(debuffCap, enemy.venomStacks*debuffPer)));
+    }
+    return a;
+  }
+  // combat/battle-fx.js의 updateEnemyHpBar()가 enemy.hp 감소를 감지할 때마다
+  // 호출한다(dealt = 방금 줄어든 양). 철갑/반사/복수 예약을 처리한다.
+  function handleEliteOnHitTraits(dealt){
+    if(!enemy || battleOver || dealt<=0) return;
+    if(!enemy.eliteTraits || !enemy.eliteTraits.length) return;
+    // 철갑: 첫 2턴 동안 방금 들어온 피해의 40%를 즉시 되돌려준다(피해를
+    // "사전에" 줄이려면 player-actions.js의 40여 곳을 전부 고쳐야 해서,
+    // 대신 사후 환불 방식으로 동일한 최종 효과를 낸다).
+    if(hasEliteTrait('ironskin') && (enemy.ironskinTurns||0)>0){
+      const refund = Math.round(dealt*0.4);
+      if(refund>0) enemy.hp = Math.min(enemy.maxhp, enemy.hp+refund);
+    }
+    // 반사: 받은 피해의 15%를 플레이어에게 반사. [너프] 사용자 요청 —
+    // 상한 없이 그대로 15%였던 걸, 내 최대HP의 10%로 상한을 걸었다(고정
+    // 숫자가 아니라 %로 잡아야 저레벨/고레벨 모두에서 상한의 의미가
+    // 비슷하게 유지된다).
+    if(hasEliteTrait('reflect')){
+      const reflectCap = Math.round((player.maxhp||0)*0.10);
+      const reflectDmg = Math.max(1, Math.min(reflectCap, Math.round(dealt*0.15)));
+      player.hp = Math.max(0, player.hp - reflectDmg);
+      popDamage('-'+reflectDmg, 'bleed');
+      renderStatus();
+    }
+    // 복수: 다음 적 공격이 강화되도록 예약(getEffectiveEnemyAtk에서 소비).
+    if(hasEliteTrait('revenge')) enemy.revengeArmed = true;
+  }
+
+  /* ============ 보스 최후의 발악(사용자 요청 — 보스전 리뉴얼) ============ */
+  // combat/battle-fx.js의 updateEnemyHpBar()가 enemy.hp 감소를 감지할 때마다
+  // handleEliteOnHitTraits와 함께 호출한다.
+  // 최종보스 전용 3페이즈: 더 이상 부활(광폭화) 카드가 남아있지 않은 마지막
+  // 생명력에서 HP가 30% 이하로 떨어지면 자동 발동. 부활은 하지 않고, 그
+  // 생명력 안에서 공격력↑/방어력↓/매 턴 자체 피해가 지속된다.
+  function checkLastStand(){
+    if(!enemy || !enemy.isBoss || battleOver) return;
+    if(!(enemy.isFinal || enemy.isTrueFinal)) return;
+    if(enemy.lastStandTriggered || enemy.hp<=0) return;
+    const steps = getEnrageSteps(enemy);
+    if(enemy.hp > enemy.maxhp*0.3) return;
+    enemy.lastStandTriggered = true;
+    enemy.lastStandActive = true;
+    enemy.atk = Math.round(enemy.atk*1.3);
+    enemy.def = Math.max(0, Math.round(enemy.def*0.7));
+    enemy.skillChance = Math.min(0.9, (enemy.skillChance||0.4)+0.25);
+    playBanner('최후의 발악!', 'enrage');
+    setBattleMsg(`${enemy.name}이(가) 남은 생명을 불태운다!`, '공격력이 크게 오르고 방어력이 떨어졌다. 매 턴 스스로 상처를 입는다.');
+    if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+  }
 
   function enemyTurn(){
     if(battleOver) return;
@@ -21,11 +149,32 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       const chance = getWitchClockExtraChance() + getTimeWarpExtraChance();
       if(chance>0 && Math.random()<chance){
         battleFlags.witchClockUsedThisTurn = true;
+        // 시간 조각(mastery_timewarp): 이 추가 행동이 발동할 때마다 시간술사는
+        // 시간 조각을 하나 얻는다(최대 5, 레벨12/15 스킬의 재료). 유물(마녀의 시계)
+        // 만으로 발동했을 때는 조각이 쌓이지 않는다 — 마스터리를 보유했을 때만.
+        if(player.skills && player.skills.includes('mastery_timewarp')){
+          battleFlags.timeStacks = Math.min(5, (battleFlags.timeStacks||0)+1);
+          // 역행의 각인(me_regression)으로 발동한 추가 행동이면 표시해둔다
+          // (mageHaste가 이번 턴 한정으로 위력 -20%를 적용할 때 확인).
+          const armorIdRg = player.equipment && player.equipment.armor;
+          if(armorIdRg && typeof getEnhancementsFor==='function' && getEnhancementsFor(armorIdRg).includes('me_regression')){
+            battleFlags.timeRegressionActive = true;
+          }
+        }
         resetCommandUI();
         popDamage('추가 행동!', 'heal');
         playCastBurst();
-        Sound.buff();
-        setBattleMsg(`${player.name}의 몸이 시간을 앞질러 움직인다!`, '마녀의 시계가 한 번 더 행동할 기회를 준다!');
+        Sound.clockChime();
+        // 예전엔 이 추가 행동을 항상 "마녀의 시계"가 준 것처럼 문구가 고정되어
+        // 있었다 — 시간술사 마스터리(시간 왜곡)만으로 발동해도 유물 이름이
+        // 잘못 뜨는 버그였다. 실제로 무엇을 갖고 있는지에 따라 문구를 고른다.
+        const hasTimeWarp = player.skills && player.skills.includes('mastery_timewarp');
+        const hasWitchClock = hasRelicFlag('extraActionBySpd');
+        let sourceLabel;
+        if(hasTimeWarp && hasWitchClock) sourceLabel = '시간 왜곡과 마녀의 시계가 함께';
+        else if(hasTimeWarp) sourceLabel = '시간 왜곡이';
+        else sourceLabel = '마녀의 시계가';
+        setBattleMsg(`${player.name}의 몸이 시간을 앞질러 움직인다!`, `${sourceLabel} 한 번 더 행동할 기회를 준다!`);
         return;
       }
     }
@@ -49,7 +198,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 예를 들어 3턴짜리 장치가 설치 직후 한 라운드 만에 3번 다 쏘고 소멸하는 버그가
   // 생긴다 — 실제로 발생했던 회귀였다.)
   function tickRigsThenProceed(){
-    tickRigSlotOnce('rig', ()=> tickRigSlotOnce('rig2', enemyTurnReal));
+    // 강철 군단장의 오메가 전용 슬롯(omegaRig)도 rig/rig2와 동일한 방식으로
+    // 라운드당 한 번씩 순서대로 틱한다(rig -> rig2 -> omegaRig -> 적 실제 턴).
+    tickRigSlotOnce('rig', ()=> tickRigSlotOnce('rig2', ()=> tickRigSlotOnce('omegaRig', enemyTurnReal)));
   }
   function tickRigSlotOnce(slotKey, next){
     if(battleFlags && battleFlags[slotKey] && battleFlags[slotKey].turnsLeft>0){
@@ -59,19 +210,85 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     }
   }
   // 환영검사의 분신이 적의 턴이 열리기 직전 자동으로 한 번 더 공격한다.
+  // 사용자 요청: 그냥 고정된 일반 공격이 아니라, 방금 사용한 스킬의 이름과 연출을
+  // 그대로 재현한다(예: 연속 베기를 썼다면 분신도 연속 베기 이펙트로 여러 번
+  // 베어낸다) — 다만 총 피해량은 방금 그 스킬이 낸 실제 피해의 50%로 줄어든다.
+  // battleFlags.afterimageQueue에 combat/player-actions.js가 미리 기록해둔
+  // {name, magic, multihit, hits, totalDamage}를 읽어 재현 방식을 결정한다.
+  // 환영검사의 분신이 적의 턴이 열리기 직전 자동으로 한 번 더(또는 분신 배가가
+  // 걸려 있었다면 두 번) 공격한다. queue.repeats(기본 1, 분신 배가 시 2)만큼
+  // 재현 시퀀스 전체(단발이든 멀티히트든)를 반복한 뒤에야 enemyTurnReal()로
+  // 넘어간다 — 재현 도중에 checkBattleEnd()로 전투가 끝나면 그 자리에서 멈춘다.
+  // queue.ratio(기본 0.5, 분신 배가 시 더 높은 값)로 매 반복의 위력을 계산한다.
   function triggerAfterimageStrike(){
-    setTimeout(()=>{
-      if(battleOver) return;
-      const edef = getEffectiveEnemyDef(enemy.def);
-      const dmg = Math.max(1, Math.round(effectiveAtk()*0.7) - edef);
-      enemy.hp = Math.max(0, enemy.hp - dmg);
-      updateEnemyHpBar(); popDamage('-'+dmg, 'crit');
-      Sound.slash();
-      setBattleMsg('그림자 속에서 분신이 튀어나온다!', `잔영이 ${dmg}의 추가 피해를 입혔다!`);
-      renderStatus();
-      if(checkBattleEnd()) return;
-      setTimeout(()=> enemyTurnReal(), 400);
-    }, 450);
+    const queue = battleFlags && battleFlags.afterimageQueue;
+    const skillName = (queue && queue.name) || '환영검';
+    const isMagic = !!(queue && queue.magic);
+    const isMultihit = !!(queue && queue.multihit);
+    const hits = Math.max(1, (queue && queue.hits) || 1);
+    const ratio = (queue && queue.ratio) || 0.5;
+    const repeats = Math.max(1, (queue && queue.repeats) || 1);
+    const fallbackDmg = Math.max(1, Math.round(effectiveAtk()*1.0));
+    const perRepeatTotal = Math.max(1, Math.round(((queue && queue.totalDamage) || fallbackDmg) * ratio));
+    battleFlags.afterimageQueue = null;
+
+    function playOneRepeat(repeatIdx, onDone){
+      const introLine = repeats>1
+        ? (repeatIdx===0 ? '그림자 속에서 첫 번째 잔영이 나타난다!' : '그림자 속에서 두 번째 잔영이 뒤이어 나타난다!')
+        : '그림자 속에서 잔영이 다시 나타난다!';
+      if(isMultihit && hits>1){
+        setTimeout(()=>{
+          if(battleOver) return;
+          setBattleMsg(introLine, `'${skillName}'의 잔영이 재현된다…`);
+          const per = Math.max(1, Math.round(perRepeatTotal/hits));
+          let dealt = 0;
+          let idx = 0;
+          const doHit = ()=>{
+            if(battleOver) return;
+            const isLast = idx===hits-1;
+            const hitDmg = isLast ? Math.max(1, perRepeatTotal-dealt) : per;
+            dealt += hitDmg;
+            enemy.hp = Math.max(0, enemy.hp - hitDmg);
+            updateEnemyHpBar(); popDamage('-'+hitDmg, 'crit'); spawnSlashMark(idx);
+            if(isMagic) Sound.magic(); else Sound.slash();
+            idx++;
+            if(idx<hits){
+              setTimeout(doHit, 220);
+            } else {
+              renderStatus();
+              if(checkBattleEnd()) return;
+              onDone();
+            }
+          };
+          doHit();
+        }, 450);
+        return;
+      }
+      setTimeout(()=>{
+        if(battleOver) return;
+        const dmg = perRepeatTotal;
+        enemy.hp = Math.max(0, enemy.hp - dmg);
+        updateEnemyHpBar(); popDamage('-'+dmg, 'crit');
+        if(isMagic) Sound.magic(); else Sound.slash();
+        setBattleMsg(introLine, `'${skillName}'의 잔영이 ${dmg}의 추가 피해를 입혔다!`);
+        renderStatus();
+        if(checkBattleEnd()) return;
+        onDone();
+      }, 450);
+    }
+
+    let repeatIdx = 0;
+    const runNext = ()=>{
+      if(repeatIdx>=repeats){
+        setTimeout(()=> enemyTurnReal(), 400);
+        return;
+      }
+      playOneRepeat(repeatIdx, ()=>{
+        repeatIdx++;
+        runNext();
+      });
+    };
+    runNext();
   }
   // 가동 중인 장치(포탑/드론/오메가 유닛/역할 로봇)가 있으면, 적의 턴이 시작되기
   // 직전에 자동으로 한 발 쏜다. slotKey는 'rig' 또는 'rig2'이며, 처리가 끝나면
@@ -80,15 +297,64 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     const rig = battleFlags[slotKey];
     setTimeout(()=>{
       if(battleOver) return;
-      const dmg = Math.max(1, rig.dmgPerTick);
+      // 1차 스킬 버프(사용자 요청 — "영리한 버프" A안) — 압력 연동 포탑 화력.
+      // pressureScaled 장치는 현재 쌓인 압력만큼 틱 데미지에 보너스가 붙는다
+      // (마스터리로 상한이 150인 폭주 화부라면 그만큼 더 크게 붙는다).
+      const pressureBonus = rig.pressureScaled ? Math.round((effectiveMag()||0)*(battleFlags.pressure||0)*(rig.pressureScaleRate||0)) : 0;
+      // 강철 군단장 전용 보너스 3종(다른 마스터리가 없으면 전부 0이라 다른
+      // 메카닉 특성에는 영향이 없다):
+      // 1) 취약점 분석(레벨5 표적 마킹)이 걸려 있으면 로봇 사격에도 markBonus 적용.
+      // 2) 풀편성 시너지(레벨12) — rig/rig2/omegaRig 3슬롯이 전부 가동 중일 때.
+      // 3) 총사령관의 명령(레벨15) — battleFlags.legionCommandTurns가 남아있는 동안.
+      let legionMult = 1;
+      if(enemy && enemy.markedTurns>0){ legionMult += (enemy.markBonus||0.25); }
+      if(player.skills && player.skills.includes('legionFullSquadSynergy')){
+        const allThree = battleFlags.rig && battleFlags.rig.turnsLeft>0
+          && battleFlags.rig2 && battleFlags.rig2.turnsLeft>0
+          && battleFlags.omegaRig && battleFlags.omegaRig.turnsLeft>0;
+        if(allThree) legionMult += (SKILLDB.legionFullSquadSynergy && SKILLDB.legionFullSquadSynergy.fullSquadDmgBonus) || 0.2;
+      }
+      if(battleFlags.legionCommandTurns>0){ legionMult += (battleFlags.legionCommandMult||0); }
+      const legionBonus = legionMult>1 ? Math.round(rig.dmgPerTick*(legionMult-1)) : 0;
+      const dmg = Math.max(1, rig.dmgPerTick + pressureBonus + legionBonus);
       enemy.hp = Math.max(0, enemy.hp - dmg);
       updateEnemyHpBar(); popDamage('-'+dmg, 'rig');
-      Sound.hit();
-      setBattleMsg(`${rig.name}이(가) 자동으로 사격한다!`, `${dmg}의 추가 피해!`);
+      // 로봇 공격음(사용자 요청) — 오메가 유닛은 폭발음, 정찰/화력/방벽 드론
+      // 3종은 전용 드론 공격음, 그 외(포탑/필러)는 기존 타격음 그대로.
+      if(rig.kind==='omega') Sound.bomb();
+      else if(['recon','firepower','shield'].includes(rig.kind)) Sound.droneAttack();
+      else Sound.hit();
+      // 메카닉 리뉴얼(사용자 요청) — 장치가 사격할 때마다 압력도 함께 쌓는다.
+      let pressureMsg = '';
+      if(rig.pressurePerTick && battleFlags){
+        const pressureCapTick = (typeof getPressureCap==='function') ? getPressureCap() : 100;
+        battleFlags.pressure = Math.min(pressureCapTick, (battleFlags.pressure||0) + rig.pressurePerTick);
+        if(typeof applyOverheatOverflowDamage==='function') applyOverheatOverflowDamage(battleFlags.pressure);
+        if(typeof updatePressureGauge==='function') updatePressureGauge();
+        pressureMsg = ` 압력 +${rig.pressurePerTick}(현재 ${battleFlags.pressure}).`;
+      }
+      // 로봇 사격 시 해당 로봇 슬롯을 살짝 번쩍여 "지금 이 로봇이 쐈다"는 게
+      // 눈에 보이게 한다(사용자 요청 — 로봇이 실제로 화면에 있다는 걸 체감하게
+      // 만드는 핵심 연출).
+      flashRigSlot(slotKey);
+      setBattleMsg(`${rig.name}이(가) 자동으로 사격한다!`, `${dmg}의 추가 피해!${pressureMsg}`);
       rig.turnsLeft -= 1;
-      const expired = rig.turnsLeft<=0;
+      let expired = rig.turnsLeft<=0;
+      // 불멸의 명령 각인(me_undyingcommand, 강철 군단장 장신구 각인 —
+      // 사용자 요청): 총사령관의 명령이 지속되는 동안은, 로봇이 만료돼도
+      // 즉시 같은 종류로 무료 재배치된다(자동 리스폰 — 화력/능력치 동일,
+      // 지속시간만 원래 기본값으로 초기화). battleFlags[slotKey]를 null로
+      // 만들지 않고 그대로 유지한다.
+      if(expired && battleFlags.legionCommandTurns>0){
+        const cIdUC = player.equipment && player.equipment.accessory;
+        if(cIdUC && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdUC).includes('me_undyingcommand')){
+          rig.turnsLeft = (slotKey==='omegaRig') ? 4 : 3;
+          expired = false;
+        }
+      }
       if(expired) battleFlags[slotKey] = null;
       renderStatus();
+      updateRigVisuals();
       if(checkBattleEnd()) return;
       setTimeout(()=>{
         if(expired){ setBattleMsg(`${rig.name}의 가동이 멈췄다.`, ''); }
@@ -105,9 +371,55 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       const drift = Math.random()*2 - 1;
       battleFlags.luckGauge = Math.max(-3, Math.min(3, (battleFlags.luckGauge||0) + drift));
     }
+    // 폭주 압력(mastery_overheat) 개편(사용자 제보 — 압력이 100에 도달할
+    // 즈음엔 이미 승부가 나 있어서 레벨15 궁극기(임계 폭주)를 사실상 못
+    // 써본다는 문제). 기존엔 폭주 사출을 쓰거나 포탑이 틱할 때만 압력이
+    // 올랐는데, 여기에 "매 라운드 자동으로도 오르는" 기본 상승분을
+    // 더했다 — 다른 행동을 하는 턴에도 압력이 꾸준히 쌓여, 궁극기 발동
+    // 타이밍을 실제 전투 흐름 안으로 앞당긴다. 포탑/폭주사출과 완전히
+    // 별개로 가산되므로 기존 스노우볼 자체는 그대로 유지된다.
+    if(battleFlags && player.skills && player.skills.includes('mastery_overheat')){
+      const cap = (typeof getPressureCap==='function') ? getPressureCap() : 150;
+      battleFlags.pressure = Math.min(cap, (battleFlags.pressure||0) + (SKILLDB.mastery_overheat.passiveGainPerTurn||0));
+      if(typeof applyOverheatOverflowDamage==='function') applyOverheatOverflowDamage(battleFlags.pressure);
+      if(typeof updatePressureGauge==='function') updatePressureGauge();
+    }
     if(enemy && enemy.exposedTurns>0){
       enemy.exposedTurns -= 1;
       updateStatusBadges();
+    }
+    // 메카닉 리뉴얼(사용자 요청) — 표적 마킹도 exposedTurns와 동일한 방식으로 감소.
+    if(enemy && enemy.markedTurns>0){
+      enemy.markedTurns -= 1;
+      updateStatusBadges();
+    }
+    // 강철 군단장 "총사령관의 명령" 지속 버프 소진.
+    if(battleFlags && battleFlags.legionCommandTurns>0){
+      battleFlags.legionCommandTurns -= 1;
+    }
+    // 속임수 폭로 각인(ju_dicereveal, 사기꾼) MP 소모 증가 페널티 소진.
+    if(battleFlags && battleFlags.dicerevealPenaltyTurns>0){
+      battleFlags.dicerevealPenaltyTurns -= 1;
+    }
+    // 찰나검사(warrior_chalna) — 찰나 예약 소멸 타이밍. turnsLeft:1로 시작해서
+    // 예약을 건 그 적 턴엔 0으로만 내려가고(아직 안 지움 — 그 사이에 낀 "다음
+    // 내 턴"엔 확실히 남아있어야 하므로), 그 다음 적 턴에 실제로 지운다.
+    if(battleFlags && battleFlags.chalnaReserve){
+      if(battleFlags.chalnaReserve.turnsLeft>0){
+        battleFlags.chalnaReserve.turnsLeft -= 1;
+      } else {
+        battleFlags.chalnaReserve = null;
+        if(typeof showToast==='function') showToast(`<h3>찰나가 흩어졌다</h3>`, '#8a8a9a');
+        updatePlayerStatusBadges();
+      }
+    }
+    // 찰나검사 "가속참" 콤보의 임시 속도 버프 만료 — 올렸던 만큼 정확히 되돌린다.
+    if(battleFlags && battleFlags.chalnaSpdBuffTurns>0){
+      battleFlags.chalnaSpdBuffTurns -= 1;
+      if(battleFlags.chalnaSpdBuffTurns<=0){
+        player.spd -= (battleFlags.chalnaSpdBuffDelta||0);
+        battleFlags.chalnaSpdBuffDelta = 0;
+      }
     }
     if(battleFlags){
       battleFlags.hourglassTurn = (battleFlags.hourglassTurn||0) + 1;
@@ -124,7 +436,108 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         }
       }
     }
+    // 검은 기도(paladinDarkPrayer, 회랑의 기사)가 건 임시 공격력↑/방어력↓를 정확히
+    // 그 수치만큼만 되돌린다(다른 원인으로 공/방이 바뀌었어도 서로 간섭하지 않도록
+    // 델타를 직접 저장해뒀다가 그대로 복구 — 불확실성의 주사위 revertDiceDelta()와
+    // 동일한 설계 원칙).
+    if(player.knightVulnTurns>0){
+      player.knightVulnTurns -= 1;
+      if(player.knightVulnTurns<=0){
+        player.atk -= (player.knightVulnAtkBonus||0);
+        player.def += (player.knightVulnDefPenalty||0);
+        player.knightVulnAtkBonus = 0;
+        player.knightVulnDefPenalty = 0;
+        renderStatus();
+      }
+    }
+    // 정예 특성 — 재생(매 턴 최대HP 4% 회복), 철갑 지속시간 카운트다운,
+    // 독성(플레이어 중독) 틱. 전부 적의 실제 턴이 열릴 때마다 한 번씩 처리한다.
+    if(enemy && enemy.eliteTraits && enemy.eliteTraits.length){
+      if(hasEliteTrait('regen') && enemy.hp>0 && enemy.hp<enemy.maxhp){
+        const heal = Math.max(1, Math.round(enemy.maxhp*0.04));
+        enemy.hp = Math.min(enemy.maxhp, enemy.hp+heal);
+        updateEnemyHpBar();
+      }
+      if(hasEliteTrait('ironskin') && enemy.ironskinTurns>0){
+        enemy.ironskinTurns -= 1;
+      }
+    }
+    if((player.poisonTurns||0)>0){
+      const pdmg = player.poisonDmgPerTurn||0;
+      player.poisonTurns -= 1;
+      if(pdmg>0 && player.hp>0){
+        player.hp = Math.max(0, player.hp-pdmg);
+        popDamage('-'+pdmg, 'bleed');
+        setBattleMsg('중독된 상처가 욱신거린다…', `중독 피해로 ${pdmg}의 피해를 입었다.`);
+        renderStatus();
+        if(checkBattleEnd()) return;
+      }
+    }
+    // 최후의 발악(사용자 요청 — 보스전 리뉴얼): 매 턴 스스로 HP를 깎는다.
+    if(enemy && enemy.lastStandActive && enemy.hp>0){
+      const selfDmg = Math.max(1, Math.round(enemy.maxhp*0.05));
+      enemy.hp = Math.max(0, enemy.hp - selfDmg);
+      updateEnemyHpBar();
+      popDamage('-'+selfDmg, 'bleed');
+      setBattleMsg(`${enemy.name}이(가) 스스로를 불태우며 힘을 쥐어짠다…`, `자체 피해 ${selfDmg}.`);
+      if(checkBattleEnd()) return;
+    }
+    // 재생의 갑옷(사용자 요청 — 장비 강화): 턴 종료 시 최대HP의 일정 %를 회복.
+    if(typeof getSpecialSum==='function' && player.hp>0 && player.hp<player.maxhp){
+      const regenPct = getSpecialSum('turnRegenPct');
+      if(regenPct>0){
+        const heal = Math.max(1, Math.round(player.maxhp*regenPct));
+        player.hp = Math.min(player.maxhp, player.hp+heal);
+        renderStatus();
+        popDamage('+'+heal, 'heal');
+      }
+    }
     const activeDots = (enemy.dots||[]).filter(d=>d.turns>0);
+    // 역병 잠식(mastery_venomstacks, 역병숙주): 일반 dot과 달리 턴이 지나도
+    // 사라지지 않고 전투가 끝날 때까지 유지되므로, enemy.dots에 영구 저장하지
+    // 않는다. 대신 매 라운드 이 시점에서 현재 스택 수 기준으로 즉석 계산한 임시
+    // dot 객체를 만들어 기존 processDotsSequentially()의 연출/피해 파이프라인에
+    // 그대로 얹는다(신규 애니메이션 코드 불필요). enemy.dots 배열 자체에는 들어가지
+    // 않으므로, 라운드가 끝날 때 enemy.dots를 정리하는 로직(processDotsSequentially
+    // 내부)의 영향을 받지 않고 다음 라운드에도 다시 새로 계산된다.
+    if(enemy && (enemy.venomStacks||0) > 0){
+      // 폭발 정제 각인(re_venomburst, 역병숙주 방어구 각인 — 사용자 요청): 독
+      // 스택이 최대(10)에 도달한 라운드엔, 평소처럼 틱딜 대신 스택을 전부
+      // 소모하는 큰 폭발 피해로 터뜨리고 0으로 리셋한다. 대신 스택당 지속
+      // 피해 자체는 낮다(getVenomDmgPerStack()에서 정제 보너스를 1.3배가
+      // 아니라 1.15배로 낮춰서 반영).
+      const aIdVB = player.equipment && player.equipment.armor;
+      const hasVenomBurst = !!(aIdVB && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdVB).includes('re_venomburst'));
+      let venomTickForLifesteal = 0;
+      if(hasVenomBurst && enemy.venomStacks>=10){
+        const burstDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack() * 3));
+        activeDots.push({type:'poison', turns:1, dmgPerTurn:burstDmg, label:`역병 폭발(${enemy.venomStacks}중첩 전량 소모)`});
+        venomTickForLifesteal = burstDmg;
+        enemy.venomStacks = 0;
+        updateStatusBadges();
+      } else {
+        const venomTickDmg = Math.max(1, Math.round(enemy.venomStacks * getVenomDmgPerStack()));
+        activeDots.push({type:'poison', turns:1, dmgPerTurn:venomTickDmg, label:`역병(${enemy.venomStacks}중첩)`});
+        venomTickForLifesteal = venomTickDmg;
+      }
+      // 만성 기생(rogueVenomRefine, 레벨12, 역병숙주): 이번 라운드 잠식 dot
+      // 피해량의 20%를 자동으로 체력 회복. 실제 enemy.hp 감소는
+      // processDotsSequentially()에서 지연 애니메이션과 함께 처리되지만,
+      // 회복은 그 예정 피해량을 기준으로 즉시 계산해도 무방하다(오차 요인은
+      // 오버킬 정도뿐이라 다른 계열 라이프스틸과 동일한 수준의 근사).
+      if(player.skills && player.skills.includes('rogueVenomRefine') && player.hp>0){
+        // 공생의 각인(re_symbiosis, 역병숙주 장신구): 만성 기생의 라이프스틸
+        // 비율이 20%->35%로 오른다(대신 위 getVenomStackCap()에서 스택
+        // 상한이 10->7로 줄어든다).
+        const cIdSym = player.equipment && player.equipment.accessory;
+        const hasSymbiosis = !!(cIdSym && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdSym).includes('re_symbiosis'));
+        const lifestealRatio = hasSymbiosis ? 0.35 : 0.2;
+        const lifesteal = Math.max(1, Math.round(venomTickForLifesteal*lifestealRatio));
+        player.hp = Math.min(player.maxhp, player.hp+lifesteal);
+        popDamage('+'+lifesteal, 'heal');
+        renderStatus();
+      }
+    }
     if(activeDots.length){
       processDotsSequentially(activeDots, 0);
     } else {
@@ -154,9 +567,120 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   }
   function enemyAction(){
     setTimeout(()=>{
+      // 찰나검사(warrior_chalna) "완급" 콤보의 경직 — 게임 내 최초의 "적 턴
+      // 스킵" 메커닉이라 다른 로직(보스 예고 등)과 얽히지 않도록 함수 맨
+      // 앞에서 가장 먼저 확인하고 조기 반환한다.
+      if(enemy && enemy.chalnaStunTurns>0){
+        enemy.chalnaStunTurns -= 1;
+        setBattleMsg(`${enemy.name}이(가) 경직되어 움직이지 못한다!`, '');
+        updateStatusBadges();
+        finishEnemyTurn();
+        return;
+      }
+      // 회랑의 시조 포즈 리셋(사용자 요청) — 이번 턴 판정 결과(예고/즉시발동/
+      // 평범한 공격)에 따라 아래에서 다시 telegraph/slam으로 바뀔 수 있다.
+      // 다른 몬스터는 setBossPoseImage() 안에서 type 체크로 즉시 무시된다.
+      if(typeof setBossPoseImage==='function') setBossPoseImage('idle');
       let skillKey = null;
-      if(enemy.skills.length && Math.random()<(enemy.skillChance||0.4)){
-        skillKey = enemy.skills[Math.floor(Math.random()*enemy.skills.length)];
+      // 시간의 파수꾼(사용자 기획) — 메아리 큐 기반 전용 행동 결정. 일반
+      // enemy.skills 순환/보스 예고 로직을 완전히 건너뛰고 여기서 skillKey를
+      // 직접 확정한다. tgEchoMult(전역 아님, 이 클로저 지역 변수)는 메아리
+      // 발동 시 0.6, 그 외엔 1 — 아래 데미지 배율 계산에서 곱해 쓴다.
+      let tgEchoMult = 1;
+      let tgRewindPrefix = ''; // 시간 역행 발동 시 최종 label 앞에 붙일 문구
+      let tgEchoBonus = null; // 메아리 재설계(사용자 제보 — "그냥 더 약하게
+      // 치는 거잖아"): 대기 중이던 메아리를 이번 턴 전체를 대체하는 약한
+      // 단독 행동으로 쓰지 않고, 이번 턴의 진짜 행동에 60% 위력만큼
+      // "얹어서" 같이 터뜨리는 보너스로 바꾼다 — 메아리가 뜨는 턴은
+      // 오히려 더 아픈 턴이 된다.
+      if(enemy.type==='timeguardian'){
+        // 귀환의 일격(사용자 기획) — 지난 턴에 명멸의 틈으로 사라졌었다면,
+        // 이번 턴은 무조건 예고 없는 강타로 복귀한다. 메아리 큐/결빙의 궤적
+        // 판단보다 최우선이다.
+        if(enemy.vanishedTurns>0){
+          enemy.vanishedTurns = 0;
+          skillKey = 'guardianReturnStrike';
+        } else {
+          if(!enemy.echoQueue) enemy.echoQueue = [];
+          if(enemy.echoQueue.length) enemy.echoQueue[0].turnsLeft -= 1;
+          let firedEcho = null;
+          let echoIsRewind = false;
+          if(enemy.echoQueue.length && enemy.echoQueue[0].turnsLeft<=0){
+            firedEcho = enemy.echoQueue.shift();
+          } else if(!enemy.rewindUsed && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5 && enemy.echoQueue.length){
+            // 시간 역행: HP 50% 이하에서 1회, 대기 중인 메아리를 예고 없이
+            // 즉시 앞당겨 터뜨린다. 이건 "예고 없는 기습"이 핵심이라 아래
+            // 일반 메아리(스택형)와 다르게 그 턴을 그대로 단독 대체한다.
+            enemy.rewindUsed = true;
+            firedEcho = enemy.echoQueue.shift();
+            echoIsRewind = true;
+            tgRewindPrefix = `${enemy.name}의 몸이 일그러진다… 시간이 역행하며, `;
+          }
+          if(firedEcho && echoIsRewind){
+            skillKey = firedEcho.skillKey; // null이면 기본 공격(무거운 참격)의 메아리
+            tgEchoMult = 0.6;
+          } else {
+            // 이번 턴의 실제 행동을 평소 우선순위 그대로 고른다.
+            if((enemy.vanishCooldown||0) <= 0){
+              // 명멸의 틈(사용자 기획) — 다크홀식 회피+반격 기믹. 이번 턴은
+              // 공격하지 않고 사라진다 — 다음 플레이어 턴 한정으로
+              // data/equipment.js의 getEffectiveEnemyDef()가 사실상 무적 수준의
+              // 방어력을 돌려주게 만들어(독 등 지속피해는 그 계산을 거치지
+              // 않으므로 그대로 적용됨) "공격이 안 먹힌다"를 구현한다. 다음
+              // 파수꾼 턴엔 위 guardianReturnStrike로 예고 없이 돌아와 강타한다.
+              skillKey = 'guardianVanish';
+              enemy.vanishedTurns = 1;
+              enemy.vanishCooldown = 5;
+            } else {
+              enemy.vanishCooldown = Math.max(0, (enemy.vanishCooldown||0) - 1);
+              if((enemy.frostCooldown||0) <= 0){
+                skillKey = 'frostTrajectory';
+                enemy.frostCooldown = 3;
+              } else {
+                enemy.frostCooldown = (enemy.frostCooldown||0) - 1;
+                skillKey = null; // 기본 공격
+              }
+              // "최대 1개만 대기" — 이미 뭔가 대기 중이면 이번 턴 행동은 큐에
+              // 넣지 않는다(대기 중인 메아리가 실제로 발동할 때까지 보존).
+              if(!enemy.echoQueue.length){
+                enemy.echoQueue.push({skillKey, turnsLeft:2});
+              }
+            }
+            // 대기 중이던 메아리가 마침 이번 턴에 발동할 차례였다면, 이번 턴의
+            // 진짜 행동(위에서 고른 것)에 보너스로 얹는다. 명멸의 틈으로
+            // 나가는 턴은 공격 자체가 없으니 얹지 않고 그냥 흘려보낸다.
+            if(firedEcho && skillKey!=='guardianVanish'){
+              tgEchoBonus = firedEcho;
+            }
+          }
+        }
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+      } else
+      // 보스 예고 스킬(사용자 요청 — 어떤 스킬이든 매번 예고). 예고했던 다음
+      // 턴이면 그 스킬을 강제로 확정 발동한다.
+      if(enemy.isBoss && enemy.aboutToUltimate){
+        skillKey = enemy.pendingSkillKey;
+        enemy.aboutToUltimate = false;
+        enemy.telegraphed = false;
+        enemy.pendingSkillKey = null;
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+        if(typeof setBossPoseImage==='function') setBossPoseImage('slam');
+      } else if(enemy.skills.length && Math.random()<(enemy.skillChance||0.4)){
+        const chosen = enemy.skills[Math.floor(Math.random()*enemy.skills.length)];
+        // 보스이고 치유가 아닌 스킬이면 즉시 쓰지 않고 한 턴 예고부터 한다.
+        // 치유는 플레이어에게 위협이 아니라 예고할 이유가 없어 그대로 즉시 사용.
+        if(enemy.isBoss && chosen !== 'heal'){
+          enemy.pendingSkillKey = chosen;
+          enemy.telegraphed = true;
+          enemy.aboutToUltimate = true;
+          setBattleMsg(`${enemy.name}이(가) 힘을 끌어모은다…`, `⚠ 다음 턴 [${BOSS_SKILL_LABELS[chosen]||'강공격'}]이(가) 발동한다!`);
+          showToast(`<h3>⚠ 예고</h3><p><b>[${BOSS_SKILL_LABELS[chosen]||'강공격'}]</b> — 다음 턴 발동!</p>`, '#ff4a3a');
+          if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+          if(typeof setBossPoseImage==='function') setBossPoseImage('telegraph');
+          finishEnemyTurn();
+          return;
+        }
+        skillKey = chosen;
       }
       if(skillKey==='heal' && enemy.hp < enemy.maxhp*0.5){
         const h = Math.round(enemy.maxhp*0.2);
@@ -169,24 +693,170 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
       let dmg;
       let label = `${enemy.name}의 공격!`;
-      if(skillKey==='smash'){ dmg = Math.round(enemy.atk*1.6); label = `${enemy.name}이(가) 강타를 날린다!`; }
-      else if(skillKey==='bite'){ dmg = Math.round(enemy.atk*1.4); label = `${enemy.name}이(가) 물어뜯는다!`; }
-      else if(skillKey==='curse'){ dmg = Math.round(enemy.atk*1.3); label = `${enemy.name}이(가) 저주를 건다!`; }
-      else if(skillKey==='heroWarriorSmite'){ dmg = Math.round(enemy.atk*2.0); label = `${enemy.name}이(가) 필멸의 참격을 내리찍는다!`; }
-      else if(skillKey==='heroMageBurst'){ dmg = Math.round(enemy.atk*2.2); label = `${enemy.name}이(가) 멸망의 화염구를 쏘아보낸다!`; }
-      else if(skillKey==='heroRogueSlash'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 그림자처럼 스며들어 베어낸다!`; }
-      else if(skillKey==='heroPaladinSmite'){ dmg = Math.round(enemy.atk*1.7); label = `${enemy.name}이(가) 심판의 빛을 내려찍는다!`; }
-      else if(skillKey==='heroMechanicBlast'){ dmg = Math.round(enemy.atk*1.8); label = `${enemy.name}이(가) 장치를 기폭시킨다!`; }
+      // 정예 특성(광폭/사냥꾼/복수/광기)을 전부 반영한 이번 턴의 실제 공격력.
+      const effAtk = getEffectiveEnemyAtk();
+      if(skillKey==='smash'){ dmg = Math.round(effAtk*1.6); label = `${enemy.name}이(가) 강타를 날린다!`; }
+      else if(skillKey==='bite'){ dmg = Math.round(effAtk*1.4); label = `${enemy.name}이(가) 물어뜯는다!`; }
+      else if(skillKey==='curse'){ dmg = Math.round(effAtk*1.3); label = `${enemy.name}이(가) 저주를 건다!`; }
+      else if(skillKey==='heroWarriorSmite'){ dmg = Math.round(effAtk*2.0); label = `${enemy.name}이(가) 필멸의 참격을 내리찍는다!`; }
+      else if(skillKey==='heroMageBurst'){ dmg = Math.round(effAtk*2.2); label = `${enemy.name}이(가) 멸망의 화염구를 쏘아보낸다!`; }
+      else if(skillKey==='heroRogueSlash'){ dmg = Math.round(effAtk*1.9); label = `${enemy.name}이(가) 그림자처럼 스며들어 베어낸다!`; }
+      else if(skillKey==='heroPaladinSmite'){ dmg = Math.round(effAtk*1.7); label = `${enemy.name}이(가) 심판의 빛을 내려찍는다!`; }
+      else if(skillKey==='heroMechanicBlast'){ dmg = Math.round(effAtk*1.8); label = `${enemy.name}이(가) 장치를 기폭시킨다!`; }
       else if(skillKey==='heroJesterGamble'){
-        if(Math.random()<0.5){ dmg = Math.round(enemy.atk*3.0); label = `${enemy.name}의 동전이 앞면으로 떨어진다! 회심의 일격!`; }
+        if(Math.random()<0.5){ dmg = Math.round(effAtk*3.0); label = `${enemy.name}의 동전이 앞면으로 떨어진다! 회심의 일격!`; }
         else { dmg = 0; label = `${enemy.name}의 동전이 뒷면으로 떨어진다…`; }
       }
-      else if(skillKey==='trueBossJudgment'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 태초의 심판을 내리찍는다!`; }
-      else if(skillKey==='krakenGrip'){ dmg = Math.round(enemy.atk*1.75); label = `${enemy.name}이(가) 촉수로 온몸을 옥죈다!`; }
-      else if(skillKey==='ironCrush'){ dmg = Math.round(enemy.atk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
-      else if(skillKey==='wraithWail'){ dmg = Math.round(enemy.atk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
-      else if(skillKey==='eliteFerocity'){ dmg = Math.round(enemy.atk*2.1); label = `${enemy.name}이(가) 정예의 위압적인 기세로 짓쳐든다!`; }
-      else { dmg = enemy.atk + Math.floor(Math.random()*3)-1; }
+      else if(skillKey==='trueBossJudgment'){ dmg = Math.round(effAtk*1.9); label = `${enemy.name}이(가) 태초의 심판을 내리찍는다!`; }
+      else if(skillKey==='krakenGrip'){ dmg = Math.round(effAtk*1.75); label = `${enemy.name}이(가) 촉수로 온몸을 옥죈다!`; }
+      else if(skillKey==='ironCrush'){ dmg = Math.round(effAtk*1.9); label = `${enemy.name}이(가) 쇳덩이 같은 주먹을 내리찍는다!`; }
+      else if(skillKey==='wraithWail'){ dmg = Math.round(effAtk*1.55); label = `${enemy.name}의 귀곡성이 정신을 뒤흔든다!`; }
+      else if(skillKey==='eliteFerocity'){ dmg = Math.round(effAtk*2.1); label = `${enemy.name}이(가) 정예의 위압적인 기세로 짓쳐든다!`; }
+      // 시간의 마녀(아이온) 전용 — 매 턴(스킬 종류 무관) "시간 파편" 스택이
+      // 쌓인다. 플레이어의 시간술사 궁극기(mageTimeParadox)와 완전히 같은
+      // 스택 공식(최대5, 1.0+0.6×n)을 미러링한다.
+      if(enemy.type==='timewitch'){
+        battleFlags.aionTimeStacks = Math.min(5, (battleFlags.aionTimeStacks||0)+1);
+      }
+      if(skillKey==='aionHaste'){
+        dmg = Math.round(effAtk*1.9);
+        label = `${enemy.name}이(가) 시간을 압축해 순식간에 거리를 좁힌다!`;
+      }
+      else if(skillKey==='aionParadox'){
+        const stacks = battleFlags.aionTimeStacks||0;
+        dmg = Math.round(effAtk*(1.0 + stacks*0.6));
+        label = `무너져 있던 시간이 한꺼번에 쏟아진다! (누적 ${stacks})`;
+        battleFlags.aionTimeStacks = 0; // 소비
+      }
+      // ---------- 신규 4종 보스 전용 스킬 ----------
+      // 각 스킬마다 playBanner()로 서로 다른 시각 효과를 준다(사용자 요청 —
+      // "유물 발동처럼 스킬마다 이펙트가 달랐으면"). 배너 클래스별 색상/글로우는
+      // index.html에 CSS로 추가해야 실제로 보인다(별도 안내 참고).
+      else if(skillKey==='lockedVoices'){ dmg = Math.round(effAtk*1.5); label = `${enemy.name}의 두건 속에서 수십 개의 목소리가 동시에 흘러나온다!`; playBanner('잠긴 목소리들','fx-voices'); }
+      else if(skillKey==='prophecyFlame'){ dmg = Math.round(effAtk*2.0); label = `지팡이에 갇힌 유령불이 폭발하듯 타오른다!`; playBanner('예언의 불꽃','fx-prophecy'); }
+      else if(skillKey==='judgmentKey'){ dmg = Math.round(effAtk*1.6); label = `${enemy.name}이(가) 굽은 단검으로 급소를 찌른다 — 짤그랑, 열쇠 부딪는 소리가 울린다.`; playBanner('심판의 열쇠','fx-key'); }
+      else if(skillKey==='whisperingHorn'){ dmg = Math.round(effAtk*1.85); label = `낮은 뿔피리 소리와 함께 그림자 사슬이 뻗어온다!`; playBanner('속삭이는 뿔피리','fx-horn'); }
+      else if(skillKey==='petalBloodletting'){ dmg = Math.round(effAtk*1.4); label = `칼날꽃이 만개하며 가시 섞인 꽃잎을 흩뿌린다!`; playBanner('꽃잎의 선혈','fx-petal'); }
+      else if(skillKey==='bladeStemSweep'){ dmg = Math.round(effAtk*2.1); label = `굽은 칼날 줄기가 그대로 휩쓸어 벤다!`; playBanner('칼날 줄기의 휩쓸기','fx-bladestem'); }
+      else if(skillKey==='pulseShockwave'){ dmg = Math.round(effAtk*1.7); label = `녹슨 톱니 우리 안, 거대한 심장이 크게 박동한다!`; playBanner('박동의 충격파','fx-pulse'); }
+      else if(skillKey==='rustedChainBind'){ dmg = Math.round(effAtk*1.5); label = `사방에서 녹슨 사슬이 튀어나와 온몸을 옭아맨다!`; playBanner('녹슨 사슬의 포박','fx-chain'); }
+      // ---------- 2차 신규 4종 보스 전용 스킬 ----------
+      else if(skillKey==='carvedBrand'){ dmg = Math.round(effAtk*1.55); label = `석판 표면의 룬이 붉게 달아오르며 살갗에 새겨진다!`; playBanner('새겨지는 낙인','fx-brand'); }
+      else if(skillKey==='unblinkingGaze'){ dmg = Math.round(effAtk*2.05); label = `석판 중앙의 거대한 눈이 한 번도 깜빡이지 않은 채 옭아맨다!`; playBanner('깜빡이지 않는 시선','fx-gaze'); }
+      else if(skillKey==='threadWinds'){ dmg = Math.round(effAtk*1.5); label = `진홍빛 실이 사지를 타고 스멀스멀 감겨온다!`; playBanner('실이 감긴다','fx-thread'); }
+      else if(skillKey==='scissorGreeting'){ dmg = Math.round(effAtk*1.9); label = `가위날 두 손이 인사하듯 빠르게 두 번 엇갈린다!`; playBanner('가위의 인사','fx-scissor'); }
+      else if(skillKey==='burningSin'){ dmg = Math.round(effAtk*1.45); label = `등롱 하나가 유독 짙은 색으로 타오르며 열기를 뿜는다!`; playBanner('타오르는 죄','fx-sin'); }
+      else if(skillKey==='lanternChorus'){ dmg = Math.round(effAtk*2.0); label = `엉겨붙은 등롱 전부가 한꺼번에 타오른다!`; playBanner('등롱의 합창','fx-chorus'); }
+      else if(skillKey==='crumblingSand'){ dmg = Math.round(effAtk*1.6); label = `허물어진 모래가 파도처럼 밀려든다!`; playBanner('무너지는 모래','fx-sand'); }
+      else if(skillKey==='timeTurningBack'){ dmg = Math.round(effAtk*2.15); label = `쏟아지던 모래가 순간 거꾸로 흐르며 시간을 되감는다!`; playBanner('되돌아오는 시간','fx-timeturn'); }
+      // 시간의 파수꾼(사용자 기획) — 결빙의 궤적. 신선 발동이면 플레이어 속도를
+      // 2턴간 낮추고, 메아리(tgEchoMult<1)면 디버프 재적용 없이 피해만 60%로
+      // 재현한다.
+      else if(skillKey==='frostTrajectory'){
+        dmg = Math.round(effAtk*1.7*tgEchoMult);
+        if(tgEchoMult>=1){
+          label = `${enemy.name}이(가) 얼어붙은 궤적을 그으며 짓쳐든다!`;
+          const spdDelta = Math.min(player.spd-1, 3);
+          if(spdDelta>0){
+            battleFlags.tgSpdDebuff = {delta:spdDelta, turnsLeft:2};
+            player.spd -= spdDelta;
+          }
+          playBanner('결빙의 궤적','fx-frost');
+          // 연출 정리(사용자 요청) — VFX 이미지가 생기면서 예전 섬광/균열
+          // CSS 이펙트는 더 이상 같이 쓰지 않는다(겹치면 지저분해짐).
+          if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('frost');
+        } else {
+          label = `과거의 결빙 궤적이 메아리처럼 다시 덮쳐온다!`;
+          playBanner('메아리 · 결빙의 궤적','fx-frost');
+          if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('frost echo');
+        }
+      }
+      // 명멸의 틈(사용자 기획) — 파수꾼이 이번 턴은 공격하지 않고 사라진다.
+      // 피해는 0으로 둬서 아래 dmg<=0 공용 분기(빗나감 처리 + 조기 반환)를
+      // 그대로 재사용한다. 실제 "다음 플레이어 턴 무효화"는
+      // data/equipment.js의 getEffectiveEnemyDef()가 enemy.vanishedTurns를
+      // 보고 처리한다(이 파일에서는 예고 배너/VFX만 담당). 몬스터 초상화
+      // 자체도 스윽 사라지게 한다(사용자 요청) — 귀환의 일격 때 되돌아옴.
+      else if(skillKey==='guardianVanish'){
+        dmg = 0;
+        label = `${enemy.name}이(가) 명멸의 틈으로 스며들며 사라진다…`;
+        playBanner('명멸의 틈','fx-voidstep');
+        // 버그 수정(사용자 제보 — 명멸의 틈은 잘 뜨는데 초상화가 페이드아웃이
+        // 안 됨): 클래스+키프레임 방식이 다른 CSS 규칙과 얽혀 안 먹혔을
+        // 가능성이 있어, 이번엔 인라인 스타일로 직접 opacity/transform을
+        // 강제 설정한다 — 인라인 스타일은 클래스 기반 규칙보다 항상 우선
+        // 적용되므로 다른 규칙과 부딪힐 여지가 없다.
+        const imgEl = document.querySelector('#bt-stage svg, #bt-stage img');
+        if(imgEl){
+          imgEl.style.transition = 'opacity .7s ease-in, transform .7s ease-in, filter .7s ease-in';
+          imgEl.style.opacity = '0';
+          imgEl.style.transform = 'translateX(80px) scale(0.8)';
+          imgEl.style.filter = 'brightness(0.3) saturate(0.3)';
+        }
+        // 연출 순서 조정(사용자 제보 — "사라지는 느낌이 안 든다"): 보이드
+        // VFX 이미지(260px, 꽤 큼)가 캐릭터랑 동시에 뜨면 자리를 덮어버려서
+        // 정작 페이드 동작 자체가 눈에 안 들어왔다. 캐릭터가 먼저 눈에 띄게
+        // 빠져나간 뒤에(250ms) 그 자리에 균열이 남는 순서로 바꾼다.
+        setTimeout(()=>{ if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('void'); }, 250);
+      }
+      // 귀환의 일격(사용자 기획) — 명멸 다음 턴, 예고 없이 돌아와 크게
+      // 후려친다. 초상화를 즉시 원래대로 되돌린다(사용자 요청 — "확
+      // 나타나서 베는" 연출). transition을 끈 채로 스타일을 지워 즉시
+      // 원래 상태로 스냅되게 하고, 곧바로 공용 lungeEnemy() 베기 애니메이션이
+      // 이어지게 한다.
+      else if(skillKey==='guardianReturnStrike'){
+        dmg = Math.round(effAtk*2.0);
+        label = `사라졌던 ${enemy.name}이(가) 예고 없이 돌아와 후려친다!`;
+        playBanner('귀환의 일격','fx-voidstep');
+        if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('returnstrike');
+        const imgEl2 = document.querySelector('#bt-stage svg, #bt-stage img');
+        if(imgEl2){
+          imgEl2.style.transition = 'none';
+          // 강제 리플로우(사용자 제보 — 되돌아왔는데 살짝 어두운 채로 남음):
+          // transition:none을 준 직후 바로 값을 바꾸면 브라우저가 이전
+          // transition을 아직 적용 중인 채로 처리해서 filter가 완전히 안
+          // 지워지고 남는 경우가 있었다. 이 코드베이스 다른 곳(shakeEnemy 등)
+          // 에서도 쓰는 방식대로, 강제로 한 번 리플로우시켜 transition:none이
+          // 확실히 반영된 뒤에 값을 지운다.
+          void imgEl2.offsetWidth;
+          imgEl2.style.opacity = '';
+          imgEl2.style.transform = '';
+          imgEl2.style.filter = '';
+        }
+      }
+      else {
+        dmg = effAtk + Math.floor(Math.random()*3)-1;
+        // 시간의 파수꾼 기본 공격 — 사용자 제보("평타가 약하다")로 전용
+        // 배율(1.4배)과 전용 대사를 추가해 다른 몬스터의 밋밋한 기본 공격과
+        // 차별화한다. 메아리로 재현될 때(tgEchoMult<1)는 기존처럼 그 결과값에
+        // 다시 0.6배를 곱한다(즉 신선 발동 기준 1.4배가 메아리에서 0.84배로
+        // 줄어드는 흐름 — 원래 있던 "메아리는 약하다" 설계와 자연히 맞물림).
+        if(enemy.type==='timeguardian'){
+          if(tgEchoMult>=1){
+            dmg = Math.round(dmg*1.4);
+            label = `${enemy.name}이(가) 무거운 참격을 내리찍는다!`;
+          } else {
+            dmg = Math.round(dmg*1.4*tgEchoMult);
+            label = `${enemy.name}의 잔상이 한 박자 늦게 따라와 후려친다!`;
+          }
+        }
+      }
+      // 시간 역행 발동 시(사용자 기획) 최종 대사 앞에 붙인다 — 위쪽에서 바로
+      // setBattleMsg를 부르면 아래에서 다시 덮어써지므로 여기서 합친다.
+      if(tgRewindPrefix) label = tgRewindPrefix + label;
+
+      // 메아리 보너스(사용자 요청 — 스택형 재설계) — 이번 턴의 진짜 행동
+      // 위에 대기 중이던 메아리를 60% 위력만큼 더한다. 두 번째 데미지
+      // 이벤트를 새로 만드는 대신 하나의 dmg/label에 합쳐서, 방어/회피/
+      // 생명유지 판정 파이프라인을 두 번 타지 않게 한다(전투 파일 간
+      // 결합도가 높아 그쪽을 건드리는 게 훨씬 위험하다고 판단).
+      if(tgEchoBonus){
+        const bonusDmg = tgEchoBonus.skillKey==='frostTrajectory'
+          ? Math.round(effAtk*1.7*0.6)
+          : Math.round(effAtk*1.4*0.6);
+        dmg += bonusDmg;
+        label += ` 거기에 한 박자 늦은 메아리가 곧바로 겹쳐 든다!`;
+      }
 
       if(dmg<=0){
         setBattleMsg(label, `공격이 완전히 빗나갔다!`);
@@ -195,7 +865,24 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         return;
       }
 
-      const dodgeChance = getSpecialSum('dodgeChance') + getBloodPactDodgeBonus();
+      // 은신(stealth): 이번에 오는 적 공격을 확정으로 회피한다. 원래 이 플래그
+      // (player.stealthEvadeArmed)가 여기서 전혀 소비되지 않는 버그가 있었다 —
+      // 은신을 써도 사실상 아무 효과가 없었다. 일반 회피율 판정보다 먼저 체크해
+      // 100% 회피를 보장한다.
+      if(player.stealthEvadeArmed){
+        player.stealthEvadeArmed = false;
+        playBanner('완전 회피!','dodge');
+        setBattleMsg(label, `${player.name}이(가) 그림자 속으로 완전히 몸을 숨겨 공격을 피했다!`);
+        if(checkBattleEnd()) return;
+        resetCommandUI();
+        return;
+      }
+
+      // 잔심의 각인(ch_lingering, 찰나의 검사 방어구 각인) — 찰나를 예약하는
+      // 동안엔 받는 피해가 줄어드는 대신 회피율이 0이 된다.
+      const aIdLing = player.equipment && player.equipment.armor;
+      const hasLingering = !!(battleFlags && battleFlags.chalnaReserve && aIdLing && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdLing).includes('ch_lingering'));
+      const dodgeChance = hasLingering ? 0 : getTotalDodgeChance();
       if(dodgeChance>0 && Math.random()<dodgeChance){
         playBanner('회피!','dodge');
         setBattleMsg(label, `${player.name}이(가) 재빠르게 공격을 피했다!`);
@@ -204,7 +891,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         return;
       }
 
-      let mitigated = Math.max(1, dmg - player.def);
+      let mitigated = Math.max(1, dmg - player.def - getMartyrSealDefBonus());
       if(player.buffDefTurns > 0){
         mitigated = Math.max(1, Math.round(mitigated * player.buffDefMult));
         player.buffDefTurns -= 1;
@@ -229,12 +916,50 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       if(battleFlags && battleFlags.rig2 && battleFlags.rig2.shieldPct){
         reduceMult -= battleFlags.rig2.shieldPct;
       }
+      if(battleFlags && battleFlags.omegaRig && battleFlags.omegaRig.shieldPct){
+        reduceMult -= battleFlags.omegaRig.shieldPct;
+      }
       reduceMult += getRelicSum('dmgTakenPctMult');
+      // 잔심의 각인(ch_lingering) — 위에서 계산해둔 hasLingering 재사용.
+      if(hasLingering) reduceMult -= 0.30;
+      // 결투자의 서약(relic_duelistoath): 일반 몬스터(정예/보스 아님) 상대로만
+      // 받는 피해 증가.
+      if(!(enemy && (enemy.isElite || enemy.isBoss))) reduceMult += getRelicSum('normalDmgTakenPctMult');
       if(battleFlags && battleFlags.diceEffect==='dmgtaken') reduceMult += 0.3;
+      // 불사의 광기(we_madimmortal) 발동 이후로는 이번 전투 내내 받는 피해 +25%.
+      if(battleFlags && battleFlags.madImmortalTriggered) reduceMult += 0.25;
+      // 중액 대출(외상 도박사)의 페널티 — 상환율만큼 완화되는 받는 피해 증가.
+      // getDebtorDmgTakenMult()는 대출이 없으면 1을 반환하므로 reduceMult에
+      // 곱해도 다른 직업에는 전혀 영향이 없다.
+      reduceMult *= getDebtorDmgTakenMult();
       reduceMult = Math.max(0.15, reduceMult);
       if(reduceMult!==1) mitigated = Math.max(1, Math.round(mitigated*reduceMult));
 
       let extraMsg = '';
+      // 장비 강화(사용자 요청) — 강철판/응급 갑옷/탐욕의 목걸이의 받는 피해 증감.
+      // getSpecialSum은 equippedSpecials()를 거치므로 강화로 얻은 special도
+      // 자동으로 합산된다(js/blacksmith.js 참고).
+      if(typeof getSpecialSum==='function'){
+        let armorMult = 1 - getSpecialSum('dmgReductionPct') + getSpecialSum('dmgTakenPctBonus');
+        if(player.maxhp>0 && (player.hp/player.maxhp)<=0.3){
+          const armorId = player.equipment && player.equipment.armor;
+          if(armorId && typeof getEnhancementsFor==='function' && getEnhancementsFor(armorId).includes('emergency')){
+            armorMult -= ENHANCEMENTS.emergency.lowHpDmgReduction.pct;
+          }
+        }
+        armorMult = Math.max(0.1, armorMult);
+        if(armorMult!==1) mitigated = Math.max(1, Math.round(mitigated*armorMult));
+      }
+      // 마나 갑옷: HP 대신 보유 MP로 피해의 절반까지 흡수.
+      if(typeof hasSpecial==='function' && hasSpecial('manaArmor') && player.mp>0 && mitigated>0){
+        const absorbNeed = Math.round(mitigated*0.5);
+        const absorbed = Math.min(player.mp, absorbNeed);
+        if(absorbed>0){
+          player.mp -= absorbed;
+          mitigated -= absorbed;
+          extraMsg += ` 마나 갑옷이 MP ${absorbed}을(를) 소모해 피해를 흡수했다!`;
+        }
+      }
 
       // 뱀의 허물: 이번 전투에서 실제로 HP 피해를 받는 첫 순간에만 발동(회피/빗나감엔 발동하지 않음 — 이 지점까지 오면 이미 그 조건은 통과한 것)
       if(mitigated>0 && hasRelicFlag('snakeskinFirstHit') && battleFlags && !battleFlags.snakeskinUsed){
@@ -254,11 +979,64 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         battleFlags.guardian = true;
         playBanner('완전 방어!','guardian');
         extraMsg += ' 수호자의 부적이 치명적인 일격을 완전히 막아냈다!';
+      } else if(mitigated >= player.hp && battleFlags && !battleFlags.undyingArmorUsed && hasSpecial('preventLethalOnce')){
+        // 불굴의 갑옷(사용자 요청 — 장비 강화). 완전 차단이 아니라 HP 1로만 버틴다는
+        // 점이 수호자의 부적/촛불과 다르다.
+        battleFlags.undyingArmorUsed = true;
+        mitigated = player.hp - 1;
+        playBanner('불굴!','guardian');
+        extraMsg += ' 불굴의 갑옷이 치명적인 피해를 버텨냈다!';
+      } else if(mitigated >= player.hp && battleFlags && !battleFlags.madImmortalUsed && (()=>{
+          const aIdMI = player.equipment && player.equipment.armor;
+          return aIdMI && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdMI).includes('we_madimmortal');
+        })()){
+        // 불사의 광기(we_madimmortal, 혈맹의 검투사 방어구 각인 — 사용자 요청).
+        // 불굴의 갑옷과 같은 자리(치명적 피해 1회 방지)지만, 대신 발동 이후로는
+        // 이번 전투 내내 받는 피해가 25% 늘어난다(battleFlags.madImmortalTriggered
+        // 로 표시 — 아래 reduceMult 계산부에서 확인).
+        battleFlags.madImmortalUsed = true;
+        battleFlags.madImmortalTriggered = true;
+        mitigated = player.hp - 1;
+        playBanner('광기!','guardian');
+        extraMsg += ' 광기가 죽음을 밀어내지만, 그 대가로 앞으로 더 크게 얻어맞게 된다!';
       }
 
       player.hp = Math.max(0, player.hp - mitigated);
       checkPaladinAwoken();
-      if(mitigated>0) Sound.hit();
+      // 적 공격 연출(사용자 요청) — 회피/무효화된 경우는 위쪽 dodgeChance
+      // 분기에서 이미 return돼서 여기까지 안 온다. 즉 이 지점에 도달했다는
+      // 것 자체가 "공격이 실제로 진행됐다"는 뜻이라 mitigated 값과 무관하게
+      // (0이어도) 항상 연출한다.
+      lungeEnemy();
+      if(mitigated>0) shakePlayerArea();
+      // 타격음 타이밍 재수정(사용자 재제보 — "여전히 늦게 들린다") — 이전에
+      // lungeEnemy() 애니메이션의 임팩트 프레임(133ms)에 맞춰 130ms 지연시켰는데,
+      // 정작 HP바 갱신(renderStatus())과 화면 흔들림(shakePlayerArea())은 전부
+      // 이 지점에서 "즉시"(동기적으로) 일어나고 있었다 — 즉 소리만 130ms 늦게
+      // 나서 오히려 HP바/흔들림보다 더 크게 어긋나 보인 것. 애니메이션의 미세한
+      // 피크보다 HP바/흔들림 같은 즉각적인 신호가 더 지배적이라고 판단해,
+      // 소리도 다시 즉시(다른 연출과 같은 tick) 재생하도록 되돌린다.
+      // 시간의 파수꾼 전용 공격음(사용자 요청) — 플레이어 베기음을 피치
+      // 다운해서 재사용(칼을 휘두르는 존재라는 정체성에 맞춰).
+      if(mitigated>0){
+        if(enemy.type==='timeguardian') Sound.guardianSlash();
+        else Sound.hit();
+      }
+
+      // 정예 특성 — 흡혈(가한 피해의 20% 회복)/독성(적중 시 플레이어 중독 3턴 부여).
+      if(mitigated>0 && enemy.eliteTraits && enemy.eliteTraits.length){
+        if(hasEliteTrait('lifesteal')){
+          const healAmt = Math.max(1, Math.round(mitigated*0.2));
+          enemy.hp = Math.min(enemy.maxhp, enemy.hp+healAmt);
+          updateEnemyHpBar();
+          extraMsg += ` ${enemy.name}이(가) 피해의 일부를 흡수해 회복했다!`;
+        }
+        if(hasEliteTrait('poison')){
+          player.poisonTurns = 3;
+          player.poisonDmgPerTurn = Math.max(1, Math.round(effAtk*0.15));
+          extraMsg += ' 상처에 독이 스며든다!';
+        }
+      }
 
       // 거울의 파편(반사) / 복수자의 반지(다음 공격 무장) — 실제로 HP 피해를 받았을 때만 발동
       if(mitigated>0){
@@ -272,6 +1050,34 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           }
         }
         if(hasRelicFlag('revengeArmBonus') && battleFlags){
+          battleFlags.revengeArmed = true;
+        }
+        // 가시 갑옷(사용자 요청 — 장비 강화): 받은 피해의 15% 반사.
+        if(hasSpecial('thornsPct')){
+          const thornDmg = Math.max(0, Math.round(mitigated*getSpecialSum('thornsPct')));
+          if(thornDmg>0){
+            enemy.hp = Math.max(0, enemy.hp-thornDmg);
+            updateEnemyHpBar();
+            popDamage('-'+thornDmg,'counter');
+            extraMsg += ` 가시 갑옷이 ${thornDmg}의 피해를 반사했다!`;
+          }
+        }
+        // 가시 갑옷 각인(pa_thornseal, 순교자 방어구 각인 — 사용자 요청):
+        // 순교자의 인장(방어력 보너스)은 그대로 유지되면서, 추가로 누적
+        // 희생 횟수 1회당 소량의 반사 피해가 함께 나간다.
+        const aIdTS = player.equipment && player.equipment.armor;
+        if(aIdTS && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdTS).includes('pa_thornseal')){
+          const sacCount = Math.min(10, player.martyrSacrificeCount||0);
+          if(sacCount>0){
+            const sealThornDmg = Math.max(0, sacCount*3);
+            enemy.hp = Math.max(0, enemy.hp-sealThornDmg);
+            updateEnemyHpBar();
+            popDamage('-'+sealThornDmg,'counter');
+            extraMsg += ` 가시 갑옷 각인이 희생의 무게(${sacCount}회)만큼 ${sealThornDmg}의 피해를 반사했다!`;
+          }
+        }
+        // 반격의 갑옷(사용자 요청 — 장비 강화): 다음 공격 강화 예약.
+        if(hasSpecial('counterOnHit') && battleFlags){
           battleFlags.revengeArmed = true;
         }
         // 인내(mastery_endurance): 실제로 HP 피해를 입을 때마다 스택이 쌓인다.
@@ -317,7 +1123,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
 
   function applyDot(spec){
     if(!spec) return;
-    const basisVal = spec.basis==='atk' ? effectiveAtk() : player.mag;
+    const basisVal = spec.basis==='atk' ? effectiveAtk() : effectiveMag();
     let dmgPerTurn = Math.max(1, Math.round(basisVal*spec.ratio));
     const boost = getDotBoostRatio(spec.type);
     if(boost>0) dmgPerTurn = Math.round(dmgPerTurn*(1+boost));
@@ -331,6 +1137,26 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     }
     playStatusFx(spec.type);
     Sound.statusApply(spec.type);
+    updateStatusBadges();
+  }
+  // 전염된 상처(relic_infectedwound): 공격 적중마다 확률로 감염 도트를 걸거나
+  // 중첩시킨다(최대 5중첩). 기존 applyDot()은 같은 종류 재적용 시 그냥
+  // 갱신(overwrite)만 하는 방식이라 "중첩"이 안 돼서 별도 함수로 뺐다.
+  // equipment.js의 consumeOnHitBonuses()(공격 행동 1회당 정확히 한 번 호출
+  // 보장)에서 호출한다.
+  function applyInfectedWoundOnHit(){
+    const chance = getRelicSum('infectedWoundChance');
+    if(chance<=0 || Math.random()>=chance || !enemy) return;
+    if(!enemy.dots) enemy.dots = [];
+    const existing = enemy.dots.find(d=>d.type==='infection');
+    const stacks = Math.min(5, (existing ? existing.stacks : 0) + 1);
+    const dmgPerTurn = Math.max(1, Math.round(effectiveAtk()*0.10*stacks));
+    if(existing){ existing.turns = 3; existing.dmgPerTurn = dmgPerTurn; existing.stacks = stacks; }
+    else { enemy.dots.push({type:'infection', turns:3, dmgPerTurn, stacks, label:'전염된 상처'}); }
+    // 전용 이펙트/사운드 자산이 없어 출혈(bleed) 것을 재사용한다(내부 type은
+    // 'infection'으로 별도 유지되어 뱃지/스택 로직엔 영향 없다).
+    playStatusFx('bleed');
+    Sound.statusApply('bleed');
     updateStatusBadges();
   }
   // 스킬에 정의된 단일 dot(s.dot) 또는 다중 dot(s.dots) 배열을 모두 함께 적용하고,
@@ -362,6 +1188,15 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         triggered = true;
       }
     }
+    // 저주 폭발(mageCurseNova, 저주술사): statusSynergyBonus와 동일한 패턴으로, 보유한
+    // 저주 개수만큼 곱연산 배율이 붙는다(relics.js의 getCurseCount() 재사용).
+    if(s.curseCountBonus){
+      const curses = (typeof getCombatCurseCount === 'function') ? getCombatCurseCount() : ((typeof getCurseCount === 'function') ? getCurseCount() : 0);
+      if(curses > 0){
+        d = Math.round(d * (1 + curses*s.curseCountBonus));
+        triggered = true;
+      }
+    }
     if(s.selfHpBonusMax){
       const missingRatio = 1 - (player.hp/player.maxhp);
       d = Math.round(d * (1 + missingRatio*s.selfHpBonusMax));
@@ -372,7 +1207,32 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function effectiveAtk(){
     let a = player.atk;
     if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
-    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus()));
+    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus() + getReceivableAtkBonus() + getVenomAbsorbBonus()));
+    // 광전사의 반지(사용자 요청 — 장비 강화): HP 40% 이하일 때 공격력 +30%.
+    if(typeof getEnhancementsFor==='function' && player.equipment && player.equipment.accessory){
+      const accId = player.equipment.accessory;
+      if(getEnhancementsFor(accId).includes('berserkring') && player.maxhp>0 && (player.hp/player.maxhp)<=0.4){
+        a = Math.round(a*1.30);
+      }
+    }
+    return a;
+  }
+  // effectiveMag() — 사용자 제보: "공격력 버프"류(명상/계율/미수금/행운의
+  // 파도/광전사의 반지 등, 전부 "atk" 이름이 붙어 있지만 실제로는 "지금 쓰는
+  // 주력 공격 스탯"을 올려주려는 의도)가 마력(mag) 기반 직업(마법사/기관사/
+  // 도박사 계열)에는 전혀 적용되지 않고 있었다. effectiveAtk()와 완전히
+  // 동일한 보너스들을 player.mag 기준으로 다시 계산한다 — 이제 player-actions.js
+  // /enemy-turn.js의 마법 피해 계산은 전부 player.mag 대신 이 함수를 쓴다.
+  function effectiveMag(){
+    let a = player.mag;
+    if(player.buffAtkTurns > 0) a = Math.round(a * (player.buffAtkMult||1));
+    a = Math.round(a * (1 + getCreedAtkBonus() + getLuckWaveBonus() + getReceivableAtkBonus() + getVenomAbsorbBonus()));
+    if(typeof getEnhancementsFor==='function' && player.equipment && player.equipment.accessory){
+      const accId = player.equipment.accessory;
+      if(getEnhancementsFor(accId).includes('berserkring') && player.maxhp>0 && (player.hp/player.maxhp)<=0.4){
+        a = Math.round(a*1.30);
+      }
+    }
     return a;
   }
   function consumeAtkBuff(){
@@ -388,20 +1248,126 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     const missingRatio = 1 - (player.hp/player.maxhp);
     return missingRatio * 0.35;
   }
+  // 과열 내성(mechanicHeatResist, 폭주 화부 레벨12): applyOverheatOverflowDamage()가
+  // 과부하 자해가 발생할 때마다 battleFlags.overheatDodgeStacks를 쌓아둔다
+  // (스택당 +2%p, 최대 +20%p). 여기서는 그 스택을 회피율로 환산만 한다.
+  function getOverheatDodgeBonus(){
+    if(!(battleFlags && battleFlags.overheatDodgeStacks)) return 0;
+    return Math.min(10, battleFlags.overheatDodgeStacks) * 0.02;
+  }
+  // 속도 스탯 활용(사용자 요청 — 도망 확률/마녀의 시계 유물 외엔 쓸모가 없었음).
+  // 적과의 속도 차이만큼 회피율을 준다(차이 1당 +0.5%p). 너무 세지지 않도록
+  // 15%p 상한을 둔다 — 다른 회피 보너스(혈서 최대 35%p, 과열내성 최대 20%p)와
+  // 마찬가지로 이 항목 자체의 상한이며, dodgeChance 합산식(enemy-turn.js)에서
+  // 다른 소스와 그대로 더해진다.
+  function getSpdDodgeBonus(){
+    if(!player || !enemy) return 0;
+    const diff = (player.spd||0) - (enemy.spd||0);
+    if(diff<=0) return 0;
+    return Math.min(0.15, diff*0.005);
+  }
+  // 회피율 총합 계산(사용자 요청 — 혈서/과열내성은 다른 회피 소스와 합산하지
+  // 않고 그 스킬 자체의 회피율만 그대로 따른다). 혈서(HP가 낮을수록 최대
+  // 35%p)나 과열내성(자해 스택당 최대 20%p) 중 하나라도 보유하고 있으면 그
+  // 값만 사용하고, 유물 회피(getSpecialSum('dodgeChance'))나 속도 기반 보너스는
+  // 무시한다. 둘 다 없을 때만 유물+속도 회피를 합산한다. 혈서/과열내성은 서로
+  // 다른 직업 전용 마스터리라 한 캐릭터가 동시에 갖는 경우는 없다.
+  function getTotalDodgeChance(){
+    if(player.skills && player.skills.includes('mastery_bloodpact')) return getBloodPactDodgeBonus();
+    if(player.skills && player.skills.includes('mechanicHeatResist')) return getOverheatDodgeBonus();
+    return getSpecialSum('dodgeChance') + getSpdDodgeBonus();
+  }
   // 시간 왜곡(mastery_timewarp): 마녀의 시계 유물과 동일한 "이번 턴 이미 사용함" 안전
   // 장치(battleFlags.witchClockUsedThisTurn)를 공유하는 고정 20% 확률 추가 행동.
   function getTimeWarpExtraChance(){
     if(!(player.skills && player.skills.includes('mastery_timewarp'))) return 0;
-    return 0.20;
+    // 역행의 각인(me_regression, 시간술사 방어구 각인 — 사용자 요청): 발동
+    // 확률 20%->35%. 대신 이걸로 터진 추가 행동에서 가속 주문 위력이 20%
+    // 낮아지는데, 그 표시는 enemyTurn()의 발동 지점에서 battleFlags에 심는다.
+    const armorId = player.equipment && player.equipment.armor;
+    const hasRegression = armorId && typeof getEnhancementsFor==='function' && getEnhancementsFor(armorId).includes('me_regression');
+    return hasRegression ? 0.35 : 0.20;
   }
   // 계율(mastery_creed): 계율을 유지한 스택 수만큼 공격력이 오른다(스택당 +5%, 최대 +25%).
   function getCreedAtkBonus(){
     if(!(battleFlags && battleFlags.creed)) return 0;
     return Math.min(5, battleFlags.creedStacks||0) * 0.05;
   }
+  // 미수금(jesterReceivable, 불운의 채권자 레벨12): 채무 스택 1당 공격력 +3%(최대 +15%).
+  function getReceivableAtkBonus(){
+    if(!(player.skills && player.skills.includes('jesterReceivable'))) return 0;
+    if(!battleFlags || !battleFlags.jesterDebtStacks) return 0;
+    return Math.min(5, battleFlags.jesterDebtStacks) * 0.03;
+  }
+  // 순교자의 인장(paladinMartyrSeal, 순교자 레벨12): 희생의 맹세 누적 발동
+  // 횟수 1회당 방어력 +2(최대 10회분=+20). 영구 스탯이 아니라 매 피격마다
+  // 계산해서 더하는 방식이라(effectiveAtk 같은 별도 스탯 필드를 새로 두지
+  // 않고) 이 함수 하나만 고치면 수치 조정이 끝난다.
+  function getMartyrSealDefBonus(){
+    if(!(player.skills && player.skills.includes('paladinMartyrSeal'))) return 0;
+    const cap = (SKILLDB.paladinMartyrSeal && SKILLDB.paladinMartyrSeal.maxSacrificeCount) || 10;
+    const per = (SKILLDB.paladinMartyrSeal && SKILLDB.paladinMartyrSeal.defPerSacrifice) || 2;
+    return Math.min(cap, player.martyrSacrificeCount||0) * per;
+  }
   // 행운의 파도(mastery_luckwave): 운 게이지(-3~+3)를 공격력 배율로 환산한다
   // (게이지 1당 ±7%, 최대 ±21%).
   function getLuckWaveBonus(){
     if(!(player.skills && player.skills.includes('mastery_luckwave'))) return 0;
     return (battleFlags.luckGauge||0) * 0.07;
+  }
+  // 체액 흡수(rogueVenomInject, 역병숙주): 스킬을 쓸 때마다
+  // battleFlags.venomAbsorbPoints에 흡수량을 누적시킨다(player-actions.js).
+  // 여기서는 그 누적치를 1포인트당 공격력 +1%로 environment에 반영하기만
+  // 한다. 반복 사용으로 무한히 커지는 것을 막기 위해 +30%p에서 캡을 둔다
+  // (다른 2차 전직의 퍼센트 버프들과 동일한 안전장치 패턴).
+  function getVenomAbsorbBonus(){
+    if(!(player.skills && player.skills.includes('mastery_venomstacks'))) return 0;
+    if(!battleFlags || !battleFlags.venomAbsorbPoints) return 0;
+    return Math.min(0.3, battleFlags.venomAbsorbPoints * 0.01);
+  }
+  // 역병 잠식(mastery_venomstacks, 역병숙주): "스택 하나당" 매 라운드 피해량을
+  // 계산한다. 여기에 레벨12 패시브(독성 정제)와 장비의 중독 강화 아이템
+  // (getDotBoostRatio('poison') — 도적의 단검 +40%, 영혼의 반지 +25% 등 기존
+  // 아이템과 자연스럽게 시너지)이 곱연산으로 붙는다. 최종 틱 피해 = 이 값 ×
+  // 현재 스택 수(최대 10) — 오래 끄는 전투일수록 강력해진다.
+  //
+  // 밸런스 조정 이력:
+  // 1) (과거) 맨몸 기준 "단발/평균" 비교 방식으로 환영검사 대비 2.4배 압도적으로
+  //    강하다고 판단 → 기본 비율 0.18→0.09로 절반 삭감.
+  // 2) (이번 세션) 실제 처치까지 걸리는 멀티턴 Monte Carlo로 재검증한 결과 정반대
+  //    결론(전사 일격의 구도자/저주 미투자 저주술사 대비 보스전 기준 약 20~25%
+  //    낮은 화력)이 나왔다. 원인은 "죽지 않는 더미" 기준 순수 화력 자체는 결코
+  //    낮지 않았고(오히려 더 높았음), 역병숙주 특유의 구조적 손실 — 직접타로 적을
+  //    끝내버리면 checkBattleEnd()가 그 즉시 발동해 그 턴에 쌓여있던 독틱 피해가
+  //    통째로 증발하는 문제 — 때문이었다. 이 손실 자체는 전투 흐름을 바꿔야 해서
+  //    (checkBattleEnd 호출 시점 변경 금지) 이번엔 건드리지 않고, 대신 기본 비율을
+  //    0.09→0.13으로 다시 올려 격차만 메웠다(0.18로 되돌리면 과거 1)의 문제가
+  //    재발할 수 있어, 그 절반 지점에 가까운 값으로 절충). 조정 후 보스전 기준
+  //    5턴→4턴으로 단축되어 전사/저주술사(미투자) 기준선과 맞춰짐.
+  function getVenomDmgPerStack(){
+    if(!(player.skills && player.skills.includes('mastery_venomstacks'))) return 0;
+    // 마력이 아니라 effectiveAtk() 기준(도적은 mag에 페널티가 있어 atk가
+    // 실제 투자 스탯이므로).
+    let per = Math.max(0.01, effectiveAtk() * 0.13);
+    // [리뉴얼] rogueVenomRefine(레벨12)은 "독성 정제"(틱딜 +30%)에서 "만성
+    // 기생"(라이프스틸)으로 의미가 바뀌었다. 여기서 틱딜을 증폭시키던 구
+    // 로직은 삭제 — 새 효과는 enemyTurnReal()의 dot 계산 직후에서 처리한다.
+    // 고독 각인(re_solovenom, 역병숙주 장신구 — 밸런스 재설계): 원래는 스택 상한만
+    // 10->7로 줄이고 스택당 피해는 그대로였는데, 피해 공식이 "스택 수 × 스택당
+    // 피해"로 선형이라 상한을 낮추는 순간 데미지 상한선 자체가 낮아져 사실상
+    // 죽은 각인이었다(시뮬레이션으로 확인). 상한 감소폭을 10->6으로 완화하고,
+    // 대신 스택당 피해 자체에 +25%를 곱해 "그릇은 작지만 안에 든 독이 더
+    // 진하다"는 컨셉을 실제 수치로 구현했다.
+    const cIdSV2 = player.equipment && player.equipment.accessory;
+    const hasSoloVenom2 = !!(cIdSV2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdSV2).includes('re_solovenom'));
+    if(hasSoloVenom2) per *= 1.25;
+    // 잠식 갑주(re_corrosion, 방어구 — 폭발 정제 각인과 exclusiveGroup이라
+    // 동시에 걸릴 일 없음): 적 공/방 약화 폭을 키우는 대신, 스택당 자체
+    // 지속피해가 25% 줄어든다.
+    const aIdCor2 = player.equipment && player.equipment.armor;
+    const hasCorrosion2 = !!(aIdCor2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdCor2).includes('re_corrosion'));
+    if(hasCorrosion2) per *= 0.75;
+    const boost = getDotBoostRatio('poison');
+    if(boost>0) per *= (1+boost);
+    return per;
   }

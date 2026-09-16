@@ -3,6 +3,11 @@
 몬스터/보스 SVG 생성 함수.
 순수 함수(전역 상태 미참조). 의존성 없음.
 export(전역): heroBossSvg, svgMonster
+주의: 'goldgoblin'(황금고블린 — 외상 도박사의 빚쟁이 이벤트 전용 몬스터,
+     combat/battle-setup.js의 GOLDEN_GOBLIN 참고) 케이스를 추가했다. 원래
+     default 폴백(빈 원)으로도 에러 없이 동작은 했지만, "화려한 금색 정장,
+     금니, 손에 장부"라는 컨셉에 맞는 전용 비주얼을 새로 그렸다 — 기존 goblin
+     실루엣을 베이스로 금색 정장 상의와 장부를 추가한 형태.
 */
 
   /* ============ 몬스터 SVG 생성 ============ */
@@ -24,7 +29,159 @@ export(전역): heroBossSvg, svgMonster
     </svg>`;
   }
 
+  // ---------- 실사(픽셀아트) PNG 몬스터 이미지 ----------
+  // 사용자가 직접 그린 픽셀아트 이미지를 SVG 대신 쓰고 싶은 몬스터를 여기 등록한다.
+  // 등록된 type이면 svgMonster()가 SVG 대신 <img> 태그를 반환한다 — 호출부
+  // (combat/battle-setup.js의 startBattle() 등)는 전혀 손댈 필요가 없다, 이
+  // 함수 하나만 고치면 끝. 새 몬스터 이미지를 추가할 때도 이 객체에 한 줄만
+  // 추가하면 된다.
+  const MONSTER_IMG = {
+    wolf: 'images/monsters/wolf.png',
+    skeleton: 'images/monsters/skeleton.png',
+    spider: 'images/monsters/spider.png',
+    slime: 'images/monsters/slime.png',
+    bandit: 'images/monsters/bandit.png',
+    bat: 'images/monsters/bat.png',
+    goblin: 'images/monsters/goblin.png',
+    golem:  'images/monsters/golem.png',
+    demon:  'images/monsters/demon.png',
+    jack:   'images/monsters/jack.png', 
+    egg:   'images/monsters/egg.png',    
+    ogre:   'images/monsters/ogre.png',   
+    
+    herowarrior:  'images/monsters/herowarrior.png',
+    heromage:  'images/monsters/heromage.png',
+    herorogue:  'images/monsters/herorogue.png',
+    heropaladin:  'images/monsters/heropaladin.png',
+    heromechanic: 'images/monsters/heromechanic.png',
+    herojester: 'images/monsters/herojester.png',
+    // 신규 4종 보스(슬레이 더 스파이어식 독특한 디자인) — 아직 실제 그림은
+    // 없고 경로만 미리 등록해뒀다. 아래 SVG 폴백이 default:가 아니라 각자
+    // 전용 추상 실루엣으로 보이도록 svgMonster()에도 케이스를 추가했다 —
+    // 이 경로에 그림을 넣으면 자동으로 그림으로 바뀐다.
+    hollowprophet: 'images/monsters/hollowprophet.png',
+    hornedwarden: 'images/monsters/hornedwarden.png',
+    bladedbloom: 'images/monsters/bladedbloom.png',
+    clockheart: 'images/monsters/clockheart.png',
+    // 2차 신규 4종 — 참고 이미지랑 겹치지 않는 새 컨셉(석판/재봉인형/등롱/모래시계)
+    watchertablet: 'images/monsters/watchertablet.png',
+    // 층별보스 정리(A안, 사용자 요청) — 이번엔 사용하지 않는 3종의 이미지
+    // 등록을 주석 처리한다(data/monsters.js의 BOSSES 주석 처리와 짝). 파일
+    // 자체는 images/monsters/에 그대로 남아있다 — 나중에 다시 쓸 수도 있어
+    // 삭제 대신 주석만 해뒀다.
+    // threadmannequin: 'images/monsters/threadmannequin.png',
+    // sinlantern: 'images/monsters/sinlantern.png',
+    // unstoppingsand: 'images/monsters/unstoppingsand.png',
+    // 일반 몬스터 이미지 없던 5종 재해석(사용자 요청 — 원혼/언데드기사/하피/
+    // 레이스/광신도를 독창적인 컨셉으로 새로 디자인). 아직 실제 그림은 없고
+    // 경로만 미리 등록해뒀다 — 위 보스들과 동일한 패턴으로, 이 경로에 그림을
+    // 넣으면 자동으로 그림으로 바뀐다. 그 전까지는 아래 svgMonsterPlaceholder3()
+    // 전용 실루엣이 뜬다.
+    ghost: 'images/monsters/ghost.png',
+    knight: 'images/monsters/knight.png',
+    harpy: 'images/monsters/harpy.png',
+    wraith: 'images/monsters/wraith.png',
+    cultist: 'images/monsters/cultist.png',
+    // 신규 3종(사용자 요청 — 미믹/오크전사/마녀 삭제 후 3·4구간용으로 교체 투입).
+    tome: 'images/monsters/tome.png',
+    tailor: 'images/monsters/tailor.png',
+    hornbeast: 'images/monsters/hornbeast.png',
+    // 진 최종보스 "회랑의 시조"(사용자 요청 — 왕관 쓴 슬픈 거인, 좁은 전장이라
+    // 웅크린 채 플레이어를 내려다보는 구도). 처음 받은 이미지는 화풍이 달라서
+    // 다른 몬스터들과 맞는 화풍(굵은 검은 윤곽선)으로 재교체됨.
+    progenitor: 'images/monsters/progenitor.png',
+    // 진 최종보스 "시간의 마녀"(아이온) — 마녀의 시계 보유 시 회랑의 시조
+    // 대신 등장(combat/battle-setup.js의 pickEnemy() 참고).
+    timewitch: 'images/monsters/timewitch.png',
+    // 시간의 파수꾼(사용자 기획) — 3번째 구간(tierIndex===2) 노드맵 중간에
+    // 반드시 거쳐가는 고정 중간보스. combat/battle-setup.js의 TIME_GUARDIAN,
+    // nodemap.js의 'midboss' 노드 타입 참고.
+    timeguardian: 'images/monsters/timeguardian.png',
+  };
+
+  // 회랑의 시조 전용 스킬 예고/임팩트 포즈 3장(평상시/예고/내려찍기) 경로.
+  // 실제로 #bt-stage의 <img> src를 갈아치우는 함수(setBossPoseImage)는 전역
+  // 상태(enemy)와 DOM을 참조하므로, 이 파일(순수 함수 전용)이 아니라
+  // combat/battle-fx.js에 있다 — 그쪽의 다른 #bt-stage 연출 함수들과 같은 자리.
+  const PROGENITOR_POSE_IMG = {
+    idle: 'images/monsters/progenitor.png',
+    telegraph: 'images/monsters/progenitor_telegraph.png',
+    slam: 'images/monsters/progenitor_slam.png',
+  };
+  // 시간의 마녀 전용 포즈 3장 — 위와 동일한 구조.
+  const TIMEWITCH_POSE_IMG = {
+    idle: 'images/monsters/timewitch.png',
+    telegraph: 'images/monsters/timewitch_telegraph.png',
+    slam: 'images/monsters/timewitch_slam.png',
+  };
+  // combat/battle-fx.js의 setBossPoseImage()가 enemy.type으로 어느 포즈셋을
+  // 쓸지 고를 때 참조하는 매핑(진 최종보스 종류가 늘어나도 여기만 추가하면 됨).
+  const BOSS_POSE_IMG_BY_TYPE = {
+    progenitor: PROGENITOR_POSE_IMG,
+    timewitch: TIMEWITCH_POSE_IMG,
+  };
+
+  // PNG 몬스터 그림 하단의 투명 여백을 자동으로 감지해 보정한다(사용자 피드백
+  // — 일부 그림은 캐릭터가 캔버스 맨 아래까지 안 닿아서 "붕 떠 보인다". CSS의
+  // align-self:flex-end는 이미지 박스 자체를 바닥에 붙일 뿐이라, 박스 안의
+  // 투명 여백까지는 못 잡아낸다). 이미지가 실제로 로드된 뒤 캔버스에 그려
+  // 픽셀 알파값을 맨 아래부터 훑어, 투명 여백만큼 translateY로 끌어내린다.
+  // 같은 오리진(GitHub Pages)에서 서빙되는 이미지라 CORS로 인한 캔버스 오염
+  // 문제는 없다. 여백이 거의 없는 그림(호른드워든/할로우프로펫 등)은 보정값이
+  // 0에 가까워 사실상 아무 변화도 없다 — 안전하게 모든 몬스터 이미지에 걸어도
+  // 된다.
+  function fixMonsterImageGrounding(imgEl){
+    if(!imgEl) return;
+    const run = ()=>{
+      const iw = imgEl.naturalWidth, ih = imgEl.naturalHeight;
+      if(!iw || !ih) return;
+      try{
+        const canvas = document.createElement('canvas');
+        canvas.width = iw; canvas.height = ih;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(imgEl, 0, 0);
+        const data = ctx.getImageData(0, 0, iw, ih).data;
+        let bottomPad = 0;
+        outer:
+        for(let y=ih-1; y>=0; y--){
+          for(let x=0; x<iw; x+=2){ // 2픽셀씩 건너뛰어 분석 속도 확보
+            if(data[(y*iw+x)*4+3] > 10){ break outer; }
+          }
+          bottomPad++;
+        }
+        const padRatio = bottomPad/ih;
+        // 2%~50% 범위에서만 보정한다 — 2% 미만은 오차 범위로 무시하고,
+        // 50% 이상은 분석이 잘못됐을 가능성이 높아(예: 완전히 빈 이미지)
+        // 안전하게 건너뛴다.
+        if(padRatio > 0.02 && padRatio < 0.5){
+          const displayedHeight = imgEl.clientHeight || imgEl.offsetHeight || 0;
+          if(displayedHeight > 0){
+            const pxShift = Math.round(displayedHeight*padRatio);
+            // 인라인 transform 대신 CSS 변수(--ground-offset)로 넘긴다 — hit/dying
+            // 애니메이션(hitshake/diefade)이 transform을 직접 덮어써버려서, 예전엔
+            // 공격당할 때마다 보정이 풀렸다가 애니메이션이 끝나야 다시 적용되는
+            // 문제가 있었다(사용자 피드백 — "맞을 때마다 중간으로 갔다가 다시
+            // 내려온다"). index.html의 키프레임들이 이 변수를 같이 포함하도록
+            // 고쳐야 실제로 해결된다(별도 안내 참고).
+            imgEl.style.setProperty('--ground-offset', pxShift+'px');
+          }
+        }
+      }catch(e){ /* 픽셀 분석 실패 시 조용히 무시(원래 위치 그대로 유지) */ }
+    };
+    if(imgEl.complete && imgEl.naturalWidth>0) run();
+    else imgEl.addEventListener('load', run, {once:true});
+  }
+
   function svgMonster(type){
+    if(MONSTER_IMG[type]){
+      // onerror 폴백: 그림 파일이 아직 없거나 경로가 틀렸을 때 깨진 이미지
+      // 아이콘 대신 전용 추상 실루엣(svgMonsterPlaceholder, 없으면 기본 원)
+      // 으로 자동 전환한다. 나중에 올바른 경로에 그림을 넣으면 정상적으로
+      // 그림이 뜬다(이 폴백은 그때는 아예 발동하지 않음).
+      const fallbackSvg = svgMonsterPlaceholder(type) || svgMonsterPlaceholder2(type) || svgMonsterPlaceholder3(type) || `<svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="40" fill="#5c4a30"/></svg>`;
+      const escaped = fallbackSvg.replace(/"/g, '&quot;').replace(/\n/g, '');
+      return `<img src="${MONSTER_IMG[type]}" alt="${type}" style="width:100%; height:100%; object-fit:contain;" onerror="this.outerHTML='${escaped}'">`;
+    }
     const glow = `<filter id="eg"><feGaussianBlur stdDeviation="1.4"/></filter>`;
     switch(type){
       case 'slime': return `<svg viewBox="0 0 120 120">${glow}
@@ -45,6 +202,22 @@ export(전역): heroBossSvg, svgMonster
         <circle cx="48" cy="63" r="2.4" fill="#1a130c"/><circle cx="72" cy="63" r="2.4" fill="#1a130c"/>
         <path d="M46 82 Q60 92 74 82" stroke="#1a130c" stroke-width="3" fill="none"/>
         <rect x="86" y="55" width="8" height="42" rx="2" fill="#6b5230" transform="rotate(20 86 55)"/>
+      </svg>`;
+      case 'goldgoblin': return `<svg viewBox="0 0 120 120">${glow}
+        <ellipse cx="60" cy="106" rx="34" ry="8" fill="#000" opacity="0.3"/>
+        <path d="M60 26 C42 26 32 42 34 58 C28 62 28 76 38 82 L82 82 C92 76 92 62 86 58 C88 42 78 26 60 26 Z" fill="#5c7a3f"/>
+        <path d="M32 36 L20 16 L38 30 Z" fill="#5c7a3f"/><path d="M88 36 L100 16 L82 30 Z" fill="#5c7a3f"/>
+        <ellipse cx="48" cy="56" rx="6" ry="7" fill="#ffe08a" filter="url(#eg)"/><ellipse cx="72" cy="56" rx="6" ry="7" fill="#ffe08a" filter="url(#eg)"/>
+        <circle cx="48" cy="57" r="2.4" fill="#1a130c"/><circle cx="72" cy="57" r="2.4" fill="#1a130c"/>
+        <path d="M46 74 Q60 82 74 74" stroke="#1a130c" stroke-width="3" fill="none"/>
+        <path d="M50 76 L52 80 L54 76 Z" fill="#fff8e0"/><path d="M66 76 L68 80 L70 76 Z" fill="#fff8e0"/>
+        <path d="M40 84 Q60 74 80 84 L86 116 Q60 126 34 116 Z" fill="#c9a227"/>
+        <path d="M40 84 Q60 74 80 84 L76 96 Q60 88 44 96 Z" fill="#ffe08a" opacity="0.55"/>
+        <path d="M56 86 L59 118 M64 86 L64 120" stroke="#8a6f1a" stroke-width="2" opacity="0.6"/>
+        <rect x="84" y="88" width="18" height="24" rx="2" fill="#3a2c1c" transform="rotate(14 84 88)"/>
+        <rect x="86" y="91" width="14" height="18" rx="1" fill="#e9dcc0" transform="rotate(14 84 88)"/>
+        <line x1="88" y1="97" x2="98" y2="95" stroke="#3a2c1c" stroke-width="1" transform="rotate(14 84 88)"/>
+        <line x1="88" y1="101" x2="98" y2="99" stroke="#3a2c1c" stroke-width="1" transform="rotate(14 84 88)"/>
       </svg>`;
       case 'skeleton': return `<svg viewBox="0 0 120 120">${glow}
         <ellipse cx="60" cy="30" rx="20" ry="22" fill="#dccba0"/>
@@ -150,6 +323,13 @@ export(전역): heroBossSvg, svgMonster
          <circle cx="70" cy="14" r="4" fill="#fff8e0" filter="url(#eg2)"/>
          <rect x="24" y="46" width="6" height="56" rx="2" fill="#e6c34a" opacity="0.9" transform="rotate(-14 24 46)"/>
          <rect x="110" y="46" width="6" height="56" rx="2" fill="#e6c34a" opacity="0.9" transform="rotate(14 110 46)"/>`);
+      // 진 최종보스 "시간의 마녀" 이미지 로딩 실패 시 폴백(사용자 요청 —
+      // 보라색 후광 컨셉과 맞춰 왕관 대신 부서진 톱니 고리 실루엣).
+      case 'timewitch': return heroBossSvg({c1:'#1a1420', c2:'#0d0a12', accent:'#b48ce6', eye:'#2a2030'},
+        `<circle cx="70" cy="20" r="16" fill="none" stroke="#9c7ad1" stroke-width="3" opacity="0.85" filter="url(#eg2)"/>
+         <circle cx="70" cy="20" r="6" fill="#b48ce6" filter="url(#eg2)"/>
+         <rect x="24" y="46" width="6" height="56" rx="2" fill="#7a5a9c" opacity="0.9" transform="rotate(-14 24 46)"/>
+         <rect x="110" y="46" width="6" height="56" rx="2" fill="#7a5a9c" opacity="0.9" transform="rotate(14 110 46)"/>`);
       case 'bat': return `<svg viewBox="0 0 120 120">${glow}
         <path d="M60 50 L20 30 L35 55 L10 60 L35 68 L20 90 L60 72 Z" fill="#241d17" opacity="0.92"/>
         <path d="M60 50 L100 30 L85 55 L110 60 L85 68 L100 90 L60 72 Z" fill="#241d17" opacity="0.92"/>
@@ -277,3 +457,267 @@ export(전역): heroBossSvg, svgMonster
     }
   }
 
+  // ---------- 신규 4종 보스 임시 실루엣(추상 디자인) ----------
+  // 실제 그림이 준비되기 전까지 default(밋밋한 원)로 떨어지지 않도록 각자
+  // 컨셉을 대충이라도 드러내는 형태를 잡아뒀다. MONSTER_IMG에 그림 경로를
+  // 넣으면 이 SVG 대신 그림이 우선 표시된다.
+  function svgMonsterPlaceholder(type){
+    const glow = `<filter id="pg"><feGaussianBlur stdDeviation="1.6"/></filter>`;
+    switch(type){
+      case 'hollowprophet': return `<svg viewBox="0 0 140 160">${glow}
+        <ellipse cx="70" cy="150" rx="40" ry="8" fill="#000" opacity="0.3"/>
+        <path d="M70 20 C40 20 30 55 40 80 C20 90 24 130 46 148 L94 148 C116 130 120 90 100 80 C110 55 100 20 70 20 Z" fill="#1c3a3a"/>
+        <path d="M52 70 Q70 62 88 70" stroke="#0a1818" stroke-width="10" fill="none"/>
+        <ellipse cx="58" cy="76" rx="6" ry="8" fill="#5adea0" filter="url(#pg)"/>
+        <ellipse cx="82" cy="76" rx="6" ry="8" fill="#5adea0" filter="url(#pg)"/>
+        <rect x="18" y="70" width="6" height="60" rx="2" fill="#3a2c1c" transform="rotate(-12 18 70)"/>
+        <circle cx="14" cy="66" r="10" fill="#5adea0" filter="url(#pg)" opacity="0.85"/>
+      </svg>`;
+      case 'hornedwarden': return `<svg viewBox="0 0 120 130">${glow}
+        <ellipse cx="60" cy="120" rx="34" ry="7" fill="#000" opacity="0.3"/>
+        <path d="M40 30 L28 6 L46 24 Z" fill="#e6dcc0"/><path d="M80 30 L92 6 L74 24 Z" fill="#e6dcc0"/>
+        <path d="M60 24 C40 24 30 40 34 58 C24 62 26 84 44 96 L76 96 C94 84 96 62 86 58 C90 40 80 24 60 24 Z" fill="#8a3a2c"/>
+        <ellipse cx="60" cy="66" rx="26" ry="14" fill="#5c2018"/>
+        <circle cx="52" cy="64" r="3.4" fill="#e6c34a" filter="url(#pg)"/><circle cx="68" cy="64" r="3.4" fill="#e6c34a" filter="url(#pg)"/>
+        <rect x="16" y="70" width="6" height="30" rx="2" fill="#c9c9d4" transform="rotate(-20 16 70)"/>
+      </svg>`;
+      case 'bladedbloom': return `<svg viewBox="0 0 140 140">${glow}
+        <ellipse cx="70" cy="128" rx="30" ry="7" fill="#000" opacity="0.3"/>
+        <path d="M70 100 C50 70 30 60 34 96 C10 90 20 116 50 118 Z" fill="#5ac9c0"/>
+        <path d="M70 90 L60 20 C50 10 46 30 54 46 C40 40 44 58 58 62 C48 62 50 78 66 82 Z" fill="#c98fe0"/>
+        <path d="M70 90 L80 22 C90 12 92 32 84 48 C98 42 94 60 80 64 C90 64 88 80 72 84 Z" fill="#a85ac9"/>
+        <ellipse cx="70" cy="18" rx="8" ry="14" fill="#8fd66a"/>
+      </svg>`;
+      case 'clockheart': return `<svg viewBox="0 0 140 150">${glow}
+        <ellipse cx="70" cy="140" rx="36" ry="8" fill="#000" opacity="0.3"/>
+        <circle cx="30" cy="60" r="16" fill="none" stroke="#5a4a30" stroke-width="6"/>
+        <circle cx="112" cy="50" r="12" fill="none" stroke="#5a4a30" stroke-width="5"/>
+        <circle cx="106" cy="100" r="14" fill="none" stroke="#5a4a30" stroke-width="5"/>
+        <path d="M70 30 C40 30 30 55 45 75 C30 90 45 110 70 128 C95 110 110 90 95 75 C110 55 100 30 70 30 Z" fill="#8a2a24"/>
+        <path d="M70 40 C50 40 44 58 55 72 C44 84 55 98 70 112 C85 98 96 84 85 72 C96 58 90 40 70 40 Z" fill="#c93a2c" filter="url(#pg)"/>
+        <line x1="20" y1="76" x2="120" y2="72" stroke="#3a2c1c" stroke-width="3" opacity="0.6"/>
+      </svg>`;
+      default: return null;
+    }
+  }
+
+  // ---------- 2차 신규 4종 보스 임시 실루엣 ----------
+  function svgMonsterPlaceholder2(type){
+    const glow = `<filter id="pg2"><feGaussianBlur stdDeviation="1.6"/></filter>`;
+    switch(type){
+      case 'watchertablet': return `<svg viewBox="0 0 130 150">${glow}
+        <ellipse cx="65" cy="142" rx="34" ry="7" fill="#000" opacity="0.3"/>
+        <rect x="20" y="16" width="90" height="118" rx="6" fill="#4a4038"/>
+        <rect x="20" y="16" width="90" height="118" rx="6" fill="none" stroke="#2c261e" stroke-width="4"/>
+        <path d="M32 34 L98 34 M32 50 L80 50 M32 100 L98 100 M32 116 L70 116" stroke="#6b5f52" stroke-width="3" opacity="0.7"/>
+        <ellipse cx="65" cy="76" rx="22" ry="22" fill="#1a1510"/>
+        <circle cx="65" cy="76" r="13" fill="#e0503a" filter="url(#pg2)"/>
+        <circle cx="65" cy="76" r="5" fill="#1a1510"/>
+      </svg>`;
+      case 'threadmannequin': return `<svg viewBox="0 0 120 150">${glow}
+        <ellipse cx="60" cy="142" rx="30" ry="7" fill="#000" opacity="0.3"/>
+        <ellipse cx="60" cy="30" rx="18" ry="20" fill="#e9dcc0"/>
+        <path d="M42 50 C34 50 30 70 34 90 L86 90 C90 70 86 50 78 50 Z" fill="#c9c9d4"/>
+        <path d="M34 30 Q60 20 86 30 M30 50 Q60 60 90 50 M36 70 Q60 78 84 70" stroke="#c9283a" stroke-width="2.5" fill="none" opacity="0.85"/>
+        <path d="M20 96 L30 130" stroke="#c9c9d4" stroke-width="8" stroke-linecap="round"/>
+        <path d="M100 96 L90 130" stroke="#c9c9d4" stroke-width="8" stroke-linecap="round"/>
+        <path d="M22 132 L34 124 L30 138 Z" fill="#8fa0b8"/>
+        <path d="M98 132 L86 124 L90 138 Z" fill="#8fa0b8"/>
+      </svg>`;
+      case 'sinlantern': return `<svg viewBox="0 0 140 140">${glow}
+        <ellipse cx="70" cy="130" rx="36" ry="7" fill="#000" opacity="0.3"/>
+        <rect x="34" y="40" width="26" height="34" rx="4" fill="#3a2c1c"/>
+        <rect x="66" y="26" width="26" height="34" rx="4" fill="#2c3a4a"/>
+        <rect x="50" y="70" width="26" height="34" rx="4" fill="#3a1c2c"/>
+        <ellipse cx="47" cy="57" rx="8" ry="10" fill="#8fa8ff" filter="url(#pg2)"/>
+        <ellipse cx="79" cy="43" rx="8" ry="10" fill="#ffcf6a" filter="url(#pg2)"/>
+        <ellipse cx="63" cy="87" rx="8" ry="10" fill="#e0503a" filter="url(#pg2)"/>
+        <path d="M30 74 Q60 90 96 60" stroke="#c9a34a" stroke-width="3" fill="none" opacity="0.7"/>
+      </svg>`;
+      case 'unstoppingsand': return `<svg viewBox="0 0 120 150">${glow}
+        <ellipse cx="60" cy="142" rx="30" ry="7" fill="#000" opacity="0.3"/>
+        <path d="M30 20 L90 20 L60 66 Z" fill="#d9c07a" opacity="0.9"/>
+        <path d="M30 118 L90 118 L60 72 Z" fill="#d9c07a" opacity="0.9"/>
+        <rect x="26" y="14" width="68" height="8" rx="3" fill="#4a4030"/>
+        <rect x="26" y="114" width="68" height="8" rx="3" fill="#4a4030"/>
+        <circle cx="60" cy="69" r="4" fill="#fff2c0" filter="url(#pg2)"/>
+        <path d="M46 40 Q60 60 74 40" stroke="#8a7020" stroke-width="2" fill="none" opacity="0.6"/>
+        <path d="M46 100 Q60 80 74 100" stroke="#8a7020" stroke-width="2" fill="none" opacity="0.6"/>
+      </svg>`;
+      default: return null;
+    }
+  }
+
+  // ---------- 일반 몬스터 재해석 5종 임시 실루엣(사용자 요청) ----------
+  // 원혼/언데드기사/하피/레이스/광신도를 "귀엽지만 으스스한" 새 컨셉으로
+  // 재디자인했다(옭아맨 통곡/짓눌린 맹세/울부짖는 깃털비/얼어붙은 유언/
+  // 천 개의 기도). 실제 그림이 준비되기 전까지 default(밋밋한 원)로 떨어지지
+  // 않도록 각자 컨셉을 드러내는 둥글둥글한 형태를 잡아뒀다. MONSTER_IMG에
+  // 그림 경로를 넣으면 이 SVG 대신 그림이 우선 표시된다.
+  function svgMonsterPlaceholder3(type){
+    const glow = `<filter id="pg3"><feGaussianBlur stdDeviation="1.3"/></filter>`;
+    switch(type){
+      case 'ghost': return `<svg viewBox="0 0 120 120">${glow}
+        <ellipse cx="60" cy="104" rx="30" ry="7" fill="#000" opacity="0.2"/>
+        <circle cx="60" cy="66" r="38" fill="#d8dee6" opacity="0.9"/>
+        <circle cx="32" cy="80" r="16" fill="#c7cfd9" opacity="0.85"/>
+        <circle cx="88" cy="78" r="14" fill="#c7cfd9" opacity="0.85"/>
+        <ellipse cx="20" cy="96" rx="8" ry="12" fill="#eef1f5" opacity="0.8"/>
+        <ellipse cx="98" cy="94" rx="7" ry="11" fill="#eef1f5" opacity="0.8"/>
+        <circle cx="48" cy="62" r="3.4" fill="#ffcf6a" filter="url(#pg3)"/>
+        <circle cx="66" cy="60" r="3" fill="#ffcf6a" filter="url(#pg3)"/>
+        <circle cx="58" cy="76" r="2.4" fill="#ffcf6a" filter="url(#pg3)" opacity="0.85"/>
+      </svg>`;
+      case 'knight': return `<svg viewBox="0 0 130 140">${glow}
+        <ellipse cx="65" cy="128" rx="38" ry="8" fill="#000" opacity="0.25"/>
+        <path d="M65 26 C42 26 32 44 34 58 C24 64 26 96 40 112 L90 112 C104 96 106 64 96 58 C98 44 88 26 65 26 Z" fill="#8a8f96"/>
+        <path d="M65 26 C52 26 46 34 44 44 L86 44 C84 34 78 26 65 26 Z" fill="#6f7580"/>
+        <rect x="42" y="60" width="46" height="18" rx="6" fill="#5f646d"/>
+        <circle cx="65" cy="69" r="7" fill="#1a1510"/>
+        <circle cx="65" cy="69" r="3.4" fill="#ffcf6a" filter="url(#pg3)"/>
+        <path d="M92 78 L110 84 L104 118 L88 114 Z" fill="#8a3a3a" opacity="0.85"/>
+        <rect x="24" y="86" width="14" height="30" rx="4" fill="#6f7580"/>
+      </svg>`;
+      case 'harpy': return `<svg viewBox="0 0 120 120">${glow}
+        <ellipse cx="60" cy="104" rx="26" ry="6" fill="#000" opacity="0.2"/>
+        <circle cx="60" cy="66" r="34" fill="#4a4f58"/>
+        <ellipse cx="26" cy="60" rx="14" ry="20" fill="#3d4149" transform="rotate(-20 26 60)"/>
+        <ellipse cx="94" cy="60" rx="14" ry="20" fill="#3d4149" transform="rotate(20 94 60)"/>
+        <path d="M14 50 L4 44 L12 62 Z" fill="#3d4149"/>
+        <path d="M106 50 L116 44 L108 62 Z" fill="#3d4149"/>
+        <path d="M52 78 L60 88 L68 78 Z" fill="#1a1510"/>
+        <circle cx="60" cy="80" r="2.6" fill="#ff9a4a" filter="url(#pg3)"/>
+        <ellipse cx="48" cy="94" rx="6" ry="3" fill="#5c6068"/>
+        <ellipse cx="72" cy="94" rx="6" ry="3" fill="#5c6068"/>
+      </svg>`;
+      case 'wraith': return `<svg viewBox="0 0 110 130">${glow}
+        <ellipse cx="55" cy="118" rx="22" ry="6" fill="#000" opacity="0.2"/>
+        <path d="M55 20 C34 20 24 38 26 54 C18 62 20 84 30 96 C36 104 44 110 55 116 C66 110 74 104 80 96 C90 84 92 62 84 54 C86 38 76 20 55 20 Z" fill="#cfe6f2" opacity="0.9"/>
+        <path d="M55 96 C50 104 50 112 55 118 C60 112 60 104 55 96 Z" fill="#e8f4fa"/>
+        <path d="M40 56 Q55 48 70 56" stroke="#9fc3d6" stroke-width="4" fill="none" opacity="0.6"/>
+        <circle cx="55" cy="58" r="4" fill="#7a5ac9" filter="url(#pg3)" opacity="0.9"/>
+        <ellipse cx="34" cy="86" rx="8" ry="4" fill="#bcdbe8" opacity="0.7"/>
+      </svg>`;
+      case 'cultist': return `<svg viewBox="0 0 110 120">${glow}
+        <ellipse cx="55" cy="108" rx="30" ry="7" fill="#000" opacity="0.2"/>
+        <path d="M55 24 C34 24 24 44 26 62 C24 80 34 98 55 104 C76 98 86 80 84 62 C86 44 76 24 55 24 Z" fill="#6b3c3c"/>
+        <path d="M40 50 L44 54 L40 58 L36 54 Z" fill="#e9dcc0" opacity="0.8"/>
+        <path d="M70 66 L74 70 L70 74 L66 70 Z" fill="#e9dcc0" opacity="0.7"/>
+        <circle cx="45" cy="60" r="2.6" fill="#ffcf6a" filter="url(#pg3)"/>
+        <circle cx="63" cy="58" r="2.2" fill="#ffcf6a" filter="url(#pg3)"/>
+        <circle cx="54" cy="70" r="2" fill="#ffcf6a" filter="url(#pg3)" opacity="0.8"/>
+        <circle cx="55" cy="88" r="7" fill="#3a2418"/>
+        <circle cx="55" cy="88" r="3.4" fill="#ffcf6a" filter="url(#pg3)"/>
+      </svg>`;
+      default: return null;
+    }
+  }
+
+  // ---------- 메카닉 로봇(가동 장치) 비주얼 ----------
+  // battleFlags.rig/rig2의 kind에 대응하는 작은 로봇 SVG. 적 화면 하단 좌우
+  // 슬롯에 그려진다(combat/battle-fx.js의 updateRigVisuals() 참고). 사용자
+  // 요청: "설치한 로봇들이 눈에 보여야 재미있다" — 이전엔 battleFlags 안의
+  // 순수 데이터였을 뿐 화면에 전혀 그려지지 않았다.
+  // rig(장치) 이미지 등록(사용자 제공 — 스팀펑크 그림체). 있는 kind는 이미지로,
+  // 없는 kind(recon/firepower/shield)는 기존 손그림 SVG로 자동 대체된다.
+  const RIG_IMG = {
+    turret: 'images/bot/autobot.png',
+    omega:  'images/bot/omegabot.png',
+    shield: 'images/bot/shieldbot.png',
+    firepower: 'images/bot/firepowerbot.png',
+    recon: 'images/bot/reconbot.png',
+  };
+  function svgRig(kind){
+    if(RIG_IMG[kind]){
+      return `<img src="${RIG_IMG[kind]}" alt="${kind}" style="width:100%; height:100%; object-fit:contain;">`;
+    }
+    const glow = `<filter id="rg"><feGaussianBlur stdDeviation="1"/></filter>`;
+    switch(kind){
+      case 'recon': return `<svg viewBox="0 0 70 50">${glow}
+        <rect x="20" y="26" width="30" height="18" rx="4" fill="#1a3a3a"/>
+        <circle cx="35" cy="18" r="10" fill="#0f2626" stroke="#5adede" stroke-width="2"/>
+        <circle cx="35" cy="18" r="4" fill="#5adede" filter="url(#rg)"/>
+        <rect x="14" y="40" width="8" height="8" fill="#0f2626"/><rect x="48" y="40" width="8" height="8" fill="#0f2626"/>
+        <line x1="35" y1="8" x2="35" y2="2" stroke="#5adede" stroke-width="2"/>
+      </svg>`;
+      case 'firepower': return `<svg viewBox="0 0 70 50">${glow}
+        <rect x="18" y="22" width="34" height="22" rx="4" fill="#3a1a12"/>
+        <circle cx="35" cy="20" r="9" fill="#241008" stroke="#ff8a3a" stroke-width="2"/>
+        <rect x="35" y="14" width="26" height="7" rx="2" fill="#ff8a3a" filter="url(#rg)"/>
+        <rect x="14" y="40" width="8" height="8" fill="#241008"/><rect x="48" y="40" width="8" height="8" fill="#241008"/>
+      </svg>`;
+      case 'shield': return `<svg viewBox="0 0 70 50">${glow}
+        <rect x="18" y="24" width="34" height="20" rx="4" fill="#0f2a16"/>
+        <circle cx="35" cy="18" r="9" fill="#0a1c0e" stroke="#6fe08a" stroke-width="2"/>
+        <path d="M35 6 C28 6 24 12 24 18 C24 24 30 28 35 30 C40 28 46 24 46 18 C46 12 42 6 35 6 Z" fill="none" stroke="#6fe08a" stroke-width="2" opacity="0.85"/>
+        <rect x="14" y="40" width="8" height="8" fill="#0a1c0e"/><rect x="48" y="40" width="8" height="8" fill="#0a1c0e"/>
+      </svg>`;
+      case 'turret': return `<svg viewBox="0 0 70 50">${glow}
+        <rect x="20" y="28" width="30" height="16" rx="3" fill="#3a3a34"/>
+        <rect x="28" y="12" width="14" height="18" rx="3" fill="#4a4a44"/>
+        <rect x="34" y="6" width="22" height="6" rx="2" fill="#8fa0b8"/>
+      </svg>`;
+      // 오메가 유닛(메카닉 3세트 재전개 전용, kind:'omega'): 사용자 요청으로
+      // 좌우로 길게 뻗은 포신 두 개를 가진 형태로 그렸다 — 자기 슬롯(왼쪽 또는
+      // 오른쪽) 안에서 가운데 방향으로 폭이 넓어지는 방식으로 표시되어(.rig-wide
+      // CSS 클래스), 반대편 슬롯의 다른 로봇을 가리지 않는다(combat/battle-fx.js
+      // 의 updateRigVisuals() 참고).
+      case 'omega': return `<svg viewBox="0 0 220 50">${glow}
+        <rect x="70" y="18" width="80" height="24" rx="6" fill="#241030"/>
+        <rect x="70" y="18" width="80" height="24" rx="6" fill="none" stroke="#c9a8ff" stroke-width="2"/>
+        <circle cx="110" cy="30" r="9" fill="#3a2050" stroke="#e6c34a" stroke-width="2"/>
+        <circle cx="110" cy="30" r="3.5" fill="#ffe08a" filter="url(#rg)"/>
+        <rect x="0" y="24" width="66" height="10" rx="3" fill="#3a2050"/>
+        <rect x="154" y="24" width="66" height="10" rx="3" fill="#3a2050"/>
+        <circle cx="6" cy="29" r="6" fill="#c9a8ff" filter="url(#rg)"/>
+        <circle cx="214" cy="29" r="6" fill="#c9a8ff" filter="url(#rg)"/>
+      </svg>`;
+      default: return `<svg viewBox="0 0 70 50"><rect x="20" y="20" width="30" height="20" rx="4" fill="#4a4a44"/></svg>`;
+    }
+  }
+
+  // 몬스터 PNG를 게임 로드 시점에 미리 받아둔다(사용자 피드백 — "몬스터 이미지가
+  // 몇 초씩 늦게 나온다"). 예전엔 startBattle()에서 <img> 태그가 생성되는
+  // 그 순간에야 브라우저가 다운로드를 시작했는데, 픽셀아트 원본 해상도가 커서
+  // 그때부터 받으면 몇 초씩 지연됐다. 이 파일이 로드되는 즉시(=타이틀 화면이
+  // 뜨는 시점부터) 미리 fetch해 브라우저 캐시에 담아두면, 실제 전투에서는
+  // 캐시된 이미지를 즉시 보여줄 수 있다. new Image()만 만들고 화면에 붙이지는
+  // 않으므로 레이아웃에는 전혀 영향 없다.
+  (function preloadMonsterImages(){
+    Object.values(MONSTER_IMG).forEach(src=>{
+      const img = new Image();
+      img.src = src;
+    });
+  })();
+
+  // ---------- 던전 배경(구역별) ----------
+  // data/monsters.js의 LOCATIONS와 정확히 동일한 depth 경계(10/20/30/40/50)를
+  // 쓴다 — 층이 깊어질수록 dungeon1.png→dungeon6.png로 점점 더 불길한 배경으로
+  // 바뀐다. combat/battle-setup.js의 startBattle()에서 getDungeonBgForDepth(depth)
+  // 로 매 전투 시작 시 .archway의 배경을 이 값으로 갈아끼운다.
+  // 버그 수정(사용자 피드백 — "보스전에서 배경이 벌써 다음층 걸로 바뀐다"):
+  // 원래 경계가 9/19/29/39/49였는데, 타이어 보스 층수는 정확히 10/20/30/40/50
+  // (nodemap.js의 bossDepth = tierIndex*10+10)이라 보스전 시점에 depth<=9가
+  // 거짓이 되어 배경이 한 구역 일찍 다음 걸로 넘어갔다. 경계를 보스 층수와
+  // 정확히 맞춰 10/20/30/40/50으로 수정했다.
+  const DUNGEON_BG_ZONES = [
+    {maxDepth:10,  file:'images/backgrounds/dungeon1.png'},
+    {maxDepth:20,  file:'images/backgrounds/dungeon2.png'},
+    {maxDepth:30,  file:'images/backgrounds/dungeon3.png'},
+    {maxDepth:40,  file:'images/backgrounds/dungeon4.png'},
+    {maxDepth:50,  file:'images/backgrounds/dungeon5.png'},
+    {maxDepth:9999,file:'images/backgrounds/dungeon6.png'},
+  ];
+  function getDungeonBgForDepth(d){
+    for(const z of DUNGEON_BG_ZONES){ if(d<=z.maxDepth) return z.file; }
+    return DUNGEON_BG_ZONES[DUNGEON_BG_ZONES.length-1].file;
+  }
+  // 몬스터 이미지와 동일한 이유로, 던전 배경 6장도 게임을 켜는 시점부터 전부
+  // 미리 받아둔다 — 나중에 깊은 층에 처음 도달했을 때도 배경이 몇 초씩 늦게
+  // 뜨는 일이 없게 하기 위함이다.
+  (function preloadDungeonBackgrounds(){
+    DUNGEON_BG_ZONES.forEach(z=>{
+      const img = new Image();
+      img.src = z.file;
+    });
+  })();

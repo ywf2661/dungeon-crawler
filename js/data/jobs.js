@@ -2,7 +2,7 @@
 /*
 직업(클래스) 및 전직(레벨10 세분화) 데이터/조회 함수.
 export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIALIZATIONS,
-              getSpecialization, needsSpecializationMigration
+              getSpecialization, needsSpecializationMigration, getJobLabel
 의존성: getJob/getHybrid/getSpecialization은 인자로 받은 플레이어 유사 객체의 job/job2/specialization
        필드를 참조.
 주의: JOB_HYBRIDS/getHybrid는 신규 전직 로직에서는 더 이상 쓰이지 않는다(레거시 세이브 감지 및
@@ -12,27 +12,27 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
   /* ============ 직업(클래스) ============ */
   const JOBS = [
     {id:'warrior', name:'전사', icon:'⚔️',
-      desc:'강인한 육체로 적을 압도하는 근접 전사. 체력과 방어력이 뛰어나다.',
+      desc:'강인한 육체로 적을 압도하는 근접 전사.',
       statMods:{maxhp:8, maxmp:-2, atk:3, def:2, mag:-3, spd:-1},
       skillLevels:{1:'powerstrike', 3:'guard', 5:'warcry', 7:'crushingblow', 10:'earthrend'}},
     {id:'mage', name:'마법사', icon:'🔮',
-      desc:'원소 마법으로 적을 멀리서 불태우는 술사. 마력은 강하나 몸이 약하다.',
+      desc:'원소 마법으로 적을 멀리서 불태우는 술사.',
       statMods:{maxhp:-8, maxmp:10, atk:-3, def:-2, mag:6, spd:0},
       skillLevels:{1:'fireball', 3:'icelance', 5:'thunderbolt', 7:'blizzard', 10:'meteor'}},
     {id:'rogue', name:'도적', icon:'🗡️',
-      desc:'빠른 몸놀림과 급소 공격으로 승부하는 자. 속도가 매우 빠르다.',
+      desc:'빠른 몸놀림과 급소 공격으로 승부하는 자.',
       statMods:{maxhp:-3, maxmp:0, atk:2, def:-2, mag:-2, spd:6},
       skillLevels:{1:'doubleslash', 3:'backstab', 5:'draintouch', 7:'shadowslash', 10:'assassinate'}},
     {id:'paladin', name:'성기사', icon:'🛡️',
-      desc:'신성한 힘으로 자신과 전황을 지키는 수호자. 축복과 응징으로 전투의 흐름을 지배한다.',
+      desc:'신성한 힘으로 전황을 지키는 수호자.',
       statMods:{maxhp:5, maxmp:4, atk:1, def:3, mag:1, spd:-3},
       skillLevels:{1:'judgment', 3:'paladinblessing', 5:'retributionoath', 7:'holylight', 10:'divinejudgment'}},
-    {id:'mechanic', name:'메카닉', icon:'⚙️',
-      desc:'포탑과 드론, 전투로봇을 전개해 함께 싸우는 기계공학자. 장치를 설치하고 가동하는 리듬으로 전투를 지배한다.',
+    {id:'mechanic', name:'기관사', icon:'⚙️',
+      desc:'증기와 압력으로 기계를 다루는 기계공학자.',
       statMods:{maxhp:-4, maxmp:6, atk:0, def:-2, mag:5, spd:3},
-      skillLevels:{1:'deployturret', 3:'maintenancepulse', 5:'deploydrone', 7:'detonate', 10:'omegaunit'}},
+      skillLevels:{1:'mechanicIgnite', 3:'mechanicValve', 5:'mechanicMark', 7:'mechanicSafety', 10:'mechanicOverpressure'}},
     {id:'jester', name:'도박사', icon:'🎭',
-      desc:'숫자 대신 운명을 정면으로 다루는 자. 스킬마다 성패가 갈려, 잘 풀리면 누구보다 강력하지만 그만큼 위험도 확실하다.',
+      desc:'운명을 정면으로 다루는 도박사. 위험한 만큼 강력하다.',
       statMods:{maxhp:-2, maxmp:2, atk:1, def:-3, mag:1, spd:2},
       skillLevels:{1:'coinflip', 3:'fateshift', 5:'wildcard', 7:'gamble', 10:'finalcard'}},
   ];
@@ -103,66 +103,197 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
   const JOB_SPECIALIZATIONS = {
     warrior: [
       {id:'warrior_bloodpact', name:'혈맹의 검투사', icon:'🩸',
-        desc:'스킬 사용 시 자신의 HP 일부를 태워 위력을 크게 증폭시키는 선택지가 상시 열려있다. HP가 낮을수록 회피율도 함께 오른다.',
+        desc:'피의 대가로 힘을 증폭시키는 광전사. 몸을 던질수록 위험해지지만, 그만큼 잔인해진다.',
         masteryName:'혈서', masteryDesc:'스킬 사용 시 HP를 태워 위력을 증폭시키는 선택지가 상시 열림. HP가 낮을수록 회피율 상승.', masterySkillId:'mastery_bloodpact',
         activeName:'저돌', activeDesc:'HP가 낮을수록 위력이 커지는 강타.', activeSkillId:'warriorBloodpactActive',
         // 2차 전직 후 레벨 12/15에 추가로 배우는 스킬(전직 컨셉을 이어감).
         // combat/battle-end.js의 grantExp()가 이 맵을 읽어 레벨업 시 자동 지급한다.
         skillLevels: {12:'warriorBloodrend', 15:'warriorBloodpactUltimate'}},
-      {id:'warrior_endurance', name:'인내의 파훼자', icon:'⛓',
-        desc:'피격당할 때마다 자동으로 "인내" 스택이 쌓인다. 스택을 모두 소모해 강력한 필살기를 발동할 수 있다.',
-        masteryName:'인내', masteryDesc:'피격당할 때마다 자동으로 "인내" 스택 획득.', masterySkillId:'mastery_endurance',
-        activeName:'파훼일격', activeDesc:'인내 스택을 모두 소모해 강력한 필살기 발동.', activeSkillId:'warriorEnduranceActive'},
+      // [교체됨] 기존 '인내의 파훼자(warrior_endurance)'를 대체하는 신규 분기.
+      // 액티브 스킬이 없고, 레벨10/12/15에 걸쳐 패시브 3개만 습득한다(오직 기본
+      // 공격만으로 싸우는 컨셉). activeName/activeDesc/activeSkillId를 모두 null로
+      // 비워두었으며, combat/job-advancement.js의 resolveJobAdvancement()는
+      // activeSkillId가 falsy면 지급을 건너뛰도록 이미 방어적으로 짜여 있어 추가
+      // 수정 없이도 안전하다(단, 각성 안내 로그 문구는 activeName이 없을 때를 대비해
+      // 별도로 손봐야 한다 — HANDOFF 참고).
+      {id:'warrior_purist', name:'일격의 구도자', icon:'🎯',
+        desc:'화려한 스킬 따위 필요 없다. 오직 검 한 자루, 일격 하나만을 극한까지 갈고닦은 구도자.',
+        masteryName:'순일격', masteryDesc:'기본 공격의 피해가 항상 30% 증가한다.', masterySkillId:'mastery_purestrike',
+        activeName:null, activeDesc:null, activeSkillId:null,
+        // 레벨12: 메아리 타격(짝수 번째 기본 공격 강화), 레벨15: 쌍격의 파문(확률로
+        // 기본 공격이 한 번 더 나감). 전부 combat/player-actions.js의 playerAttack()
+        // 안에서 직접 처리한다.
+        skillLevels: {12:'warriorPuristEcho', 15:'warriorPuristDoubleStrike'}},
+      // 찰나검사(warrior_chalna) — 신규 3번째 분기(사용자 기획). 완박/중박/
+      // 급박 3종을 "즉시 시전" 또는 "예약(찰나)"으로 쓸 수 있고, 찰나를 남긴
+      // 다음 내 턴에 다른 검격을 시전하면 둘이 합쳐진 콤보 검격이 대신 발동한다
+      // (원래 시전하려던 스킬의 개별 효과는 완전히 대체됨 — 완전대체 방식 확정).
+      // 콤보를 못 채우고 그 다음 적 턴까지 넘기면 찰나는 흩어진다.
+      // 주의: 처음엔 "잔영검사"/masterySkillId:'mastery_afterimage'로 설계했으나,
+      // 도적 환영검사(rogue_phantom)가 이미 "잔영"이라는 이름과 mastery_afterimage
+      // 키를 쓰고 있어(완전히 다른 분신 메커닉) 충돌 확인 후 "찰나" 계열로 전면
+      // 교체했다 — battleFlags 필드명(chalnaReserve)도 afterimage 계열과 겹치지
+      // 않게 새로 지음.
+      // masterySkillIds(복수)로 마스터리+즉시2종+예약2종(완박/중박 계열)을 한
+      // 번에 지급하고, Lv12에 급박 계열(즉시+예약) 2개를 skillLevels 배열로
+      // 추가 지급, Lv15는 찰나 시스템과 무관한 독립 궁극기.
+      {id:'warrior_chalna', name:'찰나의 검사', icon:'🌀',
+        desc:'멈춰버린 회랑 어딘가에서 떨어져 나온 시간의 파편이, 벨 때마다 손끝에 스며든다. 그 찰나의 감각을 다음 검격과 잇는 법을 스스로 터득한 검사.',
+        masteryName:'찰나검', masteryDesc:'완박/중박/급박 중 하나를 찰나로 남길 수 있게 된다. 찰나가 남아있는 동안 다음 검격과 합쳐져 전혀 다른 콤보 검격이 발동한다(다음 내 턴 안에 잇지 못하면 찰나는 흩어진다).', masterySkillId:'mastery_chalna',
+        activeSkillIds:['chalnaSlowStrike','chalnaMidStrike','chalnaSlowReserve','chalnaMidReserve'],
+        skillLevels: {12:['chalnaFastStrike','chalnaFastReserve'], 15:'chalnaTriBeat'}},
     ],
     mage: [
       {id:'mage_pact', name:'계약술사', icon:'🎴',
-        desc:'매 턴 시작 시 무작위 원소와 자동으로 계약해, 보유 스킬들이 계약 원소에 따라 속성과 효과가 바뀐다.',
-        masteryName:'원소 계약', masteryDesc:'매 턴 시작 시 무작위 원소와 자동 계약, 스킬 속성/효과가 그에 따라 바뀜.', masterySkillId:'mastery_elementpact',
-        activeName:'연쇄폭발', activeDesc:'도트 걸린 적 처치 시 주변까지 피해.', activeSkillId:'mageChainExplosion'},
+        desc:'화염·빙결·번개, 셋 중 하나와 스스로 운명을 맺는 술사. 어떤 원소를 택하느냐에 따라 완전히 다른 마법사가 된다.',
+        // 재설계: 기존엔 스킬 시전마다 화염/빙결/번개 중 하나가 "무작위"로 걸렸는데,
+        // 사용자 요청으로 "스스로 선택하는 토글" 방식으로 바뀌었다. 마스터리 슬롯 하나가
+        // 아니라 세 개의 토글 패시브(화염/빙결/번개계약)로 나뉘어, masterySkillId
+        // (단수) 대신 masterySkillIds(복수, 배열)를 쓴다 — combat/job-advancement.js의
+        // resolveJobAdvancement()가 이 필드를 확인해 셋 다 지급하도록 이미 고쳐져 있다.
+        masteryName:'원소 계약', masteryDesc:'화염/빙결/번개 계약 중 하나를 선택해 토글(전투가 끝날 때까지 유지, 서로 배타적). 계약한 원소에 따라 이후의 원소 각인/원소 파동/원소 폭풍의 효과가 완전히 달라진다.',
+        masterySkillIds:['mastery_firepact','mastery_icepact','mastery_lightningpact'],
+        activeName:'원소 각인', activeDesc:'계약한 원소에 따라 전혀 다르게 작동하는 마법 공격(미계약 시 위력이 약함).', activeSkillId:'mageElementStrike',
+        // 레벨12/15도 마찬가지로 계약 원소에 따라 분기한다.
+        skillLevels: {12:'mageElementWave', 15:'mageElementStorm'}},
       {id:'mage_time', name:'시간술사', icon:'⏳',
-        desc:'매 턴 일정 확률로 자신의 턴이 한 번 더 오거나 적의 턴이 밀린다.',
+        desc:'시간의 흐름 그 자체를 다루어, 남들보다 한 발 먼저 움직이는 술사.',
         masteryName:'시간 왜곡', masteryDesc:'매 턴 일정 확률로 자신 턴이 한 번 더 오거나 적 턴이 밀림(자동 발동).', masterySkillId:'mastery_timewarp',
-        activeName:'가속 주문', activeDesc:'즉시 발동으로 다음 자기 턴을 확정적으로 앞당김.', activeSkillId:'mageHaste'},
+        activeName:'가속 주문', activeDesc:'마법 피해를 입히는 동시에 적의 턴을 건너뛰고 다시 행동(연속 사용 시 MP 소모 급증).', activeSkillId:'mageHaste',
+        // 레벨12/15는 시간 조각(battleFlags.timeStacks — 마스터리 발동 시, 가속 주문
+        // 시전 시마다 최대 5개까지 쌓임) 시스템을 공유한다.
+        skillLevels: {12:'mageTimeRewind', 15:'mageTimeParadox'}},
+      {id:'mage_curseweaver', name:'저주술사', icon:'☠',
+        desc:'저주받은 운명을 스스로 짊어지고, 그것을 오히려 힘으로 바꾸는 이단의 술사.',
+        masteryName:'저주 계약', masteryDesc:'저주를 받아들일 때마다 마력이 영구히 오르고, 저주의 수치형 페널티는 절반만 적용됨.', masterySkillId:'mastery_curseweaver',
+        activeName:'저주 폭발', activeDesc:'짊어진 저주 개수만큼 강력해지는 마법 공격.', activeSkillId:'mageCurseNova',
+        // 레벨12/15 추가 스킬(혈맹의 검투사/일격의 구도자와 동일한 패턴 —
+        // combat/battle-end.js의 grantExp()가 이 맵을 읽어 레벨업 시 자동 지급한다).
+        skillLevels: {12:'mageCurseBrand', 15:'mageCurseBloom'}},
     ],
     rogue: [
-      {id:'rogue_phantom', name:'환영검사', icon:'👥',
-        desc:'공격 적중 시 일정 확률로 분신이 생성되어, 다음 턴 자동으로 추가 공격을 가한다.',
-        masteryName:'잔영', masteryDesc:'공격 적중 시 일정 확률로 분신 생성, 다음 턴 자동 추가 공격.', masterySkillId:'mastery_afterimage',
-        activeName:'그림자일격', activeDesc:'첫 타격 필중 치명타.', activeSkillId:'rogueShadowStrike'},
-      {id:'rogue_alchemist', name:'맹독 연금술사', icon:'⚗',
-        desc:'공격할 때마다 독 3종 중 하나가 자동으로 축적되며, 세 종류가 다 채워지면 폭발 효과를 발동할 수 있다.',
-        masteryName:'삼중 조제', masteryDesc:'공격할 때마다 독 3종 중 하나 자동 축적, 3종 완성 시 폭발 효과 발동 가능.', masterySkillId:'mastery_triplepoison',
-        activeName:'촉매 주입', activeDesc:'즉시 원하는 독 하나를 추가 축적.', activeSkillId:'rogueCatalyst'},
+      {id:'rogue_phantom', name:'환영도적', icon:'👥',
+        desc:'그림자 속에 분신을 두고 함께 싸우는 환영 검사. 눈에 보이는 칼날은 언제나 하나가 아니다.',
+        masteryName:'잔영', masteryDesc:'공격형 스킬 사용 시 확정적으로 분신 생성, 적 턴 직전 자동으로 50% 위력의 추가 공격.', masterySkillId:'mastery_afterimage',
+        activeName:'그림자 쇄도', activeDesc:'분신과 함께 즉시 2연격(급소 확정 적중). 이 스킬 자체도 잔영을 발동시켜 다음 턴 분신 공격까지 예약된다.', activeSkillId:'rogueShadowStrike',
+        // 레벨12/15 둘 다 액티브. 12는 잔영을 "증폭시키는 토글", 15는 이번 전투
+        // 누적 잔영 발동 횟수를 그대로 힘으로 바꾸는 궁극기.
+        skillLevels: {12:'rogueDoubleImage', 15:'rogueUndeadParade'}},
+      // [리뉴얼] 독사(rogue_alchemist)는 사용자 요청으로 "역병숙주"로 전면
+      // 리뉴얼되었다(id는 rogue_alchemist 그대로 재사용 — 기존 세이브 호환).
+      // 기존 구조는 "맹독 주입"이 마스터리(기본공격도 +1스택)와 완전히 같은
+      // 방향(스택 추가)이라 15레벨(삼중 주입) 전까지 액티브를 쓸 이유가 없다는
+      // 문제가 있었다. 리뉴얼 컨셉은 "기생형" — 적을 약화시킨 만큼 내가
+      // 흡수한다. 상세 수치는 combat/enemy-turn.js(getEffectiveEnemyAtk/
+      // getEffectiveEnemyDef의 역병 잠식 디버프, getVenomAbsorbBonus) 및
+      // combat/player-actions.js(체액 흡수 핸들러) 참고.
+      // [해결됨] 이 직업 전용 에픽 각인은 기존 3종(re_venomrush/re_venomburst/
+      // re_solovenom)이 새 "기생형" 메커니즘(enemy.venomStacks,
+      // getVenomDmgPerStack())에 맞춰 이미 재연결되어 있고, 이번 세션에
+      // 슬롯별 대안 각인 3종(re_gluttony/re_corrosion/re_symbiosis,
+      // exclusiveGroup으로 기존 각인과 택1)이 추가되어 총 6종, 슬롯당 2택이
+      // 됐다(js/blacksmith.js 참고).
+      {id:'rogue_alchemist', name:'역병숙주', icon:'🐍',
+        desc:'회랑에 남은 역병의 기운을 스스로 몸에 받아들인 자. 손이 닿는 모든 것이 서서히 병들어 간다.',
+        masteryName:'역병 잠식', masteryDesc:'기본 공격과 모든 스킬이 적중할 때마다 적을 역병으로 잠식시킨다(+1스택, 최대 10, 전투가 끝날 때까지 유지). 잠식이 진행될수록 매 라운드 피해를 입히는 동시에 적의 공격력·방어력이 스택당 2%씩 약해진다.', masterySkillId:'mastery_venomstacks',
+        activeName:'체액 흡수', activeDesc:'적의 상처에서 역병의 체액을 빨아들인다. 피해를 입히며 잠식 스택을 더 끌어올리고, 그만큼 내 공격력을 이번 전투 동안 흡수한다(스택을 소모하지 않는다).', activeSkillId:'rogueVenomInject',
+        // 레벨12: 잠식 dot 피해의 일부를 자동으로 흡혈. 레벨15: 체액 흡수의
+        // 자기 전용 스택 보너스와 흡수 비율이 함께 강화되는 궁극 패시브.
+        skillLevels: {12:'rogueVenomRefine', 15:'rogueVenomTriple'}},
     ],
     paladin: [
       {id:'paladin_martyr', name:'순교자', icon:'✝',
-        desc:'특정 스킬 사용 시 최대HP를 영구히 깎는 대신 공격력 등 영구 스탯을 얻는 선택지가 상시 열려있다.',
+        desc:'자신의 생명력을 제물로 바쳐 영원한 힘을 얻는 순교자. 대가를 두려워하지 않는다.',
         masteryName:'희생의 맹세', masteryDesc:'특정 스킬 사용 시 최대HP를 영구히 깎는 대신 영구 스탯을 얻는 선택지가 상시 열림.', masterySkillId:'mastery_martyrvow',
-        activeName:'심판의 빛', activeDesc:'공격 + 소량 자힐 복합기.', activeSkillId:'paladinJudgmentLight'},
-      {id:'paladin_creed', name:'계율의 파수꾼', icon:'📜',
-        desc:'전투 시작 시 스스로 계율을 선택해, 유지할수록 버프 스택이 쌓이고 어기면 즉시 상실한다.',
-        masteryName:'계율', masteryDesc:'전투 시작 시 스스로 계율(예: 물약 사용 금지)을 선택, 유지 시 버프 스택 증가·어기면 즉시 상실.', masterySkillId:'mastery_creed',
-        activeName:'축복의 벽', activeDesc:'몇 턴간 자신에게 피해 흡수 보호막.', activeSkillId:'paladinBlessedWall'},
+        activeName:'심판의 빛', activeDesc:'공격 + 소량 자힐 복합기.', activeSkillId:'paladinJudgmentLight',
+        // 신규 기획(사용자 요청 — 순교자에 레벨12/15가 아예 없었음). 둘 다
+        // 희생의 맹세(mastery_martyrvow)가 실제로 발동한 누적 횟수
+        // (player.martyrSacrificeCount)를 그대로 힘으로 바꾸는 방향으로 통일.
+        skillLevels: {12:'paladinMartyrSeal', 15:'paladinMartyrUltimate'}},
+      // [교체됨] 계율의 파수꾼(paladin_creed)은 사용자 요청으로 폐기되고 "회랑의
+      // 기사"로 대체되었다. mastery_creed/paladinBlessedWall 등 구버전 SKILLDB
+      // 항목은 삭제하지 않고 남겨둔다(레거시 세이브 크래시 방지) — 단지
+      // JOB_SPECIALIZATIONS 목록에서만 빠져 새 캐릭터는 더 이상 선택할 수 없다.
+      //
+      // 회랑의 기사(paladin_knight): "성기사로 시작했지만 전직과 함께 강제로
+      // 손에 넣은 전용무기 칼리버 X의 정체가 서서히 드러나는" 서사 중심 분기.
+      // 전직 즉시 칼리버 X가 강제 장착되며(다른 무기로 교체/해제 불가), 레벨
+      // 10/12/15 스킬을 배울 때마다 칼리버 X 자체가 자동으로 다음 단계 아이템으로
+      // 교체되어 아이템 설명이 성검→불길함→저주받은 검으로 변해간다. desc는
+      // 일부러 이 반전을 미리 알려주지 않는다(발견의 재미를 위해 컨셉만 서술).
+      {id:'paladin_knight', name:'회랑의 기사', icon:'🗡',
+        desc:'회랑 깊은 곳에서 발견한 성검, 칼리버 X를 손에 넣고 각성한 기사. 검은 그 순간부터 다른 무기로 바꿀 수 없게 되었다.',
+        masteryName:'칼리버 X', masteryDesc:'전직과 동시에 전용 무기 칼리버 X가 강제 장착된다(교체/해제 불가). 레벨이 오를 때마다 검 자체가 변해간다.', masterySkillId:'mastery_caliberx',
+        activeName:'성휘참', activeDesc:'칼리버 X에 신성한 빛을 모아 적을 강하게 베어낸다.', activeSkillId:'paladinHolyRend',
+        skillLevels: {12:'paladinDarkPrayer', 15:'paladinCaliberXFinale'}},
     ],
+    // [교체됨] 기존 로봇군단장(mechanic_legion)/데토네이터(mechanic_detonator)는
+    // 사용자 요청으로 폐기되고 아래 두 분기로 전면 교체되었다. mastery_multideploy/
+    // mastery_chaindetonate 등 구버전 SKILLDB 항목은 삭제하지 않고 남겨둔다(레거시
+    // 세이브 크래시 방지) — 단지 JOB_SPECIALIZATIONS 목록에서만 빠져 새 캐릭터는
+    // 더 이상 선택할 수 없다.
+    //
+    // 폭주 화부(mechanic_stoker): 1차 기관사의 압력 축적/방출 정체성을 그대로
+    // 하이리스크 방향으로 밀어붙인 분기. 시뮬레이션(전사/마법사/도적/성기사
+    // 2차 기준, 5턴 실전 조건)으로 압력 증가율(폭주사출 +25)까지 조정 완료.
+    // 강철 군단장(mechanic_accumulator)은 원래 이 압력 축을 반대로 쪼갠 "축압
+    // 기술자"였으나 전면 리뉴얼되어 압력을 아예 쓰지 않는 별개 컨셉이 됐다
+    // (아래 정의 참고).
     mechanic: [
-      {id:'mechanic_legion', name:'로봇군단장', icon:'🤖',
-        desc:'로봇을 한 기가 아니라 여러 기 동시에 배치할 수 있게 된다. 대신 폭발 계열 스킬은 일절 사용할 수 없다.',
-        masteryName:'다중 전개', masteryDesc:'로봇을 여러 기 동시에 배치 가능. 대신 폭발 계열 스킬은 일절 사용 불가.', masterySkillId:'mastery_multideploy',
-        activeName:'역할 배치', activeDesc:'정찰/화력/방벽 등 역할이 다른 로봇 한 기를 즉시 소환.', activeSkillId:'mechanicRoleDeploy'},
-      {id:'mechanic_detonator', name:'데토네이터', icon:'💥',
-        desc:'설치해둔 폭발물 개수만큼 기폭 시 배율이 자동으로 누적된다.',
-        masteryName:'연쇄 기폭', masteryDesc:'설치된 폭발물 개수만큼 기폭 시 배율 자동 누적.', masterySkillId:'mastery_chaindetonate',
-        activeName:'기폭', activeDesc:'설치된 폭발물을 한 번에 전부 터뜨림(범위 내 자신도 휘말릴 수 있음).', activeSkillId:'mechanicDetonate'},
+      {id:'mechanic_stoker', name:'폭주 화부', icon:'🔥',
+        desc:'안전장치를 스스로 뜯어낸 화부. 압력 상한을 무시하고 오직 앞으로 나아간다. 위험할수록 강해진다.',
+        masteryName:'폭주 압력', masteryDesc:'압력 상한이 150으로 늘어난다. 100을 넘는 압력은 초과분만큼 자해 피해를 입히지만, 압력 방출 스킬의 위력도 초과분에 비례해 강해진다.', masterySkillId:'mastery_overheat',
+        activeName:'폭주 사출', activeDesc:'압력을 소모하지 않고 즉시 압력량에 비례한 피해를 입힌다. 사용할 때마다 오히려 압력이 더 쌓인다.', activeSkillId:'mechanicOverloadDischarge',
+        skillLevels: {12:'mechanicHeatResist', 15:'mechanicCriticalOverload'}},
+      // 강철 군단장(id는 mechanic_accumulator 재사용 — 기존 세이브 자동 전환,
+      // combat/job-advancement.js의 migrateLegionBaseSkills() 참고): 압력
+      // 게이지를 아예 쓰지 않고, 로봇 3기(정찰/화력/방벽 중 최대 2기 + 오메가
+      // 전용 고정 1자리)를 직접 지휘·관리하는 게 핵심 루프인 순수 지속딜형.
+      {id:'mechanic_accumulator', name:'강철 군단장', icon:'🛡️',
+        desc:'압력 대신 로봇 군단을 직접 지휘한다. 배치하고, 사격을 명령하고, 정비하며 전장을 관리하는 지휘관.',
+        masteryName:'군단 편성', masteryDesc:'정찰/화력/방벽 로봇을 최대 2기까지 동시에 배치할 수 있게 된다. 여기에 오메가 유닛 전용 고정 슬롯이 별도로 하나 더 있다.', masterySkillId:'mastery_multideploy',
+        activeName:'로봇 배치', activeDesc:'정찰/화력/방벽 중 원하는 역할의 로봇을 직접 골라 배치한다. 이미 2기가 있으면 가장 먼저 배치된 로봇을 대신 교체한다.', activeSkillIds:['mechanicDeployRecon','mechanicDeployFirepower','mechanicDeployShield'],
+        skillLevels: {12:'legionFullSquadSynergy', 15:'legionCommand'}},
     ],
     jester: [
-      {id:'jester_rebel', name:'운명의 반란자', icon:'🎰',
-        desc:'매 턴 "운" 게이지가 자동으로 오르내리며, 그 수치에 따라 전투 전체 배율이 실시간으로 적용된다.',
-        masteryName:'행운의 파도', masteryDesc:'매 턴 "운" 게이지가 자동으로 오르내리며 전투 전체 배율에 실시간 반영.', masterySkillId:'mastery_luckwave',
-        activeName:'파도타기', activeDesc:'현재 운 게이지를 즉시 유리한 방향으로 크게 밀어붙임.', activeSkillId:'jesterRideWave'},
-      {id:'jester_cardmaster', name:'패의 마술사', icon:'🃏',
-        desc:'스킬을 사용할 때마다 자동으로 카드 한 장을 손에 쥐며, 페어/스트레이트 등 조합 완성 시 강력한 효과가 발동할 수 있다.',
-        masteryName:'패 획득', masteryDesc:'스킬 사용마다 자동으로 카드 한 장 획득, 조합 완성 시 강력한 효과 발동 가능.', masterySkillId:'mastery_drawcard',
-        activeName:'패 교환', activeDesc:'원치 않는 카드 한 장을 즉시 새 카드로 교체.', activeSkillId:'jesterExchange'},
+      // [교체됨] 운명의 반란자(jester_rebel)는 사용자 요청으로 폐기되고 "황금
+      // 도박사"로 전면 교체되었다. mastery_luckwave/jesterRideWave 등 구버전
+      // SKILLDB 항목은 삭제하지 않고 남겨둔다(레거시 세이브 크래시 방지) — 단지
+      // JOB_SPECIALIZATIONS 목록에서만 빠져 새 캐릭터는 더 이상 선택할 수 없다.
+      //
+      // 황금 도박사(jester_goldbet): 소지 골드 자체를 실제로 걸고 싸우는 하이리스크
+      // 하이리턴 분기. 판돈=현재 골드의 일부, 성공하면 판돈의 2배를 돌려받으며
+      // 그 판돈에 비례한 추가 피해까지 들어간다. 실패하면 판돈은 그대로 날아간다.
+      {id:'jester_goldbet', name:'황금 도박사', icon:'💰',
+        desc:'가진 돈을 그대로 판돈 삼아 싸우는 도박사. 크게 걸고, 크게 얻거나, 크게 잃는다.',
+        masteryName:'물주의 감각', masteryDesc:'전투 승리 시 얻는 골드가 20% 증가한다.', masterySkillId:'mastery_goldsense',
+        activeName:'베팅', activeDesc:'소지 골드의 10%를 판돈으로 건다. 성공하면 판돈의 2배를 얻고 판돈에 비례한 추가 피해, 실패하면 판돈만 잃고 피해 없음.', activeSkillId:'jesterGoldBet',
+        skillLevels: {12:'jesterHunch', 15:'jesterAllIn'}},
+      // [교체됨] 패의 마술사(jester_cardmaster)는 사용자 요청으로 제거되었다.
+      // mastery_drawcard/jesterExchange 등 SKILLDB 항목은 삭제하지 않고 남겨둔다
+      // (레거시 세이브 크래시 방지) — 단지 JOB_SPECIALIZATIONS 목록에서만 빠져
+      // 새 캐릭터는 더 이상 선택할 수 없다. 이제 도박사(jester)는 황금 도박사/
+      // 외상 도박사 두 분기만 남는다.
+      // 외상 도박사(jester_debtor): 빚을 내서 순간적으로 강해지는 하이리스크
+      // 분기. 레벨10에 소액/중액/거액 대출 3개를 한꺼번에 지급한다(계약술사의
+      // 원소계약처럼 activeSkillIds 복수형 사용). 대출 시스템의 실제 로직(이자,
+      // 상환 비율, 페널티 완화, 황금고블린 이벤트)은 relics.js에 헬퍼 함수로
+      // 구현했다 — getCurseCount/getCurseRewardMult 같은 기존 "메타 자원 집계"
+      // 함수들과 같은 위치·같은 패턴이라 자연스럽게 어울린다.
+      // [교체됨] 외상 도박사(jester_debtor)는 사용자 요청으로 대출/이자 경제
+      // 시스템을 전면 폐기하고 "불운의 채권자"로 교체되었다. mastery_debtcycle/
+      // jesterLoanSmall 등 구버전 SKILLDB 항목은 삭제하지 않고 남겨둔다(레거시
+      // 세이브 크래시 방지) — 단지 JOB_SPECIALIZATIONS 목록에서만 빠져 새
+      // 캐릭터는 더 이상 선택할 수 없다.
+      //
+      // 사기꾼(id는 jester_debtcollector 재사용 — 기존 세이브 자동 전환):
+      // 운 실패를 "채무"로 쌓아두는 대신, 도박 자체를 조작하는 사기도박 컨셉으로
+      // 리뉴얼(사용자 요청 — "도박사인데 담보 대출은 도박이랑 상관없다").
+      {id:'jester_debtcollector', name:'사기꾼', icon:'🎲',
+        desc:'정직하게 걸지 않는다. 패를 조작하고, 주사위를 속이고, 실패해도 손을 한 번 더 놀린다.',
+        masteryName:'손버릇', masteryDesc:'운 스킬이 실패하면 같은 스킬이 무료로 한 번 더 자동 발동된다.', masterySkillId:'mastery_luckdebt',
+        activeName:'조작된 도박판', activeDesc:'전투 시작 시 내 무작위 능력치 하나가 오르고 적의 무작위 능력치 하나가 떨어진다(자동 발동, 선택 UI 없음).', activeSkillId:'jesterRiggedTable',
+        skillLevels: {12:'jesterRiggedDice', 15:'jesterFateSwap'}},
     ],
   };
   function getSpecialization(p){
@@ -170,6 +301,20 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
     const list = JOB_SPECIALIZATIONS[p.job];
     if(!list) return null;
     return list.find(s=>s.id===p.specialization) || null;
+  }
+  // 화면에 표시할 "직업 이름표"를 한 곳에서 결정한다. 전직(세분화)을 마쳤으면 그
+  // 분기 이름(예: "혈맹의 검투사")을, 레거시 하이브리드 캐릭터면 하이브리드 이름을,
+  // 둘 다 없으면 기본 직업 이름(예: "전사")을 반환한다.
+  // 예전에는 화면마다 각자 getJob()/getHybrid()만 보고 라벨을 조립해서, 전직 후에도
+  // "전사"로 계속 표시되는 버그가 여러 곳에 있었다(예: combat/battle-end.js의
+  // showEnding()) — 앞으로 직업 이름을 표시할 일이 있으면 이 함수를 쓸 것.
+  function getJobLabel(p){
+    const spec = getSpecialization(p);
+    if(spec) return `${spec.icon} ${spec.name}`;
+    const hybrid = getHybrid(p);
+    if(hybrid) return `${hybrid.icon} ${hybrid.name}`;
+    const job = getJob(p);
+    return `${job.icon} ${job.name}`;
   }
   // 구조 전환 이전(하이브리드 시스템)에 이미 전직을 마친 캐릭터인지 판별한다.
   // job2가 있는데 specialization이 없으면, 다음 접속 시 새 분기 중 하나를 다시 선택해야 한다.

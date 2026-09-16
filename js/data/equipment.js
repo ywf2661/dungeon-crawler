@@ -48,11 +48,61 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       stats:{atk:5, def:5, mag:5},        minDepth:8,  rare:true, special:{dotBoost:0.25}},
     r_roguedagger:   {name:'도적의 단검',     slot:'weapon',    desc:'맹독이 발린 얇은 단검. 뒷골목의 암살자들이 즐겨 쓴다. ✦특성: 중독 피해가 40% 강화된다.',
       stats:{atk:8, spd:6},               minDepth:2,  rare:true, special:{dotBoost:{poison:0.4}}},
+    // 회랑의 정령(ogre) 처치 전용 드롭(사용자 요청 — 아코스 관련 단서를
+    // 직업 무관하게 접할 기회). keepsakeOnly:true는 findRareDropForDepth()의
+    // 일반 확률 로직에서 제외되고, combat/battle-end.js에서 회랑의 정령
+    // 처치 시에만 별도로 굴리는 독립 드롭이다.
+    r_achoskeepsake: {name:'낡은 병사의 반지', slot:'accessory', desc:'닳고 닳은 철 반지. 안쪽에 무언가 새겨져 있었던 자리가 있지만, 오래전에 닳아 알아볼 수 없다. 반지 표면에 얕게 눌린 자국 하나만 겨우 남아 있다 — \'A\'로 시작하는 글자였던 것 같기도 하다.',
+      stats:{def:8, maxhp:20},            minDepth:9,  rare:true, keepsakeOnly:true},
+    // 물음표 이벤트 "잠긴 육아실"(events.js) 전용 확정 지급 아이템(사용자
+    // 기획 — 왕자 떡밥을 대사→장소→엔딩 순으로 심는 세트 중 2단계). 확률
+    // 드롭이 아니라 이벤트 선택지 보상이라 findRareDropForDepth() 등 일반
+    // 드롭 로직과는 무관하다. 착용 중 잭과 조우하면 전용 1회성 인식 대사가
+    // 뜬다(combat/battle-setup.js의 maybeShowWoodenHorseRecognitionDialogue()).
+    r_woodenhorse: {name:'낡은 목마 인형', slot:'accessory', desc:'귀퉁이가 닳은 나무 목마. 누군가 오랫동안 아껴 만지던 흔적이 손잡이 부분에 유난히 진하게 남아 있다.',
+      stats:{maxhp:15, spd:2},            minDepth:20, rare:true},
+    // 물음표 이벤트 "부서진 톱니 장신구"(events.js) 전용 확정 지급 아이템
+    // (사용자 기획 — 아이온 파편 시리즈, 마녀의 시계 보유자에게만 이벤트
+    // 풀이 열림). 착용 중 아이온(진 최종보스)과 조우하면 전용 1회성 대사가
+    // 뜬다(combat/battle-setup.js의 maybeShowGearShardRecognitionDialogue()).
+    r_gearshard: {name:'부서진 톱니 장신구', slot:'accessory', desc:'금이 간 톱니바퀴 조각. 손에 쥐면 아주 낮은 울림이 느껴지는 것도 같다.',
+      stats:{maxmp:10, mag:3},             minDepth:1,  rare:true},
     r_guardiancharm: {name:'수호자의 부적',   slot:'accessory', desc:'고대 수호자의 힘이 깃든 부적. ✦특성: 전투 중 한 번, 치명적인 공격을 완전히 막아낸다.',
       stats:{def:6, maxhp:10},            minDepth:5,  rare:true, special:{guardianShield:true}},
     r_luckyclover:   {name:'행운의 네잎클로버', slot:'accessory', desc:'우연히 발견한 네 개의 잎. 행운을 가져다준다는 소문이 있다. ✦특성: 희귀 아이템 발견 확률과 획득 골드가 늘어난다.',
       stats:{spd:2},                      minDepth:1,  rare:true, special:{rareDropBoost:0.5, goldBoost:0.2}},
   };
+
+  // ---------- 칼리버 X (회랑의 기사 전용 무기, 3단계) ----------
+  // 회랑의 기사(paladin_knight)로 전직하면 전직 즉시 caliberx_1이 강제 장착되고,
+  // 레벨12/15에 도달하면 combat/battle-end.js의 applyLevelUpEffects()가 자동으로
+  // caliberx_2 → caliberx_3으로 교체한다(플레이어가 직접 장착/교체하는 게 아님).
+  // 세 단계 모두 equipItem()/unequipItem()에서 "회랑의 기사는 무기 슬롯을 직접
+  // 조작할 수 없다"는 잠금이 걸려 있어, 상점이나 장비창에서 다른 무기로 바꾸거나
+  // 벗을 수 없다. 스탯은 단계가 오를수록 조금씩 강해지지만, 이 아이템의 핵심은
+  // 스탯보다 "설명이 성검→불길함→저주받은 검으로 변해가는" 서사 연출이다.
+  const CALIBERX_STAGES = {
+    caliberx_1: {name:'칼리버 X', slot:'weapon', storyWeapon:true, minDepth:0,
+      desc:'어둠의 회랑 가장 깊은 제단에서 발견된 성검. 손에 쥐는 순간 마치 처음부터 그대의 것이었던 것처럼 익숙하게 감겨온다. 휘두를 때마다 검신에 신성한 빛이 감돌아, 성기사들 사이에 전해지는 \'선택받은 자에게만 스스로 손잡이를 내어주는 검\'이라는 전설이 사실이었음을 증명하는 듯하다. 검신 밑동, 오래되어 알아보기 힘든 자리에 흐릿한 글자 몇 개가 새겨져 있다 — \'Achos\'라고 읽히는 것도 같다.',
+      stats:{atk:12, mag:6}},
+    caliberx_2: {name:'칼리버 X', slot:'weapon', storyWeapon:true, minDepth:0,
+      desc:'기도를 올리면 응답이 온다. 다만 그 응답이 신의 것인지는 이제 확신할 수 없다. 검신 깊숙한 곳에서 무언가가 꿈틀거리는 감각이 손끝을 타고 올라온다. 이 검은 처음부터 \'성기사를 위해\' 만들어진 게 아니었을지도 모른다. 희미하게 남아 있던 그 이름이, 이제는 검이 스스로 되뇌는 것처럼 손끝에 아릿하게 전해져 온다.',
+      stats:{atk:18, mag:9}},
+    caliberx_3: {name:'칼리버 X', slot:'weapon', storyWeapon:true, minDepth:0,
+      desc:'이것은 성검이 아니다. 회랑 깊은 곳에 봉인되어 있던 무언가가, 봉인을 풀어줄 그릇을 기다리며 성검의 껍데기를 두르고 있었을 뿐. 그대는 검을 선택한 것이 아니라, 검에게 선택된 것이다. 검신에 있던 그 이름은 이제 완전히 지워졌다 — 처음부터 그런 이름 따위 없었다는 듯이.',
+      stats:{atk:26, mag:13}},
+  };
+  // 회랑의 기사가 caliberx_2/3로 자동 교체될 때, 이전 단계 스탯을 정확히 빼고
+  // 새 단계 스탯을 더하기 위한 헬퍼(combat/battle-end.js에서 사용).
+  function reforgeCaliberX(fromId, toId){
+    const from = CALIBERX_STAGES[fromId];
+    const to = CALIBERX_STAGES[toId];
+    if(!to) return;
+    if(from) unapplyEquipStats(from.stats);
+    applyEquipStats(to.stats);
+    player.equipment.weapon = toId;
+    if(!player.equipOwned.includes(toId)) player.equipOwned.push(toId);
+  }
 
   /* ---------- 에픽 세트 아이템 (어둠의 회랑) ---------- */
   const EPIC_EQUIPMENT = {
@@ -138,14 +188,14 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       set3Name:'최후의 심판', set3Desc:'전투 중 HP 50% 이하가 된 순간부터 피해 +50%, 흡혈 2배, 방어력 40% 관통 (HP 25% 이하 시 1회 추가로 피해 +100%)'},
     mechanic: {name:'종말기계 Mk.Ω',
       set2Name:'과부하', set2Desc:'가동 중인 장치(포탑/드론/오메가 유닛)가 있으면 모든 피해 +20%',
-      set3Name:'세계종말 프로토콜', set3Desc:'장치가 가동 중인 동안 방어력 40% 관통. 자폭 기동 시 위력이 대폭 강화되며, 사용 즉시 새로운 포탑이 무료로 재전개된다'},
+      set3Name:'세계종말 프로토콜', set3Desc:'장치가 가동 중인 동안 방어력 40% 관통, 모든 피해 +35%. 압력을 소모하는 스킬(밸브개방/안전밸브/과압각성/임계폭주 등) 사용 시 소모한 압력 10당 피해 +5%(최대 +50%)'},
     jester:   {name:'운명의 마지막 패',
       set2Name:'판돈 상승', set2Desc:'운 스킬 성공 시 다음 운 스킬 피해 +30% (최대 2중첩, 실패 시 중첩 초기화)',
       set3Name:'세계의 마지막 카드', set3Desc:'운 스킬 성공 3회마다 다음 운 스킬 성공 확률 최소 90%, 피해 +150%, 방어력 60% 관통, 실패해도 자해 피해 없음'},
   };
 
   function getItemDef(id){
-    return EQUIPMENT[id] || RARE_EQUIPMENT[id] || EPIC_EQUIPMENT[id];
+    return EQUIPMENT[id] || RARE_EQUIPMENT[id] || EPIC_EQUIPMENT[id] || CALIBERX_STAGES[id];
   }
 
   function statsText(stats){
@@ -174,11 +224,24 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(!item) return;
     if(!player.equipOwned.includes(itemId)) return;
     const slot = item.slot;
+    // 회랑의 기사(paladin_knight): 칼리버 X가 장착된 무기 슬롯은 플레이어가 직접
+    // 건드릴 수 없다. 칼리버 X 자기 자신으로의 "교체"(예: 레벨업 재장착) 요청만
+    // 예외로 허용한다 — combat/battle-end.js는 이 함수를 거치지 않고
+    // reforgeCaliberX()를 직접 호출하므로, 사실상 이 슬롯은 플레이어 입력으로는
+    // 절대 안 걸린다.
+    if(slot==='weapon' && player.equipment.weapon && getItemDef(player.equipment.weapon) && getItemDef(player.equipment.weapon).storyWeapon){
+      return;
+    }
     const current = player.equipment[slot];
     if(current === itemId) return;
     const prevCounts = getEpicSetCounts();
-    if(current) unapplyEquipStats(getItemDef(current).stats);
+    if(current){
+      unapplyEquipStats(getItemDef(current).stats);
+      // 장비 강화(사용자 요청) — 갈아끼우는 이전 장비의 스탯형 강화 보너스도 회수.
+      if(typeof unapplyEnhancementStatBonuses==='function') unapplyEnhancementStatBonuses(current);
+    }
     applyEquipStats(item.stats);
+    if(typeof applyEnhancementStatBonuses==='function') applyEnhancementStatBonuses(itemId);
     player.equipment[slot] = itemId;
     renderStatus();
     checkEpicSetToast(prevCounts);
@@ -187,8 +250,14 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   function unequipItem(slot){
     const current = player.equipment[slot];
     if(!current) return;
+    // 칼리버 X는 해제할 수 없다(회랑의 기사의 정체성 그 자체 — 서사상으로도
+    // "검이 손을 놓아주지 않는다"는 컨셉과 맞물린다).
+    const def = getItemDef(current);
+    if(def && def.storyWeapon) return;
     const prevCounts = getEpicSetCounts();
-    unapplyEquipStats(getItemDef(current).stats);
+    unapplyEquipStats(def.stats);
+    // 장비 강화(사용자 요청) — 스탯형 강화 보너스도 함께 회수(장착 중에만 적용).
+    if(typeof unapplyEnhancementStatBonuses==='function') unapplyEnhancementStatBonuses(current);
     player.equipment[slot] = null;
     renderStatus();
     checkEpicSetToast(prevCounts);
@@ -206,22 +275,27 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   }
   function showEpicSetToast(setId, tier){
     const set = EPIC_SETS[setId];
-    const t = document.createElement('div');
-    t.className = 'toast toast-epic';
+    let html;
     if(tier===2){
-      t.innerHTML = `<h3 style="color:var(--epic-bright);">✦ ${set.name} — 2/3</h3><p><b>${set.set2Name}</b></p><p>${set.set2Desc}</p>`;
+      html = `<h3 style="color:var(--epic-bright);">✦ ${set.name} — 2/3</h3><p><b>${set.set2Name}</b></p><p>${set.set2Desc}</p>`;
     } else {
-      t.innerHTML = `<h3 style="color:var(--epic-bright);">✦✦✦ SET COMPLETE</h3><p style="color:var(--epic-bright);"><b>${set.name}</b></p><p><b>${set.set3Name}</b></p><p>${set.set3Desc}</p>`;
+      html = `<h3 style="color:var(--epic-bright);">✦✦✦ SET COMPLETE</h3><p style="color:var(--epic-bright);"><b>${set.name}</b></p><p><b>${set.set3Name}</b></p><p>${set.set3Desc}</p>`;
     }
-    document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 3200);
+    showToast(html, null, {duration:3200, extraClass:'toast-epic'});
   }
 
   function equippedSpecials(){
-    return Object.values(player.equipment).filter(Boolean).map(id=>{
+    const list = Object.values(player.equipment).filter(Boolean).map(id=>{
       const def = getItemDef(id);
       return def && def.special;
     }).filter(Boolean);
+    // 장비 강화(사용자 요청)로 얻은 special도 합친다 — js/blacksmith.js의
+    // ENHANCEMENTS 카탈로그 중 기존 special 어휘(lifestealPct 등)를 재사용하는
+    // 효과가 여기로 자동 반영된다.
+    if(typeof getEquippedEnhancementSpecials==='function'){
+      list.push(...getEquippedEnhancementSpecials());
+    }
+    return list;
   }
   function getSpecialSum(key){
     return equippedSpecials().reduce((sum,sp)=> sum + (typeof sp[key]==='number' ? sp[key] : 0), 0);
@@ -229,13 +303,44 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   function hasSpecial(key){
     return equippedSpecials().some(sp=>sp[key]);
   }
+  // 슬롯 하나(무기/방어구/장신구)에 걸린 dotBoost 총합(원본 아이템 special +
+  // 그 아이템에 붙은 강화 special 전부 포함).
+  function getSlotDotBoost(slot, type){
+    const id = player.equipment && player.equipment[slot];
+    if(!id) return 0;
+    let sum = 0;
+    const def = getItemDef(id);
+    if(def && def.special){
+      const sp = def.special;
+      if(typeof sp.dotBoost === 'number') sum += sp.dotBoost;
+      else if(sp.dotBoost && sp.dotBoost[type]) sum += sp.dotBoost[type];
+    }
+    if(typeof getEnhancementsFor==='function' && typeof ENHANCEMENTS!=='undefined'){
+      getEnhancementsFor(id).forEach(eid=>{
+        const edef = ENHANCEMENTS[eid];
+        if(!edef || !edef.special) return;
+        const sp = edef.special;
+        if(typeof sp.dotBoost === 'number') sum += sp.dotBoost;
+        else if(sp.dotBoost && sp.dotBoost[type]) sum += sp.dotBoost[type];
+      });
+    }
+    return sum;
+  }
   function getDotBoostRatio(type){
-    let total = 0;
-    equippedSpecials().forEach(sp=>{
-      if(!sp.dotBoost) return;
-      if(typeof sp.dotBoost === 'number') total += sp.dotBoost;
-      else if(sp.dotBoost[type]) total += sp.dotBoost[type];
-    });
+    // 사용자 요청(밸런스 조정): 무기(도적의 단검 등)와 방어구/장신구의 중독
+    // 강화 효과는 더 이상 합산되지 않는다 — 둘 중 더 높은 쪽 하나만 적용된다.
+    // (예: 도적의 단검 +40% + 독사의 반지 강화 +25%를 동시에 껴도 65%가 아니라
+    // 더 높은 40%만 적용) 방어구/장신구끼리는(둘 다 dotBoost를 주는 경우)
+    // 여전히 합산된다 — 무기 쪽만 별도로 분리해 비교하는 취지이기 때문.
+    const weaponBoost = getSlotDotBoost('weapon', type);
+    const nonWeaponBoost = getSlotDotBoost('armor', type) + getSlotDotBoost('accessory', type);
+    let total = Math.max(weaponBoost, nonWeaponBoost);
+    // 보스 약점(사용자 요청 — 정예/보스 리뉴얼 1차): weakness:'dot'인 보스는
+    // 지속피해에 특히 취약해 피해량이 2배(+100%)가 된다. data/monsters.js의
+    // BOSSES 데이터에 시범 적용된 보스 한정(고쳐지지 않는 시계/빈 옷의 예언자,
+    // 원래 함께 시범 적용됐던 '멈추지 않는 모래'는 A안 정리로 현재 미사용).
+    // 이건 장비 중첩 규칙과 무관하게 항상 별도로 더해진다.
+    if(typeof enemy!=='undefined' && enemy && enemy.weakness==='dot') total += 1.0;
     return total;
   }
   function getReviveRatio(){
@@ -351,6 +456,11 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     }
 
     // 도적 — 밤을 걷는 학살자
+    // (정정) execReady는 실은 이미 살아있었다 — rogueRegisterHit()(물리 적중
+    // 3회 누적 시 무장, combat/player-actions.js 15곳에서 호출)이 정상 작동
+    // 중이었다. 앞서 조사할 때 grep에서 equipment.js를 실수로 빼고 검색해서
+    // 이 함수를 놓치고 "죽은 효과"로 잘못 판단했었다 — 자동 무장 코드는
+    // 제거했다(중복이었음, rogueRegisterHit이 원래 담당).
     const rt = epicSetTier('rogue');
     if(rt>=2 && isPhys && enemy && player.spd>enemy.spd) mult *= 1.25;
     if(rt>=3 && isPhys && battleFlags && battleFlags.execReady){
@@ -360,6 +470,9 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     }
 
     // 성기사 — 최후의 성전
+    // (정정) paladinAwoken도 이미 살아있었다 — checkPaladinAwoken()(HP 50%
+    // 이하 시 무장, combat/enemy-turn.js·battle-setup.js에서 호출)이 정상
+    // 작동 중이었다. 위와 같은 이유로 잘못 판단했었다 — 자동 무장 코드 제거.
     const pt = epicSetTier('paladin');
     if(pt>=2 && hpRatio<=0.5) mult *= 1.25;
     if(pt>=3 && battleFlags && battleFlags.paladinAwoken){
@@ -370,10 +483,19 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       }
     }
 
-    // 메카닉 — 종말기계 Mk.Ω (가동 중인 장치가 있을 때 화력이 오른다. 자폭 기동의 강화/재전개는 detonaterig 핸들러에서 처리)
+    // 메카닉 — 종말기계 Mk.Ω (가동 중인 장치가 있을 때 화력이 오른다)
+    // [리뉴얼] 3세트 효과 교체(사용자 요청) — 옛 데토네이터(자폭 기동) 전용
+    // 효과라 지금 선택 가능한 폭주 화부/축압 기술자로는 절대 발동할 수 없는
+    // 죽은 효과였다. 압력을 소모하는 스킬 전반(밸브개방/안전밸브/과압각성/
+    // 임계폭주)에 걸리는 "압력 소모량 비례 피해 보너스"로 교체했다 — 1차와
+    // 양쪽 2차 분기 전부를 커버한다. ctx.pressureConsumed는 각 핸들러가
+    // applyOutgoingDamageMods 호출 시 실어준다(없으면 그냥 0으로 무시됨).
     const mct = epicSetTier('mechanic');
     if(mct>=2 && battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0){
       mult *= mct>=3 ? 1.35 : 1.2;
+    }
+    if(mct>=3 && ctx.pressureConsumed){
+      mult *= 1 + Math.min(0.5, Math.floor(ctx.pressureConsumed/10)*0.05);
     }
 
     // 도박사 — 운명의 마지막 패
@@ -390,6 +512,14 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
   }
 
   function getEffectiveEnemyDef(base){
+    // 명멸의 틈(사용자 기획, 시간의 파수꾼 전용) — 파수꾼이 사라져 있는 동안
+    // (enemy.vanishedTurns>0, 딱 한 번의 플레이어 턴만 지속) 플레이어의
+    // 공격/스킬이 사실상 전부 무의미해지도록 방어력을 터무니없이 높게
+    // 돌려준다. 이 함수를 모든 플레이어 공격/스킬의 데미지 계산이 거치므로
+    // (아래 주석 참고) 여기 한 곳만 고치면 전 스킬에 자동 반영된다. 독/
+    // 지속피해(도트)는 이 함수를 거치지 않는 별도 고정 틱 구조라 자연히
+    // 예외로 남는다(사용자 요청 — "독딜은 예외").
+    if(enemy && enemy.type==='timeguardian' && enemy.vanishedTurns>0) return base + 99999;
     let pierce = 0;
     const hpRatio = player.maxhp>0 ? player.hp/player.maxhp : 1;
     if(epicSetTier('warrior')>=3 && hpRatio<=0.5) pierce += 0.3;
@@ -398,6 +528,17 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(epicSetTier('mechanic')>=3 && battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0) pierce += 0.4;
     if(epicSetTier('jester')>=3 && battleFlags && battleFlags.jackpotArmed) pierce += 0.6;
     if(enemy && enemy.exposedTurns>0) pierce += (enemy.exposePierce||0);
+    // 역병숙주(mastery_venomstacks) 마스터리 "역병 잠식": 잠식 스택 1개당
+    // 적 방어력 2% 감소(최대 10스택 -20%). 데미지 계산 지점이 전부 이
+    // 함수를 거치므로 여기 한 곳만 고치면 모든 공격/스킬에 자동 반영된다.
+    // 잠식 갑주(re_corrosion, 역병숙주 방어구 각인)를 꼈으면 스택당 3%
+    // (최대 -30%)로 커진다 — combat/enemy-turn.js의 effectiveAtk() 디버프와
+    // 대칭 처리.
+    if(enemy && (enemy.venomStacks||0)>0){
+      const aIdCor = player.equipment && player.equipment.armor;
+      const hasCorrosion = !!(aIdCor && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdCor).includes('re_corrosion'));
+      pierce += Math.min(hasCorrosion?0.3:0.2, enemy.venomStacks*(hasCorrosion?0.03:0.02));
+    }
     if(pierce<=0) return base;
     return Math.max(0, Math.round(base*(1-Math.min(0.9, pierce))));
   }
@@ -417,6 +558,19 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(ratio>=0.75) return Math.max(0.7, 1 - (ratio-0.75)*0.6);
     const missing = 0.75-ratio;
     return 1 + missing*missing*2.5;
+  }
+  // 저울추(relic_scaleweight): 자신과 적의 체력 "비율"을 비교한다(절대 수치가
+  // 아니라 비율이라, 서로 최대체력이 달라도 공정하게 비교된다). 내가 더
+  // 위태로우면 필사적으로 몰아치는 느낌(+25%), 적이 더 위태로우면 오히려
+  // 신중해지는 느낌(-15%)으로 설계했다.
+  function getScaleWeightMult(){
+    if(!hasRelicFlag('scaleWeight')) return 1;
+    if(!enemy || player.maxhp<=0 || enemy.maxhp<=0) return 1;
+    const myRatio = player.hp/player.maxhp;
+    const enemyRatio = enemy.hp/enemy.maxhp;
+    if(myRatio < enemyRatio) return 1.25;
+    if(enemyRatio < myRatio) return 0.85;
+    return 1;
   }
   // 빈 자루의 각오: 물약/상급 물약/에테르가 전부 0개일 때만 발동하는 실시간 조건부 배율.
   // 포션을 쓰는 순간 발동하고, 다시 채워 넣으면 곧바로 해제되는 동적 효과다.
@@ -442,6 +596,7 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
       if(stacks>0){ mult *= (1 + stacks*0.2); battleFlags.flaskStacks = 0; }
       if(battleFlags.revengeArmed){ mult *= 1.3; battleFlags.revengeArmed = false; }
     }
+    if(typeof applyInfectedWoundOnHit==='function') applyInfectedWoundOnHit();
     return mult;
   }
   function applyOutgoingDamageMods(dmg, ctx){
@@ -452,11 +607,31 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(ctx.type==='basic') mult *= (1 + getRelicSum('basicAtkPctMult'));
     if(ctx.type!=='basic') mult *= (1 + getRelicSum('skillDmgPctMult'));
     if(enemy && enemy.isBoss) mult *= (1 + getRelicSum('bossDmgPctMult'));
+    // 결투자의 서약(relic_duelistoath): 정예/보스 상대로만 가하는 피해 보너스.
+    if(enemy && (enemy.isElite || enemy.isBoss)) mult *= (1 + getRelicSum('eliteBossDmgPctMult'));
     mult *= getLowHpScalingMult();
+    mult *= getScaleWeightMult();
     mult *= getHourglassMult();
     mult *= getEmptySackMult();
     mult *= (ctx.onHitMult||1);
     if(ctx.type!=='basic' && hasBladeHiltSet()) mult *= 2;
+    // 장신구 강화(사용자 요청) — 마력의 반지(스킬 피해 전용), 행운의 부적(치명타),
+    // 도박사의 주사위(도박), 시간의 모래(전투 첫 행동)까지 전부 이 지점에서 처리.
+    if(ctx.type!=='basic') mult *= (1 + getSpecialSum('skillDmgPctBonus'));
+    // ctx.extraCritChance(찰나검사 "난격" 콤보 등) — 특정 스킬 한정으로 치명타
+    // 확률을 임시로 더해준다. 기본값 0이라 이 필드를 안 쓰는 다른 모든 스킬은
+    // 기존과 완전히 동일하게 동작한다(하위 호환).
+    const critChance = getSpecialSum('critChancePct') + (ctx.extraCritChance||0);
+    if(critChance>0 && Math.random()<critChance) mult *= 1.5;
+    const gambleChance = getSpecialSum('gambleDiceChance');
+    if(gambleChance>0){
+      if(Math.random()<gambleChance) mult *= 2;
+      else mult *= 0.8;
+    }
+    if(hasSpecial('firstActionBonus') && battleFlags && !battleFlags.firstActionUsed){
+      battleFlags.firstActionUsed = true;
+      mult *= (1+getSpecialSum('firstActionBonus'));
+    }
     let result = Math.max(1, Math.round(dmg*mult));
     return Math.max(1, result);
   }

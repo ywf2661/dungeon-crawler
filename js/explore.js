@@ -3,11 +3,21 @@
 탐험 화면 로직 — 게임 시작, 화면 전환, 상태바/탐험 로그 렌더, 휴식, 마을 귀환,
 보스소굴 진입, 층 진행(다음 층 이동, 유물/저주 제단 조우, 보스/최종보스 조우 판정).
 export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementCheck, renderStatus,
-              currentLocation, renderExplore, addLog, onRest, onReturnTown, enterBossDen,
-              showBossDenConfirm, proceedEnterBossDen, proceedBossDenAdvance, onAdvance,
+              currentLocation, renderExplore, addLog, onRest, showRestChoice,
+              makeTownCheckpoint, applyTownCheckpoint, onAdvance,
               showFinalFloorConfirm, proceedAdvance
+주의(신규): 마을로 가기 버튼이 삭제되어 onReturnTown()은 완전히 제거했다
+     (보스 클리어 시 자동으로 마을에 도착하는 방식으로 대체 — battle-end.js
+     참고). 보스소굴 버튼도 삭제되었지만 enterBossDen/showBossDenConfirm/
+     proceedEnterBossDen/proceedBossDenAdvance 함수 정의 자체는 얽힌 참조가
+     많아 삭제 시 실수 위험이 커서 죽은 코드로 남겨뒀다(더 이상 어디서도
+     호출되지 않는다) — 나중에 보스소굴을 다시 살릴 경우 참고용.
 의존성: state.js, storage.js, relics.js, combat/battle-setup.js(startBattle 호출),
-       data/jobs.js(needsSpecializationMigration)
+       data/jobs.js(needsSpecializationMigration, getJobLabel)
+주의: renderStatus()가 전직(세분화) 후에도 상태바 왼쪽에 항상 기본 직업 이름("전사")만
+     표시하던 버그가 있었다(hybrid만 확인하고 specialization은 확인하지 않았음) —
+     data/jobs.js의 getJobLabel()로 교체해 고쳤다. combat/battle-end.js의 showEnding()도
+     동일한 종류의 버그가 있어 같은 방식으로 이미 고쳐졌다.
 */
 
   // '나아가다' 버튼 연타 시 층이 중복 진행되는 것을 막기 위한 잠금.
@@ -42,8 +52,125 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.fateBoostMult===undefined) player.fateBoostMult = 0;
       if(player.endingSeen===undefined) player.endingSeen = false;
       if(player.deathCount===undefined) player.deathCount = 0;
+      // 버그 수정(사용자 제보 — 이어하기 시 소지금이 NaN/null로 표기됨,
+      // 시간의 파수꾼 전투 중 나갔다 들어온 경우). 정확한 오염 경로를 코드
+      // 리뷰만으로는 100% 특정하지 못했지만, 저장 시점에 NaN이었다면 JSON이
+      // NaN을 못 담아 null로 직렬화되므로 "NaN 아니면 null"로 보이는 게
+      // 정확히 이 패턴과 일치한다. 근본 원인과 무관하게 불러오는 시점에
+      // 항상 유효한 숫자로 되돌리는 안전장치를 걸어둔다(몬스터 도감 33/20
+      // 버그 때 쓴 것과 같은 "표시 시점에 자연 복구" 방식).
+      if(typeof player.gold!=='number' || isNaN(player.gold)) player.gold = 0;
+      // 노드맵 시스템(신규) — 예전 세이브에는 이 필드들이 없으므로 안전하게
+      // 채워 넣는다. tierIndex는 기존에 저장된 depth로부터 역산한다(예:
+      // depth=7이었다면 5층 보스를 이미 넘긴 뒤였을 테니 tierIndex=1로 복구,
+      // 정확히 안 맞아도 다음 "나아가다"에서 새 지도를 뽑으므로 큰 문제 없음).
+      if(player.tierIndex===undefined) player.tierIndex = Math.floor(Math.max(0,depth-1)/10);
+      if(player.nodeMap===undefined) player.nodeMap = null;
+      if(player.nodeRow===undefined) player.nodeRow = -1;
+      if(player.nodeCurrentId===undefined) player.nodeCurrentId = null;
+      if(player.nodeVisited===undefined) player.nodeVisited = [];
+      // 오프닝 심리테스트(신규) — 이 기능이 생기기 전에 시작한 캐릭터는
+      // 보너스가 아예 없는 게 맞다(모든 계산식이 undefined를 0으로 처리하므로
+      // 굳이 채워 넣지 않아도 안전하지만, 명시적으로 빈 객체를 둬 헷갈리지
+      // 않게 한다).
+      if(player.originBonuses===undefined) player.originBonuses = {};
+      if(player.originGrowthRemainder===undefined) player.originGrowthRemainder = {hp:0, mp:0, atk:0, spd:0, def:0};
+      // 방어력 성장 기질(속죄, 신규)이 생기기 전 세이브는 원격변수 객체 자체는
+      // 있어도 def 서브필드가 없을 수 있다 — 없으면 0으로 채운다.
+      else if(player.originGrowthRemainder.def===undefined) player.originGrowthRemainder.def = 0;
+      if(player.tempCurses===undefined) player.tempCurses = {};
+      if(player.hasMapFragment===undefined) player.hasMapFragment = false;
+      if(player.eliteSealFragments===undefined) player.eliteSealFragments = 0;
+      if(player.nextBattleEnemyAtkMult===undefined) player.nextBattleEnemyAtkMult = null;
+      if(player.multiBattleBuff===undefined) player.multiBattleBuff = null;
+      if(player.contractBuff===undefined) player.contractBuff = null;
+      if(player.helpedInjuredAdventurer===undefined) player.helpedInjuredAdventurer = false;
+      if(player.exchangeStock===undefined) player.exchangeStock = null;
+      if(player.equipEnhancements===undefined) player.equipEnhancements = {};
+      if(player.equipEnhancementDeltas===undefined) player.equipEnhancementDeltas = {};
+      if(player.reinforceStones===undefined) player.reinforceStones = 0;
+      // 마을 체크포인트 시스템(신규) — 예전 세이브엔 없으므로 지금 상태를
+      // 기준으로 하나 만들어둔다(다음 보스 클리어 때 정상적으로 갱신됨).
+      if(player.townCheckpoint===undefined) player.townCheckpoint = town ? makeTownCheckpoint() : null;
+      if(player.eliteSealFirstSeen===undefined) player.eliteSealFirstSeen = (player.eliteSeals||0) > 0;
+      // [해제됨] 메카닉 2차(폭주 화부/축압 기술자)가 압력 게이지 리뉴얼에 맞춰
+      // 새로 구현되어, 더 이상 10레벨 전직 선택 화면을 건너뛰지 않는다.
       if(player.level>=10 && !player.jobChosenAt10) player.jobAdvancePending = true;
       if(needsSpecializationMigration(player)) player.jobAdvancePending = true; // 레거시 하이브리드 → 재전직 필요
+      // 버그 수정(사용자 제보) — 보스 노드를 고른 직후(nodemap.js의 pickNode()가
+      // nodeRow/nodeCurrentId를 이미 보스 노드로 옮기고 saveGame()까지 마친 뒤,
+      // 실제 전투가 시작되기 전 그 짧은 틈)에 새로고침하면, 지도는 "이미 보스
+      // 노드가 현재 위치"인 채로 저장된다. 보스 행은 지도의 마지막 행이라 이
+      // 상태에서는 nodeRow===지도 마지막 행이 되어 더 이상 "다음 행"이 없고,
+      // 보스 노드 자신도 "과거(방문 완료)" 취급되어 클릭할 수 없다 — 즉 진행이
+      // 완전히 막힌다. 정상적으로 보스를 잡았다면 battle-end.js가 승리 즉시
+      // 다음 구간의 새 지도로 넘겨버리므로, 이 상태 그대로 저장에 남아 있다는
+      // 것 자체가 "전투가 중간에 끊겼다"는 신호다 — 감지되면 보스전을 다시 건다.
+      //
+      // 추가 버그 수정(사용자 제보 — 시간의 파수꾼 전투 중 새로고침하면 그냥
+      // 다음 노드를 고르게 됨): 'midboss' 노드는 지도 "중간" 행이라 위
+      // 판정(nodeRow===마지막 행)에 안 걸려서 이 안전장치를 그냥 통과해버렸다.
+      // 그 결과 전투 없이 노드만 "방문 완료" 처리된 채 다음 행을 고를 수
+      // 있게 되어, 사실상 중간보스를 공짜로 건너뛸 수 있는 구멍이 있었다.
+      // 판정 기준을 "마지막 행인지"가 아니라 "현재 노드 타입이 boss/midboss인지"로
+      // 바꿔서, 지도 안 위치와 무관하게 항상 잡아내도록 한다.
+      if(player.nodeMap && player.nodeRow>=0){
+        const curRow = player.nodeMap[player.nodeRow];
+        const curNode = curRow && curRow.find(n=>n.id===player.nodeCurrentId);
+        if(curNode && curNode.type==='boss'){
+          document.getElementById('statusbar').style.display='flex';
+          showScreen('explore');
+          renderStatus();
+          depth = player.tierIndex*10 + 10;
+          renderExplore(['모험을 이어간다.']);
+          if(player.tierIndex===5 && !player.endingSeen){
+            // 최종보스 진입 확인창(고요한 제단)도 같은 이유로 중간에 끊길 수
+            // 있으니, 전투 대신 이 확인창을 다시 띄운다.
+            showFinalFloorConfirm();
+          } else {
+            addLog('중단됐던 보스전을 다시 시작한다!', 'warn');
+            setTimeout(()=>startBattle(true), 300);
+          }
+          return;
+        }
+        // 버그 수정(사용자 제보 — 파수꾼을 이기고 나서 새로고침 후 이어하기를
+        // 하면 다시 싸우게 됨): 승리 직후~다음 노드로 이동하기 전 사이에는
+        // nodeCurrentId가 여전히 이 미드보스 노드를 가리키고 있어서, "아직
+        // 싸우는 중"이었을 때와 저장된 상태만으로는 구별이 안 됐다.
+        // player.midbossCleared(처치 시 battle-end.js가 세움)로 이미 이긴
+        // 상대인지 확인해, 이긴 상대는 다시 걸지 않고 평소처럼 지도만 보여준다.
+        if(curNode && curNode.type==='midboss' && !player.midbossCleared){
+          document.getElementById('statusbar').style.display='flex';
+          showScreen('explore');
+          renderStatus();
+          depth = player.tierIndex*10 + 5;
+          nodeMidboss = true;
+          renderExplore(['모험을 이어간다.']);
+          addLog('중단됐던 조우를 다시 시작한다!', 'warn');
+          setTimeout(()=>startBattle(true), 300);
+          return;
+        }
+        // 버그 수정(사용자 제보 — "몬스터를 만나 죽기 직전에 새로고침하면
+        // 다음 노드로 넘어가는 꼼수"): 일반 전투/정예 노드도 boss/midboss와
+        // 완전히 같은 문제를 안고 있다 — pickNode()가 이미 nodeRow/
+        // nodeCurrentId/nodeVisited를 옮기고 saveGame()한 뒤에야 실제 전투가
+        // 시작되므로, 그 사이(또는 전투 도중 죽기 직전)에 새로고침하면
+        // 저장된 상태는 "이 노드는 이미 지나왔다"로만 남는다. 중간 행이라
+        // 보스처럼 진행이 막히는 게 아니라, 오히려 전투 없이 다음 노드를
+        // 바로 고를 수 있게 되어버린다 — 즉 위험한 전투를 사실상 공짜로
+        // 회피하는 구멍이었다. combat/elite도 동일하게 감지해 전투를 다시 건다.
+        if(curNode && (curNode.type==='combat' || curNode.type==='elite')){
+          document.getElementById('statusbar').style.display='flex';
+          showScreen('explore');
+          renderStatus();
+          depth = getVirtualDepth();
+          if(curNode.type==='elite') nodeForcedElite = true;
+          renderExplore(['모험을 이어간다.']);
+          addLog('중단됐던 전투를 다시 시작한다!', 'warn');
+          setTimeout(()=>startBattle(false), 300);
+          return;
+        }
+      }
       document.getElementById('statusbar').style.display='flex';
       showScreen('explore');
       renderStatus();
@@ -55,10 +182,169 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     depth = 0; town = true; enemy = null; battleOver = false; subMode = null;
     inBossDen = false; bossDenFloor = 0;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, rig:null};
+    // [디버그 전용 — 진 최종보스 테스트용] 이름이 정확히 "admin2"(대소문자
+    // 무관)면 오프닝 심리테스트를 건너뛰고 setupAdmin2TrueFinalBossTest()로
+    // 곧장 보낸다. 기존 "admin"(레벨9 시작, player.js)과는 별개의 독립된
+    // 디버그 경로 — 서로 전혀 간섭하지 않는다.
+    if(player.name && player.name.trim().toLowerCase()==='admin2'){
+      setupAdmin2TrueFinalBossTest();
+      return;
+    }
+    // [디버그 전용 — 진 최종보스 테스트용, admin2의 변형] admin2와 완전히
+    // 동일한 조건(레벨17/에픽풀템/포션 최대)이되, 유물만 회랑자의 칼날/
+    // 칼자루 고정 조합이 아니라 난이도별 개수(쉬움2/보통3/하드코어4 —
+    // 실제 게임의 relicSlots과 동일한 값)만큼 무작위로 지급한다.
+    if(player.name && player.name.trim().toLowerCase()==='admin3'){
+      setupAdmin2TrueFinalBossTest({randomRelics:true});
+      return;
+    }
+    // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
+    // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
+    // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
+    showOriginQuiz();
+  }
+
+  // [디버그 전용] 진 최종보스("회랑의 시조") 테스트용 셋업. 레벨17 + 직업
+  // 맞춤 에픽 풀템(딜 극대화 강화 포함) + 회랑자의 칼날/칼자루 유물을 갖춘
+  // 채로 "고요한 제단"(tierIndex===5) 준비 노드를 이미 통과한 상태로
+  // 시작한다 — 나아가면 곧바로 진 최종보스 노드다. player.deathCount는
+  // newPlayer()의 기본값(0) 그대로 절대 건드리지 않는다(0이어야 진
+  // 최종보스가 실제로 등장하는 조건 — combat/battle-setup.js 참고).
+  function setupAdmin2TrueFinalBossTest(opts){
+    opts = opts || {};
+    // 레벨 17까지 실제 레벨업 로직(combat/battle-end.js의 applyLevelUpEffects,
+    // 스탯 성장/스킬 습득 공식 그대로)을 반복 호출해 재사용한다 — 수치를
+    // 손으로 다시 베끼면 나중에 공식이 바뀔 때 여기만 어긋나기 쉽다.
+    // 17이라는 값은 임의가 아니라, "정상적으로 노드맵을 밟아 진 최종보스
+    // 직전(고요한 제단)까지 도달했을 때 자연스럽게 도달하는 평균 레벨"을
+    // Python Monte Carlo로 시뮬레이션(5000회, 구간별 전투/정예 조우 확률과
+    // 실제 몬스터 exp 공식 반영)해서 나온 값이다(평균 16.7, 중앙값 17,
+    // 난이도별 차이 거의 없음 — exp량 자체는 난이도 영향을 안 받아서).
+    // 기존 20은 이보다 살짝 후하게 잡혀 있었다(사용자 확인 후 수정).
+    while(player.level < 17){
+      applyLevelUpEffects();
+    }
+    // 2차 전직/세분화는 레벨10 이상이므로 정상적으로 직접 골라야 한다 —
+    // scheduleJobAdvancementCheck()가 explore 화면 진입 시 자동으로 띄운다.
+    player.jobAdvancePending = true;
+
+    // 직업 맞춤 에픽 풀템(무기/방어구/장신구) 3종 지급 + 장착.
+    const EPIC_SET_BY_JOB = {
+      warrior:  ['w_giantslayer','a_giantheart','c_giantring'],
+      mage:     ['w_stardevourer','a_starrobe','c_voidcore'],
+      rogue:    ['w_nightblades','a_shadowcloak','c_assassineye'],
+      paladin:  ['w_judgmentblade','a_godplate','c_saintheart'],
+      mechanic: ['w_omegacannon','a_overloadarmor','c_omegareactor'],
+      jester:   ['w_fatedeck','a_jokertailcoat','c_lastjoker'],
+    };
+    const gear = EPIC_SET_BY_JOB[player.job] || EPIC_SET_BY_JOB.warrior;
+    gear.forEach(id=>{ if(!player.equipOwned.includes(id)) player.equipOwned.push(id); });
+    // 사용자 요청 — 예전엔 여기서 딜 위주 강화를 미리 새겨줬는데, 이제
+    // 에픽 직업 각인을 대장간에서 직접 골라 테스트할 수 있어야 하므로
+    // 강화 없이 순수 장비만 지급/장착한다(강화석 100개는 아래에서 그대로
+    // 지급되니 원하는 강화를 직접 새기면 된다).
+    gear.forEach(id=> equipItem(id));
+
+    // 유물(사용자 요청 — admin3은 admin2와 달리 무작위 유물).
+    // admin2: 회랑자의 칼날 + 칼자루 고정 — 함께 지니면 모든 스킬 피해 2배.
+    //   둘 다 effect가 비어 있어(단독 무효) applyRelicEffect로 딱히 반영할
+    //   스탯이 없다 — 목록에 그냥 추가하면 된다.
+    // admin3: relicSlots(난이도별 쉬움2/보통3/하드코어4 — 실제 게임의
+    //   getRelicSlotUsage 상한과 동일한 값)만큼, RELIC_ALTAR_POOL(제단에서
+    //   정상적으로 뜨는 유물 전체 — 저주 제외)에서 무작위로 뽑는다. 칼날/
+    //   칼자루는 애초에 이 풀에 없어 자동으로 제외되고, 추가로 "MP가 0이
+    //   되는 유물"(빈 그릇 — effect.mpZero)만 사용자 요청으로 명시 제외한다
+    //   (스킬을 아예 못 쓰게 되어 딜사이클 테스트 목적과 안 맞기 때문).
+    if(opts.randomRelics){
+      const relicSlotsByDiff = {easy:2, normal:3, hardcore:4};
+      const n = relicSlotsByDiff[player.difficulty] || 2;
+      const pool = (typeof RELIC_ALTAR_POOL!=='undefined' ? RELIC_ALTAR_POOL : Object.keys(RELICS))
+        .filter(id=>{
+          const r = RELICS[id];
+          return r && !r.effect.mpZero && !r.deprecated;
+        });
+      // 버그 수정(사용자 제보 — admin3 접속 시 유물이 슬롯 수보다 1개 많게
+      // 나옴): 마녀의 시계를 항상 보장하면서도 무작위 추첨을 그대로 n개
+      // 뽑아버려서, 추첨에 안 걸렸을 때 n+1개가 되고 있었다. 마녀의 시계
+      // 몫으로 슬롯 하나를 미리 빼두고(n-1개만 무작위 추첨) 마지막에
+      // 채워 넣어, 항상 정확히 n개(난이도별 실제 슬롯 수와 동일)가 되도록
+      // 고쳤다.
+      const randomPool = pool.filter(id=> id!=='relic_witchclock');
+      const shuffled = randomPool.slice();
+      for(let i=shuffled.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      }
+      shuffled.slice(0, Math.max(0, n-1)).forEach(id=>{
+        player.relics.push(id);
+        if(typeof applyRelicEffect==='function') applyRelicEffect(id);
+      });
+      // admin3(무작위 유물)는 마녀의 시계를 항상 보장한다(시간의 마녀/아이온
+      // 관련 콘텐츠 테스트 편의용). 위에서 이미 슬롯 하나를 비워뒀으므로
+      // 여기서 채워도 총 개수는 n을 넘지 않는다.
+      player.relics.push('relic_witchclock');
+      if(typeof applyRelicEffect==='function') applyRelicEffect('relic_witchclock');
+    } else {
+      player.relics.push('relic_hilt', 'relic_blade');
+    }
+
+    // 저주술사(mage_curseweaver)는 admin2/admin3 둘 다 "현실적인 저주
+    // 보유량"을 갖게 한다(사용자 요청) — 전체 5개 구간 중 저주 제단은
+    // 구간당 1번씩(총 5번) 뜨지만, 플레이어가 고른 한 경로가 그 노드를
+    // 매번 지나간다는 보장은 없어 5개를 다 모으진 못하는 게 자연스럽다.
+    // 그래서 5개 중 4개를 무작위로 지급한다(하나는 놓친 것으로 취급).
+    // resolveJobAdvancement()에서 2차 전직이 확정된 "이후"에만 의미가
+    // 있으므로 job-advancement.js 쪽에 별도로 붙인다(여기서는 아직 어떤
+    // 세분화를 고를지 알 수 없다).
+
+    // 소지금도 넉넉하게(사용자 요청 — 황금 도박사 등 골드 소모형 스킬 테스트용).
+    player.gold = 10000;
+
+    // 포션류도 최대치로 채운다(사용자 요청). shop.js의 CONSUMABLE_CAPS를
+    // 그대로 참조 — 상점 판매 상한과 항상 같은 값을 쓰게 되어, 상한이
+    // 나중에 바뀌어도 여기 따로 손댈 필요가 없다.
+    if(typeof CONSUMABLE_CAPS!=='undefined'){
+      player.inv = player.inv || {};
+      Object.keys(CONSUMABLE_CAPS).forEach(key=>{ player.inv[key] = CONSUMABLE_CAPS[key]; });
+    }
+
+    // "고요한 제단"(tierIndex===5) 진입 직전이 아니라, 그보다 한 마을 더 전
+    // (4번째 구간 시작 마을)에서 시작한다(사용자 요청 — admin2/3가 4구간
+    // 노드맵부터 정상적으로 밟아 4구간 보스를 잡고 나서 자연스럽게 5구간
+    // "고요한 제단"으로 이어지도록). tierIndex 증가는 combat/battle-end.js의
+    // 보스 처치 보상 확정 시점(player.tierIndex = nextTier)에서 정상적으로
+    // 일어나므로 여기서 미리 손댈 필요가 없다. nodeMap을 비워두면 앞서와
+    // 동일하게 explore.js의 onAdvance()가 새로 생성해준다.
+    player.tierIndex = 4;
+    player.nodeMap = null;
+    player.nodeRow = -1;
+    player.nodeCurrentId = null;
+    player.nodeVisited = [];
+    town = true;
+    depth = player.tierIndex*10; // 4구간 시작 층수(40) — 전투 스케일링용
+    // 강화석도 넉넉하게(사용자 요청 — 에픽 각인 테스트용).
+    player.reinforceStones = 100;
+
+    player.townCheckpoint = makeTownCheckpoint();
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
-    renderExplore(['회랑 어귀에 첫 발을 내디뎠다.']);
+    const relicMsg = opts.randomRelics ? '무작위 유물 지급(마녀의 시계 항상 포함)' : '회랑자의 칼날/칼자루 장착';
+    renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 강화석 100개 · ${relicMsg} 완료. 마을에서 "나아가기"를 누르면 4구간부터 정상적으로 노드맵을 밟는다(4구간 보스 클리어 후 자연스럽게 고요한 제단으로 이어짐).`]);
+    saveGame();
+  }
+
+  // 오프닝 심리테스트(origin.js) 완료 후 실제로 마을 화면을 여는 마무리 처리.
+  // 예전엔 startGame()의 새 게임 분기 맨 끝에 그대로 있던 코드를, 퀴즈를 먼저
+  // 보여줘야 해서 별도 함수로 뺐다.
+  function finishNewGameStart(){
+    document.getElementById('statusbar').style.display='flex';
+    // 마을 체크포인트(신규): 오프닝 심리테스트 보너스까지 반영된 시작 상태를
+    // 기준으로 최초 체크포인트를 만들어둔다.
+    player.townCheckpoint = makeTownCheckpoint();
+    showScreen('explore');
+    renderStatus();
+    renderExplore(['회랑 어귀에 첫 발을 내디뎠다.', {text:'💡 상단의 이름과 레벨을 누르면 언제든 상태창(능력치·스킬 목록)을 볼 수 있다.', cls:'warn'}]);
     saveGame();
   }
 
@@ -67,9 +353,29 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('screen-'+id).classList.add('active');
     if(id==='explore'){
       scheduleJobAdvancementCheck();
-      Sound.setBgmMode('explore');
+      // 사용자 요청 — "고요한 제단"(tierIndex===5, 진짜 최종보스 직전 특수 구간)에
+      // 있는 동안은 explore 화면이라도 긴박한 BGM(dread)을 쓴다. 마을이면
+      // 'explore'(음원 준비 전까지는 기존 합성 BGM), 던전이면 실제 음원
+      // 플레이리스트(dungeon)를 쓴다.
+      const inFinalTier = player && player.tierIndex===5 && !player.endingSeen;
+      Sound.setBgmMode(inFinalTier ? 'dread' : (town ? 'explore' : 'dungeon'));
     } else if(id==='battle'){
-      Sound.setBgmMode('battle');
+      // 사용자 요청 — 세 가지를 완전히 분리한다.
+      // 일반 최종보스(finalboss) = "잠식된 OO 용사"
+      // 진 최종보스(truefinalboss) = 회랑의 시조(왕)
+      // 마녀(witchboss) = 마녀의 시계 보유 시 시조 대신 등장하는 시간의 마녀(아이온)
+      const isWitchBattle = !!(enemy && enemy.isTrueFinal && enemy.type==='timewitch');
+      const isTrueFinalBattle = !!(enemy && enemy.isTrueFinal && !isWitchBattle);
+      const isFinalBattle = !!(enemy && enemy.isFinal && !enemy.isTrueFinal);
+      // 시간의 파수꾼(사용자 기획) 전용 BGM — 중간보스라 일반/최종보스류와는
+      // 완전히 별개 트랙을 쓴다.
+      const isGuardianBattle = !!(enemy && enemy.type==='timeguardian');
+      Sound.setBgmMode(
+        isWitchBattle ? 'witchboss' :
+        isTrueFinalBattle ? 'truefinalboss' :
+        isFinalBattle ? 'finalboss' :
+        isGuardianBattle ? 'timeguardian' : 'battle'
+      );
     } else if(id==='title' || id==='gameover'){
       Sound.setBgmMode('explore');
     }
@@ -97,21 +403,59 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   }
 
   function renderStatus(){
-    // 빈 그릇(mpZero) 저주: 레벨업/전직 등 어떤 경로로 최대MP가 늘어나든 항상 0으로 되돌린다.
-    if(player && hasRelicFlag('mpZero')){
+    // 빈 그릇(mpZero) 저주 / 일격의 구도자(warrior_purist): 장비 착용, 강화,
+    // 유물 효과, 레벨업 등 어떤 경로로 최대MP가 조금이라도 늘어나든(원천을
+    // 하나하나 막는 대신) 상태를 그릴 때마다 항상 0으로 되돌린다 — 마나가
+    // "생겼다 없어지는" 현상의 원천 차단(사용자 요청).
+    if(player && (hasRelicFlag('mpZero') || player.specialization==='warrior_purist')){
       player.maxmp = 0; player.mp = 0;
     }
-    const job = getJob(player);
-    const hybrid = getHybrid(player);
+    // 회복량 감소(사용자 요청) — 두 출처를 합산한다: ①정예 특성 "저주"(전투 중
+    // 한정, -30%) ②피의 갑옷 강화(장착 중이면 상시, -20%). player-actions.js
+    // 안의 여러 회복 적용 지점을 전부 손대는 대신, HP가 증가할 때마다 항상
+    // 뒤이어 호출되는 이 함수에서 델타를 감지해 사후에 일부를 되돌린다.
+    const curseHealPenalty = (isBattleActive() && enemy && enemy.eliteTraits && enemy.eliteTraits.includes('curse')) ? 0.3 : 0;
+    // 정예 특성 "사냥꾼"/"광폭" 상태 표시(사용자 요청 — 토스트 대신 보스 예고와
+    // 같은 상시 카드로 통일). 조건 판정 자체는 updateBossIntentCard()
+    // (combat/battle-fx.js)가 매번 살아있는 HP 비율로 직접 계산하므로, 여기서는
+    // 상태가 바뀔 수 있는 시점(HP 변동)마다 카드 갱신만 요청하면 된다.
+    if(isBattleActive() && enemy && typeof updateBossIntentCard==='function'){
+      updateBossIntentCard();
+    }
+    const equipHealPenalty = typeof getSpecialSum==='function' ? getSpecialSum('healPenaltyPct') : 0;
+    const totalHealPenalty = Math.min(0.9, curseHealPenalty + equipHealPenalty);
+    if(totalHealPenalty>0 && typeof player._prevHpForCurse==='number' && player.hp > player._prevHpForCurse){
+      const healedAmt = player.hp - player._prevHpForCurse;
+      const reduce = Math.round(healedAmt*totalHealPenalty);
+      if(reduce>0) player.hp = Math.max(0, player.hp - reduce);
+    }
+    player._prevHpForCurse = player.hp;
+    // 전직(세분화) 후 상태바에 항상 기본 직업 이름("전사")만 뜨던 버그를 고쳤다.
+    // getJobLabel()(data/jobs.js)이 전직했으면 분기 이름을, 레거시 하이브리드면
+    // 그 이름을, 둘 다 아니면 기본 직업 이름을 알아서 골라 반환한다.
     document.getElementById('sb-name').textContent = player.name;
-    document.getElementById('sb-lvl').textContent = hybrid
-      ? `Lv.${player.level} · ${hybrid.icon} ${hybrid.name}`
-      : `Lv.${player.level} · ${job.icon} ${job.name}`;
+    document.getElementById('sb-lvl').textContent = `Lv.${player.level} · ${getJobLabel(player)}`;
     document.getElementById('sb-hp-bar').style.width = Math.max(0,(player.hp/player.maxhp*100))+'%';
     document.getElementById('sb-hp-val').textContent = `${Math.max(0,player.hp)}/${player.maxhp}`;
     document.getElementById('sb-mp-bar').style.width = Math.max(0,(player.mp/player.maxmp*100))+'%';
     document.getElementById('sb-mp-val').textContent = `${Math.max(0,player.mp)}/${player.maxmp}`;
+    // 경험치 바(사용자 요청) — HP/MP 바와 같은 구조로 하단에 추가.
+    document.getElementById('sb-exp-bar').style.width = Math.max(0,Math.min(100, (player.exp/player.expNext*100)))+'%';
+    document.getElementById('sb-exp-val').textContent = `${player.exp}/${player.expNext}`;
     document.getElementById('gold-display').textContent = '💰 '+player.gold;
+    // 정예의 인장(사용자 요청 — 골드 위에 인장 개수도 표시). 인장이 하나도
+    // 없으면(대부분의 직업 초반, 또는 애초에 인장을 못 쓰는 상황) 굳이 "0개"를
+    // 상시 노출할 필요는 없어 숨겨둔다 — 처음 하나라도 얻는 순간부터 나타난다.
+    const sealEl = document.getElementById('seal-display');
+    if(sealEl){
+      const seals = player.eliteSeals||0;
+      sealEl.style.display = seals>0 ? 'block' : 'none';
+      sealEl.textContent = '🔱 '+seals;
+    }
+    // 역병숙주 전용 화면 전체 스모그(사용자 요청) — 잠식 스택 비율에 비례해
+    // 초록빛 비네트가 짙어진다. renderStatus()는 venomStacks가 바뀌는 모든
+    // 지점 직후에 이미 호출되고 있어 별도 훅 없이 여기 한 곳만 고치면 된다.
+    if(typeof updateVenomSmog==='function') updateVenomSmog();
   }
 
   function currentLocation(){
@@ -125,16 +469,20 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       document.getElementById('ex-loc-name').textContent = '심연의 투기장';
       document.getElementById('ex-loc-desc').textContent = '오직 강자만이 다음 상대와 마주할 수 있는 곳. 돌아가지 않는 한, 쉼 없이 다음 보스가 나타난다.';
     } else {
-      const depthLabel = (!town && hasRelicFlag('hideDepth')) ? '깊이 ???' : ('깊이 '+depth);
-      document.getElementById('ex-depth-tag').textContent = town ? '마을' : depthLabel;
+      // 사용자 요청: 탐험 화면 상단에 숫자 깊이("깊이 23" 등)를 노출하지
+      // 않는다. 구역 이름(loc.name)만으로 진행 위치를 드러낸다. 마을일 때만
+      // 태그에 '마을'을 표시하고, 던전에서는 태그 자체를 숨긴다.
+      const depthTag = document.getElementById('ex-depth-tag');
+      depthTag.textContent = town ? '마을' : '';
+      depthTag.style.display = town ? 'inline-block' : 'none';
       document.getElementById('ex-loc-name').textContent = town ? '안식의 마을' : loc.name;
-      document.getElementById('ex-loc-desc').textContent = town ? '따뜻한 화롯불과 상인들의 목소리가 들린다. 이곳에서는 안전하다.' : loc.desc;
+      document.getElementById('ex-loc-desc').textContent = town ? '따뜻한 화롯불과 상인들의 목소리가 들린다. 이곳에서는 안전하다. 다만 이 마을이 언제부터 이 자리에 있었는지는, 아무도 정확히 기억하지 못한다.' : loc.desc;
     }
     document.getElementById('btn-advance').style.display = 'block';
     document.getElementById('btn-advance').textContent = inBossDen ? '⚔ 다음 상대와 맞서다' : (town ? '➡ 던전으로 출발' : '➡ 나아가다');
-    document.getElementById('btn-town').style.display = town ? 'none' : 'block';
-    const bossDenBtn = document.getElementById('btn-bossden');
-    if(bossDenBtn) bossDenBtn.style.display = (!inBossDen && player && (player.level||1) >= 15) ? 'block' : 'none';
+    // 노드맵 영역 갱신 — 마을/보스소굴이 아니고 진행 중인 지도가 있으면 이
+    // 함수가 알아서 '나아가다'/'휴식'/'상점' 버튼을 감추고 지도를 보여준다.
+    renderNodeMapArea();
     const logEl = document.getElementById('ex-log');
     if(newLines){
       newLines.forEach(l=>{
@@ -148,6 +496,81 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     }
   }
 
+  // 마을 체크포인트(신규) — 타이어 보스를 잡고 마을에 도착하는 시점의 상태를
+  // 통째로 스냅샷 저장해둔다. 이후 사망 시(쉬움/보통 난이도) 이 스냅샷으로
+  // 되돌려, 이번 구간에서 얻은 골드/경험치/장비/유물 등을 전부 무효화한다.
+  // combat/battle-end.js가 보스 클리어 시 makeTownCheckpoint()로 저장하고,
+  // 사망 시 applyTownCheckpoint()로 복원한다.
+  function makeTownCheckpoint(){
+    return {
+      hp: player.hp, mp: player.mp, maxhp: player.maxhp, maxmp: player.maxmp,
+      gold: player.gold, exp: player.exp, expNext: player.expNext, level: player.level,
+      atk: player.atk, def: player.def, mag: player.mag, spd: player.spd,
+      job: player.job, job2: player.job2, specialization: player.specialization,
+      jobChosenAt10: player.jobChosenAt10,
+      skills: (player.skills||[]).slice(),
+      equipment: Object.assign({}, player.equipment),
+      equipOwned: (player.equipOwned||[]).slice(),
+      relics: (player.relics||[]).slice(),
+      relicSlots: player.relicSlots,
+      relicAppliedDeltas: Object.assign({}, player.relicAppliedDeltas),
+      eliteSeals: player.eliteSeals,
+      exchangeStock: player.exchangeStock ? player.exchangeStock.slice() : null,
+      tierIndex: player.tierIndex,
+      // 사용자 지적 — 빠져있던 것들을 보강했다.
+      inv: Object.assign({}, player.inv),
+      eliteSealFragments: player.eliteSealFragments,
+      // 외상 도박사(jester_debtor) 전용 빚 상태 전체. atk/mag는 위에서 이미
+      // 체크포인트 시점 값으로 되돌아가는데, debt 쪽을 같이 되돌리지 않으면
+      // "대출로 오른 스탯은 사라졌는데 빚만 남는" 모순이 생긴다.
+      debt: player.debt, debtPrincipal: player.debtPrincipal,
+      loanCounts: Object.assign({}, player.loanCounts),
+      debtAppliedDelta: Object.assign({}, player.debtAppliedDelta),
+      debtBorrowedAtDepth: player.debtBorrowedAtDepth,
+      debtFreezeFloors: player.debtFreezeFloors,
+      debtCollectorImminent: player.debtCollectorImminent,
+      // 임시 저주(이 구간 한정) 추적 목록 — relics는 이미 되돌아가지만, 이
+      // 추적 목록도 같이 되돌리지 않으면 이미 사라진 저주 id가 남아있게 된다.
+      tempCurses: Object.assign({}, player.tempCurses),
+      // 연계 이벤트 플래그(수상한 지도 조각/부상당한 모험가) — 하드코어의
+      // 완전 리셋과 동일하게, 이번 구간에서 생긴 진행 상황이라 되돌린다.
+      hasMapFragment: player.hasMapFragment,
+      helpedInjuredAdventurer: player.helpedInjuredAdventurer,
+      // 장비 강화(사용자 요청) — 다른 진행 자원과 동일하게 사망 시(쉬움/보통)
+      // 마지막 마을 상태로 되돌아간다.
+      reinforceStones: player.reinforceStones,
+      equipEnhancements: JSON.parse(JSON.stringify(player.equipEnhancements||{})),
+      // 직전 층별보스 보상 선택(사용자 요청 — 사망 후 재선택 가능하게).
+      lastBossRewardChoice: player.lastBossRewardChoice ? Object.assign({}, player.lastBossRewardChoice) : null,
+      // 유물 제단 재추첨(스킵) 에스컬레이션 비용(사용자 요청) — 게임 전체에
+      // 걸쳐 누적되지만, 사망 시엔 "직전 마을 당시의 누적 횟수"로 되돌아가야
+      // 하므로 체크포인트에 포함시킨다.
+      relicSkipRerollCount: player.relicSkipRerollCount||0,
+    };
+  }
+
+  function applyTownCheckpoint(cp){
+    if(!cp) return;
+    Object.keys(cp).forEach(k=>{
+      if(k==='equipment') player.equipment = Object.assign({}, cp.equipment);
+      else if(k==='equipOwned') player.equipOwned = cp.equipOwned.slice();
+      else if(k==='relics') player.relics = cp.relics.slice();
+      else if(k==='skills') player.skills = cp.skills.slice();
+      else if(k==='exchangeStock') player.exchangeStock = cp.exchangeStock ? cp.exchangeStock.slice() : null;
+      else if(k==='relicAppliedDeltas') player.relicAppliedDeltas = Object.assign({}, cp.relicAppliedDeltas);
+      // 아래 객체형 필드들은 참조를 그대로 대입하면 이후 플레이 중 변경이
+      // 체크포인트 원본까지 오염시키므로(다음 사망 때 잘못된 값으로 복원됨)
+      // 항상 얕은 복사를 새로 만들어 대입한다.
+      else if(k==='inv') player.inv = Object.assign({}, cp.inv);
+      else if(k==='loanCounts') player.loanCounts = Object.assign({}, cp.loanCounts);
+      else if(k==='debtAppliedDelta') player.debtAppliedDelta = Object.assign({}, cp.debtAppliedDelta);
+      else if(k==='tempCurses') player.tempCurses = Object.assign({}, cp.tempCurses);
+      else if(k==='equipEnhancements') player.equipEnhancements = JSON.parse(JSON.stringify(cp.equipEnhancements||{}));
+      else if(k==='lastBossRewardChoice') player.lastBossRewardChoice = cp.lastBossRewardChoice ? Object.assign({}, cp.lastBossRewardChoice) : null;
+      else player[k] = cp[k];
+    });
+  }
+
   function addLog(text, cls){
     const logEl = document.getElementById('ex-log');
     const div = document.createElement('div');
@@ -158,30 +581,54 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     logEl.scrollTop = logEl.scrollHeight;
   }
 
+  // 휴식(사용자 요청 — 3가지 방법 중 선택). 던전 휴식 노드에서 무료로
+  // 이용한다(골드 소비 없음 — 사용자 요청으로 제거).
   function onRest(){
-    if(town){
-      player.hp = player.maxhp; player.mp = player.maxmp;
-      renderStatus();
-      addLog('마을의 화로 곁에서 몸을 녹였다. 체력과 마력이 전부 회복되었다.', 'gold');
-      saveGame();
-    } else {
-      const cost = Math.round(30 + depth*4);
-      if(player.gold < cost){ addLog(`휴식을 취하기엔 금화가 부족하다. (${cost}G 필요)`, 'warn'); return; }
-      player.gold -= cost;
-      player.hp = player.maxhp; player.mp = player.maxmp;
-      renderStatus();
-      addLog(`${cost}G를 들여 마련한 화롯불 곁에서 완전히 몸을 추슬렀다. (HP/MP 완전 회복)`, 'gold');
-      saveGame();
-    }
+    showRestChoice();
   }
 
-  function onReturnTown(){
-    town = true; depth = 0;
-    inBossDen = false; bossDenFloor = 0;
-    player.hp = player.maxhp; player.mp = player.maxmp;
-    renderStatus();
-    renderExplore(['마을로 돌아왔다. 상처가 아물고 기운이 되살아난다.']);
-    saveGame();
+  function showRestChoice(){
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'rest-choice-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `
+      <h3 style="color:var(--rust-bright);">휴식</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+        화롯불 곁에서 쉴 방법을 고른다.
+      </p>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="rest-deep">🔥 깊은 휴식 — HP/MP 40% 회복</button>
+        <button class="btn" id="rest-maint">🔧 정비 — HP 15% 회복 + 대장간 들르기</button>
+        <button class="btn" id="rest-medi">🧘 명상 — HP 회복 없음, 다음 전투 공격력 +15%</button>
+      </div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    function finish(logText){
+      overlay.remove();
+      renderStatus();
+      addLog(logText, 'gold');
+      saveGame();
+    }
+    panel.querySelector('#rest-deep').addEventListener('click', ()=>{
+      const healHp = Math.round(player.maxhp*0.4);
+      const healMp = Math.round(player.maxmp*0.4);
+      player.hp = Math.min(player.maxhp, player.hp+healHp);
+      player.mp = Math.min(player.maxmp, player.mp+healMp);
+      finish(`깊은 휴식을 취했다. HP가 ${healHp}, MP가 ${healMp} 회복되었다.`);
+    });
+    panel.querySelector('#rest-maint').addEventListener('click', ()=>{
+      const heal = Math.round(player.maxhp*0.15);
+      player.hp = Math.min(player.maxhp, player.hp+heal);
+      // 정비(사용자 요청 — 별도 버튼 대신 이 선택지에서 바로 대장간을 연다).
+      finish(`장비를 정비했다. HP가 ${heal} 회복되었다.`);
+      if(typeof openBlacksmith==='function') openBlacksmith();
+    });
+    panel.querySelector('#rest-medi').addEventListener('click', ()=>{
+      player.buffAtkTurns = 99; player.buffAtkMult = 1.15;
+      finish('명상을 통해 정신을 집중했다. 다음 전투에서 공격력이 15% 상승한다.');
+    });
   }
 
   function enterBossDen(){
@@ -255,44 +702,206 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     }
     if(town){
       town = false;
-      renderExplore(['다시 어둠 속 회랑으로 발을 들였다.']);
+      // 노드맵 시스템: 마을을 나설 때 지도가 없으면(처음이거나, 방금 보스를
+      // 잡고 돌아왔거나, 지난번에 마을로 도망쳐서 지도를 버렸거나) 새로
+      // 생성한다. tierIndex는 그대로라 "어느 보스를 잡아야 하는지"는 안 바뀐다.
+      if(!player.nodeMap){
+        enterNodeMapTier();
+      } else {
+        renderExplore(['다시 어둠 속 회랑으로 발을 들였다.']);
+      }
       saveGame();
       return;
     }
-    if(depth === 49 && !player.endingSeen){
-      showFinalFloorConfirm();
-      return;
+    // 마을도 보스소굴도 아닌데 이 버튼이 보인다는 건 지도가 없다는 뜻이다
+    // (지도가 있으면 renderNodeMapArea()가 이 버튼을 숨기고 지도를 보여준다) —
+    // 즉 방금 이 구간의 보스를 잡고 다음 구간으로 넘어가려는 상황.
+    if(!player.nodeMap){
+      enterNodeMapTier();
     }
-    proceedAdvance();
   }
+
+  // 최종 층 진입 서사(사용자 요청 — 오프닝 심리테스트처럼 1인칭 상호응답형).
+  // 1단계는 오프닝 문답 1번(황금/진실/생존)에 따라 다른 서술로 목표를 찾아
+  // 헤매다가, 2단계에서 회랑 바닥에서 손길이 솟아나 붙잡는 걸로 끝난다 —
+  // 여기서부터는 되돌릴 수 없이 실제 최종보스 전투가 시작된다. 1단계에는
+  // "물러난다" 선택지를 남겨 아직은 발을 뺄 수 있게 했고, 2단계(손길에
+  // 붙잡힌 순간)부터는 선택지가 "저항한다" 하나뿐이다.
+  const FINAL_FLOOR_SEEK_LINES = {
+    gold: [
+      '불길한 기운이 느껴진다...',
+      '마치 무언가 끌어당기는듯한...',
+      '"여기가... 마지막 층인가."',
+      '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
+      '황금. 그 하나만을 좇아 이 어둠 속을 헤매왔다.',
+      '벽을 더듬고, 바닥을 살피고, 그림자 하나하나까지 뒤져본다.',
+      '그러나 아무리 둘러봐도, 이곳엔 그 흔한 동전 한 닢조차 보이지 않는다.',
+      '"...설마, 처음부터 그런 건 없었던 걸까."',
+    ],
+    truth: [
+      '불길한 기운이 느껴진다...',
+      '마치 무언가 끌어당기는듯한...',
+      '"여기가... 마지막 층인가."',
+      '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
+      '진실. 그 하나만을 좇아 이 어둠 속을 헤매왔다.',
+      '벽에 새겨진 글귀를 다시 읽고, 부서진 석판의 조각들을 맞춰본다.',
+      '그러나 아무리 파고들어도, 답은커녕 더 많은 질문만 쌓여간다.',
+      '"...어쩌면, 이 회랑 자체가 답 없는 질문이었는지도."',
+    ],
+    survival: [
+      '불길한 기운이 느껴진다...',
+      '마치 무언가 끌어당기는듯한...',
+      '"여기가... 마지막 층인가."',
+      '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
+      '살아남는 것. 그 하나만을 붙들고 이 어둠 속을 버텨왔다.',
+      '출구가 있을까 사방을 둘러보지만, 보이는 건 똑같은 어둠뿐이다.',
+      '여기까지 왔으니, 이제 정말 끝이 보이는 걸까.',
+      '"...아니면, 애초에 끝 같은 건 없었던 걸까."',
+    ],
+    // 오프닝 심리테스트가 생기기 전에 시작한 캐릭터(또는 기록이 없는 경우) 폴백.
+    unknown: [
+      '불길한 기운이 느껴진다...',
+      '마치 무언가 끌어당기는듯한...',
+      '"여기가... 마지막 층인가."',
+      '숨이 턱까지 차오른다. 여기까지 오는 데 너무 많은 것을 걸었다.',
+      '왜 이곳까지 왔는지, 이제는 스스로도 명확히 기억나지 않는다.',
+      '그저 몸에 새겨진 걸음이 이끄는 대로, 여기까지 온 것일지도 모른다.',
+      '주위를 둘러봐도, 찾고 있던 것이 무엇이었는지조차 흐릿하다.',
+      '"...내가 여기서 무엇을 찾고 있었더라."',
+    ],
+  };
+  const FINAL_FLOOR_SEEK_LINES_TRUE = [
+    '불길한 기운이 느껴진다...',
+    '마치 무언가 끌어당기는듯한...',
+    '"여기가... 마지막 층인가."',
+    '단 한 번도 무릎 꿇지 않았다. 그 사실 하나가 지금 이 순간을 지탱한다.',
+    '숱한 회랑을 지나오며 스러져간 이름 없는 그림자들이 떠오른다.',
+    '그들은 닿지 못했던 곳에, 지금 그대가 서 있다.',
+    '공기가 다르다. 다른 이들이 느꼈던 절망 대신, 옅은 온기가 감돈다.',
+    '"...어쩌면, 이곳의 끝은 다를지도 모른다."',
+  ];
 
   function showFinalFloorConfirm(){
     const flawless = (player.deathCount||0) === 0;
+    const traitKey = (player.originTraits && player.originTraits[0]) || 'unknown';
+    const lines = flawless ? FINAL_FLOOR_SEEK_LINES_TRUE : (FINAL_FLOOR_SEEK_LINES[traitKey] || FINAL_FLOOR_SEEK_LINES.unknown);
+    // 사용자 요청 — 서사를 한 블록으로 보여주던 걸 대화 팝업 시퀀스로 바꾼다.
+    // 진행을 다 넘기면 실제 선택지(물러난다/계속 나아간다) 패널을 띄운다.
+    showDialogueSequence(lines, {tone: flawless?'grand':'default', onDone: ()=> showFinalFloorChoice(flawless)});
+  }
+
+  function showFinalFloorChoice(flawless){
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'final-confirm-overlay';
+    document.getElementById('app').appendChild(overlay);
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
     panel.innerHTML = `
       <h3 style="color:var(--rust-bright);">회랑의 끝</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:13px;line-height:1.7;margin-bottom:14px;">
-        문 너머에서 압도적인 기운이 느껴진다. 이곳을 지나면 되돌아올 수 없다.<br>
-        ${flawless ? '<b style="color:var(--gold-bright);">단 한 번도 무릎 꿇지 않은 그대에게만, 문 너머의 기운이 어딘가 다르게 느껴진다.</b><br>' : ''}
-        <b style="color:var(--gold-bright);">정말로 이 회랑의 끝으로 들어가겠는가?</b>
-      </p>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-        <button class="btn" id="final-confirm-cancel">돌아간다</button>
-        <button class="btn btn-danger" id="final-confirm-go">들어간다</button>
+        <button class="btn" id="final-step-back">물러난다</button>
+        <button class="btn btn-danger" id="final-step-next">계속 나아간다</button>
       </div>`;
     overlay.appendChild(panel);
-    document.getElementById('app').appendChild(overlay);
-    panel.querySelector('#final-confirm-cancel').addEventListener('click', ()=>overlay.remove());
-    panel.querySelector('#final-confirm-go').addEventListener('click', ()=>{
+    panel.querySelector('#final-step-back').addEventListener('click', ()=>{
       overlay.remove();
-      proceedAdvance();
+      // 버그 수정(사용자 리포트) — pickNode()가 이 확인창을 띄우기 전에 이미
+      // nodeRow/nodeCurrentId/nodeVisited를 보스 노드로 진행시켜놓은 상태라,
+      // '물러난다'가 창만 닫고 끝나면 보스 노드가 "이미 지나온 자리"로 남아
+      // 다시는 선택할 수 없게 되어버렸다. 그래서 여기서 진행을 실제로
+      // 되돌려야 한다 — nodeVisited는 [..., 이전노드id, 보스노드id] 순서로
+      // 쌓여 있으므로, 마지막(보스) 것만 pop하면 그 앞이 자동으로 이전 노드다.
+      player.nodeVisited.pop();
+      player.nodeRow = Math.max(0, player.nodeRow-1);
+      player.nodeCurrentId = player.nodeVisited[player.nodeVisited.length-1];
+      depth = getVirtualDepth();
+      saveGame();
+      renderExplore(['물러났다. 아직 마음의 준비가 되지 않았다.']);
+    });
+    panel.querySelector('#final-step-next').addEventListener('click', ()=>{
+      overlay.remove();
+      renderFinalFloorGrasp(flawless);
     });
   }
 
+  // "되돌릴 수 없는 순간" — 서사를 대화 팝업으로 보여준 뒤 최종 선택지(저항한다!) 하나만 남긴다.
+  function renderFinalFloorGrasp(flawless){
+    const graspLines = [
+      '그 순간, 발밑의 돌바닥이 무너지듯 갈라진다.',
+      `차갑고 앙상한 손길이 어둠 속에서 솟아올라, ${player.name}의 발목을 움켜쥔다.`,
+      '더는 물러설 곳이 없다.',
+    ];
+    showDialogueSequence(graspLines, {tone: flawless?'grand':'default', onDone: ()=> renderFinalFloorStep('grasp', flawless)});
+  }
+
+  function renderFinalFloorStep(step, flawless){
+    const existing = document.getElementById('final-confirm-overlay');
+    const overlay = existing || document.createElement('div');
+    if(!existing){
+      overlay.className = 'shop-overlay';
+      overlay.id = 'final-confirm-overlay';
+      document.getElementById('app').appendChild(overlay);
+    }
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+
+    // step === 'grasp' — 되돌릴 수 없는 순간. 선택지가 하나뿐이다.
+    panel.innerHTML = `
+      <h3 style="color:var(--rust-bright);">회랑의 끝</h3>
+      <div style="text-align:center;">
+        <button class="btn btn-danger" id="final-step-fight">저항한다!</button>
+      </div>`;
+    overlay.innerHTML = '';
+    overlay.appendChild(panel);
+    panel.querySelector('#final-step-fight').addEventListener('click', async ()=>{
+      overlay.remove();
+      const isTrueFinal = flawless;
+      addLog(isTrueFinal
+        ? '한 번도 무릎 꿇지 않은 자에게만 열리는 문이, 조용히 그 모습을 드러낸다…'
+        : '심장이 터질 듯 두근거린다… 이곳이 회랑의 끝이다.', 'warn');
+      // 일반 최종보스("잠식된 OO 용사")가 최근 클리어 기록의 이름/직업을
+      // 따르도록, 전투 시작 직전에 기록을 미리 읽어 combat/battle-setup.js의
+      // recentRunRecord에 채워둔다(pickEnemy()는 동기 함수라 여기서 미리
+      // await해서 넘겨준다). 진 최종보스(isTrueFinal)는 이 기록과 무관하다.
+      if(!isTrueFinal){
+        try{
+          const records = await loadRecords();
+          // 무결 클리어(진엔딩을 보고 한 번도 안 죽은 기록)는 "잠식된 용사"
+          // 후보에서 제외한다(사용자 요청) — 한 번도 무릎 꿇지 않은 자가
+          // 타락한 모습으로 나타나는 건 서사적으로 안 맞는다는 판단. 가장
+          // 최근의 "무결이 아닌" 기록을 뒤에서부터 찾는다.
+          const nonFlawless = records.filter(r=> !(r.trueEnding && (r.deathCount||0)===0));
+          recentRunRecord = nonFlawless.length ? nonFlawless[nonFlawless.length-1] : null;
+        }catch(e){ recentRunRecord = null; }
+      } else {
+        // (사용자 요청 — 마녀 조우 조건 강화) 마녀의 시계를 들고 있을 때만
+        // 확인하면 되고, 이 난이도에서 회랑의 시조를 클리어한 기록이 있는지
+        // 미리 판정해 combat/battle-setup.js의 progenitorClearedThisDifficulty에
+        // 채워 넣는다(pickEnemy는 동기 함수라 여기서 미리 로드해야 함).
+        const hasWitchClock = (player.relics||[]).includes('relic_witchclock');
+        if(hasWitchClock){
+          try{
+            const records = await loadRecords();
+            progenitorClearedThisDifficulty = records.some(r=>
+              r.difficulty===player.difficulty && r.trueEnding && r.bossType!=='timewitch');
+          }catch(e){ progenitorClearedThisDifficulty = false; }
+        } else {
+          progenitorClearedThisDifficulty = false;
+        }
+      }
+      setTimeout(()=>startBattle(true, true, isTrueFinal), 400);
+    });
+  }
+
+  // [레거시/보류] 노드맵 도입 전, "나아가다"를 누를 때마다 직접 depth를 올리고
+  // 그 자리에서 보스/유물/저주/일반 조우를 확률로 굴리던 예전 로직. 지금은
+  // onAdvance()가 더 이상 이 함수를 호출하지 않는다(대신 nodemap.js의
+  // resolveNode()가 이 역할을 전부 대체함 — 보스는 노드맵의 보스 행, 유물/저주는
+  // 노드 타입으로 흡수됨). 삭제하지 않고 남겨두는 이유: 외상 도박사(jester_debtor,
+  // 현재 admin 전용 잠금 + 리뉴얼 보류 상태)의 "황금고블린 유예기간" 강제 발동
+  // 로직이 이 함수 안에 있는데, 그 직업을 다시 다듬을 때 이 로직을 노드맵 쪽으로
+  // 옮겨와야 하므로 참고용으로 보존한다.
   function proceedAdvance(){
     depth += 1;
     const loc = currentLocation();
@@ -301,10 +910,35 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('ex-loc-desc').textContent = loc.desc;
     saveGame();
 
+    // 외상 도박사(jester_debtor): 층을 이동할 때마다 남은 빚에 이자가 붙는다.
+    // 만기 연장(jesterDebtFreeze)으로 얼려둔 층 수가 남아있으면 이번엔 건너뛰고
+    // 카운트만 줄인다. 다른 직업이면 player.debt가 항상 0이라 아무 일도 없다.
+    if(player.debt>0){
+      if(player.debtFreezeFloors>0){
+        player.debtFreezeFloors -= 1;
+        addLog(`만기가 연장되어 있다. 이자가 붙지 않는다. (연장 ${player.debtFreezeFloors}층 남음)`, 'gold');
+      } else {
+        const interest = Math.max(1, Math.round(player.debt*DEBT_INTEREST_RATE));
+        player.debt += interest;
+        addLog(`빚에 이자 ${interest}G가 붙었다. (남은 빚: ${player.debt}G)`, 'warn');
+      }
+      renderStatus();
+      saveGame();
+    }
+
     const isFinalFloor = depth === 50 && !player.endingSeen;
     const isBossFloor = depth>0 && depth % 5 === 0;
     const isRelicFloor = RELIC_ALTAR_FLOORS.includes(depth) && !(player.relicAltarsSeen||[]).includes(depth);
     const isCurseFloor = CURSE_ALTAR_FLOORS.includes(depth) && !(player.curseAltarsSeen||[]).includes(depth);
+    // 황금고블린: 대출 후 DEBT_GRACE_FLOORS 층 안에 못 갚았거나, 올인 대출로
+    // 강제 예약(debtCollectorImminent)되어 있으면 이번 층에 무조건 마주친다.
+    // 최종보스 층보다는 우선순위가 낮지만(그 순간만큼은 존중), 보스/유물/저주
+    // 제단 층보다는 높다 — "언젠가 반드시 청산해야 한다"는 컨셉의 핵심이라
+    // 미루는 게 불가능해야 하기 때문.
+    const isDebtOverdue = player.debt>0 && (
+      player.debtCollectorImminent ||
+      (player.debtBorrowedAtDepth!=null && (depth - player.debtBorrowedAtDepth) >= DEBT_GRACE_FLOORS)
+    );
     const roll = Math.random();
 
     if(isFinalFloor){
@@ -313,6 +947,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
         ? '한 번도 무릎 꿇지 않은 자에게만 열리는 문이, 조용히 그 모습을 드러낸다…'
         : '심장이 터질 듯 두근거린다… 이곳이 회랑의 끝이다.', 'warn');
       setTimeout(()=>startBattle(true, true, isTrueFinal), 400);
+      return;
+    }
+    if(isDebtOverdue){
+      player.debtCollectorImminent = false;
+      addLog('낯익은 발소리… 누군가 두꺼운 장부를 든 채 다가온다.', 'warn');
+      setTimeout(()=>showDebtCollectorEvent(), 500);
       return;
     }
     if(isBossFloor){

@@ -2,10 +2,69 @@
 /*
 전투 종료 판정 및 결과 처리 — 승리/패배/광폭화 재판정, 엔딩 화면,
 경험치 지급, 레벨업/희귀드랍/에픽드랍 토스트.
-export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRareDropToast, showEpicDropToast
-의존성: state.js, storage.js, explore.js(renderExplore/showScreen), combat/battle-setup.js(triggerEnragePhase),
-        data/jobs.js(getSpecialization)
+export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showLevelUpToast,
+              showRareDropToast, showEpicDropToast, showBossRewardChoice,
+              applyBossReward, revertBossReward, maybeOfferRewardRedo
+의존성: state.js, storage.js, explore.js(renderExplore/showScreen/makeTownCheckpoint/applyTownCheckpoint),
+        combat/battle-setup.js(triggerEnragePhase), data/jobs.js(getSpecialization)
+주의(신규): 사용자 요청으로 타이어 보스를 잡으면 무조건 마을로 이동한다.
+     showBossRewardChoice()에서 보상을 고른 뒤 실제로 town=true 전환과 마을
+     체크포인트(player.townCheckpoint) 저장이 이뤄진다. 사망 시(쉬움/보통
+     난이도만) 이 체크포인트로 완전히 롤백한다 — 하드코어는 기존 레벨1
+     초기화 로직을 그대로 유지한다.
+주의: applyLevelUpEffects()는 grantExp()의 레벨업 1회분 로직(스탯 증가+스킬 지급)을 뽑아낸
+     것으로, combat/job-advancement.js의 admin 전용 "전직 즉시 15레벨" 디버그 로직도
+     이 함수를 그대로 재사용한다. grantExp()의 레벨업 루프에서 warrior_purist(일격의
+     구도자) 전용으로 maxmp 증가를
+     건너뛰는 예외 처리가 추가되어 있다(해당 분기는 스킬을 전혀 쓰지 않아 마나가 항상
+     0으로 유지되어야 함 — combat/job-advancement.js의 resolveJobAdvancement()에서
+     전직 시점 마나도 함께 0으로 초기화한다).
 */
+
+  // 다중 전투 버프(사용자 요청 — 수수께끼의 마법사, 다음 3전투 지속) 소진.
+  // 전투가 실제로 끝나는 지점(golden goblin 승/패, 일반 승/패)에서만 호출한다
+  // — canEnrage()로 광폭화가 재판정되는 경우는 아직 전투가 끝난 게 아니라서
+  // 여기서 호출하면 안 된다.
+  function tickMultiBattleBuff(){
+    if(player.multiBattleBuff){
+      player.multiBattleBuff.battlesLeft -= 1;
+      if(player.multiBattleBuff.battlesLeft<=0) player.multiBattleBuff = null;
+    }
+  }
+
+  // "다음 전투 한정" 버프 정리(사용자 제보 — 명상 등에서 얻은 버프가 "99턴"
+  // 으로 표시되고, 실제로도 여러 전투에 걸쳐 안 사라지는 문제였음). 명상
+  // (explore.js)/"다음 전투 한정" 저주(events.js applyNextBattleCurse)/보스
+  // 보상 "각성"(battle-end.js)이 전부 buffAtkTurns/buffDefTurns=99라는 관례적
+  // 표현을 재활용하는데, 원래 라운드당 1씩만 깎이는 구조라 한 전투 안에서
+  // 자연 소멸하지 않았다 — 그래서 전투가 끝나는 시점에 여기서 명시적으로
+  // 0으로 되돌린다.
+  // 수수께끼의 마법사(다중 전투 버프)/악마의 계약은 같은 필드를 재사용하지만
+  // battle-setup.js의 startBattle()이 매 전투 시작마다 조건(battlesLeft>0
+  // 또는 contractBuff 존재)이 유지되는 한 다시 세팅해주므로, 여기서 그냥
+  // 초기화해도 그 두 버프는 다음 전투 시작 시 정상적으로 되살아나 안전하다.
+  function clearOneBattleBuffs(){
+    player.buffAtkTurns = 0; player.buffAtkMult = 1;
+    player.buffDefTurns = 0; player.buffDefMult = 1;
+    // 위 두 쌍과 완전히 같은 문제(전투가 자연 소멸 전에 끝나면 다음 전투로
+    // 넘어감)를 buffCounterTurns/buffCounterChance도 그대로 안고 있었다 —
+    // 같이 정리한다.
+    player.buffCounterTurns = 0; player.buffCounterChance = 0;
+    // 찰나검사(warrior_chalna) "가속참" 콤보 속도버프 — player.spd에 직접 더한
+    // 값이라, 전투가 자연 소멸 전에 끝나면 델타를 못 돌려받고 영구히 남는다.
+    if(battleFlags && battleFlags.chalnaSpdBuffDelta){
+      player.spd -= battleFlags.chalnaSpdBuffDelta;
+      battleFlags.chalnaSpdBuffDelta = 0;
+      battleFlags.chalnaSpdBuffTurns = 0;
+    }
+    // 시간의 파수꾼 "결빙의 궤적" 속도 감소 디버프(사용자 기획) — 위와 완전히
+    // 같은 이유로, 전투가 자연 소멸(승리/패배/도망/굴복) 전에 끝나면 델타를
+    // 못 돌려받고 영구히 남을 수 있어 여기서도 같이 정리한다.
+    if(battleFlags && battleFlags.tgSpdDebuff){
+      player.spd += battleFlags.tgSpdDebuff.delta;
+      battleFlags.tgSpdDebuff = null;
+    }
+  }
 
   function checkBattleEnd(){
     if(enemy.hp<=0){
@@ -13,15 +72,99 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
         triggerEnragePhase();
         return true;
       }
+      // 정예 특성 "불사"(사용자 요청): 사망 시 1회, HP 25%로 되살아난다.
+      // canEnrage()(최종보스/진최종보스 전용)와 겹치지 않는 정예 전용 부활이다.
+      if(typeof hasEliteTrait==='function' && hasEliteTrait('undying') && !enemy.usedUndying){
+        enemy.usedUndying = true;
+        enemy.hp = Math.max(1, Math.round(enemy.maxhp*0.25));
+        enemy._prevHp = enemy.hp;
+        updateEnemyHpBar();
+        updateStatusBadges();
+        document.getElementById('bt-stage').classList.remove('dying');
+        shakeEnemy();
+        playBanner('불사!', 'phoenix');
+        Sound.gameOver();
+        setBattleMsg(`${enemy.name}이(가) 쓰러지지 않는다…!`, '불사의 힘으로 다시 일어섰다!');
+        setTimeout(()=>{
+          if(battleOver) return;
+          resetCommandUI();
+        }, 1400);
+        return true;
+      }
+      // 황금고블린(외상 도박사): 일반 승리 처리(처치 골드/경험치/레벨업/드랍)를
+      // 전부 건너뛰고, 빚 탕감이라는 이 전투만의 고유 보상을 준다. 빚을 완전히
+      // 갚지 못했더라도 남은 빚의 70%를 즉시 탕감해준다(전액 탕감이 아닌 이유:
+      // "담판으로 크게 깎았다"는 느낌을 주면서도, 완전히 공짜는 아니게 하기
+      // 위함 — 남은 30%는 여전히 갚아야 할 몫으로 남는다).
+      if(enemy.isDebtCollector){
+        battleOver = true;
+        setCommandsEnabled(false);
+        revertDiceDelta();
+        if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
+      if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
+        tickMultiBattleBuff();
+        document.getElementById('bt-stage').classList.add('dying');
+        const forgiven = Math.round((player.debt||0)*0.7);
+        player.debt = Math.max(0, (player.debt||0) - forgiven);
+        if(player.debt<=0) clearDebtorLoans();
+        const bonusGold = 200 + depth*10;
+        player.gold += bonusGold;
+        renderStatus();
+        setTimeout(()=>{
+          setBattleMsg(`${enemy.name}이(가) 장부를 덮으며 물러난다!`, `빚 ${forgiven}G를 탕감받고, 골드 ${bonusGold}G를 챙겼다! (남은 빚: ${player.debt}G)`);
+          saveGame();
+        }, 500);
+        setTimeout(()=>{
+          showScreen('explore');
+          renderExplore(['황금고블린과의 담판을 끝내고 다시 길을 나섰다.']);
+        }, 1800);
+        return true;
+      }
       battleOver = true;
       setCommandsEnabled(false);
       revertDiceDelta();
+      if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
+      if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
+      tickMultiBattleBuff();
       document.getElementById('bt-stage').classList.add('dying');
+      // 시간의 파수꾼 퇴장 토스트(사용자 요청) — 처치 순간 1회.
+      if(enemy.type==='timeguardian'){
+        // 버그 수정(사용자 제보 — 파수꾼을 이기고 나서 새로고침 후 이어하기를
+        // 하면 다시 싸우게 됨): pickNode()가 노드 선택 시점에 이미
+        // nodeCurrentId를 이 노드로 옮겨두고, 승리해도 "다음 노드로 이동"은
+        // 플레이어가 직접 클릭해야 일어난다 — 즉 승리 직후~다음 노드 클릭
+        // 전 사이에는 저장된 상태만 보면 "아직 싸우는 중"이었을 때와
+        // 구별이 안 됐다. 처치 여부를 별도로 기록해, explore.js의 중단된
+        // 전투 재개 감지 로직이 이미 이긴 상대는 다시 걸지 않도록 한다.
+        player.midbossCleared = true;
+        if(typeof showToast==='function'){
+          showToast(`<h3>⏳ 흩어지는 파수꾼</h3><p>갑주가 시계 파편으로 부서져 내리고, 반 박자 늦게 따라오던 잔상마저 조용히 사라진다.</p>`, '#9a6ad6');
+        }
+      }
       let g = enemy.gold[0]+Math.floor(Math.random()*(enemy.gold[1]-enemy.gold[0]+1));
       const curseRewardMult = getCurseRewardMult();
-      const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult;
+      // 물주의 감각(mastery_goldsense, 황금 도박사): 승리 골드 +20%. 기존 계산식에
+      // 항 하나만 추가하면 되므로 별도 함수 없이 여기서 직접 처리한다.
+      const goldSenseBonus = (player.skills && player.skills.includes('mastery_goldsense')) ? 0.2 : 0;
+      // 오프닝 심리테스트(origin.js) "황금" 기질 — 승리 골드 +8%.
+      const originGoldBonus = (player.originBonuses && player.originBonuses.gold) || 0;
+      // 쉬움 난이도 전용 골드 수급량 증가(사용자 요청).
+      const easyGoldBonus = (player.difficulty==='easy') ? 0.25 : 0;
+      const goldBoost = getSpecialSum('goldBoost') + getRelicSum('goldPctMult') + curseRewardMult + goldSenseBonus + originGoldBonus + easyGoldBonus;
       if(goldBoost>0) g = Math.round(g*(1+goldBoost));
+      // 몰빵 각인(ju_bigbet, 황금 도박사) 실패 페널티 — 이번 전투에서 얻는
+      // 골드가 반토막난다(battleFlags는 이번 전투 한정이라 자연히 다음
+      // 전투로는 안 넘어간다).
+      if(battleFlags && battleFlags.goldbetGoldPenalty) g = Math.round(g*0.5);
       player.gold += g;
+      // 강화석 드랍(사용자 요청 — 등급별 확률/개수 차등, 상점 판매는 절대 금지).
+      const stonesGained = (typeof rollReinforceStoneDrop==='function') ? rollReinforceStoneDrop() : 0;
+      // 악마의 계약(사용자 요청): 계약 중이면 승리할 때마다 HP를 추가로 깎는다.
+      // 마을 도착 시(showBossRewardChoice) 자동 해제되므로 여기선 소모만 처리.
+      if(player.contractBuff && player.contractBuff.hpDrainPct>0){
+        const drain = Math.max(1, Math.round(player.maxhp*player.contractBuff.hpDrainPct));
+        player.hp = Math.max(1, player.hp - drain);
+      }
       const killHealPct = getRelicSum('killHealPct');
       if(killHealPct>0 && player.hp>0 && player.hp<player.maxhp){
         player.hp = Math.min(player.maxhp, player.hp + Math.max(1, Math.round(player.maxhp*killHealPct)));
@@ -33,15 +176,46 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
       }
       const leveled = grantExp(enemy.exp);
       const isFinalKill = !!enemy.isFinal;
+      // 몬스터 도감(사용자 요청) — 최종보스/진최종보스는 일반 몬스터·층별보스와
+      // 달리 '조우'가 아니라 '처치'했을 때만 도감에 등록한다(조우 시점 등록은
+      // combat/battle-setup.js의 startBattle()이 isFinal일 때 이미 건너뛰고
+      // 있으므로, 여기서 처치 시점에만 별도로 등록해준다).
+      if(isFinalKill && enemy.type && typeof addToMonsterDex==='function') addToMonsterDex(enemy.type);
       if(leveled.includes(10) && !player.jobChosenAt10){
         player.jobAdvancePending = true;
       }
       let rareDropId = null;
       if(!isFinalKill){
-        let rareChance = enemy.isBoss ? 0.12 : 0.035;
+        // 정예 처치 보상 재설계(사용자 요청): 예전엔 정예를 잡으면 유물 제단이
+        // 확정으로 떴는데, 노드맵 도입 후 유물 제단이 구간당 1개 노드로 이미
+        // 따로 있어서 두 개를 합치면 유물 선택이 너무 자주 뜨는 문제가 있었다.
+        // 이제 유물은 "제단 노드를 통해서만" 얻고, 정예는 대신 확정으로 희귀
+        // 장비를 준다 — 일반전투(낮은 확률) < 정예(확정 희귀템) < 보스(높은
+        // 확률+에픽) < 유물/저주 제단(빌드 선택)으로 보상 사다리가 분리된다.
+        // 정예 처치 보상 재설계(2차 — 사용자 피드백: "확정 희귀템도 좀 별로다").
+        // 정예는 이제 일반 몬스터보다 살짝 높은 정도의 희귀템 확률만 갖고,
+        // 대신 진짜 시그니처 보상은 아래에서 지급하는 "정예의 인장"이다(모아서
+        // 마을 교환소에서 원하는 에픽 장비와 직접 교환 가능 — 확률에 기대지
+        // 않고 확실하게 목표를 향해 나아갈 수 있는 자원).
+        let rareChance = enemy.isBoss ? 0.12 : (enemy.isElite ? 0.15 : 0.035);
         rareChance *= (1 + getSpecialSum('rareDropBoost') + getRelicSum('rareDropPctBonus') + curseRewardMult);
         if(Math.random() < rareChance) rareDropId = findRareDropForDepth();
         if(rareDropId) player.equipOwned.push(rareDropId);
+      }
+      // 회랑의 정령(ogre) 전용 유품 드롭(사용자 요청) — 위 일반 희귀템 로직과
+      // 완전히 독립적인 별개 확률(4%), 미보유일 때만, 최종보스 처치가 아닐 때만.
+      let keepsakeDropId = null;
+      if(!isFinalKill && enemy.type==='ogre' && !player.equipOwned.includes('r_achoskeepsake') && Math.random() < 0.04){
+        keepsakeDropId = 'r_achoskeepsake';
+        player.equipOwned.push(keepsakeDropId);
+      }
+      // 정예의 인장: 정예 처치마다 고정 1개 지급. 유물은 노드맵의 유물 제단
+      // 노드에서만 얻고, 정예는 이 인장을 통해 "원하는 에픽을 직접 고르는"
+      // 별개의 보상 경로를 갖는다(마을 교환소, shop.js의 openExchange() 참고).
+      let eliteSealsGained = 0;
+      if(enemy.isElite && !isFinalKill){
+        eliteSealsGained = 1;
+        player.eliteSeals = (player.eliteSeals||0) + eliteSealsGained;
       }
       // 에픽 드랍은 rareDropBoost의 영향을 받지 않는 별도 확률 판정이지만,
       // 네잎클로버처럼 rareDropBoost 특성을 가진 장비를 착용 중이면 별도로 크게 상승하고,
@@ -71,33 +245,144 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
             }
             return;
           }
+          // 노드맵 시스템: 이번 승리가 구간의 보스(노드맵 마지막 행)였다면
+          // 다음 구간으로 넘어가도록 타이어를 올리고 지도를 비운다("나아가다"를
+          // 다시 누르면 새 지도가 생성된다). 일반 전투/정예 승리는 해당 없음.
+          let purifiedCurseNames = [];
+          // 사용자 요청: 타이어 보스를 잡으면 무조건 마을로 돌아간다. 실제
+          // town 전환/체크포인트 저장은 보상 선택(showBossRewardChoice) 이후에
+          // 하므로, 이 시점엔 "이번이 타이어 보스였는지" 플래그만 세워둔다.
+          let isTierBossClear = false;
+          let clearedTier = player.tierIndex;
+          let pendingPurifyIds = [];
+          if(enemy.isBoss && player.nodeMap && player.nodeRow === player.nodeMap.length-1){
+            isTierBossClear = true;
+            // 임시 저주 정화(사용자 요청 — 저주술사가 아니면 저주가 "이 구간
+            // 한정"): 이번에 클리어한 구간에서 받은 저주를 전부 해제하고,
+            // 견뎌낸 대가로 전스탯 영구 +4%를 지급한다. 저주술사가 받은 저주는
+            // relics.js의 showCurseAltar()에서 애초에 tempCurses에 기록하지
+            // 않으므로 여기서 걸리지 않는다(계속 영구 저주로 남음).
+            //
+            // 버그 수정(사용자 피드백 — "보스 잡고 새로고침하면 다음 층으로
+            // 넘어가있다"): 예전엔 여기서 곧바로 player.tierIndex를 올리고
+            // nodeMap을 지운 뒤 saveGame()까지 해버렸는데, 실제 마을 도착(보상
+            // 선택 확정)은 그로부터 1~2초 뒤에야 일어난다. 그 사이에 새로고침
+            // 하면 "tierIndex는 이미 다음 구간인데 town은 아직 false"인 애매한
+            // 상태로 저장돼, 이어하기 시 보상 선택을 건너뛰고 곧장 다음 구간
+            // 노드맵이 생성되는 문제가 있었다. 그래서 이제 여기서는 "정화될
+            // 저주 목록"만 미리 계산해서 로그 표시용으로만 쓰고, 실제 상태
+            // 변경(tierIndex 증가/노드맵 초기화/저주 정화/스탯 보너스)은 전부
+            // showBossRewardChoice()의 finish()로 미뤄서, 보상을 실제로 고르기
+            // 전까지는 언제 새로고침해도 "이 보스를 다시 잡으면 되는" 안전한
+            // 상태로만 저장되게 했다.
+            Object.keys(player.tempCurses||{}).forEach(curseId=>{
+              if(player.tempCurses[curseId] === clearedTier){
+                pendingPurifyIds.push(curseId);
+                const r = RELICS[curseId];
+                purifiedCurseNames.push(r ? r.name : curseId);
+              }
+            });
+          }
           showScreen('explore');
           const lines = [{text:`${enemy.name}을(를) 물리쳤다. (EXP +${enemy.exp}, 골드 +${g})`, cls:'gold'}];
+          if(stonesGained>0) lines.push({text:`🔶 강화석 +${stonesGained}개를 얻었다. (보유 ${player.reinforceStones}개)`, cls:'gold'});
+          if(purifiedCurseNames.length){
+            lines.push({text:`✨ ${purifiedCurseNames.join(', ')}의 저주가 풀렸다! 견뎌낸 대가로 몸이 단단해졌다(전 능력치 영구 +4%).`, cls:'gold'});
+          }
+          // 미지의 사건(events.js)의 결투류 이벤트가 승리 시 정예의 인장/추가
+          // 골드를 지급하도록 세워두는 1회용 값들을 여기서 소비한다. 기존
+          // "그림자와의 결투"는 count=1로 세팅해 그대로 동작하고, 새로 추가된
+          // "피투성이 도전자"/"봉인된 문"은 상황에 따라 1~2개를 세팅한다.
+          if(typeof pendingDuelSealCount!=='undefined' && pendingDuelSealCount>0){
+            player.eliteSeals = (player.eliteSeals||0) + pendingDuelSealCount;
+            lines.push({text:`🔱 결투에서 승리해 정예의 인장 ${pendingDuelSealCount}개를 얻었다! (보유 ${player.eliteSeals}개)`, cls:'gold'});
+            pendingDuelSealCount = 0;
+          }
+          if(typeof pendingDuelBonusGold!=='undefined' && pendingDuelBonusGold>0){
+            player.gold += pendingDuelBonusGold;
+            lines.push({text:`💰 승리 보상으로 골드 +${pendingDuelBonusGold}G를 추가로 얻었다.`, cls:'gold'});
+            pendingDuelBonusGold = 0;
+          }
           if(rareDropId){
             const item = RARE_EQUIPMENT[rareDropId];
             lines.push({text:`✨ 희귀 아이템 [${item.name}]을(를) 손에 넣었다! (${statsText(item.stats)})`, cls:'gold'});
+          }
+          if(keepsakeDropId){
+            const kitem = RARE_EQUIPMENT[keepsakeDropId];
+            lines.push({text:`✨ 낯익은 물건이 눈에 띈다 — [${kitem.name}]을(를) 챙겼다. (${statsText(kitem.stats)})`, cls:'gold'});
           }
           if(epicDropId){
             const eitem = EPIC_EQUIPMENT[epicDropId];
             lines.push({text:`✦✦ 에픽 아이템 [${eitem.name}]을(를) 손에 넣었다! (${statsText(eitem.stats)})`, cls:'gold'});
           }
           if(enemy.isElite){
-            lines.push({text:`⚔ 정예를 쓰러뜨린 대가로, 유물의 힘이 그대를 부른다…`, cls:'gold'});
+            // 예전의 "확정 희귀템"/"유물 제단 자동 소환"은 모두 삭제되고,
+            // 이제 정예의 시그니처 보상은 정예의 인장이다.
+            lines.push({text:`🔱 정예를 쓰러뜨려 정예의 인장을 얻었다! (보유 ${player.eliteSeals}개) 마을 교환소에서 원하는 에픽 장비와 교환할 수 있다.`, cls:'gold'});
           }
           renderExplore(lines);
-          if(leveled.length) leveled.forEach(lv=> setTimeout(()=>showLevelUpToast(lv), 150));
-          if(rareDropId) setTimeout(()=>showRareDropToast(RARE_EQUIPMENT[rareDropId]), 150*leveled.length + 200);
-          if(epicDropId) setTimeout(()=>showEpicDropToast(EPIC_EQUIPMENT[epicDropId]), 150*leveled.length + (rareDropId?500:200));
-          if(enemy.isElite) setTimeout(()=>showRelicAltar(), 150*leveled.length + (rareDropId?500:200) + (epicDropId?500:200) + 500);
+          // [리뉴얼] showToast()가 이제 큐잉/순차재생을 전담하므로(ui/difficulty.js),
+          // 여기서 150ms/500ms 단위로 수동 스태거링하던 로직은 필요 없어졌다 —
+          // 그냥 순서대로 호출하면 큐가 알아서 하나씩 보여준다(토스트 겹침 버그 수정).
+          let toastCount = 0;
+          if(leveled.length){ leveled.forEach(lv=> showLevelUpToast(lv)); toastCount += leveled.length; }
+          if(rareDropId){ showRareDropToast(RARE_EQUIPMENT[rareDropId]); toastCount++; }
+          if(keepsakeDropId){ showRareDropToast(RARE_EQUIPMENT[keepsakeDropId]); toastCount++; }
+          if(epicDropId){ showEpicDropToast(EPIC_EQUIPMENT[epicDropId]); toastCount++; }
+          // 정예의 인장 팝업(사용자 요청): 캐릭터 생애 최초 1회만 큰 토스트를
+          // 띄운다. 탐험 로그 텍스트(위 lines.push)는 매번 그대로 남는다.
+          if(enemy.isElite && !player.eliteSealFirstSeen){
+            player.eliteSealFirstSeen = true;
+            showEliteSealToast();
+            toastCount++;
+          }
+          // 보스 보상 선택창은 모달이라 토스트들과 겹치면 안 된다 — 큐가 순차
+          // 재생되는 예상 총 시간만큼(토스트 1개당 대략 1.9초) 넉넉히 기다린 뒤 띄운다.
+          const toastDelay = toastCount * 1900;
+          // 사용자 요청: 타이어 보스를 잡으면 무조건 마을로 — 보상을 하나
+          // 고른 뒤에 실제로 마을에 도착한다(그 시점에 체크포인트 저장).
+          if(isTierBossClear){
+            setTimeout(()=>showBossRewardChoice(clearedTier, pendingPurifyIds), toastDelay + 400);
+          }
           saveGame();
         }, 1300);
       }, 500);
       return true;
     }
     if(player.hp<=0){
+      // 황금고블린(외상 도박사) 상대로만 예외적으로 "패배해도 죽지 않는다."
+      // HP 1로 목숨만 부지한 채 물러나되, 빚이 절반만큼 더 늘고 다음 황금고블린이
+      // 훨씬 빨리(유예기간 10층 중 4층을 이미 써버린 것으로 취급) 다시 찾아온다 —
+      // "담판에서 지면 상황이 더 나빠진다"는 사용자 요구를 일반 게임오버(런 종료/
+      // 하드코어 초기화)와 완전히 분리해서 처리한다. 이 분기가 아래 일반
+      // player.hp<=0 처리보다 먼저 와야 한다.
+      if(enemy.isDebtCollector){
+        battleOver = true;
+        setCommandsEnabled(false);
+        revertDiceDelta();
+        if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
+      if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
+        tickMultiBattleBuff();
+        player.hp = 1;
+        const penalty = Math.max(1, Math.round((player.debt||0)*0.5));
+        player.debt = (player.debt||0) + penalty;
+        // 유예기간 10층 중 4층을 이미 써버린 것으로 취급 — 다음 방문이 더 빨리 온다.
+        player.debtBorrowedAtDepth = depth - Math.max(0, DEBT_GRACE_FLOORS - 4);
+        player.debtCollectorImminent = false;
+        renderStatus();
+        setBattleMsg('황금고블린이 비웃으며 물러난다…', `담판에서 패배했다! 빚이 ${penalty}G 늘었고, 다음 방문이 더 빨라진다. (남은 빚: ${player.debt}G)`);
+        setTimeout(()=>{
+          showScreen('explore');
+          renderExplore(['가까스로 목숨만 부지한 채 황금고블린에게서 도망쳤다.']);
+          saveGame();
+        }, 1800);
+        return true;
+      }
       battleOver = true;
       setCommandsEnabled(false);
       revertDiceDelta();
+      if(typeof revertRiggedTableDelta==='function') revertRiggedTableDelta();
+      if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
       setBattleMsg(`${player.name}은(는) 쓰러지고 말았다…`, '');
       Sound.gameOver();
       player.deathCount = (player.deathCount||0) + 1;
@@ -105,35 +390,70 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
         showScreen('gameover');
         if(player.difficulty==='hardcore'){
           document.getElementById('go-summary').textContent =
-            `깊이 ${depth}까지 도달했으나, 미궁의 알수없는 힘에 의해 모든 것이 원래대로 되돌아간다. `
-            + `레벨 1, 1층부터 다시 시작한다. 그러나 손에 넣은 유물만은 그대로 남는다.`;
+            `쓰러지는 순간, 회랑 깊숙이 새겨진 오래된 시간의 힘이 거칠게 되감긴다. `
+            + `깊이 ${depth}까지 도달했던 모든 기억이 흩어지고, 레벨 1, 1층부터 다시 시작한다. 그러나 손에 넣은 유물만은 그대로 남는다.`;
           const oldRelics = (player.relics||[]).slice();
           const oldRelicSlots = player.relicSlots;
           const oldAltarsSeen = (player.relicAltarsSeen||[]).slice();
           const oldCurseSeen = (player.curseAltarsSeen||[]).slice();
-          const oldEquipOwned = (player.equipOwned||[]).slice();
           const oldDeathCount = player.deathCount;
           const oldSkipsUsed = player.relicSkipsUsed;
           const oldCandleUsed = player.candleUsed;
           const name = player.name, jobId = player.job, diff = player.difficulty;
+          // 묘비 이벤트(사용자 기획) — 캐릭터당 무덤은 항상 최대 1개, "가장
+          // 깊이 도달했던 죽음"만 남긴다. 이번 사망의 tierIndex가 기존 무덤보다
+          // 낮으면(이미 그보다 깊이 가본 뒤 다시 초반에 죽은 경우) 덮어쓰지
+          // 않는다 — 하드코어 특유의 반복 도전에서 더 깊이 갔던 기록이 얕은
+          // 재도전 죽음에 지워지지 않게 하기 위함.
+          const oldGrave = player.hardcoreGrave;
+          const newGrave = (!oldGrave || player.tierIndex>=oldGrave.tierIndex) ? {
+            tierIndex: player.tierIndex,
+            equipOwned: (player.equipOwned||[]).slice(),
+            relics: (player.relics||[]).slice(),
+          } : oldGrave;
 
           player = newPlayer(name, jobId, diff);
           player.relicSlots = oldRelicSlots;
           player.relicAltarsSeen = oldAltarsSeen;
           player.curseAltarsSeen = oldCurseSeen;
-          player.equipOwned = oldEquipOwned;
           player.deathCount = oldDeathCount;
           player.relicSkipsUsed = oldSkipsUsed;
           player.candleUsed = oldCandleUsed;
+          player.hardcoreGrave = newGrave;
           oldRelics.forEach(id=> applyRelicEffect(id));
           player.relics = oldRelics.slice();
         } else {
+          // 쉬움/보통 난이도(사용자 요청): 마지막 마을 체크포인트로 완전히
+          // 되돌린다 — 이번 구간(타이어)에서 얻은 골드/경험치/레벨업/장비/
+          // 유물 등이 전부 소멸하고, 마지막으로 보스를 잡고 마을에 도착했던
+          // 그 상태 그대로 돌아간다. 체크포인트가 없으면(이론상 없을 수
+          // 없지만 안전장치) 기존처럼 절반 골드+완전회복으로 폴백한다.
+          const cp = player.townCheckpoint;
           document.getElementById('go-summary').textContent =
-            `깊이 ${depth}까지 도달했다. 레벨 ${player.level}, 소지금 ${player.gold}G. 마을 사람들이 그대를 구해내어 마을로 옮겼다.`;
-          player.gold = Math.floor(player.gold*0.5);
-          player.hp = player.maxhp; player.mp = player.maxmp;
+            `쓰러지는 순간, 회랑에 새겨진 알 수 없는 힘에 의해 시간이 되감긴다. 깊이 ${depth}까지 도달했던 기억이 흐려지며, 마지막으로 안식했던 그 순간의 마을로 돌아왔다.`;
+          if(cp){
+            applyTownCheckpoint(cp);
+          } else {
+            player.gold = Math.floor(player.gold*0.5);
+            player.hp = player.maxhp; player.mp = player.maxmp;
+          }
         }
-        depth = 0; town = true; inBossDen = false; bossDenFloor = 0;
+        // 노드맵 시스템: 사망 후엔 항상 지도를 지운다(사용자 피드백 —
+        // "죽은 노드에서 다시 시작하는 게 이상하다"). tierIndex(어느 보스를
+        // 잡아야 하는지)는 유지 — 다음에 나갈 때 같은 구간의 "새" 지도가
+        // 생성된다. depth는 10층 단위 경계로 재계산한다.
+        depth = player.tierIndex*10; town = true; inBossDen = false; bossDenFloor = 0;
+        player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
+        // 대장간 재추첨 비용 에스컬레이션(사용자 요청) — 사망 복귀도 "새로운
+        // 마을 도착"으로 취급해 초기화한다. applyTownCheckpoint()는 이 필드를
+        // 다루지 않으므로(체크포인트에 없던 필드) 여기서 명시적으로 리셋.
+        player.blacksmithRerollCount = 0;
+        player.equipEnhanceCandidates = {};
+        // 이벤트 시스템의 전투 한정/지속 효과도 함께 정리한다(마을로 돌아온
+        // 이상 유지될 이유가 없다).
+        player.nextBattleEnemyAtkMult = null;
+        player.multiBattleBuff = null;
+        player.contractBuff = null;
         saveGame();
       }, 900);
       return true;
@@ -142,120 +462,530 @@ export(전역): checkBattleEnd, showEnding, grantExp, showLevelUpToast, showRare
   }
 
   function showEnding(isTrueEnding){
-    showScreen('ending');
     // 기록(record) 저장 시(bootstrap.js) 무결 클리어 여부 판정에 쓰인다.
     player.trueEndingSeen = !!isTrueEnding;
-    const job = getJob(player);
-    const hybrid = getHybrid(player);
-    const jobLabel = hybrid ? `${hybrid.icon} ${hybrid.name}` : `${job.icon} ${job.name}`;
-    const titleEl = document.getElementById('ending-title');
+    // 전직(세분화) 후에도 항상 기본 직업 이름("전사")으로만 표시되던 버그를
+    // getJobLabel()(data/jobs.js)로 교체해 고쳤다 — 전직했으면 분기 이름을 보여준다.
+    const jobLabel = getJobLabel(player);
+    saveGame();
+    // 사용자 요청 — 엔딩 텍스트 뭉치를 한 번에 뿌리지 않고 대화 팝업으로 한
+    // 줄씩 보여준 뒤, 마지막에 실제 엔딩 화면(타이틀+통계)으로 전환한다.
+    // 진엔딩(트루엔딩)은 tone:'grand'로 페이드가 더 느리고 장엄하며, 원혼들의
+    // 목소리 대사 다음에 타이틀 자체를 마지막 대사로 한 번 더 짚어준다.
     if(isTrueEnding){
-      titleEl.textContent = '회랑, 마침내 안식에 들다';
-      document.getElementById('ending-summary').textContent =
-        `회랑의 시조가 무너져 내리는 순간, 돌벽 틈새로 스며들던 서늘한 기운이 거짓말처럼 걷힌다. `
-        + `오랫동안 이 곳을 넘지 못한 채 쓰러져간 이름 없는 용사들의 원혼이, 하나둘 빛으로 떠올라 ${player.name}의 곁을 스쳐 지나간다. `
-        + `"고맙다." 누군가의 목소리가, 어쩌면 수백의 목소리가 겹쳐 들려온다. "너의 승리로, 우리는 비로소 이곳을 떠날 수 있게 되었다." `
-        + `돌기둥이 하나씩 허물어지고, 회랑을 지탱하던 저주의 뿌리가 빛무리와 함께 흩어진다. `
-        + `${player.name}(${jobLabel})은(는) 무너져 내리는 회랑을 뒤로하고, 마침내 지상으로 향하는 계단을 오른다. `
-        + `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 그 무엇보다 값진, 단 한 번도 무릎 꿇지 않았다는 증명을 품고서. `
-        + `회랑의 문은 이제 열리지 않는다. 지킬 것도, 가둘 것도 남지 않았기 때문이다.`;
+      const isWitch = enemy && enemy.type==='timewitch';
+      // (사용자 요청) 이 난이도에서 마녀(Aiōn)를 이미 클리어한 적이 있다면(마녀모자
+      // 배지가 이미 켜져 있다면) 이번이 2회차 이상이라는 뜻 — 정체를 완전히
+      // 풀어놓는 전용 대화 엔딩으로 갈라진다. 이 시점엔 아직 이번 판 기록이
+      // 저장 전이므로(bootstrap.js의 btn-ending-title 핸들러가 나중에 addRecord),
+      // 플래그가 이미 참이라면 확실히 "이전 회차의 클리어"다.
+      const isWitchRepeat = isWitch && typeof isDifficultyWitchCleared==='function' && isDifficultyWitchCleared(player.difficulty);
+      const witchRepeatLines = [
+        '시계가 산산조각 나며 쓰러진 그녀의 곁에, 조용히 다가가 앉는다. 처음으로, 도망치지 않고.',
+        {text:'"…또 왔군. 한 번으로 충분하지 않았나."', title:'아이온'},
+        {text:'"…아니. 그런 뜻이 아니야. 그저, 이런 식으로 두 번이나 얼굴을 마주할 줄은 몰랐다는 것뿐이다."', title:'아이온'},
+        '그녀가 부서진 시계 조각을 손끝으로 쓸어본다.',
+        {text:'"알고 싶은가. 내가 왜 이 죽은 왕국을 아직도 붙들고 있는지."', title:'아이온'},
+        {text:'"…아코스였다. 회랑 최고의 기사. 그를 잃는 게, 견딜 수 없었다."', title:'아이온'},
+        {text:'"역병이 이 땅을 삼켰을 때, 나는 시간을 다룰 줄 알았다. 그래서 왕에게 말했지 — \'멈추면, 아무도 더는 죽지 않는다\'고."', title:'아이온'},
+        {text:'"거짓말은 아니었다. 정말로, 아무도 죽지 않았어. 다만… 아무도 다시 살아나지도 못했지."', title:'아이온'},
+        '그녀가 고개를 젓는다.',
+        {text:'"구원이라 불렀다. 사실은, 놓아주지 못한 것뿐이었는데."', title:'아이온'},
+        {text:'"이 회랑을 만든 뒤로, 나는 계속 스스로에게 물었다 — 언젠가 누군가 와서, 이걸 끝내주지 않을까."', title:'아이온'},
+        {text:'"…그리고 그대가 왔다. 처음엔 그저 침입자였지. 하지만 지금은…"', title:'아이온'},
+        '그녀가 처음으로 옅게, 그러나 분명하게 웃는다.',
+        {text:'"고맙다. 두 번이나, 나 대신 이 매듭을 끊어줘서."', title:'아이온'},
+        {text:'"…시계는 이제 완전히 멈췄다. 더는 되감을 수 없겠지. 그래도 괜찮다."', title:'아이온'},
+        {text:'"이제야, 정말로 놓아줄 수 있게 되었다."', title:'아이온'},
+        `${player.name}(${jobLabel})의 눈앞에서, 빛이 스러지듯 그녀의 모습이 옅어진다. 마지막으로 남은 것은, 오래도록 참아온 울음이 아니라 — 아주 오랜만의, 편안한 숨소리였다.`,
+        '"회랑, 두 번째로 놓아주다."',
+      ];
+      // 하드코어 전용 짧은 추가 대사(사용자 요청) — 도망 불가 + 사망 시 레벨1·
+      // 1층부터 재시작이라는 이 난이도만의 특성을 그녀가 알아채고 인정하는 한
+      // 줄. 스토리 골자는 바꾸지 않고, "그대가 왔다" 대사 바로 뒤에 끼워 넣는다
+      // (거꾸로 된 왕관 보너스 줄을 progenitorLines에 끼워 넣던 것과 같은 방식).
+      if(player.difficulty==='hardcore'){
+        const insertAt = witchRepeatLines.findIndex(l=> l && l.text==='"…그리고 그대가 왔다. 처음엔 그저 침입자였지. 하지만 지금은…"');
+        if(insertAt>=0){
+          witchRepeatLines.splice(insertAt+1, 0,
+            {text:'"…이번엔, 뒤로 물러설 곳조차 없었겠군. 쓰러지면 처음부터 다시. 그런데도, 다시 왔다는 건가."', title:'아이온'});
+        }
+      }
+      const lines = isWitchRepeat ? witchRepeatLines : isWitch ? [
+        '시간의 마녀가 무너져 내리는 순간, 손에 쥐고 있던 낡은 시계가 바닥에 떨어져 산산조각 난다.',
+        '베일 아래로 언뜻 드러난 눈가에는, 분노도 원한도 아닌 — 아주 오래 참아온 눈물의 흔적이 있었다.',
+        '멈춰 있던 회랑의 시간이, 그제야 다시 흐르기 시작한다.',
+        `오랫동안 붙잡혀 있던 이름 없는 백성들의 원혼이, 하나둘 빛으로 떠올라 ${player.name}의 곁을 스쳐 지나간다.`,
+        '"...고맙다." 그녀의 목소리인지, 그들의 목소리인지 알 수 없는 무언가가 나직이 들려온다.',
+        '"이제야, 놓아줄 수 있게 되었다."',
+        '돌기둥이 하나씩 허물어지고, 시간의 파편들이 빛무리와 함께 흩어진다.',
+        `${player.name}(${jobLabel})은(는) 다시 흐르기 시작한 회랑을 뒤로하고, 마침내 지상으로 향하는 계단을 오른다.`,
+        '"회랑, 마침내 시간을 되찾다."',
+      ] : (()=>{
+        const progenitorLines = [
+          '회랑의 시조가 무너져 내리는 순간, 낡은 왕관이 힘없이 굴러떨어진다. 그 얼굴에 서려 있던 것은, 분노도 원한도 아닌 — 오래된 슬픔이었다.',
+          '왕관이 떨어진 자리에, 작은 손자국 하나가 오래도록 남아 있었다.',
+          '돌벽 틈새로 스며들던 서늘한 기운이 거짓말처럼 걷힌다.',
+          `오랫동안 이 곳을 넘지 못한 채 쓰러져간 이름 없는 용사들의 원혼이, 하나둘 빛으로 떠올라 ${player.name}의 곁을 스쳐 지나간다.`,
+          '"고맙다." 누군가의 목소리가, 어쩌면 수백의 목소리가 겹쳐 들려온다.',
+          '"너의 승리로, 우리는 비로소 이곳을 떠날 수 있게 되었다."',
+          '돌기둥이 하나씩 허물어지고, 회랑을 지탱하던 저주의 뿌리가 빛무리와 함께 흩어진다.',
+          `${player.name}(${jobLabel})은(는) 무너져 내리는 회랑을 뒤로하고, 마침내 지상으로 향하는 계단을 오른다.`,
+          '"회랑, 마침내 안식에 들다."',
+        ];
+        // 거꾸로 된 왕관(relic_reversecrown) 보유 시 진엔딩 보너스 한 줄
+        // (사용자 기획 — 왕관 시너지 세트 마지막 단계). 손자국 줄 바로
+        // 뒤에 이어붙여, 뒤집힌 왕관의 이미지로 조용히 마무리한다.
+        if((player.relics||[]).includes('relic_reversecrown')){
+          progenitorLines.splice(2, 0, '그 옆에는, 거꾸로 뒤집힌 왕관 하나가 나란히 놓여 있었다.');
+        }
+        return progenitorLines;
+      })();
+      showDialogueSequence(lines, {tone:'grand', onDone: ()=>{
+        showScreen('ending');
+        document.getElementById('ending-title').textContent = isWitchRepeat ? '회랑, 두 번째로 놓아주다' : (isWitch ? '회랑, 마침내 시간을 되찾다' : '회랑, 마침내 안식에 들다');
+        document.getElementById('ending-summary').textContent = isWitchRepeat
+          ? `레벨 ${player.level}, 소지금 ${player.gold}G — 같은 이름을, 같은 손으로 두 번째 놓아주었다는 증명을 품고서.`
+          : isWitch
+          ? `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 다시 흐르기 시작한 시간을, 가장 먼저 두 눈으로 지켜보았다는 증명을 품고서.`
+          : `레벨 ${player.level}, 소지금 ${player.gold}G — 그리고 그 무엇보다 값진, 단 한 번도 무릎 꿇지 않았다는 증명을 품고서. `
+            + `회랑의 문은 이제 열리지 않는다. 지킬 것도, 가둘 것도 남지 않았기 때문이다.`;
+      }});
     } else {
-      titleEl.textContent = '회랑의 새로운 파수꾼';
       const bossJob = (enemy && enemy.finalJobId && JOBS.find(j=>j.id===enemy.finalJobId)) || null;
       const bossJobName = bossJob ? bossJob.name : '용사';
-      document.getElementById('ending-summary').textContent =
-        `${player.name}은(는) 회랑의 가장 깊은 곳에서, ${bossJobName}의 모습을 한 무언가를 마침내 쓰러뜨렸다. `
-        + `그러나 승리의 환희도 잠시, 발밑에서 차오르는 서늘한 기운이 온몸을 휘감는다. `
-        + `회랑은 정복자를 놓아주지 않는다 — 애초에 이곳이 원한 것은 승자가 아니라, 새로운 파수꾼이었을 뿐이다. `
-        + `의식이 흐려지는 사이, ${player.name}(${jobLabel})의 형상이 서서히 어둠 속으로 녹아든다. `
-        + `이제 이 회랑의 가장 깊은 곳을 지키는 것은, 한때 용사였던 무언가다. `
-        + `레벨 ${player.level}, 소지금 ${player.gold}G. 탑의 문은 다시, 조용히 닫혔다.`;
+      const lines = [
+        `${player.name}은(는) 회랑의 가장 깊은 곳에서, ${bossJobName}의 모습을 한 무언가를 마침내 쓰러뜨렸다.`,
+        '그러나 승리의 환희도 잠시, 발밑에서 차오르는 서늘한 기운이 온몸을 휘감는다.',
+        '회랑은 정복자를 놓아주지 않는다 — 애초에 이곳이 원한 것은 승자가 아니라, 새로운 파수꾼이었을 뿐이다.',
+        `의식이 흐려지는 사이, ${player.name}(${jobLabel})의 형상이 서서히 어둠 속으로 녹아든다.`,
+        '이제 이 회랑의 가장 깊은 곳을 지키는 것은, 한때 용사였던 무언가다.',
+      ];
+      showDialogueSequence(lines, {onDone: ()=>{
+        showScreen('ending');
+        document.getElementById('ending-title').textContent = '회랑의 새로운 파수꾼';
+        document.getElementById('ending-summary').textContent =
+          `레벨 ${player.level}, 소지금 ${player.gold}G. 탑의 문은 다시, 조용히 닫혔다.`;
+      }});
     }
-    saveGame();
+  }
+
+  // 보스 클리어 보상 선택(신규, 사용자 요청) — 5가지 중 하나를 골라 얻고,
+  // 선택이 끝나야 실제로 마을에 도착한다(town=true + 마을 체크포인트 저장은
+  // 여기서 보상까지 반영한 뒤에 한다).
+  // 층별보스 보상 적용/되돌리기(사용자 요청 — 사망 후 "직전 보상을 다시
+  // 고를 수 있게"). 6가지 선택지의 실제 효과를 여기 한 곳에 모아 원래
+  // 선택 시점(showBossRewardChoice)과 사망 후 재선택(maybeOfferRewardRedo)
+  // 양쪽에서 재사용한다 — 로직이 어긋나지 않도록.
+  // 주의(사용자 요청으로 경험치 선택지는 제거됨 — 레벨업 되돌리기 복잡도
+  // 문제도 함께 해소됨). 회복은 50%에서 전체 회복으로 상향.
+  function applyBossReward(key, tier){
+    const goldReward = Math.round((100 + tier*60) * (player.difficulty==='easy' ? 1.25 : 1));
+    const stoneReward = 4 + tier*2;
+    if(key==='heal'){
+      const healHp = player.maxhp-player.hp, healMp = player.maxmp-player.mp;
+      player.hp = player.maxhp;
+      player.mp = player.maxmp;
+      return {key, tier, healHp, healMp, label:'깊은 회복을 선택했다. HP/MP가 완전히 회복되었다.'};
+    }
+    if(key==='gold'){
+      player.gold += goldReward;
+      return {key, tier, goldAmt:goldReward, label:`두둑한 보상을 선택했다. 골드 +${goldReward}G를 얻었다.`};
+    }
+    if(key==='seal'){
+      player.eliteSeals = (player.eliteSeals||0)+1;
+      return {key, tier, label:`정예의 증표를 선택했다. 정예의 인장 +1개를 얻었다. (보유 ${player.eliteSeals}개)`};
+    }
+    if(key==='stone'){
+      player.reinforceStones = (player.reinforceStones||0) + stoneReward;
+      return {key, tier, stoneAmt:stoneReward, label:`강화석을 조달했다. 강화석 +${stoneReward}개를 얻었다. (보유 ${player.reinforceStones}개)`};
+    }
+    if(key==='awaken'){
+      player.multiBattleBuff = {type:'atk', value:0.2, battlesLeft:3};
+      return {key, tier, label:'각성을 선택했다. 앞으로 3번의 전투 동안 공격력이 20% 상승한다.'};
+    }
+  }
+  function revertBossReward(choice){
+    if(!choice) return;
+    if(choice.key==='heal'){
+      player.hp = Math.max(1, player.hp-(choice.healHp||0));
+      player.mp = Math.max(0, player.mp-(choice.healMp||0));
+    } else if(choice.key==='gold'){
+      player.gold = Math.max(0, player.gold-(choice.goldAmt||0));
+    } else if(choice.key==='seal'){
+      player.eliteSeals = Math.max(0, (player.eliteSeals||0)-1);
+    } else if(choice.key==='stone'){
+      player.reinforceStones = Math.max(0, (player.reinforceStones||0)-(choice.stoneAmt||0));
+    } else if(choice.key==='awaken'){
+      player.multiBattleBuff = null;
+    }
+  }
+  // 사망(쉬움/보통) 후 마을 복귀 직후 호출 — 직전 층별보스 보상 선택을 다시
+  // 고를 기회를 준다(사용자 요청 — "체력 대신 인장을 골랐다가 그 체력으로
+  // 죽었을 때, 그 선택만 무를 수 있게"). 정예의 인장 보너스(1~2개 무작위)는
+  // 여기서 다시 지급되지 않는다 — 오직 6가지 선택지 중 하나를 다른 것으로
+  // 맞바꾸는 것뿐(선택 → 되돌리기 → 새 선택 적용).
+  function maybeOfferRewardRedo(){
+    const choice = player.lastBossRewardChoice;
+    if(!choice || player.difficulty==='hardcore') return;
+    const KEY_LABEL = {heal:'💗 깊은 회복', gold:'💰 두둑한 보상', seal:'🔱 정예의 증표', stone:'🔶 강화석 조달', awaken:'⚡ 각성'};
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'reward-redo-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    const renderOffer = ()=>{
+      panel.innerHTML = `<h3>⏳ 되감긴 선택</h3>
+        <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">직전에 고른 "${KEY_LABEL[choice.key]||choice.key}"를 다른 것으로 바꿀 수 있다. 바꾸지 않으면 그대로 유지된다.</p>
+        <div style="text-align:center; margin-top:4px;"><button class="btn" id="reward-redo-yes">다시 고르기</button> <button class="btn" id="reward-redo-no">그대로 두기</button></div>`;
+      panel.querySelector('#reward-redo-no').addEventListener('click', ()=> overlay.remove());
+      panel.querySelector('#reward-redo-yes').addEventListener('click', renderChoices);
+    };
+    const renderChoices = ()=>{
+      const tier = choice.tier;
+      const goldReward = Math.round((100 + tier*60) * (player.difficulty==='easy' ? 1.25 : 1));
+      const stoneReward = 4 + tier*2;
+      const options = [
+        {key:'heal', label:`💗 깊은 회복 — HP/MP 전체 회복`},
+        {key:'gold', label:`💰 두둑한 보상 — 골드 +${goldReward}`},
+        {key:'seal', label:`🔱 정예의 증표 — 정예의 인장 +1`},
+        {key:'stone', label:`🔶 강화석 조달 — 강화석 +${stoneReward}`},
+        {key:'awaken', label:`⚡ 각성 — 앞으로 3전투 공격력 +20%`},
+      ];
+      panel.innerHTML = `<h3>⏳ 되감긴 선택</h3>
+        <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">무엇으로 바꿀지 고른다.</p>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${options.map(o=>`<button class="btn reward-redo-pick" data-key="${o.key}" style="text-align:left; padding:10px 12px;">${o.label}</button>`).join('')}
+        </div>
+        <div style="text-align:center; margin-top:10px;"><button class="btn" id="reward-redo-cancel">취소</button></div>`;
+      panel.querySelectorAll('.reward-redo-pick').forEach(b=>{
+        b.addEventListener('click', ()=>{
+          revertBossReward(player.lastBossRewardChoice);
+          const newChoice = applyBossReward(b.dataset.key, tier);
+          player.lastBossRewardChoice = newChoice;
+          player.townCheckpoint = makeTownCheckpoint();
+          renderStatus();
+          overlay.remove();
+          addLog(newChoice.label, 'gold');
+          saveGame();
+        });
+      });
+      panel.querySelector('#reward-redo-cancel').addEventListener('click', renderOffer);
+    };
+    renderOffer();
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+  }
+  function showBossRewardChoice(clearedTier, pendingPurifyIds){
+    // 층별보스 보상 강화(사용자 요청) — 6지선다 보상 선택과는 별개로, 층별보스를
+    // 잡을 때마다 정예의 인장을 1~2개 무작위로 그냥 더 준다(교환소에서 인장이
+    // 가장 아쉬운 자원이라는 피드백 반영). 아래 선택지 중 "정예의 증표"를
+    // 고르면 여기에 +1이 추가로 더 붙는다(둘은 서로 다른 지급 경로).
+    const bonusSeals = 1 + Math.floor(Math.random()*2); // 1 또는 2
+    player.eliteSeals = (player.eliteSeals||0) + bonusSeals;
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'boss-reward-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    // 보상 수치는 "이제 막 넘어갈 다음 구간" 기준(기존과 동일한 값)으로 계산한다
+    // — tierIndex 자체는 아직 증가시키지 않았으므로 +1을 명시적으로 더한다.
+    const nextTier = clearedTier + 1;
+    const goldReward = Math.round((100 + nextTier*60) * (player.difficulty==='easy' ? 1.25 : 1));
+    const stoneReward = 4 + nextTier*2;
+    panel.innerHTML = `
+      <h3 style="color:var(--rust-bright);">보스를 물리쳤다!</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">마을로 향하기 전, 마지막으로 얻어갈 것을 하나 고른다.</p>
+      <p style="text-align:center;color:#ffd76a;font-size:12.5px;margin:-8px 0 14px;">🔱 정예의 인장 +${bonusSeals}개를 추가로 얻었다! (보유 ${player.eliteSeals}개)</p>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="reward-heal">💗 깊은 회복 — HP/MP 전체 회복</button>
+        <button class="btn" id="reward-gold">💰 두둑한 보상 — 골드 +${goldReward}</button>
+        <button class="btn" id="reward-seal">🔱 정예의 증표 — 정예의 인장 +1</button>
+        <button class="btn" id="reward-stone">🔶 강화석 조달 — 강화석 +${stoneReward}</button>
+        <button class="btn" id="reward-awaken">⚡ 각성 — 앞으로 3전투 공격력 +20%</button>
+      </div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    // 구간 전환 확정(사용자 피드백으로 새로고침 취약점 수정 — combat/battle-end.js의
+    // checkBattleEnd() 주석 참고). 보상을 실제로 고른 이 시점에야 저주 정화/
+    // 스탯 보너스/tierIndex 증가/노드맵 초기화를 전부 한 번에 확정한다.
+    function commitTierAdvance(){
+      if((pendingPurifyIds||[]).length){
+        pendingPurifyIds.forEach(curseId=>{
+          removeRelic(curseId);
+          delete player.tempCurses[curseId];
+        });
+        player.atk = Math.round(player.atk*1.04);
+        player.def = Math.round(player.def*1.04);
+        player.mag = Math.round(player.mag*1.04);
+        player.spd = Math.round(player.spd*1.04);
+      }
+      player.tierIndex = nextTier;
+      player.nodeMap = null; player.nodeRow = -1; player.nodeCurrentId = null; player.nodeVisited = [];
+    }
+    function finish(logText){
+      overlay.remove();
+      commitTierAdvance();
+      // 노드맵 시스템: 마을 도착 시 depth를 이번 구간의 보스 층수(10층 단위
+      // 경계)로 맞춘다.
+      depth = player.tierIndex*10;
+      town = true;
+      // 악마의 계약(사용자 요청): 마을에 도착하면 자동으로 해제된다.
+      player.contractBuff = null;
+      // 정예의 교환소 재고(사용자 요청): 다음 마을에 도착하면 자동으로
+      // 새로고침된다 — null로 비워두면 shop.js의 openExchange()가 새로 뽑는다.
+      player.exchangeStock = null;
+      player.townCheckpoint = makeTownCheckpoint();
+      // 대장간 재추첨 비용 에스컬레이션(사용자 요청) — 새 마을에 도착하면 초기화.
+      player.blacksmithRerollCount = 0;
+      player.equipEnhanceCandidates = {};
+      renderStatus();
+      renderExplore([{text:logText, cls:'gold'}]);
+      saveGame();
+      // 묘비 이벤트(사용자 기획) — 이번에 클리어한 구간(clearedTier)이 저장된
+      // 무덤의 구간과 일치하면, 사망 당시 장비/유물 중 셋(부족하면 있는 만큼)을
+      // 보여주고 하나만 되찾게 한다. 보상 선택 오버레이가 방금 닫힌 직후라
+      // 약간의 텀을 두고 별개의 순간으로 띄운다.
+      setTimeout(maybeShowGraveRecovery, 700);
+    }
+    // 묘비 이벤트 후보 산정 + UI. player.hardcoreGrave가 이번에 클리어한
+    // 구간(clearedTier)과 일치할 때만 발동하고, 성공 여부와 무관하게 즉시
+    // 소멸시킨다(1회성 — 같은 무덤을 반복해서 우려먹지 않도록).
+    function maybeShowGraveRecovery(){
+      if(player.difficulty!=='hardcore' || !player.hardcoreGrave) return;
+      if(player.hardcoreGrave.tierIndex !== clearedTier) return;
+      const grave = player.hardcoreGrave;
+      player.hardcoreGrave = null;
+      const pool = [];
+      (grave.equipOwned||[]).forEach(id=>{
+        if((player.equipOwned||[]).includes(id)) return; // 이미 갖고 있으면 후보에서 제외
+        const def = typeof getItemDef==='function' ? getItemDef(id) : null;
+        if(def) pool.push({kind:'equip', id, name:def.name});
+      });
+      (grave.relics||[]).forEach(id=>{
+        if((player.relics||[]).includes(id)) return;
+        if((player.relics||[]).length >= player.relicSlots) return; // 슬롯이 꽉 차 있으면 애초에 후보에서 제외
+        const def = RELICS[id];
+        if(def) pool.push({kind:'relic', id, name:def.name});
+      });
+      if(!pool.length){
+        // 후보가 하나도 안 남았어도(전부 이미 보유했거나 유물 슬롯이 꽉 참)
+        // 아무 피드백 없이 조용히 사라지지 않도록 로그를 남긴다 — 무덤
+        // 자체는 발견한 순간 소멸(위에서 이미 null 처리됨)한다.
+        addLog('낯익은 무덤을 발견했지만, 이미 전부 가지고 있는 것들뿐이었다.', 'warn');
+        return;
+      }
+      const offered = pool.slice().sort(()=>Math.random()-0.5).slice(0,3);
+      showGraveChoice(offered);
+    }
+    function showGraveChoice(offered){
+      const goverlay = document.createElement('div');
+      goverlay.className = 'shop-overlay';
+      goverlay.id = 'grave-overlay';
+      const gpanel = document.createElement('div');
+      gpanel.className = 'shop-panel';
+      gpanel.innerHTML = `<h3>⚰️ 낯익은 무덤</h3>
+        <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">이전에 이곳에서 스러진 자의 흔적이 남아있다. 하나만 챙길 수 있다.</p>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${offered.map((o,i)=>`<button class="btn grave-pick" data-idx="${i}" style="text-align:left; padding:10px 12px;">${o.kind==='relic'?'✨':'⚔️'} ${o.name}</button>`).join('')}
+        </div>`;
+      goverlay.appendChild(gpanel);
+      document.getElementById('app').appendChild(goverlay);
+      gpanel.querySelectorAll('.grave-pick').forEach(btn=>{
+        btn.addEventListener('click', ()=>{
+          Sound.click();
+          const picked = offered[Number(btn.dataset.idx)];
+          if(picked.kind==='equip'){
+            player.equipOwned = player.equipOwned || [];
+            if(!player.equipOwned.includes(picked.id)) player.equipOwned.push(picked.id);
+          } else {
+            player.relics = player.relics || [];
+            player.relics.push(picked.id);
+            if(typeof applyRelicEffect==='function') applyRelicEffect(picked.id);
+          }
+          goverlay.remove();
+          renderStatus();
+          addLog(`묘비에서 [${picked.name}]을(를) 되찾았다.`, 'gold');
+          saveGame();
+        });
+      });
+    }
+    panel.querySelector('#reward-heal').addEventListener('click', ()=>{
+      const choice = applyBossReward('heal', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
+    });
+    panel.querySelector('#reward-gold').addEventListener('click', ()=>{
+      const choice = applyBossReward('gold', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
+    });
+    panel.querySelector('#reward-seal').addEventListener('click', ()=>{
+      const choice = applyBossReward('seal', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
+    });
+    panel.querySelector('#reward-stone').addEventListener('click', ()=>{
+      const choice = applyBossReward('stone', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
+    });
+    panel.querySelector('#reward-awaken').addEventListener('click', ()=>{
+      const choice = applyBossReward('awaken', nextTier);
+      player.lastBossRewardChoice = choice;
+      finish(choice.label);
+    });
   }
 
   function grantExp(amount){
-    const job = getJob(player);
-    const hybrid = getHybrid(player);
-    const specialization = getSpecialization(player);
+    // 정체된 맹세(relic_frozenvow): 경험치 획득 자체를 완전히 무효화한다.
+    if(hasRelicFlag('noExpGain')) return [];
+    // 오프닝 심리테스트(origin.js) "진실" 기질 — 경험치 획득 +8%.
+    const expBonus = (player.originBonuses && player.originBonuses.truth) || 0;
+    if(expBonus>0) amount = Math.round(amount*(1+expBonus));
     player.exp += amount;
     const levelsGained = [];
     while(player.exp >= player.expNext){
       player.exp -= player.expNext;
-      player.level += 1;
-      // 20레벨 이후부터는(쉬움 제외) 레벨업에 필요한 경험치 성장률이 더 가팔라진다.
-      // 레벨업 노가다만으로 진보스/최종보스를 손쉽게 찍어누르는 것을 막기 위함이다.
-      const growthRate = (player.difficulty!=='easy' && player.level>=20) ? 1.36 : 1.28;
-      player.expNext = Math.round(player.expNext*growthRate + 6);
-      player.maxhp += 9; player.maxmp += 4;
-      player.atk += 2; player.def += 1; player.mag += 2; player.spd += 1;
-      if(hasRelicFlag('noPostBattleHeal')){
-        player.hp = Math.min(player.hp, player.maxhp);
-        player.mp = Math.min(player.mp, player.maxmp);
-      } else {
-        player.hp = player.maxhp; player.mp = player.maxmp;
-      }
-      const unlockKey = job.skillLevels[player.level];
-      if(unlockKey && !player.skills.includes(unlockKey)) player.skills.push(unlockKey);
-      const hybridKey = hybrid && hybrid.skills[player.level];
-      if(hybridKey && !player.skills.includes(hybridKey)) player.skills.push(hybridKey);
-      // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 추가 스킬(예: 혈맹의 검투사
-      // 12/15). specialization.skillLevels가 없는 분기는 이 줄이 그냥 undefined라
-      // 아무 영향이 없다(아직 skillLevels를 채우지 않은 다른 분기들도 안전).
-      const specKey = specialization && specialization.skillLevels && specialization.skillLevels[player.level];
-      if(specKey && !player.skills.includes(specKey)) player.skills.push(specKey);
+      applyLevelUpEffects();
       levelsGained.push(player.level);
     }
     return levelsGained;
+  }
+
+  // 레벨 1회 상승분의 스탯 증가/스킬 지급을 처리한다(경험치 소모는 여기서 하지
+  // 않는다 — grantExp()가 exp/expNext를 먼저 처리한 뒤 이 함수를 호출한다). 이렇게
+  // 분리해둔 이유는 combat/job-advancement.js의 admin 전용 "전직 즉시 15레벨"
+  // 디버그 로직도 정확히 같은 레벨업 효과(스탯 증가 + 2차 전직 스킬 지급 포함)를
+  // 그대로 재사용해야 하기 때문 — 로직을 중복 작성하면 나중에 둘 중 하나만 고치는
+  // 실수가 생기기 쉽다.
+  function applyLevelUpEffects(){
+    const job = getJob(player);
+    const hybrid = getHybrid(player);
+    const specialization = getSpecialization(player);
+    player.level += 1;
+    // 20레벨 이후부터는(쉬움 제외) 레벨업에 필요한 경험치 성장률이 더 가팔라진다.
+    // 레벨업 노가다만으로 진보스/최종보스를 손쉽게 찍어누르는 것을 막기 위함이다.
+    const growthRate = (player.difficulty!=='easy' && player.level>=20) ? 1.36 : 1.28;
+    player.expNext = Math.round(player.expNext*growthRate + 6);
+    // 오프닝 심리테스트(origin.js)의 기질 보너스 — 레벨업 시 스탯 상승량에
+    // 조용히 +8%를 더한다. 다만 공격력(+2)/속도(+1)처럼 원래 증가량이 작은
+    // 스탯은 8%를 곱해도(2.16, 1.08) 반올림하면 그냥 사라져버려서, 소수점
+    // 잔여분을 player.originGrowthRemainder에 누적해뒀다가 정확히 1 이상
+    // 쌓이는 시점에만 +1을 터뜨리는 방식으로 처리한다 — 매 레벨 눈에 보이진
+    // 않아도, 여러 레벨에 걸쳐 정확히 8%만큼 실제로 더 성장한다.
+    player.originGrowthRemainder = player.originGrowthRemainder || {hp:0, mp:0, atk:0, spd:0, def:0};
+    if(player.originGrowthRemainder.def===undefined) player.originGrowthRemainder.def = 0;
+    const ob = player.originBonuses || {};
+    function applyOriginGrowth(base, bonusKey, remainderKey){
+      const exact = base*(1+(ob[bonusKey]||0)) + player.originGrowthRemainder[remainderKey];
+      const whole = Math.floor(exact);
+      player.originGrowthRemainder[remainderKey] = exact - whole;
+      return whole;
+    }
+    player.maxhp += applyOriginGrowth(9, 'survival', 'hp');
+    // 일격의 구도자(warrior_purist)는 스킬을 전혀 쓰지 않아 마나가 항상 0으로
+    // 유지되어야 한다(combat/job-advancement.js에서 전직 시점에도 0으로 초기화).
+    // 레벨업 때마다 관례적으로 붙는 maxmp 증가분만 이 분기에 한해 건너뛴다.
+    if(!(player.specialization === 'warrior_purist')){
+      player.maxmp += applyOriginGrowth(4, 'spirit', 'mp');
+    }
+    // 쉬움 난이도 전용 공격력 보너스(사용자 요청 — player.js의 초기치 보너스와
+    // 동일 배율 20%). 레벨업할 때마다도 같이 적용해야 레벨이 오를수록 초기
+    // 보너스가 희석되지 않는다.
+    const easyGrowthMult = player.difficulty==='easy' ? 1.2 : 1;
+    player.atk += Math.round(applyOriginGrowth(2, 'strength', 'atk') * easyGrowthMult);
+    player.def += applyOriginGrowth(1, 'atonement', 'def');
+    player.mag += Math.round(2 * easyGrowthMult);
+    player.spd += applyOriginGrowth(1, 'swiftness', 'spd');
+    // 저주술사(mastery_curseweaver)는 레벨업 시 무회복 저주도 저주 개수만큼의
+    // 확률로 뚫을 수 있다(레벨업이 한 번에 여러 번 처리될 수 있어, 매번 배너가
+    // 뜨면 스팸이 될 수 있으므로 여기서는 안내 문구 없이 조용히 판정만 한다).
+    // 외상 도박사(거액 대출)의 회복 봉인도 같은 자리에서 함께 확인한다.
+    if(isCurseSealActive('noPostBattleHeal') || isDebtHealSealActive()){
+      player.hp = Math.min(player.hp, player.maxhp);
+      player.mp = Math.min(player.mp, player.maxmp);
+    } else {
+      player.hp = player.maxhp; player.mp = player.maxmp;
+      // 버그 수정(사용자 제보) — renderStatus()의 정예 "저주" 특성 회복감소가
+      // "지난 렌더 이후 HP가 늘었으면 그 증가분의 30%를 사후 차감"하는 방식
+      // 이라, 레벨업으로 체력이 꽉 차는 것까지 "회복"으로 오인해서 깎고
+      // 있었다. 여기서 기준값(_prevHpForCurse)을 미리 지금 값으로 맞춰둬서
+      // 다음 renderStatus() 호출이 "변화 없음"으로 보게 한다 — 레벨업 보상은
+      // 저주로 깎일 대상이 아니므로.
+      player._prevHpForCurse = player.hp;
+    }
+    const unlockKey = job.skillLevels[player.level];
+    if(unlockKey && !player.skills.includes(unlockKey)) player.skills.push(unlockKey);
+    const hybridKey = hybrid && hybrid.skills[player.level];
+    if(hybridKey && !player.skills.includes(hybridKey)) player.skills.push(hybridKey);
+    // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 추가 스킬(예: 혈맹의 검투사
+    // 12/15). specialization.skillLevels가 없는 분기는 이 줄이 그냥 undefined라
+    // 아무 영향이 없다(아직 skillLevels를 채우지 않은 다른 분기들도 안전).
+    // 잔영검사(warrior_afterimage)처럼 한 레벨에 스킬 2개를 동시에 줘야 하는
+    // 분기를 위해 배열 값도 지원한다(문자열이면 기존과 동일하게 동작 — 하위 호환).
+    const specKey = specialization && specialization.skillLevels && specialization.skillLevels[player.level];
+    if(specKey){
+      const specKeys = Array.isArray(specKey) ? specKey : [specKey];
+      specKeys.forEach(k=>{ if(k && !player.skills.includes(k)) player.skills.push(k); });
+    }
+    // 회랑의 기사(paladin_knight): 레벨12/15에 도달하면 칼리버 X 자체가 다음
+    // 단계로 자동 교체된다(플레이어가 직접 장착하는 게 아님 — equipItem()은 이
+    // 무기를 교체 못 하게 막고 있으므로 data/equipment.js의 reforgeCaliberX()를
+    // 직접 호출해 우회한다). 아이템 설명이 이 시점에 성검→불길함→저주받은 검으로
+    // 바뀌면서 서사가 진행된다.
+    if(player.specialization==='paladin_knight' && typeof reforgeCaliberX==='function'){
+      if(player.level===12) reforgeCaliberX('caliberx_1', 'caliberx_2');
+      else if(player.level===15) reforgeCaliberX('caliberx_2', 'caliberx_3');
+    }
+    return player.level;
   }
 
   function showLevelUpToast(lv){
     const job = getJob(player);
     const hybrid = getHybrid(player);
     const specialization = getSpecialization(player);
-    const t = document.createElement('div');
-    t.className='toast';
     const names = [];
     const unlockKey = job.skillLevels[lv];
     if(unlockKey) names.push(SKILLDB[unlockKey].name);
     const hybridKey = hybrid && hybrid.skills[lv];
     if(hybridKey) names.push(SKILLDB[hybridKey].name);
-    // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 스킬(예: 혈맹의 검투사 12/15레벨).
-    // grantExp()는 이 스킬을 이미 정상적으로 지급하고 있었지만, 토스트 문구를 만드는
-    // 이 함수가 job.skillLevels/hybrid.skills만 확인하고 specialization.skillLevels는
-    // 빠뜨리고 있어서 "새로운 스킬 습득" 문구에 반영되지 않고 있었다.
+    // 2차 전직 세분화(JOB_SPECIALIZATIONS)의 레벨별 추가 스킬(예: 혈맹의 검투사
+    // 12/15, 일격의 구도자 12/15)도 습득 알림에 포함한다. grantExp()는 이 스킬을
+    // 이미 정상적으로 지급하고 있었지만, 이 토스트 함수가 specialization.skillLevels를
+    // 확인하지 않아 알림만 안 뜨던 버그였다.
     const specKey = specialization && specialization.skillLevels && specialization.skillLevels[lv];
-    if(specKey) names.push(SKILLDB[specKey].name);
-    Sound.levelUp();
-    t.innerHTML = `<h3>레벨 업! Lv.${lv}</h3><p>최대 HP/MP와 능력치가 상승했다.</p>${names.length?`<p>새로운 스킬 습득: <b>${names.join(', ')}</b></p>`:''}`;
-    document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 2200);
+    if(specKey){
+      const specKeys = Array.isArray(specKey) ? specKey : [specKey];
+      specKeys.forEach(k=>{ if(k && SKILLDB[k]) names.push(SKILLDB[k].name); });
+    }
+    const html = `<h3>레벨 업! Lv.${lv}</h3><p>최대 HP/MP와 능력치가 상승했다.</p>${names.length?`<p>새로운 스킬 습득: <b>${names.join(', ')}</b></p>`:''}`;
+    showToast(html, null, {duration:2200, sound:Sound.levelUp});
+  }
+
+  // 정예의 인장 토스트(사용자 요청) — 예전엔 탐험 로그 한 줄로만 알려줘서
+  // 눈에 잘 안 띄었다. showRareDropToast류와 동일한 패턴의 프롬프트 팝업으로
+  // 확실히 보이게 한다.
+  function showEliteSealToast(){
+    const html = `<h3 style="color:#ffd76a;">🔱 정예의 인장 획득!</h3><p>보유 ${player.eliteSeals}개</p><p style="opacity:.75;">마을 교환소에서 원하는 에픽 장비와 교환할 수 있다.</p>`;
+    showToast(html, '#ffd76a', {duration:2200, sound:Sound.coin});
   }
 
   function showRareDropToast(item){
-    const t = document.createElement('div');
-    t.className='toast';
-    t.style.borderColor = 'var(--violet)';
-    Sound.coin();
-    t.innerHTML = `<h3 style="color:#c9a8ff;">✨ 희귀 아이템 발견!</h3><p><b>${item.name}</b></p><p>${statsText(item.stats)}</p><p style="opacity:.75;">${item.desc}</p>`;
-    document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 2800);
+    const html = `<h3 style="color:#c9a8ff;">✨ 희귀 아이템 발견!</h3><p><b>${item.name}</b></p><p>${statsText(item.stats)}</p><p style="opacity:.75;">${item.desc}</p>`;
+    showToast(html, 'var(--violet)', {duration:2800, sound:Sound.coin});
   }
 
   function showEpicDropToast(item){
-    const t = document.createElement('div');
-    t.className='toast toast-epic';
     const setInfo = EPIC_SETS[item.setId];
     const owned = player.equipOwned.filter(id=>EPIC_EQUIPMENT[id] && EPIC_EQUIPMENT[id].setId===item.setId);
     const setItems = Object.keys(EPIC_EQUIPMENT).filter(k=>EPIC_EQUIPMENT[k].setId===item.setId);
     const bars = setItems.map(k=> owned.includes(k) ? '■' : '□').join(' ');
-    Sound.levelUp();
-    t.innerHTML = `<h3 style="color:var(--epic-bright);">✦✦ EPIC DROP ✦✦</h3>
+    const html = `<h3 style="color:var(--epic-bright);">✦✦ EPIC DROP ✦✦</h3>
       <p style="color:var(--epic-bright);"><b>「${setInfo.name}」</b></p>
       <p><b>[${SLOT_LABELS[item.slot]}] ${item.name}</b></p>
       <p>${statsText(item.stats)}</p>
       <p style="opacity:.75;">${item.desc}</p>
       <p style="margin-top:8px; font-size:13px; letter-spacing:.15em;">세트 진행도 ${bars} (${owned.length}/3)</p>`;
-    document.getElementById('app').appendChild(t);
-    setTimeout(()=>t.remove(), 3400);
+    showToast(html, null, {duration:3400, extraClass:'toast-epic', sound:Sound.levelUp});
   }
