@@ -943,6 +943,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-bloomDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+bloomDmg, 'crit');
       Sound.magic(); playCastBurst();
+      // 궁극기 전용 강조 연출(사용자 요청). 저주 테마 보라색 화면 플래시 + 배너.
+      playStatusFx('curse');
+      playBanner('저주 만개!', 'fx-curse');
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, `짊어진 저주(${curses}개)가 한꺼번에 만개하며 ${enemy.name}에게 ${bloomDmg}의 압도적인 피해를 입혔다!${detonateMsg}`);
       if(checkBattleEnd()) return;
@@ -1352,6 +1355,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const buffTurnsUsed = hasUndyingCommand ? Math.max(1, s.buffTurns-1) : s.buffTurns;
       battleFlags.legionCommandTurns = buffTurnsUsed;
       battleFlags.legionCommandMult = s.buffMult;
+      // 궁극기 전용 강조 연출(사용자 요청) — 피해가 없는 순수 버프라 연출이
+      // 아예 없었다. 기존 캐스트버스트 + 강철빛 배너만 추가.
+      playCastBurst();
+      playBanner('총사령관의 명령!', 'fx-legion');
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, `${buffTurnsUsed}턴간 모든 로봇의 사격 위력이 ${Math.round(s.buffMult*100)}% 늘어난다.${hasUndyingCommand ? ' (불멸의 명령 각인 — 로봇이 만료돼도 자동 재배치된다)' : ''}`);
       if(checkBattleEnd()) return;
@@ -1664,6 +1671,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg,'crit');
       Sound.bomb();
+      // 궁극기 전용 강조 연출(사용자 요청) — 압력 전량 방출이니 화면 전체가
+      // 흔들리는 shakeScreen()과 광폭 휩쓸기 참격 변주(v10)로 폭발감을 낸다.
+      spawnSlashImageFx({variant:'v10'});
+      shakeScreen();
+      playBanner('폭주 임계점!', 'fx-overload');
       // 돌이킬 수 없는 각인(me_permanentcost, 폭주 화부 장신구 각인 —
       // 사용자 요청): 일시적 반동(HP)이 사라지는 대신, 최대HP가 영구히
       // 줄어든다(반동의 30% 만큼). "쓸수록 몸이 작아지지만 전투 중엔
@@ -2352,10 +2364,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const parts = rawParts.map(d=>Math.max(1, Math.round(d*scale)));
       const total = parts.reduce((a,b)=>a+b,0);
       setBattleMsg(`${player.name}의 ${s.name}!`, hadCount ? `쌓아온 잔영(${hits}번)이 한꺼번에 몰아친다...` : '불러낼 잔영이 없어 홀로 몰아친다...');
+      // 궁극기 전용 강조 연출(사용자 요청) — 심연 톤(v7) 참격 변주로 "망자
+      // 군단이 베는" 느낌을 내고, 전용 배너를 시작과 함께 띄운다.
+      playBanner('백귀야행!', 'fx-parade');
       parts.forEach((hitDmg,i)=>{
         setTimeout(()=>{
           enemy.hp = Math.max(0, enemy.hp-hitDmg);
-          updateEnemyHpBar(); shakeEnemy(); spawnSlashMark(i);
+          updateEnemyHpBar(); shakeEnemy(); spawnSlashImageFx({variant:'v7'});
           Sound.slash();
           popDamage('-'+hitDmg, i===parts.length-1?'crit':undefined);
         }, i*160);
@@ -2469,7 +2484,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         rogueRegisterHit(true);
         Sound.coin();
-        playBanner('대성공!');
+        // 궁극기 전용 강조 연출(사용자 요청) — 레벨10 베팅과 같은 코드 경로를
+        // 타므로 jesterAllIn(레벨15)일 때만 금빛 참격+전용 배너를 더한다.
+        if(key==='jesterAllIn'){
+          spawnSlashImageFx({variant:'v2'});
+          playBanner('올인 — 대성공!', 'fx-jackpot');
+        } else {
+          playBanner('대성공!');
+        }
         const payout = Math.round(stake*s.payoutMult);
         player.gold += payout;
         epicLuckPost(true, epicLuckBet);
@@ -2612,7 +2634,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         enemy.hp = Math.max(0, Math.min(enemyMaxHp, Math.round(enemyMaxHp*myPct)));
         updateEnemyHpBar(); renderStatus();
         Sound.bomb();
-        playBanner('운명 역전!');
+        // 궁극기 전용 강조 연출(사용자 요청) — 기존 운명 균열 이펙트(마녀
+        // 조우 등에 쓰던 화면 균열)를 "운명이 뒤바뀐다"는 테마로 재사용.
+        spawnScreenCrackFx();
+        playBanner('운명 역전!', 'fx-fateswap');
         epicLuckPost(true, epicLuck);
         setBattleMsg(`${player.name}의 ${s.name}!`, `운명의 저울이 뒤집혔다! 서로의 남은 체력 비율이 맞바뀌었다(나 ${myPctLabel}% ↔ ${enemy.name} ${enemyPctLabel}%).`);
         if(checkBattleEnd()) return;
@@ -3247,6 +3272,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(hpSacMsg) msg2 += hpSacMsg;
     if(afterimageMsg2) msg2 += afterimageMsg2;
     if(key==='warriorBloodpactUltimate'){
+      // 궁극기 전용 강조 연출(사용자 요청 — 삼박난무처럼 다른 직업도 특색 있게).
+      // 새 이미지 없이 기존 핏빛 참격 변주(v4)/화면 플래시/배너만 재사용.
+      spawnSlashImageFx({variant:'v4'});
+      playStatusFx('blood');
+      playBanner('혈맹의 대가!', 'fx-blood');
       const cIdBR = player.equipment && player.equipment.accessory;
       if(cIdBR && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdBR).includes('we_bloodrevive')){
         if(enemy.hp>0 && dmg >= Math.round(enemy.maxhp*0.3)){

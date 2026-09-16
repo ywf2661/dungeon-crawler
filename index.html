@@ -479,6 +479,10 @@
   @keyframes statusflash{ 0%{opacity:0;} 30%{opacity:1;} 100%{opacity:0;} }
   .status-fx.poison{background:radial-gradient(ellipse at 50% 55%, #7ee06655 0%, transparent 70%);}
   .status-fx.burn{background:radial-gradient(ellipse at 50% 55%, #ff8a3a66 0%, transparent 70%);}
+  /* 직업별 궁극기 강조 연출(사용자 요청 — 삼박난무처럼 다른 직업 궁극기도
+     특색 있게). 새 이미지 없이 기존 함수/CSS 패턴만 재사용한다. */
+  .status-fx.blood{background:radial-gradient(ellipse at 50% 55%, #ff2a3a66 0%, transparent 70%);}
+  .status-fx.curse{background:radial-gradient(ellipse at 50% 55%, #a03aff5a 0%, transparent 70%);}
   .status-fx.bleed{background:radial-gradient(ellipse at 50% 55%, #ff4a4a55 0%, transparent 70%);}
   .enemy-stage.dot-poison{animation:poisonpulse 1.1s ease-in-out infinite;}
   .enemy-stage.dot-burn{animation:burnpulse .9s ease-in-out infinite;}
@@ -762,6 +766,14 @@
   .fx-banner.fx-timeturn{color:#7ad6ff; border-color:#5ac9ff; font-size:18px; text-shadow:0 0 14px #5ac9ffcc, 0 1px 3px #000;}
   .fx-banner.fx-frost{color:#c9d8ff; border-color:#a8c0ff; font-size:18px; text-shadow:0 0 14px #a8c0ffcc, 0 1px 3px #000;}
   .fx-banner.fx-voidstep{color:#d8b8ff; border-color:#b088ff; font-size:18px; text-shadow:0 0 16px #b088ffcc, 0 1px 3px #000;}
+  /* 직업별 궁극기 강조 배너(사용자 요청) — 새 이미지 없이 색상 테마만 추가. */
+  .fx-banner.fx-blood{color:#ff5a5a; border-color:#ff3a3a; font-size:18px; text-shadow:0 0 14px #ff3a3acc, 0 1px 3px #000;}
+  .fx-banner.fx-curse{color:#c98fff; border-color:#a83aff; font-size:18px; text-shadow:0 0 14px #a83affcc, 0 1px 3px #000;}
+  .fx-banner.fx-parade{color:#9a8fc9; border-color:#7a6ab0; text-shadow:0 0 10px #7a6ab088, 0 1px 3px #000;}
+  .fx-banner.fx-overload{color:#ff9a3a; border-color:#ff7a1a; font-size:18px; text-shadow:0 0 14px #ff7a1acc, 0 1px 3px #000;}
+  .fx-banner.fx-legion{color:#b8c8e0; border-color:#8fa8c9; text-shadow:0 0 10px #8fa8c988, 0 1px 3px #000;}
+  .fx-banner.fx-jackpot{color:#ffe066; border-color:#ffcf2a; font-size:18px; text-shadow:0 0 14px #ffcf2acc, 0 1px 3px #000;}
+  .fx-banner.fx-fateswap{color:#d8a8ff; border-color:#b868ff; font-size:18px; text-shadow:0 0 14px #b868ffcc, 0 1px 3px #000;}
   @keyframes bannerpop{
     0%{opacity:0; transform:translate(-50%,8px) scale(0.8);}
     20%{opacity:1; transform:translate(-50%,0) scale(1.05);}
