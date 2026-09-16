@@ -51,6 +51,24 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   }
 
   function resetCommandUI(){
+    // 빙결(사용자 요청 — 계약술사 빙결계약/정예 특성 연동): resetCommandUI()는
+    // closeSub()(메뉴 열기/닫기)처럼 실제 턴 경계가 아닌 경로에서도 호출되므로,
+    // 스킬 쿨타임 감소와 동일한 안전장치(cooldownTickPending — "플레이어가 실제로
+    // 행동해서 라운드가 막 넘어왔다"는 신호)로만 판정한다. 걸려 있으면 커맨드
+    // UI를 아예 열지 않고 곧장 다음 라운드(enemyTurn)로 넘긴다 — 찰나검사
+    // 경직이 적의 행동을 통째로 건너뛰는 것과 동일한 패턴.
+    const isRealTurnBoundary = !!(battleFlags && battleFlags.cooldownTickPending);
+    if(isRealTurnBoundary && player.freezeTurns>0){
+      // 배지가 "얼어붙었다"는 걸 실제로 보여줄 수 있도록, 카운터를 깎기 전에
+      // 먼저 그린다(먼저 깎으면 0이 되어 배지 조건을 스스로 지워버린다).
+      setCommandsEnabled(false);
+      updatePlayerStatusBadges();
+      setBattleMsg('빙결!', '몸이 얼어붙어 움직일 수 없다!');
+      if(typeof playStatusFx==='function') playStatusFx('pact-ice');
+      player.freezeTurns -= 1;
+      setTimeout(()=>{ if(!battleOver) enemyTurn(); }, 700);
+      return;
+    }
     subMode=null;
     document.getElementById('cmd-main').style.display='grid';
     document.getElementById('cmd-sub').style.display='none';
@@ -66,6 +84,12 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       }
     }
     if(hasRelicFlag('skillLocked')) document.getElementById('cmd-skill').disabled = true;
+    // 감전 스킬 봉인 — 반드시 "비활성화 판정 뒤에" 카운트를 내린다. 먼저
+    // 내리면 지속 2턴 중 실제로 막히는 턴은 1턴뿐이게 되는 오프바이원이 생긴다.
+    if(player.shockSealTurns>0){
+      document.getElementById('cmd-skill').disabled = true;
+      if(isRealTurnBoundary) player.shockSealTurns -= 1;
+    }
     const runBtn = document.getElementById('cmd-run');
     // (사용자 요청 — 굴복 시스템) 도망(쉬움 전용, 확률제)과 굴복(보통/하드코어
     // 전용, 확정 성공 + 골드 대가)은 같은 버튼 자리를 난이도에 따라 바꿔 쓴다 —
@@ -660,6 +684,26 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.textContent = `😵 경직 ${enemy.chalnaStunTurns}턴`;
       box.appendChild(b);
     }
+    // 빙결/감전(사용자 요청 — 계약술사 원소계약/정예 특성 연동). 적 쪽은 기존
+    // 배지와 동일하게 정적으로 표시하고, 플레이어 쪽(updatePlayerStatusBadges)만
+    // 펄스 애니메이션으로 눈에 띄게 해 "누가 걸렸는지" 구분한다.
+    if(enemy && enemy.freezeTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge freeze';
+      b.textContent = `❄ 빙결 ${enemy.freezeTurns}턴`;
+      box.appendChild(b);
+    }
+    if(enemy && enemy.shockSealTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge shock';
+      b.textContent = `⚡ 감전(스킬봉인) ${enemy.shockSealTurns}턴`;
+      box.appendChild(b);
+    } else if(enemy && enemy.shockSpdTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge shock';
+      b.textContent = `⚡ 감전(속도↓) ${enemy.shockSpdTurns}턴`;
+      box.appendChild(b);
+    }
     // 역병중첩(역병숙주): enemy.venomStacks는 일반 dot(enemy.dots)과 별개로
     // 관리되는 영구 스택이라(턴이 지나도 안 사라짐) 위 dots 루프에는 안 걸린다 —
     // 여기서 따로 표시한다. "적 왼쪽 위"에 두 달라는 요청이 있었지만, 그 자리는
@@ -693,6 +737,23 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const box = document.getElementById('bt-player-status');
     if(!box || !player || !player.skills) return;
     box.innerHTML = '';
+    // 빙결/감전(사용자 요청 — "적이 걸린 UI와 구분되는" 강조 UI). 이 두 개만
+    // player-badge가 아니라 전용 클래스(cc-badge)를 써서 펄스 애니메이션이
+    // 붙는다 — 나머지 토글 배지(혈서/원소계약 등)는 그대로 정적 유지.
+    if(player.freezeTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge cc-badge freeze';
+      b.textContent = `❄ 빙결! 행동 불가`;
+      b.title = '이번 턴 아무것도 할 수 없다.';
+      box.appendChild(b);
+    }
+    if(player.shockSealTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge cc-badge shock';
+      b.textContent = `⚡ 감전! 스킬 봉인 ${player.shockSealTurns}턴`;
+      b.title = '스킬을 쓸 수 없다. 기본 공격/아이템은 가능.';
+      box.appendChild(b);
+    }
     player.skills.forEach(k=>{
       const s = SKILLDB[k];
       if(!s) return;

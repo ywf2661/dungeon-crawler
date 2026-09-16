@@ -462,6 +462,19 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         enemy.ironskinTurns -= 1;
       }
     }
+    // 감전(사용자 요청 — 계약술사 번개계약 연동) 속도 하락 소진 — 0이 되는
+    // 순간 정확히 빼앗았던 만큼만 되돌린다(tgSpdDebuff와 동일한 설계). 스킬
+    // 봉인(shockSealTurns)은 여기서 내리지 않는다 — enemyAction()이 "이번
+    // 행동을 실제로 막을 때" 그 자리에서 소비해야 정확히 2번의 행동만
+    // 막힌다(여기서 먼저 깎으면 검사 시점엔 이미 1 줄어 있어 1번만 막힘).
+    if(enemy && enemy.shockSpdTurns>0){
+      enemy.shockSpdTurns -= 1;
+      if(enemy.shockSpdTurns<=0){
+        enemy.spd += (enemy.shockSpdDelta||0);
+        enemy.shockSpdDelta = 0;
+      }
+      updateStatusBadges();
+    }
     if((player.poisonTurns||0)>0){
       const pdmg = player.poisonDmgPerTurn||0;
       player.poisonTurns -= 1;
@@ -577,6 +590,26 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         finishEnemyTurn();
         return;
       }
+      // 빙결(사용자 요청 — 계약술사 빙결계약 연동) — chalnaStunTurns와 동일한
+      // "적 턴 스킵" 패턴이나, 지속시간이 1턴 고정이라 재적용 시 안전장치 없이
+      // 그대로 갱신만 한다(사용자 확정).
+      if(enemy && enemy.freezeTurns>0){
+        enemy.freezeTurns -= 1;
+        setBattleMsg(`${enemy.name}이(가) 얼어붙어 움직이지 못한다!`, '');
+        updateStatusBadges();
+        finishEnemyTurn();
+        return;
+      }
+      // 감전 스킬 봉인 소비(사용자 요청) — "이번 행동을 실제로 막는" 이 지점에서
+      // 확인과 동시에 소비해야 정확히 2번의 행동만 막힌다(먼저 다른 곳에서
+      // 깎아두면 검사 시점엔 이미 줄어 있어 1번만 막히는 오프바이원이 생김).
+      // 최종보스 8종(진최종보스 시조/마녀 + 직업별 최종보스 6종)은 면역.
+      let shockSealedThisTurn = false;
+      if(enemy && enemy.shockSealTurns>0){
+        shockSealedThisTurn = !(enemy.isFinal || enemy.isTrueFinal);
+        enemy.shockSealTurns -= 1;
+        updateStatusBadges();
+      }
       // 회랑의 시조 포즈 리셋(사용자 요청) — 이번 턴 판정 결과(예고/즉시발동/
       // 평범한 공격)에 따라 아래에서 다시 telegraph/slam으로 바뀔 수 있다.
       // 다른 몬스터는 setBossPoseImage() 안에서 type 체크로 즉시 무시된다.
@@ -665,7 +698,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         enemy.pendingSkillKey = null;
         if(typeof updateBossIntentCard==='function') updateBossIntentCard();
         if(typeof setBossPoseImage==='function') setBossPoseImage('slam');
-      } else if(enemy.skills.length && Math.random()<(enemy.skillChance||0.4)){
+      } else if(enemy.skills.length && !shockSealedThisTurn && Math.random()<(enemy.skillChance||0.4)){
         const chosen = enemy.skills[Math.floor(Math.random()*enemy.skills.length)];
         // 보스이고 치유가 아닌 스킬이면 즉시 쓰지 않고 한 턴 예고부터 한다.
         // 치유는 플레이어에게 위협이 아니라 예고할 이유가 없어 그대로 즉시 사용.
@@ -1036,6 +1069,16 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           player.poisonDmgPerTurn = Math.max(1, Math.round(effAtk*0.15));
           extraMsg += ' 상처에 독이 스며든다!';
         }
+        // 빙결/감전(사용자 요청) — poison과 달리 확정 적용이 아니라 20% 확률.
+        // 행동 자체를 봉쇄하는 강한 CC라 매번 걸리면 밸런스가 무너진다.
+        if(hasEliteTrait('freeze') && Math.random()<0.2){
+          player.freezeTurns = 1;
+          extraMsg += ' 냉기가 뼛속까지 파고들어 몸이 굳는다!';
+        }
+        if(hasEliteTrait('shock') && Math.random()<0.2){
+          player.shockSealTurns = 2;
+          extraMsg += ' 전류가 흘러 스킬을 쓸 수 없게 됐다!';
+        }
       }
 
       // 거울의 파편(반사) / 복수자의 반지(다음 공격 무장) — 실제로 HP 피해를 받았을 때만 발동
@@ -1138,6 +1181,33 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     playStatusFx(spec.type);
     Sound.statusApply(spec.type);
     updateStatusBadges();
+  }
+  // 빙결/감전(사용자 요청 — 계약술사 빙결계약/번개계약 연동): dot 배열이 아니라
+  // enemy.freezeTurns/shockSealTurns/shockSpdTurns 단일 카운터로 관리한다
+  // (chalnaStunTurns/venomStacks와 같은 패턴 — 중첩 없이 갱신만).
+  function tryFreezeEnemy(chance){
+    if(!enemy || Math.random()>=chance) return false;
+    enemy.freezeTurns = 1;
+    playStatusFx('pact-ice');
+    updateStatusBadges();
+    return true;
+  }
+  function tryShockEnemy(chance){
+    if(!enemy || Math.random()>=chance) return false;
+    // 속도 하락은 최종보스 포함 전부 적용. 델타는 한 번만 계산해두고 지속시간이
+    // 끝날 때 정확히 그만큼만 되돌린다(tgSpdDebuff와 동일한 설계).
+    if(!(enemy.shockSpdTurns>0)){
+      const delta = Math.min(Math.max(enemy.spd-1, 0), 3);
+      enemy.shockSpdDelta = delta;
+      enemy.spd -= delta;
+    }
+    enemy.shockSpdTurns = 2;
+    // 스킬 봉인은 최종보스 8종(진최종보스 시조/마녀 + 직업별 최종보스 6종)은
+    // 면역 — 스킬을 아예 못 쓰는 보스전은 너무 밋밋해진다는 사용자 판단.
+    if(!(enemy.isFinal || enemy.isTrueFinal)) enemy.shockSealTurns = 2;
+    playStatusFx('pact-lightning');
+    updateStatusBadges();
+    return true;
   }
   // 전염된 상처(relic_infectedwound): 공격 적중마다 확률로 감염 도트를 걸거나
   // 중첩시킨다(최대 5중첩). 기존 applyDot()은 같은 종류 재적용 시 그냥

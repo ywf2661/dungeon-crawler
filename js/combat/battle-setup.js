@@ -191,6 +191,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     reflect:   {label:'반사',     desc:'받는 피해의 15%를 플레이어에게 반사(1회당 플레이어 최대HP의 10%가 상한)'},
     manaburn:  {label:'마나포식', desc:'플레이어가 스킬을 쓸 때마다 MP -5'},
     hunter:    {label:'사냥꾼',   desc:'플레이어 HP 30% 이하일 때 가하는 피해 +30%'},
+    // 원소 상태이상 2종(사용자 요청) — 확률형 CC라 poison(적중 시 항상 적용)보다
+    // 약한 20% 확률로 잡았다. freeze는 언데드 계열(냉기 서린 무덤)에, shock는
+    // 마법사 계열(마나포식/광기와 세트)에 배정.
+    freeze:    {label:'빙결',     desc:'기본 공격 20% 확률로 플레이어를 빙결(다음 턴 행동 불가)'},
+    shock:     {label:'감전',     desc:'기본 공격 20% 확률로 플레이어를 감전(2턴간 스킬 봉인)'},
   };
   const ALL_ELITE_TRAIT_KEYS = Object.keys(ELITE_TRAITS);
   // 몬스터별 전용 풀(사용자 요청 예시 기반 — 표에 없는 "도주/훔치기/주문강화/
@@ -199,12 +204,12 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   // 뽑는다. 보스(BOSSES)에는 이번엔 적용하지 않는다(사용자 확정).
   const MONSTER_TYPE_TRAIT_POOLS = {
     goblin:   ['berserk','poison','hunter'],       // 광폭/독/훔치기·도주 대체(사냥꾼)
-    skeleton: ['undying','curse','regen'],         // 언데드 계열
-    ghost:    ['undying','curse','regen'],
-    wraith:   ['undying','curse','regen'],
+    skeleton: ['undying','curse','regen','freeze'], // 언데드 계열
+    ghost:    ['undying','curse','regen','freeze'],
+    wraith:   ['undying','curse','regen','freeze'],
     knight:   ['ironskin','revenge','reflect'],     // 철갑/복수/도발 대체(반사)
-    witch:    ['manaburn','madness','regen'],       // 마나포식/주문강화 대체(광기)/보호막 대체(재생)
-    cultist:  ['manaburn','madness','regen'],
+    witch:    ['manaburn','madness','regen','shock'], // 마나포식/주문강화 대체(광기)/보호막 대체(재생)
+    cultist:  ['manaburn','madness','regen','shock'],
   };
   // 정예 특성 개수(사용자 요청 — 진행상황 + 난이도에 따라 1~3개).
   function getEliteTraitCount(atDepth, difficulty){
