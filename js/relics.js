@@ -95,6 +95,28 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     relic_flayedhide:   {type:'curse', name:'벗겨진 가죽',   desc:'받는 피해가 20% 늘어난다.', effect:{dmgTakenPctMult:0.20}},
     relic_driedwell:    {type:'curse', name:'말라버린 샘',   desc:'최대 마나가 절반으로 줄어든다.', effect:{maxmpPct:-0.5}},
 
+    // 신규 확정 시작 저주 5종(사용자 기획 — 난이도 상승 장치). 구간 저주
+    // 제단과 영구 확정 시작 저주/저주받은 유물 양쪽에 동일한 값으로 등록된다
+    // (완화판이 따로 필요 없을 만큼 처음부터 "영구로 걸어도 되는" 강도로
+    // 설계했다). expGoldPct/armorLocked/accessoryLocked/shopPricePct/
+    // cooldownBonus는 전부 새 effect 키 — 각각 combat/battle-end.js,
+    // data/equipment.js, shop.js, combat/player-actions.js에서 getRelicSum/
+    // hasRelicFlag로 조회한다(2~3단계 참고).
+    relic_fadedmap:      {type:'curse', name:'빛바랜 지도', desc:'경험치와 골드 획득량이 20% 줄어든다.', effect:{expGoldPct:-0.20}},
+    relic_rustedarmor:   {type:'curse', name:'낡은 갑주', desc:'방어구 슬롯이 봉인되어 장착할 수 없다.', effect:{armorLocked:true}},
+    relic_forgottencharm:{type:'curse', name:'잊혀진 장신구', desc:'장신구 슬롯이 봉인되어 장착할 수 없다.', effect:{accessoryLocked:true}},
+    relic_barrenpurse:   {type:'curse', name:'메마른 지갑', desc:'상점 구매 가격이 30% 비싸진다.', effect:{shopPricePct:0.30}},
+    relic_stiffhands:    {type:'curse', name:'굳은 손', desc:'재사용 대기시간이 있는 스킬의 쿨타임이 1턴 늘어난다.', effect:{cooldownBonus:1}},
+
+    // 기존 구간용 저주 5종의 "영구용 완화판"(사용자 기획). permanentOnly:true는
+    // CURSE_ALTAR_POOL 필터에서 제외하기 위한 표시일 뿐, deprecated와 달리
+    // PERMANENT_CURSE_POOL에는 정상적으로 포함된다.
+    relic_faintheart:    {type:'curse', permanentOnly:true, name:'여윈 심장',   desc:'최대 HP가 25% 줄어든다.', effect:{maxhpPct:-0.25}},
+    relic_mildhunger:    {type:'curse', permanentOnly:true, name:'옅은 굶주림', desc:'레벨업으로는 체력·마나가 가득 차지 않는다(포션은 정상 사용 가능).', effect:{noPostBattleHeal:true}},
+    relic_fadingshadow:  {type:'curse', permanentOnly:true, name:'옅어진 그림자', desc:'마주치는 모든 적의 공격력이 15% 오른다.', effect:{enemyAtkPct:0.15}},
+    relic_thinhide:      {type:'curse', permanentOnly:true, name:'얇아진 가죽', desc:'받는 피해가 10% 늘어난다.', effect:{dmgTakenPctMult:0.10}},
+    relic_shallowwell:   {type:'curse', permanentOnly:true, name:'얕아진 샘',   desc:'최대 마나가 25% 줄어든다.', effect:{maxmpPct:-0.25}},
+
     relic_witchclock:   {type:'wild', name:'마녀의 시계',   desc:'속도가 15 이상이면 매 턴 확률적으로(15↑10%, 20↑20%, 25↑30%) 적에게 턴을 넘기지 않고 한 번 더 행동한다.', effect:{extraActionBySpd:true}},
     relic_reversecrown: {type:'wild', name:'거꾸로 된 왕관', desc:'체력이 75% 이상이면 피해가 줄고, 낮을수록 가한 피해가 가속도로 커진다.', effect:{lowHpScalingDmg:true}},
 
@@ -145,7 +167,14 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
   const RELIC_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type!=='curse');
   const RELIC_ALTAR_FLOORS = [6,12,18,24,36,42,48];
-  const CURSE_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type==='curse' && !RELICS[id].deprecated);
+  const CURSE_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type==='curse' && !RELICS[id].deprecated && !RELICS[id].permanentOnly);
+  // 영구 컨텍스트(확정 시작 저주/저주받은 유물/저주받은 유물함) 전용 풀.
+  // "완화판" 5종 + 신규 5종(구간용과 값을 공유) = 10개. 명시적으로 나열한다 —
+  // CURSE_ALTAR_POOL과 자동 파생 관계가 아니라서 필터 하나로 유도할 수 없다.
+  const PERMANENT_CURSE_POOL = [
+    'relic_faintheart', 'relic_mildhunger', 'relic_fadingshadow', 'relic_thinhide', 'relic_shallowwell',
+    'relic_fadedmap', 'relic_rustedarmor', 'relic_forgottencharm', 'relic_barrenpurse', 'relic_stiffhands',
+  ];
   const CURSE_ALTAR_FLOORS = [9,21,33,44];
 
   // 유물 제단에서 "고르지 않는다"를 선택할 때 소모되는 골드. 횟수 제한 대신 골드 비용으로 대체.
