@@ -634,7 +634,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   // 참고), showCurseAltar()의 안내 문구("저주를 가져가면 두 번 다시 떼어낼 수 없다")
   // 그대로 영구히 지니는 것이 규칙이다. 그래서 이 교체 목록에는 저주를 아예 표시하지
   // 않는다(player.relics 자체는 저주도 함께 담고 있지만, 여기서는 필터링한다).
-  function showRelicSwapPrompt(newId, altarOverlay, isMystery){
+  function showRelicSwapPrompt(newId, altarOverlay, isMystery, onFinalized){
     const newR = RELICS[newId];
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
     const nameForPrompt = isMystery ? '알 수 없는 유물' : newR.name;
@@ -665,6 +665,9 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
         removeRelic(discardId);
         addLog(`[${discardR.name}]을(를) 내려놓았다.`, 'warn');
         finalizeRelicPick(newId, isMystery);
+        // 저주받은 유물(사용자 기획) — 교체 경로로 새 유물을 받을 때도
+        // 저주 결속이 빠지지 않도록 동일하게 콜백을 호출한다.
+        if(typeof onFinalized==='function') onFinalized();
         overlay.remove();
         if(altarOverlay) altarOverlay.remove();
       });
@@ -684,6 +687,14 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     let choices, mysteryIdx;
     ({choices, mysteryIdx} = rollRelicChoices(namedCount));
     if(!choices.length){ if(typeof onDone==='function') onDone(); return; } // 고를 수 있는 신규 유물이 더 없다
+    // 저주받은 유물(사용자 기획) — 이 제단 방문에 20% 확률로 (？？？ 슬롯을
+    // 제외한) 선택지 중 하나가 몰래 저주와 묶여 나온다. 카드 겉모습은 완전히
+    // 평범하다 — 고른 순간에만 발각된다(applyCursedRelicBundle의 토스트).
+    let cursedIdx = -1;
+    const cursedCandidates = choices.map((_,i)=>i).filter(i=>i!==mysteryIdx);
+    if(cursedCandidates.length && Math.random() < 0.20){
+      cursedIdx = cursedCandidates[Math.floor(Math.random()*cursedCandidates.length)];
+    }
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
@@ -744,11 +755,13 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
           if(btn.disabled) return;
           const id = btn.dataset.id;
           const isMystery = (i===mysteryIdx);
+          const isCursedPick = (i===cursedIdx);
           if(getRelicSlotUsage() >= player.relicSlots){
-            showRelicSwapPrompt(id, overlay, isMystery);
+            showRelicSwapPrompt(id, overlay, isMystery, isCursedPick ? ()=>applyCursedRelicBundle(id) : null);
             return;
           }
           finalizeRelicPick(id, isMystery);
+          if(isCursedPick) applyCursedRelicBundle(id);
           overlay.remove();
           if(typeof onDone==='function') onDone();
         });
