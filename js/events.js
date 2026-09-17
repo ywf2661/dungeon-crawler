@@ -1457,6 +1457,14 @@ export(전역): showMysteryEvent
       btn.addEventListener('click', ()=>{
         removeRelic(id);
         if(player.tempCurses) delete player.tempCurses[id];
+        // 이 저주가 유물-저주 결속(저주받은 유물)의 "저주" 쪽으로 묶여 있었다면,
+        // 결속 자체를 지운다 — 유물은 그대로 남지만(기획 의도) "저주받은" 접두사는
+        // 사라져야 하고, 이 저주 id를 재사용해 다른 유물에 잘못 재결속되는 것도 막는다.
+        if(player.cursedRelicBundles){
+          Object.keys(player.cursedRelicBundles).forEach(relicId=>{
+            if(player.cursedRelicBundles[relicId]===id) delete player.cursedRelicBundles[relicId];
+          });
+        }
         const hpCut = Math.round(player.maxhp*0.15);
         player.maxhp = Math.max(1, player.maxhp-hpCut);
         player.hp = Math.max(1, Math.min(player.hp, player.maxhp));

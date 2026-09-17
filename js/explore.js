@@ -538,6 +538,10 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 임시 저주(이 구간 한정) 추적 목록 — relics는 이미 되돌아가지만, 이
       // 추적 목록도 같이 되돌리지 않으면 이미 사라진 저주 id가 남아있게 된다.
       tempCurses: Object.assign({}, player.tempCurses),
+      // 저주받은 유물 결속 목록(relicId -> curseId) — tempCurses와 동일한 이유로,
+      // relics를 되돌릴 때 같이 되돌리지 않으면 더 이상 player.relics에 없는
+      // id를 가리키는 유령 결속 항목이 남는다.
+      cursedRelicBundles: Object.assign({}, player.cursedRelicBundles),
       // 연계 이벤트 플래그(수상한 지도 조각/부상당한 모험가) — 하드코어의
       // 완전 리셋과 동일하게, 이번 구간에서 생긴 진행 상황이라 되돌린다.
       hasMapFragment: player.hasMapFragment,
@@ -571,6 +575,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       else if(k==='loanCounts') player.loanCounts = Object.assign({}, cp.loanCounts);
       else if(k==='debtAppliedDelta') player.debtAppliedDelta = Object.assign({}, cp.debtAppliedDelta);
       else if(k==='tempCurses') player.tempCurses = Object.assign({}, cp.tempCurses);
+      else if(k==='cursedRelicBundles') player.cursedRelicBundles = Object.assign({}, cp.cursedRelicBundles);
       else if(k==='equipEnhancements') player.equipEnhancements = JSON.parse(JSON.stringify(cp.equipEnhancements||{}));
       else if(k==='lastBossRewardChoice') player.lastBossRewardChoice = cp.lastBossRewardChoice ? Object.assign({}, cp.lastBossRewardChoice) : null;
       else player[k] = cp[k];

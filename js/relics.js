@@ -490,11 +490,6 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     }
     if(e.spdFlat) player.spd += e.spdFlat;
     if(e.mpZero){ player.maxmp = 0; player.mp = 0; }
-    // 낡은 갑주/잊혀진 장신구를 받아들이는 순간, 이미 장착 중이던 장비가
-    // 있으면 즉시 해제한다(캐릭터는 기본 방어구를 장착한 채로 시작하므로,
-    // 봉인만 걸고 기존 장비 스탯은 그대로 두면 "봉인"이라는 이름이 무색해짐).
-    if(e.armorLocked && player.equipment.armor && typeof unequipItem==='function') unequipItem('armor');
-    if(e.accessoryLocked && player.equipment.accessory && typeof unequipItem==='function') unequipItem('accessory');
     // 저주 계약(mastery_curseweaver): 저주를 받아들일 때마다("이번 유물이 저주일 때") 마력이
     // 영구히 오른다 — "저주를 획득할 때마다 강력해진다"는 컨셉의 핵심 보상.
     if(relic.type==='curse' && player.skills && player.skills.includes('mastery_curseweaver')){
@@ -504,6 +499,15 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     Object.keys(before).forEach(k=>{ const diff = player[k]-before[k]; if(diff!==0) delta[k]=diff; });
     player.relicAppliedDeltas = player.relicAppliedDeltas || {};
     player.relicAppliedDeltas[id] = delta;
+    // 낡은 갑주/잊혀진 장신구를 받아들이는 순간, 이미 장착 중이던 장비가
+    // 있으면 즉시 해제한다(캐릭터는 기본 방어구를 장착한 채로 시작하므로,
+    // 봉인만 걸고 기존 장비 스탯은 그대로 두면 "봉인"이라는 이름이 무색해짐).
+    // 주의: 이 해제는 반드시 위 delta 계산/저장 "이후"에 실행해야 한다 — 그렇지
+    // 않으면 장비 해제로 빠지는 스탯이 저주 자신의 delta에 섞여, 나중에
+    // removeRelic()이 delta를 되돌릴 때 장비 스탯을 도로 더해주는(장비를 낀
+    // 채도 아닌데) 버그가 된다.
+    if(e.armorLocked && player.equipment.armor && typeof unequipItem==='function') unequipItem('armor');
+    if(e.accessoryLocked && player.equipment.accessory && typeof unequipItem==='function') unequipItem('accessory');
   }
 
   // 유물 슬롯이 가득 찼을 때, 보유 중인 유물 하나를 버리고 스탯을 정확히 되돌린다.

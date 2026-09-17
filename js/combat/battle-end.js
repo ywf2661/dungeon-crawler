@@ -404,6 +404,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           const oldDeathCount = player.deathCount;
           const oldSkipsUsed = player.relicSkipsUsed;
           const oldCandleUsed = player.candleUsed;
+          const oldCursedRelicBundles = Object.assign({}, player.cursedRelicBundles);
           const name = player.name, jobId = player.job, diff = player.difficulty;
           // 묘비 이벤트(사용자 기획) — 캐릭터당 무덤은 항상 최대 1개, "가장
           // 깊이 도달했던 죽음"만 남긴다. 이번 사망의 tierIndex가 기존 무덤보다
@@ -427,6 +428,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           player.hardcoreGrave = newGrave;
           oldRelics.forEach(id=> applyRelicEffect(id));
           player.relics = oldRelics.slice();
+          player.cursedRelicBundles = oldCursedRelicBundles;
         } else {
           // 쉬움/보통 난이도(사용자 요청): 마지막 마을 체크포인트로 완전히
           // 되돌린다 — 이번 구간(타이어)에서 얻은 골드/경험치/레벨업/장비/
