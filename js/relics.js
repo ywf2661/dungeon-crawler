@@ -12,6 +12,8 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
               showRelicSwapPrompt, showRelicAltar, showCurseAltar, getRelicSkipCost
               findEquipmentForDepth, findRareDropForDepth, findEpicDropForDepth,
               applyMerchantSealPurchase
+              PERMANENT_CURSE_POOL, rollPermanentCurse, applyStartingCurse,
+              applyCursedRelicBundle, pickRandomUnownedRelic
 의존성: player/enemy/depth(state.js), EQUIPMENT류(data/equipment.js), Sound(sound.js)
 주의: applyRelicEffect()에 저주술사(mastery_curseweaver, mage_curseweaver) 전용 예외 처리가
      추가되어 있다 — 저주(type:'curse')의 수치형 페널티를 절반만 받고, 저주를 받아들일
@@ -175,6 +177,53 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     'relic_faintheart', 'relic_mildhunger', 'relic_fadingshadow', 'relic_thinhide', 'relic_shallowwell',
     'relic_fadedmap', 'relic_rustedarmor', 'relic_forgottencharm', 'relic_barrenpurse', 'relic_stiffhands',
   ];
+
+  // 영구 저주 하나를 무작위로 고른다(이미 가진 건 제외). 확정 시작
+  // 저주/저주받은 유물/저주받은 유물함이 전부 이 함수를 공유한다.
+  function rollPermanentCurse(){
+    const pool = PERMANENT_CURSE_POOL.filter(id=>!(player.relics||[]).includes(id));
+    if(!pool.length) return null;
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
+  // 확정 시작 저주(사용자 기획) — 유물과 결속되지 않은 단독 영구 저주.
+  // player.tempCurses에 기록하지 않으므로(=영구) 구간 보스로도 안 풀린다.
+  function applyStartingCurse(){
+    const id = rollPermanentCurse();
+    if(!id) return null;
+    applyRelicEffect(id);
+    player.relics.push(id);
+    return id;
+  }
+
+  // 저주받은 유물(사용자 기획) — relicId에 영구 저주 하나를 결속시킨다.
+  // 호출부(showRelicAltar/showRelicSwapPrompt/저주받은 유물함 이벤트)가
+  // relicId 자체의 획득(applyRelicEffect/player.relics.push)은 이미 처리한
+  // 뒤에 호출한다는 전제.
+  function applyCursedRelicBundle(relicId){
+    const curseId = rollPermanentCurse();
+    if(!curseId) return null;
+    applyRelicEffect(curseId);
+    player.relics.push(curseId);
+    player.cursedRelicBundles = player.cursedRelicBundles || {};
+    player.cursedRelicBundles[relicId] = curseId;
+    if(typeof showToast==='function'){
+      const r = RELICS[relicId];
+      showToast(`<h3>☠ 저주받은 ${r ? r.name : ''}</h3><p>손에 넣은 순간, 서늘한 기운이 영구히 당신을 옭아맨다.</p>`, '#9a5aff');
+    }
+    return curseId;
+  }
+
+  // 저주받은 유물함(events.js) 전용 — 미보유 일반 유물(저주형/칼날·칼자루
+  // 제외) 중 하나를 무작위로 고른다. rollRelicChoices()의 명명 유물 풀
+  // 필터링 규칙과 동일하게 맞춘다.
+  function pickRandomUnownedRelic(){
+    const owned = player.relics||[];
+    const pool = RELIC_ALTAR_POOL.filter(id=>!BLADE_HILT_IDS.includes(id) && !owned.includes(id));
+    if(!pool.length) return null;
+    return pool[Math.floor(Math.random()*pool.length)];
+  }
+
   const CURSE_ALTAR_FLOORS = [9,21,33,44];
 
   // 유물 제단에서 "고르지 않는다"를 선택할 때 소모되는 골드. 횟수 제한 대신 골드 비용으로 대체.
