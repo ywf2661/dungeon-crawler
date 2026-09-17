@@ -251,9 +251,21 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
     return `<div class="relic-grid">` + ids.map(id=>{
       const r = RELICS[id];
       if(!r) return '';
+      // 구간 한정/영구 구분(사용자 기획) — player.tempCurses에 이 id가
+      // 있으면 구간 한정(저주 제단 유래), 없으면 영구(확정 시작 저주/
+      // 저주받은 유물/저주받은 유물함 유래).
+      let typeText = typeLabel[r.type];
+      if(r.type==='curse'){
+        const isTemp = !!(player.tempCurses && player.tempCurses[id]!==undefined);
+        typeText = isTemp ? '⏳ 저주 (구간 한정)' : '⛓ 저주 (영구)';
+      }
+      // 저주받은 유물(사용자 기획) — 이 유물에 결속된 저주가 있으면 이름 앞에
+      // "저주받은 "을 붙인다(원본 RELICS[id].name 자체는 건드리지 않는다).
+      const isCursedBundle = !!(player.cursedRelicBundles && player.cursedRelicBundles[id]);
+      const displayName = isCursedBundle ? `저주받은 ${r.name}` : r.name;
       return `<div class="relic-card type-${r.type}" style="cursor:default;">
-        <div class="relic-type">${typeLabel[r.type]}</div>
-        <div class="relic-name">${r.name}</div>
+        <div class="relic-type">${typeText}</div>
+        <div class="relic-name">${displayName}</div>
         <div class="relic-desc">${getRelicDisplayDesc(id)}</div>
       </div>`;
     }).join('') + `</div>`;

@@ -823,7 +823,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
       <p class="relic-lock-msg" id="curse-lock-msg">내용을 살펴보는 중…</p>
       <div class="relic-grid">
         <button class="relic-card type-curse" id="curse-card" disabled>
-          <div class="relic-type">저주${isCurseweaver?'':' (이 구간 한정)'}</div>
+          <div class="relic-type">${isCurseweaver?'⛓ 저주 (영구)':'⏳ 저주 (구간 한정)'}</div>
           <div class="relic-name">${r.name}</div>
           <div class="relic-desc">${r.desc}</div>
         </button>
