@@ -37,6 +37,10 @@ export(전역): showMysteryEvent
       showTailorWorkshopEvent, showArchivistNoteEvent, showDiggerToolboxEvent, showJesterPropsEvent,
       showCursedRelicChestEvent,
     ];
+    // 속죄의 제단(사용자 기획 — 난이도 상승 장치) — 현재 걸려있는 저주가
+    // 1개 이상 있을 때만 풀에 등장한다. 0개면 이 이벤트 자체가 후보에서
+    // 빠지고 나머지 이벤트 중에서 균등 확률로 뽑힌다.
+    if((player.relics||[]).some(id=>RELICS[id] && RELICS[id].type==='curse')) handlers.push(showAtonementAltarEvent);
     // "부서진 톱니 장신구"(아이온 파편)는 마녀의 시계 보유자에게만 이벤트
     // 풀이 열린다(멈춘 시계공방과 같은 게이트, 사용자 기획).
     if((player.relics||[]).includes('relic_witchclock')) handlers.push(showGearShardEvent);
@@ -1427,6 +1431,44 @@ export(전역): showMysteryEvent
     });
     panel.querySelector('#me-chest-skip').addEventListener('click', ()=>{
       addLog('불길한 함을 그대로 두고 떠났다.', 'warn');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 31) 속죄의 제단(사용자 기획 — 난이도 상승 장치) — 현재 걸려있는 저주
+  // (구간 한정 포함 전부) 중 하나를 골라 제거한다. 대가로 최대 HP가 영구히
+  // 15% 줄어든다. 구간 한정 저주를 여기서 미리 제거하면 player.tempCurses의
+  // 해당 항목도 함께 지운다 — 안 지우면 나중에 그 구간 보스를 잡을 때
+  // combat/battle-end.js의 정화 로직이 "이미 없어진 저주"를 정화 대상으로
+  // 잘못 집계해, 이미 받은 속죄 효과에 더해 구간 클리어 시의 전스탯 +4%
+  // 보너스까지 중복으로 받게 된다.
+  function showAtonementAltarEvent(){
+    const curseIds = (player.relics||[]).filter(id=>RELICS[id] && RELICS[id].type==='curse');
+    const {overlay, panel} = eventOverlay('속죄의 제단',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">피 냄새가 나는 제단이다. 짊어진 저주 하나를 씻어내는 대신, 생명력 그 자체를 나눠줘야 한다.</p>
+       <div id="me-atonement-list" class="relic-grid"></div>`,
+      `<div style="text-align:center;"><button class="btn" id="me-atonement-skip">떠난다</button></div>`);
+    const listEl = panel.querySelector('#me-atonement-list');
+    curseIds.forEach(id=>{
+      const r = RELICS[id];
+      const btn = document.createElement('button');
+      btn.className = 'relic-card type-curse';
+      btn.innerHTML = `<div class="relic-type">☠ 정화 대상</div><div class="relic-name">${r.name}</div><div class="relic-desc">${r.desc}</div>`;
+      btn.addEventListener('click', ()=>{
+        removeRelic(id);
+        if(player.tempCurses) delete player.tempCurses[id];
+        const hpCut = Math.round(player.maxhp*0.15);
+        player.maxhp = Math.max(1, player.maxhp-hpCut);
+        player.hp = Math.max(1, Math.min(player.hp, player.maxhp));
+        addLog(`[${r.name}]을(를) 씻어냈다… 대가로 최대 HP가 ${hpCut} 줄었다.`, 'warn');
+        renderStatus();
+        saveGame();
+        closeMysteryEvent(overlay);
+      });
+      listEl.appendChild(btn);
+    });
+    panel.querySelector('#me-atonement-skip').addEventListener('click', ()=>{
+      addLog('제단을 뒤로하고 떠났다.', 'warn');
       closeMysteryEvent(overlay);
     });
   }
