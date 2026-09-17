@@ -35,6 +35,7 @@ export(전역): showMysteryEvent
       showAchosTombstoneEvent, showScratchedPortraitEvent, showPlagueDiaryEvent,
       showGatekeeperLogEvent, showBrokenArmorStandEvent,
       showTailorWorkshopEvent, showArchivistNoteEvent, showDiggerToolboxEvent, showJesterPropsEvent,
+      showCursedRelicChestEvent,
     ];
     // "부서진 톱니 장신구"(아이온 파편)는 마녀의 시계 보유자에게만 이벤트
     // 풀이 열린다(멈춘 시계공방과 같은 게이트, 사용자 기획).
@@ -1393,6 +1394,39 @@ export(전역): showMysteryEvent
     });
     panel.querySelector('#me-skip').addEventListener('click', ()=>{
       addLog('소품함을 뒤로하고 지나쳤다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 30) 저주받은 유물함(사용자 기획 — 난이도 상승 장치) — 열면 유물과 저주가
+  // 영구로 함께 딸려온다. relics.js의 applyCursedRelicBundle()이 저주받은
+  // 유물(일반 제단, 20% 확률)과 동일한 결속 로직을 그대로 재사용한다 — 유물을
+  // 나중에 교체하면 저주도 함께 사라지는 규칙도 동일하게 적용된다.
+  function showCursedRelicChestEvent(){
+    const {overlay, panel} = eventOverlay('저주받은 유물함',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">녹슨 사슬로 칭칭 감긴 함 하나가 놓여 있다. 안에 무엇이 들었는지는 열어보기 전엔 알 수 없다.</p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn btn-danger" id="me-chest-open">연다</button>
+        <button class="btn" id="me-chest-skip">열지 않고 떠난다</button>
+      </div>`);
+    panel.querySelector('#me-chest-open').addEventListener('click', ()=>{
+      const relicId = pickRandomUnownedRelic();
+      if(!relicId){
+        addLog('함을 열었지만 이미 가진 것뿐이었다. 안에는 아무것도 없었다.', 'warn');
+        closeMysteryEvent(overlay);
+        return;
+      }
+      if(getRelicSlotUsage() >= player.relicSlots){
+        overlay.remove();
+        showRelicSwapPrompt(relicId, null, false, ()=>applyCursedRelicBundle(relicId));
+        return;
+      }
+      finalizeRelicPick(relicId, false);
+      applyCursedRelicBundle(relicId);
+      closeMysteryEvent(overlay);
+    });
+    panel.querySelector('#me-chest-skip').addEventListener('click', ()=>{
+      addLog('불길한 함을 그대로 두고 떠났다.', 'warn');
       closeMysteryEvent(overlay);
     });
   }
