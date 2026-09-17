@@ -179,6 +179,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     }
     const nameInput = document.getElementById('name-input').value.trim();
     player = newPlayer(nameInput, selectedJobId, selectedDifficulty);
+    // 확정 시작 저주(사용자 기획 — 난이도 상승 장치): 보통/하드코어는 런
+    // 시작과 동시에 영구 저주 하나를 무작위로 짊어진다. 쉬움은 제외.
+    // relics.js의 PERMANENT_CURSE_POOL(10종)에서 무작위 1개.
+    if(player.difficulty==='normal' || player.difficulty==='hardcore'){
+      applyStartingCurse();
+    }
     depth = 0; town = true; enemy = null; battleOver = false; subMode = null;
     inBossDen = false; bossDenFloor = 0;
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, rig:null};
