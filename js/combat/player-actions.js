@@ -449,7 +449,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(battleFlags){
       if(s.cooldown){
         if(!battleFlags.skillCooldowns) battleFlags.skillCooldowns = {};
-        battleFlags.skillCooldowns[key] = s.cooldown;
+        // 굳은 손(relic_stiffhands) — 쿨타임형 스킬을 쓸 때마다 +1턴. 쿨타임은
+        // battleFlags 소속이라 전투마다 리셋되므로, 런 시작 시 1회만 적용하면
+        // 첫 전투 이후 의미가 없어진다 — 스킬 시전마다 상시 가산해야 한다.
+        battleFlags.skillCooldowns[key] = s.cooldown + getRelicSum('cooldownBonus');
       }
       battleFlags.cooldownTickPending = true;
     }

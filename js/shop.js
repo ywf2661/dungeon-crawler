@@ -55,7 +55,8 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
     overlay.id = 'shop-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
-    const discountMult = 1;
+    // 메마른 지갑(relic_barrenpurse) 등 확정 시작 저주 — 상점 구매가 인상.
+    const discountMult = 1 + getRelicSum('shopPricePct');
     const dprice = p => Math.max(1, Math.round(p*discountMult));
     const equipPool = Object.keys(EQUIPMENT).filter(id=>EQUIPMENT[id].minDepth<=depth+1);
     const debtSectionHtml = (player.debt||0) > 0 ? `

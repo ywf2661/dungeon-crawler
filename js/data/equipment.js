@@ -232,6 +232,11 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     if(slot==='weapon' && player.equipment.weapon && getItemDef(player.equipment.weapon) && getItemDef(player.equipment.weapon).storyWeapon){
       return;
     }
+    // 낡은 갑주(relic_rustedarmor)/잊혀진 장신구(relic_forgottencharm) — 해당
+    // 슬롯 자체를 아예 건드릴 수 없게 막는다. 칼리버 X 잠금(storyWeapon)과
+    // 동일한 "조기 return, 안내 메시지 없음" 패턴을 그대로 따른다.
+    if(slot==='armor' && typeof hasRelicFlag==='function' && hasRelicFlag('armorLocked')) return;
+    if(slot==='accessory' && typeof hasRelicFlag==='function' && hasRelicFlag('accessoryLocked')) return;
     const current = player.equipment[slot];
     if(current === itemId) return;
     const prevCounts = getEpicSetCounts();

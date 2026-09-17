@@ -156,6 +156,11 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       // 골드가 반토막난다(battleFlags는 이번 전투 한정이라 자연히 다음
       // 전투로는 안 넘어간다).
       if(battleFlags && battleFlags.goldbetGoldPenalty) g = Math.round(g*0.5);
+      // 빛바랜 지도(relic_fadedmap) 등 확정 시작 저주 — 경험치/골드 획득량
+      // 감소. goldBoost와 같은 변수에 합치면 위 "goldBoost>0"에서 걸러져
+      // 음수가 무시되므로 별도 곱셈으로 분리한다.
+      const expGoldCursePct = getRelicSum('expGoldPct');
+      if(expGoldCursePct<0) g = Math.round(g*(1+expGoldCursePct));
       player.gold += g;
       // 강화석 드랍(사용자 요청 — 등급별 확률/개수 차등, 상점 판매는 절대 금지).
       const stonesGained = (typeof rollReinforceStoneDrop==='function') ? rollReinforceStoneDrop() : 0;
@@ -843,6 +848,9 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     // 오프닝 심리테스트(origin.js) "진실" 기질 — 경험치 획득 +8%.
     const expBonus = (player.originBonuses && player.originBonuses.truth) || 0;
     if(expBonus>0) amount = Math.round(amount*(1+expBonus));
+    // 빛바랜 지도(relic_fadedmap) 등 확정 시작 저주 — 경험치 획득량 감소.
+    const expGoldCursePct = getRelicSum('expGoldPct');
+    if(expGoldCursePct<0) amount = Math.round(amount*(1+expGoldCursePct));
     player.exp += amount;
     const levelsGained = [];
     while(player.exp >= player.expNext){

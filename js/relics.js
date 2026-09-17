@@ -441,6 +441,11 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     }
     if(e.spdFlat) player.spd += e.spdFlat;
     if(e.mpZero){ player.maxmp = 0; player.mp = 0; }
+    // 낡은 갑주/잊혀진 장신구를 받아들이는 순간, 이미 장착 중이던 장비가
+    // 있으면 즉시 해제한다(캐릭터는 기본 방어구를 장착한 채로 시작하므로,
+    // 봉인만 걸고 기존 장비 스탯은 그대로 두면 "봉인"이라는 이름이 무색해짐).
+    if(e.armorLocked && player.equipment.armor && typeof unequipItem==='function') unequipItem('armor');
+    if(e.accessoryLocked && player.equipment.accessory && typeof unequipItem==='function') unequipItem('accessory');
     // 저주 계약(mastery_curseweaver): 저주를 받아들일 때마다("이번 유물이 저주일 때") 마력이
     // 영구히 오른다 — "저주를 획득할 때마다 강력해진다"는 컨셉의 핵심 보상.
     if(relic.type==='curse' && player.skills && player.skills.includes('mastery_curseweaver')){
