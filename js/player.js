@@ -118,6 +118,10 @@ export(전역): newPlayer
       // (mastery_curseweaver)는 이 목록에 아예 안 들어가고 기존처럼 영구 저주로
       // 남는다(relics.js의 showCurseAltar 참고).
       tempCurses:{},
+      // 유물-저주 결속(사용자 기획 — 저주받은 유물/유물함). {relicId: curseId}
+      // 형태로, 이 유물을 removeRelic()으로 내려놓으면 결속된 저주도 함께
+      // 사라진다(relics.js의 removeRelic() 참고).
+      cursedRelicBundles:{},
       // 미지의 사건 "수상한 지도 조각"(events.js) 전용 — 아주 가벼운 연쇄
       // 이벤트 하나만 허용한다(지속 상태 추적은 최소화한다는 원칙 유지). 이
       // 플래그가 있으면 나중에 "봉인된 관" 이벤트가 자동으로 좋은 결과로

@@ -475,6 +475,14 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     player.relics.splice(idx,1);
     if(player.relicAppliedDeltas) delete player.relicAppliedDeltas[id];
     if(id==='relic_merchantseal') player.merchantSealStack = 0;
+    // 저주받은 유물(사용자 기획): 이 id가 유물-저주 결속의 "유물" 쪽이면,
+    // 결속된 저주도 함께 해제한다(재귀 호출 — curseId는 다시 cursedRelicBundles의
+    // 키가 될 수 없으므로 무한 재귀 위험 없음).
+    if(player.cursedRelicBundles && player.cursedRelicBundles[id]){
+      const linkedCurseId = player.cursedRelicBundles[id];
+      delete player.cursedRelicBundles[id];
+      removeRelic(linkedCurseId);
+    }
     return true;
   }
 
