@@ -665,6 +665,77 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 800);
   }
 
+  // 저주술사 스킬 전용 VFX 이미지 3종(사용자 제공, curse_nova/curse_brand/
+  // curse_bloom_ultimate). 위 칼리버X/순교 궁극기와 동일한 인라인 스타일
+  // 방식이지만, 세 스킬의 위상(평범한 액티브 < 레벨12 스킬 < 레벨15 궁극기)에
+  // 맞춰 크기·회전·잔류 시간을 점점 키웠다 — 사용자 요청("궁극기는 궁극기답게,
+  // 아닌 스킬은 아닌 스킬답게").
+  // 저주 폭발(mageCurseNova, 평범한 액티브): 가장 작고 회전/스케일 변화 없이
+  // 짧게 반짝이고 사라진다.
+  function spawnCurseNovaFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.style.cssText = "position:absolute; left:50%; top:42%; width:150px; height:150px; "
+      + "background-image:url('images/vfx/curse_nova.png'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) scale(0.85);";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .15s ease-out, transform .15s ease-out';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .25s ease-in';
+      el.style.opacity = '0';
+    }, 180);
+    setTimeout(()=>el.remove(), 450);
+  }
+  // 저주 각인(mageCurseBrand, 레벨12): 폭발보다 한 단계 크고 조금 더 오래
+  // 남지만, 궁극기급 회전/스케일 플로리시는 주지 않는다(낙인을 "새기는"
+  // 느낌이라 과장된 움직임 대신 살짝만 커지다 멈춘다).
+  function spawnCurseBrandFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.style.cssText = "position:absolute; left:50%; top:42%; width:190px; height:190px; "
+      + "background-image:url('images/vfx/curse_brand.png'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) scale(0.8);";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .18s ease-out, transform .18s ease-out';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1.02)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .3s ease-in';
+      el.style.opacity = '0';
+    }, 260);
+    setTimeout(()=>el.remove(), 580);
+  }
+  // 저주 만개(mageCurseBloom, 레벨15 궁극기): 칼리버X/순교와 동일한 급의
+  // 궁극기 플로리시(가장 큰 사이즈+회전+스케일 오버슛+가장 긴 잔류)를 그대로 적용.
+  function spawnCurseBloomFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.style.cssText = "position:absolute; left:50%; top:42%; width:300px; height:300px; "
+      + "background-image:url('images/vfx/curse_bloom_ultimate.png'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-4deg);";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .22s ease-out, transform .22s ease-out';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1.08) rotate(2deg)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .45s ease-in, transform .45s ease-in';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%,-50%) scale(1.2) rotate(2deg)';
+    }, 280);
+    setTimeout(()=>el.remove(), 800);
+  }
+
   // 시간의 파수꾼 스킬 전용 VFX 이미지(사용자 제공). kind: 'frost'|'void'|'returnstrike'.
   function spawnGuardianVfxImage(kind){
     const stage = document.getElementById('bt-stage');

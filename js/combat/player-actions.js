@@ -928,6 +928,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-brandDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+brandDmg, curses>0?'crit':undefined);
       Sound.magic(); playStatusFx('poison');
+      if(typeof spawnCurseBrandFx==='function') spawnCurseBrandFx();
       applyDot({type:'poison', basis:'mag', ratio:dotRatioBrand, turns:s.dotTurns||4, label:'저주 각인'});
       renderStatus();
       const brandMsg = (curses>0
@@ -974,8 +975,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-bloomDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+bloomDmg, 'crit');
       Sound.magic(); playCastBurst();
-      // 궁극기 전용 강조 연출(사용자 요청). 저주 테마 보라색 화면 플래시 + 배너.
+      // 궁극기 전용 강조 연출(사용자 요청). 저주 테마 보라색 화면 플래시 + 배너 +
+      // 궁극기급 이미지(spawnCurseBloomFx)/화면 흔들림 — 저주 폭발/각인과
+      // 위상을 확실히 구분한다.
       playStatusFx('curse');
+      if(typeof spawnCurseBloomFx==='function') spawnCurseBloomFx();
+      if(typeof shakeScreen==='function') shakeScreen();
       playBanner('저주 만개!', 'fx-curse');
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, `짊어진 저주(${curses}개)가 한꺼번에 만개하며 ${enemy.name}에게 ${bloomDmg}의 압도적인 피해를 입혔다!${detonateMsg}`);
@@ -3521,6 +3526,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(typeof spawnCaliberXFx==='function') spawnCaliberXFx();
       if(typeof shakeScreen==='function') shakeScreen();
       playBanner('칼리버 X — 종언!', 'fx-caliberx');
+    }
+    // 저주 폭발(mageCurseNova, 저주술사 평범한 액티브): 화면 흔들림/배너 없이
+    // 작은 이미지만 짧게 반짝인다(궁극기인 저주 만개와 위상을 구분하기 위한
+    // 사용자 요청).
+    else if(key==='mageCurseNova'){
+      if(typeof spawnCurseNovaFx==='function') spawnCurseNovaFx();
     }
     // 연쇄 처형(we_chainexec, 혈맹의 검투사 무기 각인) / 불사의 광기
     // (we_madimmortal, 방어구 각인): 1:1 전투라 "처치하면 재발동"은 성립이
