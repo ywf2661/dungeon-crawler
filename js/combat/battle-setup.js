@@ -5,7 +5,8 @@
 보스 예고 스킬 이름 데이터(사용자 요청 — 보스전 리뉴얼).
 export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pickFinalBossJob,
               canEnrage, triggerEnragePhase, getDifficultyMonsterMult, scaleEnemyForDifficulty,
-              pickEnemy, startBattle, BOSS_SKILL_LABELS, pendingRematchSpec(굴복 재도전용, 신규)
+              pickEnemy, startBattle, BOSS_SKILL_LABELS, pendingRematchSpec(굴복 재도전용, 신규),
+              TIME_GUARDIAN(원혼강탈자 소환 계약 풀에서도 참조 — records.js/player-actions.js)
 의존성: state.js, data/monsters.js, relics.js(hasRelicFlag, rollDiceEffectForBattle, DICE_EFFECT_LABELS 등), Sound(sound.js), showToast(ui/difficulty.js),
        monster-visuals.js(getDungeonBgForDepth — 전투 시작 시 던전 배경 갱신)
 주의(신규 — 보스전 리뉴얼): 3페이즈(최후의 발악)는 기존 ENRAGE_STEPS_FINAL/TRUE

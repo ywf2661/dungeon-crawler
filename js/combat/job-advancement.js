@@ -204,6 +204,14 @@ export(전역): showJobAdvancement, resolveJobAdvancement
       if(specId==='rogue_alchemist' && typeof showToast==='function'){
         showToast(`<h3>🦠 역병숙주</h3><p>손끝부터 스며든 검은 기운이 핏줄을 타고 번져나간다. 이제, 그것은 당신의 일부다.</p>`, '#8a9c4a');
       }
+      // 원혼 강탈자(rogue_conjurer): 전직 확정 순간에 맞는 토스트 메시지
+      // (사용자 요청). 다른 분기와 달리 서사만으로는 "마을/탐험 화면에 소환
+      // 계약 버튼이 새로 생겼다"는 실용 정보가 전달되지 않아(마스터리가 UI
+      // 버튼을 여는 패시브라 nodemap.js에서 조용히 노출될 뿐 별도 안내가
+      // 없었음) 마지막 문장에 명시적으로 덧붙인다.
+      if(specId==='rogue_conjurer' && typeof showToast==='function'){
+        showToast(`<h3>👻 원혼 강탈자</h3><p>쓰러뜨린 것들의 흔적이 손끝에 남아 응답한다. 이제 "🕯 소환 계약" 버튼으로 도감에 등록된 몬스터를 계약해 불러낼 수 있다.</p>`, '#8a6ad6');
+      }
       // 강철 군단장(mechanic_accumulator 리뉴얼) 베이스 스킬 교체 — 함수는
       // 아래 migrateLegionBaseSkills()에 분리해뒀다(신규 전직 시점 + 기존
       // 세이브 캐릭터의 전투 진입 시점, 총 두 곳에서 호출해야 하기 때문).

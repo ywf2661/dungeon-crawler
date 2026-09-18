@@ -2,7 +2,8 @@
 /*
 몬스터 도감 데이터 테이블(정적 데이터, 로직 없음).
 의존성 없음.
-export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
+export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS, BOSS_SIGNATURE_SKILLS,
+              NECRO_TRAIT_SKILL_NAMES
 */
 
   /* ============ 몬스터 도감 ============ */
@@ -138,12 +139,55 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
   // 맞는 태그를 따로 매핑한다. combat/player-actions.js의 necrosummon2
   // 캐스트에서 monsterData.skills보다 이 맵을 우선 참조한다.
   const BOSS_PET_TRAITS = {
-    watchertablet: ['curse','smash'],
-    hollowprophet: ['curse','heal'],
-    hornedwarden:  ['pierce','curse'],
-    bladedbloom:   ['bite','smash'],
-    clockheart:    ['smash','curse'],
+    watchertablet:   ['curse','smash'],
+    hollowprophet:   ['curse','heal'],
+    hornedwarden:    ['pierce','curse'],
+    bladedbloom:     ['bite','smash'],
+    clockheart:      ['smash','curse'],
+    // 버그 수정(BOSS_SIGNATURE_SKILLS 작업 중 발견) — 아래 3종은 원래 이
+    // 맵에 빠져 있어서, 계약하면 자동 틱 소환 메시지에 원본 AI 키(threadWinds
+    // 등, 번역 안 된 영문)가 그대로 노출되고 있었다. 다른 보스와 같은 방식으로
+    // 스킬 테마에 맞춰 추가했다.
+    threadmannequin: ['pierce','curse'],
+    sinlantern:      ['smash','curse'],
+    unstoppingsand:  ['smash','curse'],
+    // 시간의 파수꾼(사용자 요청)은 일반 특성 대신 전용 액티브(원혼의 명령 →
+    // 결빙의 궤적, combat/player-actions.js의 necroCommand 분기)로만 개성이
+    // 드러난다. 빈 배열로 둬서 자동 틱 소환 메시지에 특성 태그가 안 뜨게 한다
+    // (원본 skills가 'frostTrajectory' 같은 보스 전용 AI 키라 그대로 쓰면
+    // 번역 안 된 영문 키가 그대로 노출됨).
+    timeguardian:    [],
   };
+
+  // 원혼강탈자 레벨12(원혼의 명령)가 보스 소환수 계약 시 실제로 재현하는
+  // "그 보스의 진짜 스킬"(사용자 요청 — "다른 몬스터들도 스킬이름이 있을거
+  // 아냐, 특히 층별보스는 스킬 발동할 때 이름이 뜨잖아"). 각 보스는
+  // combat/enemy-turn.js에 스킬이 2개씩 정의돼 있는데, 그중 보스 이름과
+  // 가장 잘 맞아떨어지는 하나만 골랐다(예: 열쇠 두른 파수꾼 → 심판의 "열쇠").
+  // 배율/배너 문구/CSS 클래스는 전부 enemy-turn.js의 원본 정의와 동일하게
+  // 맞췄다 — 시간의 파수꾼(결빙의 궤적)만 추가로 속도 디버프/전용 VFX/전용
+  // 타격음이 붙는 진짜 예외라 combat/player-actions.js의 necroCommand가
+  // 이 표를 참조하되 그 항목만 따로 분기한다.
+  const BOSS_SIGNATURE_SKILLS = {
+    timeguardian:    {label:'결빙의 궤적',       cssClass:'fx-frost',     mult:1.7},
+    watchertablet:   {label:'깜빡이지 않는 시선', cssClass:'fx-gaze',      mult:2.05},
+    hollowprophet:   {label:'예언의 불꽃',        cssClass:'fx-prophecy',  mult:2.0},
+    hornedwarden:    {label:'심판의 열쇠',        cssClass:'fx-key',       mult:1.6},
+    threadmannequin: {label:'실이 감긴다',        cssClass:'fx-thread',    mult:1.5},
+    bladedbloom:     {label:'칼날 줄기의 휩쓸기', cssClass:'fx-bladestem', mult:2.1},
+    sinlantern:      {label:'타오르는 죄',        cssClass:'fx-sin',       mult:1.45},
+    clockheart:      {label:'박동의 충격파',      cssClass:'fx-pulse',     mult:1.7},
+    unstoppingsand:  {label:'무너지는 모래',      cssClass:'fx-sand',      mult:1.6},
+  };
+
+  // 일반 몬스터 계약 전용(사용자 요청 — "일반몬스터들도 본인 특성으로 12레벨
+  // 스킬이름이 바뀌었으면"). 일반 몬스터는 보스처럼 고유 스킬명이 없고 특성
+  // 태그(bite/smash/curse/heal/pierce/steal)만 있어서, 그 태그를 스킬 이름처럼
+  // 쓸 수 있게 명사형으로 다듬었다(combat/player-actions.js의 traitLabels —
+  // "가끔 회복"처럼 서술형인 것과 별개 — 는 소환 시 안내 문구용이라 그대로 둠).
+  // 태그가 2개인 몬스터(예: 얼어붙은 유언 curse+heal)는 combat/battle-fx.js·
+  // player-actions.js에서 이 표의 이름을 '·'로 이어붙여 표시한다.
+  const NECRO_TRAIT_SKILL_NAMES = {bite:'흡혈', smash:'강타', curse:'저주 전이', heal:'회복의 손길', pierce:'처형', steal:'도둑질'};
 
   // 10층 단위로 재편성했다(사용자 요청). 각 구역은 배경 이미지(dungeon1.png~
   // dungeon6.png, images/backgrounds/)와 1:1로 대응되며, monster-visuals.js의

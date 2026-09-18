@@ -747,6 +747,12 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.textContent = `⚡ 감전(속도↓) ${enemy.shockSpdTurns}턴`;
       box.appendChild(b);
     }
+    if(enemy && enemy.frostSpdTurns>0){
+      const b = document.createElement('div');
+      b.className = 'status-badge freeze';
+      b.textContent = `❄ 결빙(속도↓) ${enemy.frostSpdTurns}턴`;
+      box.appendChild(b);
+    }
     // 역병중첩(역병숙주): enemy.venomStacks는 일반 dot(enemy.dots)과 별개로
     // 관리되는 영구 스택이라(턴이 지나도 안 사라짐) 위 dots 루프에는 안 걸린다 —
     // 여기서 따로 표시한다. "적 왼쪽 위"에 두 달라는 요청이 있었지만, 그 자리는
@@ -828,6 +834,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       b.className = 'status-badge player-badge';
       b.textContent = '🕐'.repeat(battleFlags.timeStacks) + ` ${battleFlags.timeStacks}/5`;
       b.title = '시간 조각 — 시간 역행(3개 이상 필요, 소비 안 함)과 시간의 역설(전부 소비)의 재료';
+      box.appendChild(b);
+    }
+    // 메아리 타격(warriorPuristEcho, 일격의 구도자): 연속 기본 공격 스택(최대 5,
+    // 스택당 +10%). battleFlags.puristComboStacks가 0이면 표시하지 않는다.
+    if(player.skills.includes('warriorPuristEcho') && battleFlags && (battleFlags.puristComboStacks||0) > 0){
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      b.textContent = `⚔ 연속 타격 ${battleFlags.puristComboStacks}/5 (+${battleFlags.puristComboStacks*10}%)`;
+      b.title = '기본 공격을 연속으로 낼수록 위력이 오른다. 방어하거나 아이템을 쓰면 초기화된다.';
       box.appendChild(b);
     }
     // 분신 배가(rogueDoubleImage, 환영검사): 다음 공격형 스킬 1회에만 적용되는
@@ -1124,6 +1139,27 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         if(s.type==='chalnaStrike' && battleFlags && battleFlags.chalnaReserve){
           const combo = CHALNA_COMBOS[[battleFlags.chalnaReserve.beat, s.beat].sort().join('+')];
           if(combo){ displayName = combo.name; displayDesc = combo.desc; displayHanja = combo.hanja; }
+        }
+        // 원혼의 명령(necroCommand, 원혼강탈자 레벨12): 계약 중인 소환수가
+        // 보스(data/monsters.js의 BOSS_SIGNATURE_SKILLS에 등록된 종류)면
+        // 실제로 나갈 보스 스킬 이름 그대로, 일반 몬스터면 그 몬스터가 가진
+        // 특성 태그를 이름처럼 이어붙여(NECRO_TRAIT_SKILL_NAMES) 보여준다
+        // (사용자 요청 — player-actions.js의 necroCommand 분기와 이름을
+        // 일치시킴). 특성이 하나도 없는 몬스터(슬라임 등)는 재현할 게 없어
+        // 기존 이름("원혼의 명령") 그대로 둔다.
+        if(s.type==='necroCommand' && battleFlags && battleFlags.necroPet){
+          const petType = battleFlags.necroPet.monsterType;
+          const petSig = (typeof BOSS_SIGNATURE_SKILLS!=='undefined') ? BOSS_SIGNATURE_SKILLS[petType] : null;
+          if(petSig){
+            displayName = petSig.label;
+            displayDesc = `${battleFlags.necroPet.name}에게 명령해, 보스 본체와 같은 ${petSig.label}을(를) 그대로 재현한다.`;
+          } else if(typeof NECRO_TRAIT_SKILL_NAMES!=='undefined' && battleFlags.necroPet.skills && battleFlags.necroPet.skills.length){
+            const traitName = battleFlags.necroPet.skills.map(t=>NECRO_TRAIT_SKILL_NAMES[t]).filter(Boolean).join('·');
+            if(traitName){
+              displayName = traitName;
+              displayDesc = `${battleFlags.necroPet.name}에게 명령해, ${traitName}을(를) 확실하게 발동시킨다.`;
+            }
+          }
         }
         // 2차 전직(찰나검사 등) 스킬에 한해 이름 옆에 한자를 괄호로 병기(사용자 요청).
         if(displayHanja) displayName = `${displayName}(${displayHanja})`;

@@ -80,29 +80,35 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       player.stealthDmgBonusArmed = false;
     }
     // 순일격(mastery_purestrike, 일격의 구도자 레벨10): 기본 공격 피해가 항상
-    // 증가한다. (밸런스 조정: 15%→30% — 사용자 피드백 "너무 짜다"에 따라 상향.
-    // 이 직업은 액티브 스킬이 아예 없어 기본 공격 하나에 모든 정체성이 걸려
-    // 있으므로, 다른 직업의 마스터리보다 배율을 넉넉하게 잡는 게 맞다고 판단.)
-    const puristMult = 1.30;
+    // 증가한다. (밸런스 조정: 15%→30%→50% — 사용자 피드백 "전직 직전에 전직해
+    // 버리면 그 보스를 못 깬다"는 제보로 재상향. 타 도적/전사 2차직업 대비
+    // 딜량 시뮬레이션에서 최하위권이었던 것도 함께 근거.)
+    const puristMult = 1.50;
     if(player.skills && player.skills.includes('mastery_purestrike')){
       dmg = Math.round(dmg*puristMult);
     }
-    // 메아리 타격(warriorPuristEcho, 레벨12): 기본 공격을 두 번째 낼 때마다(2타/4타/6타…,
-    // 전투마다 battleFlags.basicAtkCount로 리셋되어 집계) 추가로 강하게 꽂힌다.
+    // 메아리 타격(warriorPuristEcho, 레벨12) — 재설계(사용자 요청): "2타마다
+    // 발동"이 아니라, 기본 공격을 연속으로 낼 때마다 점점 강해지는 모멘텀으로
+    // 바꿨다. battleFlags.puristComboStacks가 공격마다 1씩 쌓이고(최대 5스택,
+    // 스택당 +10%, 최대 +50%), 방어(s.type==='guard')나 아이템을 쓰면 흐름이
+    // 끊겨 0으로 초기화된다(아래 guard 분기, playerItem() 참고).
     let echoMsg = '';
-    let echoTriggeredThisAction = false;
+    let echoStackMult = 1;
     if(player.skills && player.skills.includes('warriorPuristEcho') && battleFlags){
-      battleFlags.basicAtkCount = (battleFlags.basicAtkCount||0) + 1;
-      // 간파(guard 전용, 일격의 구도자 레벨10) 성공 직후의 다음 공격은 짝수
-      // 여부와 상관없이 메아리가 자동 발동한다(사용자 요청) — "방어를 정확히
-      // 읽어내면 다음 일격이 반드시 메아리처럼 꽂힌다"는 인과 연결. 성공 여부는
-      // combat/enemy-turn.js의 방어 판정부에서 player.puristParryEchoArmed로 세팅.
-      if(battleFlags.basicAtkCount % 2 === 0 || player.puristParryEchoArmed){
-        dmg = Math.round(dmg*1.25);
-        echoMsg = player.puristParryEchoArmed ? ' 간파의 여운을 타고 일격이 메아리처럼 꽂혔다!' : ' 메아리치는 두 번째 타격이 더욱 강하게 꽂혔다!';
-        echoTriggeredThisAction = true;
-        player.puristParryEchoArmed = false;
-      }
+      const maxStack = 5, perStack = 0.10;
+      // 간파(guard 전용, 레벨10) 성공 직후의 다음 공격은 스택을 2개 보너스로
+      // 즉시 얻는다(사용자 요청과 같은 취지 — "방어를 정확히 읽어내면" 다음
+      // 일격이 더 강해진다는 인과는 유지). 성공 여부는 combat/enemy-turn.js의
+      // 방어 판정부에서 player.puristParryEchoArmed로 세팅.
+      const parryBonus = player.puristParryEchoArmed ? 2 : 0;
+      player.puristParryEchoArmed = false;
+      battleFlags.puristComboStacks = Math.min(maxStack, (battleFlags.puristComboStacks||0) + 1 + parryBonus);
+      echoStackMult = 1 + battleFlags.puristComboStacks*perStack;
+      dmg = Math.round(dmg*echoStackMult);
+      const stackPct = Math.round((echoStackMult-1)*100);
+      echoMsg = parryBonus
+        ? ` 간파의 여운을 타고 타격의 흐름이 단숨에 거세진다! (연속 ${battleFlags.puristComboStacks}, 위력 +${stackPct}%)`
+        : ` 연속된 타격의 흐름을 타 위력이 올랐다! (연속 ${battleFlags.puristComboStacks}, 위력 +${stackPct}%)`;
     }
     // 번개계약 파동(mageElementWave)이 남긴 "다음 공격 확정 치명타"를 기본 공격에도
     // 적용한다(원소 각인/원소 파동/원소 폭풍 자체는 각자 별도 계산식이라 이 플래그를
@@ -189,8 +195,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(player.skills && player.skills.includes('mastery_purestrike')){
           dmg2 = Math.round(dmg2*puristMult);
         }
-        if(echoTriggeredThisAction){
-          dmg2 = Math.round(dmg2*1.25);
+        if(echoStackMult>1){
+          dmg2 = Math.round(dmg2*echoStackMult);
         }
         dmg2 = applyOutgoingDamageMods(dmg2, {type:'basic', onHitMult});
         if(guaranteedSecondHit) dmg2 = Math.max(1, Math.round(dmg2*0.5));
@@ -431,6 +437,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(s.type==='necrosummon2' && !player.necroSummonType){
       setCommandsEnabled(true);
       setBattleMsg('망자 도감', '아직 소환 계약을 맺지 않았다! 마을에서 먼저 몬스터를 소환 계약으로 지정해야 한다.');
+      return;
+    }
+
+    // 원혼의 명령/혼백 해방(rogue_conjurer 레벨12/15 액티브)은 소환수가 살아
+    // 있어야 쓸 수 있다. MP를 깎기 전에 막는다(위 강령 소환 가드와 동일한 이유).
+    if((s.type==='necroCommand' || s.type==='necroRelease') && !(battleFlags.necroPet && battleFlags.necroPet.turnsLeft>0)){
+      setCommandsEnabled(true);
+      setBattleMsg(s.name, '명령을 내릴 소환수가 없다! 먼저 강령 소환으로 원혼을 불러내야 한다.');
       return;
     }
 
@@ -995,6 +1009,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
 
     if(s.type==='guard'){
       player.guardingNextHit = true;
+      // 메아리 타격(warriorPuristEcho) 스택 초기화 — 방어로 타격의 흐름이 끊긴다.
+      if(battleFlags) battleFlags.puristComboStacks = 0;
       renderStatus();
       playCastBurst('def');
       Sound.guard();
@@ -1243,12 +1259,19 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 소환수가 살아있으면 지속시간만 갱신한다(중첩 스노우볼 방지). 도적
       // 소속이라 마력이 아니라 도적의 주력 스탯인 공격력을 사용한다.
       const contractType = player.necroSummonType;
-      const monsterPool = (typeof MONSTERS!=='undefined' ? MONSTERS : []).concat(typeof BOSSES!=='undefined' ? BOSSES : []);
+      // 시간의 파수꾼(사용자 요청)은 BOSSES 배열에 없는 독립 중간보스라
+      // (nodemap.js가 고정 배치로만 조우시키므로 일반 층별보스 추첨 풀에
+      // 섞이면 안 됨) 계약 풀에도 따로 얹어준다.
+      const monsterPool = (typeof MONSTERS!=='undefined' ? MONSTERS : []).concat(typeof BOSSES!=='undefined' ? BOSSES : []).concat(typeof TIME_GUARDIAN!=='undefined' ? [TIME_GUARDIAN] : []);
       const monsterData = monsterPool.find(m=>m.type===contractType);
       // [조정] 몬스터 선택이 화력 차이로 더 크게 드러나도록 몬스터 atk 비중을
       // 올리고(0.6→0.9) 플레이어 atk 비중을 낮췄다(0.25→0.18) — 사용자 제보,
       // "제일 센 몬스터를 계약해도 그리 세지 않다".
-      const dmgPerTick = Math.max(1, Math.round((monsterData?monsterData.atk:10)*0.9 + (player.atk||0)*0.18));
+      // [재조정] 도적 타 2차직업 대비 딜량 시뮬레이션(8턴/MP54/적방어10 기준) 결과
+      // 환영도적/역병숙주의 약 55~65% 수준으로 낮게 나와, 플레이어 atk 비중을
+      // 0.18→0.35로 올렸다(자동 틱과 원혼의 명령 양쪽에 동일하게 곱해지는 값이라
+      // 부작용 없이 전체 화력이 고르게 오른다).
+      const dmgPerTick = Math.max(1, Math.round((monsterData?monsterData.atk:10)*0.9 + (player.atk||0)*0.35));
       const petName = monsterData ? monsterData.name : '이름 모를 것';
       // 원본 몬스터의 skills 태그(bite/smash/curse/heal/pierce)를 그대로
       // 물려받아 소환수마다 다른 특성이 붙는다(combat/enemy-turn.js의
@@ -1259,7 +1282,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 우선 참조한다(버그 수정 — 예전엔 보스를 계약하면 특성이 하나도 안 붙었음).
       const bossTraits = (typeof BOSS_PET_TRAITS!=='undefined') ? BOSS_PET_TRAITS[contractType] : null;
       const petSkills = bossTraits || (monsterData ? (monsterData.skills||[]) : []);
-      const traitLabels = {bite:'흡혈', smash:'강타', curse:'저주 전이', heal:'가끔 회복', pierce:'처형'};
+      const traitLabels = {bite:'흡혈', smash:'강타', curse:'저주 전이', heal:'가끔 회복', pierce:'처형', steal:'가끔 도둑질'};
       const traitMsg = petSkills.length ? ` (특성: ${petSkills.map(t=>traitLabels[t]||t).join('/')})` : '';
       const existingPet = battleFlags.necroPet;
       if(existingPet && existingPet.turnsLeft>0 && existingPet.monsterType===contractType){
@@ -1273,6 +1296,154 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       updateRigVisuals();
       Sound.magic();
       setBattleMsg(`${player.name}의 ${s.name}!`, `${petName}의 원혼을 불러냈다.${traitMsg}`);
+      // 밸런스 조정(사용자 요청) — 분신 배가(doubleimagenext)와 동일하게 턴을
+      // 소모하지 않는다. 소환 자체는 데미지 0이라, 예전처럼 턴까지 소모하면
+      // 그 턴이 완전히 손해였다. 이제 소환 직후 같은 턴에 바로 원혼의 명령
+      // 등 다른 스킬로 이어갈 수 있다.
+      setCommandsEnabled(true);
+      return;
+    }
+
+    if(s.type==='necroCommand'){
+      const pet = battleFlags.necroPet;
+      // 시간의 파수꾼 계약 전용(사용자 요청): 일반 특성(흡혈/강타/저주전이/회복)
+      // 대신, 보스 본체가 쓰는 진짜 "결빙의 궤적"을 그대로 재현한다 — 같은
+      // 배율(effAtk*1.7)·배너·VFX·전용 타격음(combat/enemy-turn.js의
+      // frostTrajectory 분기 참고), 다만 속도 디버프 대상은 플레이어가 아니라
+      // 적이다(enemy.frostSpdTurns/frostSpdDelta — shockSpdTurns와 동일한
+      // 델타 저장/복구 패턴을 그대로 재사용).
+      if(pet.monsterType==='timeguardian'){
+        let dmg = Math.round(pet.dmgPerTick*1.7);
+        dmg = applyOutgoingDamageMods(dmg, {type:'summonskill'});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        let traitMsg = '';
+        if(!(enemy.frostSpdTurns>0)){
+          const spdDelta = Math.min(Math.max(enemy.spd-1, 0), 3);
+          if(spdDelta>0){
+            enemy.frostSpdDelta = spdDelta;
+            enemy.spd -= spdDelta;
+            traitMsg = ' 적의 움직임이 얼어붙은 궤적에 붙들려 느려졌다.';
+          }
+        }
+        enemy.frostSpdTurns = 2;
+        playBanner('결빙의 궤적','fx-frost');
+        if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('frost');
+        Sound.guardianSlash();
+        renderStatus();
+        updateStatusBadges();
+        setBattleMsg(`${player.name}의 결빙의 궤적!`, `${pet.name}에게 명령해 보스 본체와 같은 결빙의 궤적을 그대로 재현했다! ${dmg}의 추가 피해.${traitMsg}`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+        return;
+      }
+      // 층별보스 계약 전용(사용자 요청 — "다른 몬스터들도 스킬이름이 있을거
+      // 아냐, 층별보스는 스킬 발동할 때 이름이 뜨잖아"): 일반 특성 대신 그
+      // 보스가 실제로 쓰는 스킬 하나(data/monsters.js의 BOSS_SIGNATURE_SKILLS)를
+      // 같은 배율·배너 문구·CSS 클래스로 그대로 재현한다. 시간의 파수꾼처럼
+      // 추가 디버프/VFX/전용 사운드는 없다 — 위 timeguardian 분기만의 예외.
+      const bossSig = (typeof BOSS_SIGNATURE_SKILLS!=='undefined') ? BOSS_SIGNATURE_SKILLS[pet.monsterType] : null;
+      if(bossSig){
+        let dmg = Math.round(pet.dmgPerTick*bossSig.mult);
+        dmg = applyOutgoingDamageMods(dmg, {type:'summonskill'});
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        playBanner(bossSig.label, bossSig.cssClass);
+        Sound.hit();
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${bossSig.label}!`, `${pet.name}에게 명령해 보스 본체와 같은 ${bossSig.label}을(를) 그대로 재현했다! ${dmg}의 추가 피해.`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+        return;
+      }
+      // 원혼의 명령(레벨12 액티브): 소환수의 자동 틱과 별개로 즉시 한 번 더
+      // 공격시킨다. turnsLeft는 건드리지 않는다. 특성 효과는 combat/enemy-turn.js의
+      // tickActiveRig() 로직을 그대로 가져오되, 회복(heal)만 확률 없이 확정 발동시켜
+      // "명령했으니 반드시 따른다"는 액티브다운 확실함을 준다.
+      const traits = pet.skills||[];
+      let dmg = pet.dmgPerTick;
+      if(traits.includes('smash')) dmg = Math.round(dmg*1.25);
+      let traitMsg = '';
+      if(traits.includes('pierce') && enemy.maxhp && (enemy.hp/enemy.maxhp)<=0.3){
+        dmg = Math.round(dmg*1.5);
+        traitMsg += ' 빈사 상태의 적을 놓치지 않고 깊이 꿰뚫었다.';
+      }
+      dmg = applyOutgoingDamageMods(dmg, {type:'summonskill'});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+      if(traits.includes('bite')){
+        const lifesteal = Math.max(1, Math.round(dmg*0.25));
+        player.hp = Math.min(player.maxhp, player.hp+lifesteal);
+        traitMsg += ` 흡혈로 ${player.name}이(가) ${lifesteal} 회복했다.`;
+      }
+      if(traits.includes('curse') && enemy.hp>0){
+        enemy.exposedTurns = Math.max(enemy.exposedTurns||0, 2);
+        enemy.exposePierce = Math.max(enemy.exposePierce||0, 0.15);
+        traitMsg += ' 저주가 옮아 적의 방어가 흔들린다.';
+      }
+      if(traits.includes('heal') && player.hp<player.maxhp){
+        const healAmt = Math.max(1, Math.round(player.maxhp*0.06));
+        player.hp = Math.min(player.maxhp, player.hp+healAmt);
+        traitMsg += ` 원혼이 ${player.name}을(를) ${healAmt}만큼 어루만졌다.`;
+      }
+      // 버그 수정(사용자 질문 계기로 발견) — 'steal' 태그가 여태 아무 효과도
+      // 없었다. heal과 같은 이유로 명령형 액티브에서는 확정 발동시킨다.
+      if(traits.includes('steal')){
+        const stolenGold = 3 + Math.floor(Math.random()*6);
+        player.gold += stolenGold;
+        traitMsg += ` 원혼이 슬쩍 손을 놀려 ${stolenGold}G를 훔쳐왔다.`;
+      }
+      Sound.hit();
+      renderStatus();
+      updateRigVisuals();
+      // 스킬 이름도 특성에 맞춰 바꿔서 표시(사용자 요청 — battle-fx.js의 스킬
+      // 목록 표시와 동일한 로직). 특성이 없는 몬스터(슬라임 등)는 기존 이름 그대로.
+      const traitDisplayName = (typeof NECRO_TRAIT_SKILL_NAMES!=='undefined')
+        ? traits.map(t=>NECRO_TRAIT_SKILL_NAMES[t]).filter(Boolean).join('·') : '';
+      const commandLabel = traitDisplayName || s.name;
+      setBattleMsg(`${player.name}의 ${commandLabel}!`, `${pet.name}에게 명령해 즉시 ${dmg}의 추가 피해를 입혔다!${traitMsg}`);
+      if(checkBattleEnd()) return;
+      enemyTurn();
+      return;
+    }
+
+    if(s.type==='necroRelease'){
+      // 혼백 해방(레벨15 액티브): 소환수를 즉시 소멸시키고 남은 지속시간
+      // 전부를 한 방의 폭발력으로 바꾼다(releaseMult로 소폭 웃돈). 자연
+      // 소멸(최후의 봉헌류 타이밍)을 기다리지 않고 원하는 순간 터뜨릴 수 있다.
+      const pet = battleFlags.necroPet;
+      const traits = pet.skills||[];
+      const turnsLeft = Math.max(1, pet.turnsLeft||1);
+      let dmg = Math.round(pet.dmgPerTick*turnsLeft*(s.releaseMult||1));
+      if(traits.includes('smash')) dmg = Math.round(dmg*1.25);
+      let traitMsg = '';
+      if(traits.includes('pierce') && enemy.maxhp && (enemy.hp/enemy.maxhp)<=0.3){
+        dmg = Math.round(dmg*1.5);
+        traitMsg += ' 빈사 상태의 적을 놓치지 않고 깊이 꿰뚫었다.';
+      }
+      dmg = applyOutgoingDamageMods(dmg, {type:'summonskill'});
+      enemy.hp = Math.max(0, enemy.hp-dmg);
+      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
+      if(traits.includes('bite')){
+        const lifesteal = Math.max(1, Math.round(dmg*0.25));
+        player.hp = Math.min(player.maxhp, player.hp+lifesteal);
+        traitMsg += ` 흡혈로 ${player.name}이(가) ${lifesteal} 회복했다.`;
+      }
+      if(traits.includes('curse') && enemy.hp>0){
+        enemy.exposedTurns = Math.max(enemy.exposedTurns||0, 2);
+        enemy.exposePierce = Math.max(enemy.exposePierce||0, 0.15);
+        traitMsg += ' 저주가 옮아 적의 방어가 흔들린다.';
+      }
+      if(traits.includes('heal')){
+        const healAmt = Math.max(1, Math.round(player.maxhp*0.06));
+        player.hp = Math.min(player.maxhp, player.hp+healAmt);
+        traitMsg += ` 원혼이 ${player.name}을(를) ${healAmt}만큼 어루만졌다.`;
+      }
+      battleFlags.necroPet = null;
+      Sound.magic();
+      renderStatus();
+      updateRigVisuals();
+      setBattleMsg(`${player.name}의 ${s.name}!`, `${pet.name}을(를) 해방시켜 ${dmg}의 폭발 피해를 남겼다!${traitMsg}`);
       if(checkBattleEnd()) return;
       enemyTurn();
       return;
@@ -3406,6 +3577,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     player.lastBasicAtkDmg = 0;
     // 무한 가속 각인(me_infiniteaccel): 아이템을 써도 가속 주문 연쇄가 끊긴다.
     if(battleFlags) battleFlags.hasteCastCount = 0;
+    // 메아리 타격(warriorPuristEcho) 스택 초기화 — 아이템을 써도 흐름이 끊긴다.
+    if(battleFlags) battleFlags.puristComboStacks = 0;
     // 저주술사(mastery_curseweaver)는 물약 봉인(굶주린 회랑)도 저주 개수만큼의
     // 확률로 뚫고 나올 수 있다. 외상 도박사(거액 대출)의 회복 봉인도 여기서
     // 함께 확인한다 — 서로 다른 시스템이지만 "물약을 못 마신다"는 결과는 같다.

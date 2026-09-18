@@ -362,7 +362,10 @@ TIME_GUARDIAN 참고.
     if(btnShop) btnShop.style.display = 'none';
     if(btnExchange) btnExchange.style.display = 'none';
     if(btnBlacksmith) btnBlacksmith.style.display = 'none';
-    if(btnNecropact) btnNecropact.style.display = 'none';
+    // 소환 계약은 상점/교환소/대장간과 달리 마을 전용으로 묶을 이유가 없어서
+    // (전투 중이 아니면 언제든 계약 몬스터를 바꿔도 밸런스에 문제없음) 사용자
+    // 요청으로 노드맵 진행 중에도 계속 노출한다.
+    if(btnNecropact) btnNecropact.style.display = hasNecropact ? 'block' : 'none';
 
     const totalSteps = player.nodeMap.length;
     const progressLabel = document.getElementById('node-map-progress');

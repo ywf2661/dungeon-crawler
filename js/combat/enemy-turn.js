@@ -318,12 +318,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
       if(battleFlags.legionCommandTurns>0){ legionMult += (battleFlags.legionCommandMult||0); }
       const legionBonus = legionMult>1 ? Math.round(rig.dmgPerTick*(legionMult-1)) : 0;
-      // 강령 증폭(necroEmpower, 도적 - 망령 소환사 레벨12) — 소환수(undead)
-      // 데미지에 자신의 공격력 일부를 더한다(도적 소속이라 마력이 아니라
-      // 공격력 연동). 다른 소환수/로봇 종류에는 영향 없음.
-      const necroBonus = (rig.kind==='undead' && player.skills && player.skills.includes('necroEmpower'))
-        ? Math.round((player.atk||0)*(SKILLDB.necroEmpower.necroEmpowerRatio||0.15)) : 0;
-      let dmg = Math.max(1, rig.dmgPerTick + pressureBonus + legionBonus + necroBonus);
+      // [교체됨] 강령 증폭(necroEmpower)은 자동 보너스 패시브에서 "원혼의 명령"
+      // 액티브 스킬로 교체되었다(player-actions.js의 necroCommand 분기 참고).
+      // 이 자동 틱에는 더 이상 관여하지 않는다.
+      let dmg = Math.max(1, rig.dmgPerTick + pressureBonus + legionBonus);
       // 강령술사 소환수 특성(사용자 요청 — "소환수별로 다른 포인트가 있으면
       // 좋겠다") — 원본 몬스터의 skills 태그(bite/smash/curse/heal, player-actions.js의
       // necrosummon2가 rig.skills에 그대로 물려줌)에 따라 매 틱마다 다른 효과가
@@ -354,6 +352,14 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         const healAmt = Math.max(1, Math.round(player.maxhp*0.06));
         player.hp = Math.min(player.maxhp, player.hp + healAmt);
         necroTraitMsg += ` 원혼이 ${player.name}을(를) ${healAmt}만큼 어루만졌다.`;
+      }
+      // 버그 수정(사용자 질문 계기로 발견) — 'steal'(좀도둑) 태그는 몬스터
+      // 데이터엔 있었지만 여태 아무 효과도 없었다. 다른 특성과 동일한 확률형
+      // 패턴(heal과 동일 35%)으로 소량의 골드를 훔친다.
+      if(necroTraits.includes('steal') && Math.random()<0.35){
+        const stolenGold = 3 + Math.floor(Math.random()*6);
+        player.gold += stolenGold;
+        necroTraitMsg += ` 원혼이 슬쩍 손을 놀려 ${stolenGold}G를 훔쳐왔다.`;
       }
       if(necroTraitMsg) renderStatus();
       // 로봇 공격음(사용자 요청) — 오메가 유닛은 폭발음, 정찰/화력/방벽 드론
@@ -389,16 +395,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           expired = false;
         }
       }
-      // 최후의 봉헌(necroLastRites, 망령 소환사 레벨15) — 소환수가 지속시간
-      // 만료로 소멸하는 순간(재배치 등으로 유지되는 경우는 제외) 마지막 폭발
-      // 피해를 한 번 더 남긴다.
-      let lastRitesMsg = '';
-      if(expired && rig.kind==='undead' && player.skills && player.skills.includes('necroLastRites') && enemy.hp>0){
-        const lastRitesDmg = Math.max(1, Math.round(rig.dmgPerTick*(SKILLDB.necroLastRites.lastRitesMult||1.5)));
-        enemy.hp = Math.max(0, enemy.hp - lastRitesDmg);
-        updateEnemyHpBar(); popDamage('-'+lastRitesDmg, 'crit');
-        lastRitesMsg = ` 소멸하며 마지막 봉헌으로 ${lastRitesDmg}의 폭발 피해를 남겼다!`;
-      }
+      // [교체됨] 최후의 봉헌(necroLastRites)은 자연 소멸 시 자동 발동하던
+      // 패시브에서 "혼백 해방" 액티브 스킬로 교체되었다(player-actions.js의
+      // necroRelease 분기 참고) — 플레이어가 직접 타이밍을 골라 터뜨린다.
+      const lastRitesMsg = '';
       if(expired) battleFlags[slotKey] = null;
       renderStatus();
       updateRigVisuals();
@@ -519,6 +519,17 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       if(enemy.shockSpdTurns<=0){
         enemy.spd += (enemy.shockSpdDelta||0);
         enemy.shockSpdDelta = 0;
+      }
+      updateStatusBadges();
+    }
+    // 결빙의 궤적(원혼강탈자 소환수가 시간의 파수꾼일 때, 원혼의 명령으로
+    // 발동) 속도 하락 소진 — shockSpdTurns와 완전히 동일한 델타 저장/복구
+    // 패턴이지만 별개 카운터라 감전과 중첩될 수 있다.
+    if(enemy && enemy.frostSpdTurns>0){
+      enemy.frostSpdTurns -= 1;
+      if(enemy.frostSpdTurns<=0){
+        enemy.spd += (enemy.frostSpdDelta||0);
+        enemy.frostSpdDelta = 0;
       }
       updateStatusBadges();
     }

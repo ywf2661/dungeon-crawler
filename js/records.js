@@ -151,22 +151,42 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
   // 소환 계약 지정(도적 - 망령 소환사 전용, mastery_gravebond 보유 시에만
   // 마을 화면 버튼으로 열림). showMonsterDex()와 동일한 패턴이지만, 발견한
   // 몬스터 중 하나를 클릭해 player.necroSummonType으로 지정하는 게 목적이라
-  // 최종보스류(진최종보스/마녀/시간의 파수꾼)는 밸런스상 후보에서 제외한다 —
-  // 일반 몬스터(MONSTERS)+층별보스(BOSSES)만 후보 풀로 쓴다.
+  // 최종보스류(진최종보스/마녀)는 밸런스상 후보에서 제외한다 — 일반
+  // 몬스터(MONSTERS)+층별보스(BOSSES)+시간의 파수꾼(사용자 요청으로 예외
+  // 편입, TIME_GUARDIAN)만 후보 풀로 쓴다.
   async function showNecroContractPicker(){
     const discovered = await loadMonsterDex();
-    const pool = MONSTERS.concat(BOSSES).filter(m=>discovered.includes(m.type));
+    // 시간의 파수꾼(사용자 요청)은 BOSSES 배열에 없는 독립 중간보스라 계약
+    // 후보 풀에도 따로 얹어준다. minDepth가 없어 정렬 기준으로 3구역 중간
+    // 지점(25)을 임시로 부여한다(원본 TIME_GUARDIAN 객체는 건드리지 않음).
+    // 버그 수정(사용자 제보 — "고쳐지지 않는 시계/빈 옷의 예언자도 층별보스인데
+    // 표시가 안 된다"): data/monsters.js의 BOSSES 원본 데이터엔 isBoss 필드가
+    // 아예 없다(전투 시작 시 battle-setup.js의 pickEnemy()가 그때그때 붙여주는
+    // 값이라 정적 데이터에는 없음) — 그래서 layout 아래의 "보스급 표시"가
+    // 시간의 파수꾼(자체 데이터에 isBoss:true 있음)에만 붙고 있었다. 여기서
+    // BOSSES 항목에도 명시적으로 isBoss:true를 얹어준다(원본 배열은 그대로 두고
+    // 얕은 복사만).
+    const necroPool = MONSTERS
+      .concat(BOSSES.map(m=>Object.assign({isBoss:true}, m)))
+      .concat(typeof TIME_GUARDIAN!=='undefined' ? [Object.assign({minDepth:25}, TIME_GUARDIAN)] : []);
+    // [디버그 전용] admin/admin2/admin3(대소문자 무관)은 몬스터 도감 등록
+    // 여부와 무관하게 전체 풀을 계약 후보로 본다(사용자 요청 — 소환수별
+    // 특성/보스 스킬 재현을 처치 없이 바로 테스트하기 위함). 이 세 이름이
+    // 아닌 캐릭터에는 전혀 영향 없다.
+    const debugNameNC = player.name && player.name.trim().toLowerCase();
+    const isDebugContract = ['admin','admin2','admin3'].includes(debugNameNC);
+    const pool = isDebugContract ? necroPool : necroPool.filter(m=>discovered.includes(m.type));
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'necropact-overlay';
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
     const currentName = (() => {
-      const cur = MONSTERS.concat(BOSSES).find(m=>m.type===player.necroSummonType);
+      const cur = necroPool.find(m=>m.type===player.necroSummonType);
       return cur ? cur.name : '없음';
     })();
     panel.innerHTML = `<h3>🕯 소환 계약</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;margin:-4px 0 10px;">현재 계약: ${currentName}. 처치해본 적 있는 몬스터만 계약할 수 있다.</p>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;margin:-4px 0 10px;">현재 계약: ${currentName}. ${isDebugContract ? '[디버그] 도감 등록 여부와 무관하게 전체 몬스터와 계약할 수 있다.' : '처치해본 적 있는 몬스터만 계약할 수 있다.'}</p>
       <div id="necropact-list" style="display:flex; flex-direction:column; gap:6px; max-height:340px; overflow-y:auto; padding:2px;"></div>
       <div style="text-align:center; margin-top:10px;"><button class="btn" id="necropact-close">닫기</button></div>`;
     overlay.appendChild(panel);
@@ -175,14 +195,20 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
     if(!pool.length){
       box.innerHTML = `<p style="text-align:center;color:var(--parchment-dim);font-size:13px;font-style:italic;padding:10px 0;">아직 계약할 수 있는 몬스터가 없다. 몬스터를 처치해 도감에 등록해야 한다.</p>`;
     } else {
-      pool.slice().sort((a,b)=>a.minDepth-b.minDepth).forEach(m=>{
+      pool.slice().sort((a,b)=>(a.minDepth||0)-(b.minDepth||0)).forEach(m=>{
         const row = document.createElement('button');
         row.className = 'relicdex-row';
         row.style.cursor = 'pointer';
         row.style.textAlign = 'left';
+        // 보스급 몬스터 구분(사용자 요청) — 왕관 아이콘 + 스킬 목록의 "2차
+        // 각성" 테두리와 같은 보라색(var(--violet))으로 목록에서 한눈에
+        // 띄게 한다. 현재 계약 중인 항목(금색 테두리)이 더 우선이라 마지막에
+        // 덮어쓴다.
+        if(m.isBoss){ row.style.borderColor = 'var(--violet)'; row.style.background = '#241a33cc'; }
         if(m.type===player.necroSummonType) row.style.borderColor = 'var(--gold-bright)';
+        const bossTag = m.isBoss ? `<span title="보스급" style="margin-right:4px;">👑</span>` : '';
         row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="color:var(--gold-bright); font-family:'Cinzel';">${m.name}</span><span style="color:var(--parchment-dim); font-size:11.5px;">공격력 ${m.atk}</span>
+            <span style="color:var(--gold-bright); font-family:'Cinzel';">${bossTag}${m.name}</span><span style="color:var(--parchment-dim); font-size:11.5px;">공격력 ${m.atk}</span>
           </div>
           <div class="relic-desc" style="margin-top:3px;">${m.dex || ''}</div>`;
         row.addEventListener('click', ()=>{
