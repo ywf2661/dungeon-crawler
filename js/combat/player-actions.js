@@ -1271,7 +1271,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 환영도적/역병숙주의 약 55~65% 수준으로 낮게 나와, 플레이어 atk 비중을
       // 0.18→0.35로 올렸다(자동 틱과 원혼의 명령 양쪽에 동일하게 곱해지는 값이라
       // 부작용 없이 전체 화력이 고르게 오른다).
-      const dmgPerTick = Math.max(1, Math.round((monsterData?monsterData.atk:10)*0.9 + (player.atk||0)*0.35));
+      const baseDmgPerTick = Math.max(1, Math.round((monsterData?monsterData.atk:10)*0.9 + (player.atk||0)*0.35));
+      // 폭식하는 원혼 각인(re_conjurer_gluttony, 무기): 소환수 화력 +30% 대신
+      // 유지시간이 4턴→3턴으로 줄어든다.
+      const wIdConj = player.equipment && player.equipment.weapon;
+      const hasConjurerGluttony = !!(wIdConj && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdConj).includes('re_conjurer_gluttony'));
+      const dmgPerTick = hasConjurerGluttony ? Math.round(baseDmgPerTick*1.3) : baseDmgPerTick;
+      const summonTurns = hasConjurerGluttony ? Math.max(1, (s.summonTurns||4)-1) : (s.summonTurns||4);
       const petName = monsterData ? monsterData.name : '이름 모를 것';
       // 원본 몬스터의 skills 태그(bite/smash/curse/heal/pierce)를 그대로
       // 물려받아 소환수마다 다른 특성이 붙는다(combat/enemy-turn.js의
@@ -1286,11 +1292,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const traitMsg = petSkills.length ? ` (특성: ${petSkills.map(t=>traitLabels[t]||t).join('/')})` : '';
       const existingPet = battleFlags.necroPet;
       if(existingPet && existingPet.turnsLeft>0 && existingPet.monsterType===contractType){
-        existingPet.turnsLeft = s.summonTurns||4;
+        existingPet.turnsLeft = summonTurns;
         existingPet.dmgPerTick = dmgPerTick;
         existingPet.skills = petSkills;
       } else {
-        battleFlags.necroPet = {kind:'undead', monsterType:contractType, name:petName, turnsLeft:s.summonTurns||4, dmgPerTick, skills:petSkills};
+        battleFlags.necroPet = {kind:'undead', monsterType:contractType, name:petName, turnsLeft:summonTurns, dmgPerTick, skills:petSkills};
       }
       renderStatus();
       updateRigVisuals();
@@ -1306,6 +1312,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
 
     if(s.type==='necroCommand'){
       const pet = battleFlags.necroPet;
+      // 결속의 각인(re_conjurer_bond, 원혼 강탈자 방어구): 원혼의 명령을 쓸
+      // 때마다 이번 전투 동안 유지되는 방어력이 3%p씩 쌓인다(최대 5스택=15%).
+      // 소환수가 소멸하면(혼백 해방/자연 소멸) 스택도 함께 초기화된다
+      // (necroRelease 분기, enemy-turn.js의 tickActiveRig() 참고).
+      const aIdBond = player.equipment && player.equipment.armor;
+      if(aIdBond && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdBond).includes('re_conjurer_bond')){
+        battleFlags.necroBondStacks = Math.min(5, (battleFlags.necroBondStacks||0)+1);
+        battleFlags.necroBondShieldPct = battleFlags.necroBondStacks*0.03;
+      }
       // 시간의 파수꾼 계약 전용(사용자 요청): 일반 특성(흡혈/강타/저주전이/회복)
       // 대신, 보스 본체가 쓰는 진짜 "결빙의 궤적"을 그대로 재현한다 — 같은
       // 배율(effAtk*1.7)·배너·VFX·전용 타격음(combat/enemy-turn.js의
@@ -1414,7 +1429,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const pet = battleFlags.necroPet;
       const traits = pet.skills||[];
       const turnsLeft = Math.max(1, pet.turnsLeft||1);
-      let dmg = Math.round(pet.dmgPerTick*turnsLeft*(s.releaseMult||1));
+      // 잔혼의 각인(re_conjurer_residue, 원혼 강탈자 장신구): 특성이 폭발 피해와
+      // 별개로 한 번 더 확정 발동하는 대신, 폭발 배율 자체는 20% 줄어든다.
+      const cIdRes = player.equipment && player.equipment.accessory;
+      const hasResidue = !!(cIdRes && typeof getEnhancementsFor==='function' && getEnhancementsFor(cIdRes).includes('re_conjurer_residue'));
+      let dmg = Math.round(pet.dmgPerTick*turnsLeft*(s.releaseMult||1)*(hasResidue?0.8:1));
       if(traits.includes('smash')) dmg = Math.round(dmg*1.25);
       let traitMsg = '';
       if(traits.includes('pierce') && enemy.maxhp && (enemy.hp/enemy.maxhp)<=0.3){
@@ -1424,22 +1443,40 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       dmg = applyOutgoingDamageMods(dmg, {type:'summonskill'});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
-      if(traits.includes('bite')){
-        const lifesteal = Math.max(1, Math.round(dmg*0.25));
-        player.hp = Math.min(player.maxhp, player.hp+lifesteal);
-        traitMsg += ` 흡혈로 ${player.name}이(가) ${lifesteal} 회복했다.`;
-      }
-      if(traits.includes('curse') && enemy.hp>0){
-        enemy.exposedTurns = Math.max(enemy.exposedTurns||0, 2);
-        enemy.exposePierce = Math.max(enemy.exposePierce||0, 0.15);
-        traitMsg += ' 저주가 옮아 적의 방어가 흔들린다.';
-      }
-      if(traits.includes('heal')){
-        const healAmt = Math.max(1, Math.round(player.maxhp*0.06));
-        player.hp = Math.min(player.maxhp, player.hp+healAmt);
-        traitMsg += ` 원혼이 ${player.name}을(를) ${healAmt}만큼 어루만졌다.`;
+      // bite/curse/heal/steal — 원혼의 명령(necroCommand)과 동일한 특성 세트를
+      // 확정 발동시킨다. 잔혼의 각인이 있으면 이 효과 전체를 한 번 더 반복한다.
+      const applyReleaseTraitEffects = ()=>{
+        let msg = '';
+        if(traits.includes('bite')){
+          const lifesteal = Math.max(1, Math.round(dmg*0.25));
+          player.hp = Math.min(player.maxhp, player.hp+lifesteal);
+          msg += ` 흡혈로 ${player.name}이(가) ${lifesteal} 회복했다.`;
+        }
+        if(traits.includes('curse') && enemy.hp>0){
+          enemy.exposedTurns = Math.max(enemy.exposedTurns||0, 2);
+          enemy.exposePierce = Math.max(enemy.exposePierce||0, 0.15);
+          msg += ' 저주가 옮아 적의 방어가 흔들린다.';
+        }
+        if(traits.includes('heal')){
+          const healAmt = Math.max(1, Math.round(player.maxhp*0.06));
+          player.hp = Math.min(player.maxhp, player.hp+healAmt);
+          msg += ` 원혼이 ${player.name}을(를) ${healAmt}만큼 어루만졌다.`;
+        }
+        if(traits.includes('steal')){
+          const stolenGold = 3 + Math.floor(Math.random()*6);
+          player.gold += stolenGold;
+          msg += ` 원혼이 슬쩍 손을 놀려 ${stolenGold}G를 훔쳐왔다.`;
+        }
+        return msg;
+      };
+      traitMsg += applyReleaseTraitEffects();
+      if(hasResidue){
+        const secondMsg = applyReleaseTraitEffects();
+        if(secondMsg) traitMsg += ' 잔혼이 다시 한번 떨친다.' + secondMsg;
       }
       battleFlags.necroPet = null;
+      battleFlags.necroBondStacks = 0;
+      battleFlags.necroBondShieldPct = 0;
       Sound.magic();
       renderStatus();
       updateRigVisuals();
@@ -1775,6 +1812,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const newOmegaRig = {kind:s.rigKind, name:s.rigName, turnsLeft:s.rigTurns, dmgPerTick, shieldPct:s.shieldPct||0, pressurePerTick: isLegion?0:(s.rigPressurePerTick||0)};
       if(isLegion){ battleFlags.omegaRig = newOmegaRig; } else { battleFlags.rig = newOmegaRig; }
       updateRigVisuals();
+      // 소환 입장 연출(사용자 요청 — 오메가 유닛 투입이 심심함). 처음엔 로봇
+      // 자신을 흔들었으나, "흔들려야 할 건 로봇이 아니라 화면"이라는 피드백으로
+      // 로봇은 페이드인만, 묵직한 충격감은 기존 shakeScreen()(임계 폭주 궁극기
+      // 전용 화면 흔들림)을 그대로 재사용해서 낸다.
+      if(typeof flashRigDeploy==='function') flashRigDeploy(isLegion ? 'omega' : 'rig');
+      if(typeof shakeScreen==='function') shakeScreen();
       const markBonus = (enemy.markedTurns>0) ? (enemy.markBonus||0.25) : 0;
       let dmg;
       if(isLegion){
@@ -1867,21 +1910,36 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const effRate = s.dmgPerPressure + overflow*0.0006; // mastery_overheat의 초과분 보너스
       let dmg = Math.max(1, Math.round(effectiveMag()*pressure*effRate) - Math.round(edefS*0.5));
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost});
-      enemy.hp = Math.max(0, enemy.hp-dmg);
-      updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
-      Sound.magic();
-      battleFlags.pressure = Math.min(getPressureCap(), pressure + (typeof getPressureGainUsed==='function' ? getPressureGainUsed(s) : s.pressureGainOnUse));
-      applyOverheatOverflowDamage(battleFlags.pressure);
-      if(typeof updatePressureGauge==='function') updatePressureGauge();
-      // VFX(방향 2 — 게이지 오버로드형, 사용자 기획): 새 이미지 리소스 없이
-      // 압력 게이지 자체가 발동 순간 확 밝아졌다 가라앉는 스파이크로 "압력을
-      // 그 자리에서 터뜨렸다"는 느낌을 준다. 게이지가 갱신된 다음(위 라인)에
-      // 호출해야 최신 수치 위에서 스파이크가 재생된다.
-      if(typeof flashPressureGaugeSpike==='function') flashPressureGaugeSpike();
-      renderStatus();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `압력 ${pressure}을(를) 그대로 유지한 채 ${dmg}의 피해를 입혔다! 오히려 압력이 ${battleFlags.pressure}까지 더 쌓였다.`);
-      if(checkBattleEnd()) return;
-      enemyTurn();
+      // 연타 버스트 연출(사용자 요청 — 손맛 개선, 삼박난무의 완급 조절 리듬을
+      // 참고). 압력이 높을수록 방출 직전 스파크가 여러 번 튄다 — 데미지
+      // 산정/적용은 전혀 건드리지 않고(밸런스 영향 없음), 실제 피해를 마지막
+      // 스파크 뒤로 미루는 순수 연출 레이어만 추가했다. 압력 0~34는 1타(기존과
+      // 동일한 즉발), 35~69는 2타, 70~104는 3타, 105+(과부하 상한 150)는 4타.
+      const burstHits = 1 + Math.min(3, Math.floor(pressure/35));
+      const BURST_DELAYS = [0, 100, 190, 280].slice(0, burstHits);
+      setBattleMsg(`${player.name}의 ${s.name}!`, burstHits>1 ? '압력을 한계까지 밀어붙이는 중...' : `${enemy.name}에게 압력을 그대로 쏟아붓는다!`);
+      BURST_DELAYS.forEach(delay=> setTimeout(()=>{
+        if(typeof spawnOverloadJetBurst==='function') spawnOverloadJetBurst();
+        Sound.magic();
+      }, delay));
+      setTimeout(()=>{
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
+        if(typeof spawnOverloadExplodeFx==='function') spawnOverloadExplodeFx();
+        Sound.hit();
+        battleFlags.pressure = Math.min(getPressureCap(), pressure + (typeof getPressureGainUsed==='function' ? getPressureGainUsed(s) : s.pressureGainOnUse));
+        applyOverheatOverflowDamage(battleFlags.pressure);
+        if(typeof updatePressureGauge==='function') updatePressureGauge();
+        // VFX(방향 2 — 게이지 오버로드형, 사용자 기획): 압력 게이지 자체가
+        // 확 밝아졌다 가라앉는 스파이크로 "압력을 그 자리에서 터뜨렸다"는
+        // 느낌을 준다. 게이지가 갱신된 다음(위 라인)에 호출해야 최신 수치
+        // 위에서 스파이크가 재생된다.
+        if(typeof flashPressureGaugeSpike==='function') flashPressureGaugeSpike();
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `압력 ${pressure}을(를) 그대로 유지한 채 ${dmg}의 피해를 입혔다! 오히려 압력이 ${battleFlags.pressure}까지 더 쌓였다.`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+      }, BURST_DELAYS[BURST_DELAYS.length-1] + 220);
       return;
     }
 
@@ -2603,13 +2661,16 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const parts = rawParts.map(d=>Math.max(1, Math.round(d*scale)));
       const total = parts.reduce((a,b)=>a+b,0);
       setBattleMsg(`${player.name}의 ${s.name}!`, hadCount ? `쌓아온 잔영(${hits}번)이 한꺼번에 몰아친다...` : '불러낼 잔영이 없어 홀로 몰아친다...');
-      // 궁극기 전용 강조 연출(사용자 요청) — 심연 톤(v7) 참격 변주로 "망자
-      // 군단이 베는" 느낌을 내고, 전용 배너를 시작과 함께 띄운다.
+      // 궁극기 전용 강조 연출(사용자 요청) — 심연 톤(v7) 참격 변주 대신, 사용자가
+      // 직접 준비한 전용 잔영 이미지(phantom_slash.png)를 삼박난무의
+      // spawnFigureSlashFx()와 동일한 무작위 위치/회전/좌우반전으로 뿌려
+      // "분신 군단이 제각각 베는" 느낌을 낸다. 전용 배너도 시작과 함께 띄운다.
       playBanner('백귀야행!', 'fx-parade');
       parts.forEach((hitDmg,i)=>{
         setTimeout(()=>{
           enemy.hp = Math.max(0, enemy.hp-hitDmg);
-          updateEnemyHpBar(); shakeEnemy(); spawnSlashImageFx({variant:'v7'});
+          updateEnemyHpBar(); shakeEnemy();
+          spawnFigureSlashFx({images: PHANTOM_SLASH_IMAGES, slide: true});
           Sound.slash();
           popDamage('-'+hitDmg, i===parts.length-1?'crit':undefined);
         }, i*160);

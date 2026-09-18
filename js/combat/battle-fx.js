@@ -205,12 +205,24 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(typeof fixMonsterImageGrounding==='function') fixMonsterImageGrounding(img); // 그림마다 여백이 달라 포즈 바뀔 때마다 다시 보정
   }
 
-  function spawnSlashMark(seed){
+  // seed(숫자, 기존 방식)를 주면 고정 각도 배열에서 하나 골라 항상 화면
+  // 중앙에 긋는다. opts 객체({angle, x, y})를 주면 각도/위치를 직접 지정할
+  // 수 있다(백귀야행이 잔영 슬라이드와 같은 각도/자리에 자국을 남기기 위해
+  // 추가 — 사용자 요청 "지나간 자리엔 연속베기 같은 베는 모션이 생기고").
+  function spawnSlashMark(seedOrOpts){
     const stage = document.getElementById('bt-stage');
     const el = document.createElement('div');
     el.className = 'slash-mark';
-    const angles = [-32, 24, -12, 38, -44];
-    el.style.setProperty('--ang', angles[seed % angles.length]+'deg');
+    let ang, x, y;
+    if(seedOrOpts && typeof seedOrOpts === 'object'){
+      ang = seedOrOpts.angle||0; x = seedOrOpts.x; y = seedOrOpts.y;
+    } else {
+      const angles = [-32, 24, -12, 38, -44];
+      ang = angles[(seedOrOpts||0) % angles.length];
+    }
+    el.style.setProperty('--ang', ang+'deg');
+    if(x!=null) el.style.left = x+'%';
+    if(y!=null) el.style.top = y+'%';
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 350);
   }
@@ -242,24 +254,42 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 삼박난무 전용 — 베는 동작을 하는 사람 형상(사용자 제공 스프라이트 3종)을
   // spawnSlashImageFx와 동일한 무작위 위치/회전/반전으로 뿌린다.
   const CHALNA_FIGURE_IMAGES = ['images/vfx/chalna_figure_1.png','images/vfx/chalna_figure_2.png','images/vfx/chalna_figure_3.png'];
+  // 백귀야행(환영도적) 전용 — 사용자가 직접 준비한 전용 슬래시 이미지 1장.
+  // 사람 형상이 아니라 대각선 검광/잔영 덩어리라, opts.images로 넘겨서
+  // spawnFigureSlashFx()의 기존 무작위 위치/회전/반전 로직을 그대로 재사용한다.
+  const PHANTOM_SLASH_IMAGES = ['images/vfx/phantom_slash.png'];
   function spawnFigureSlashFx(opts){
     opts = opts || {};
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
     const el = document.createElement('div');
     const flip = opts.flip!=null ? opts.flip : Math.random()<0.5;
-    el.className = 'slash-figure-fx' + (flip ? ' flip' : '');
-    const img = CHALNA_FIGURE_IMAGES[Math.floor(Math.random()*CHALNA_FIGURE_IMAGES.length)];
+    el.className = 'slash-figure-fx' + (opts.slide ? ' slide' : '') + (flip ? ' flip' : '');
+    const pool = opts.images || CHALNA_FIGURE_IMAGES;
+    const img = pool[Math.floor(Math.random()*pool.length)];
     el.style.backgroundImage = `url('${img}')`;
-    el.style.setProperty('--ang', (opts.angle!=null ? opts.angle : Math.round(Math.random()*70-35))+'deg');
+    // 값을 지역변수로도 따로 들고 있는다 — slide 모드일 때 아래에서 같은
+    // 각도/위치로 spawnSlashMark()를 겹쳐 찍어야 하기 때문(CSS 커스텀
+    // 프로퍼티는 JS에서 다시 읽기 번거로워 애초에 숫자로 챙겨둔다).
+    const ang = opts.angle!=null ? opts.angle : Math.round(Math.random()*70-35);
     // [수정] 사용자 요청 — 예전엔 참격(중앙)과 사람 형상(외곽)의 자리를
     // 나눴었는데, 삼박난무가 10연타로 늘어나며 굳이 안 나눠도 자연스러운
     // "여러 명이 동시에 베는" 느낌이 나서 제한을 풀었다. 참격과 동일한
     // 무작위 범위를 그대로 재사용.
-    el.style.setProperty('--sx', (opts.x!=null ? opts.x : Math.round(38+Math.random()*24))+'%');
-    el.style.setProperty('--sy', (opts.y!=null ? opts.y : Math.round(38+Math.random()*24))+'%');
+    const sx = opts.x!=null ? opts.x : Math.round(38+Math.random()*24);
+    const sy = opts.y!=null ? opts.y : Math.round(38+Math.random()*24);
+    el.style.setProperty('--ang', ang+'deg');
+    el.style.setProperty('--sx', sx+'%');
+    el.style.setProperty('--sy', sy+'%');
     stage.appendChild(el);
-    setTimeout(()=>el.remove(), 320);
+    setTimeout(()=>el.remove(), opts.slide ? 220 : 320);
+    // 백귀야행 전용(사용자 요청 — "지나간 자리엔 연속베기 등의 스킬에 쓰이는
+    // 베는 모션이 생기고"): 잔영이 슬라이드하는 것과 같은 각도/위치에 기존
+    // 연속베기용 슬래시 자국(spawnSlashMark)을 겹쳐 찍어, 지나간 궤적처럼
+    // 보이게 한다.
+    if(opts.slide && typeof spawnSlashMark==='function'){
+      spawnSlashMark({angle: ang, x: sx, y: sy});
+    }
   }
 
 
@@ -368,6 +398,109 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.className = 'frost-flash-fx'+(isEcho?' echo':'');
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 700);
+  }
+
+  // 폭주 사출(mechanicOverloadDischarge) 전용 — 사용자가 직접 준비한 전용
+  // 이미지(images/vfx/overload_jet.png/overload_explode.png)를 재생한다.
+  // spawnFrostFlashFx()와 동일한 생성 → setTimeout 제거 수명주기.
+  //
+  // [수정] 처음엔 .overload-jet-fx를 #bt-stage 구석에 고정 좌표(bottom/left)로
+  // 박아뒀는데, 실제 포탑(#bt-rig1/#bt-rig2, bottom:-100px로 크게 내려가
+  // 있음)이 그 좌표와 안 맞아 "포탑에서 나가는" 느낌이 안 났다(사용자 피드백).
+  // 그래서 고정 좌표 대신 실제 포탑 DOM 요소의 getBoundingClientRect()를 읽어
+  // 그 자리에서 직접 발사되도록 좌표를 계산한다 — 이후 포탑 CSS가 바뀌어도
+  // 자동으로 따라간다. targetEl이 없거나(장치 자체가 없음) 화면에 없으면
+  // (display:none) 기존처럼 화면 왼쪽 아래 구석을 기본값으로 쓴다.
+  // 일반 포탑(#bt-rig1/#bt-rig2) 전용 — 오메가 유닛은 사출 빔 없이
+  // 폭발 이미지만 쓰기로 해서(사용자 요청 — "사출이미지 없이 폭발이미지만")
+  // spawnOverloadJetBurst()에서 아예 분기 처리한다.
+  function spawnOverloadJetFx(fromRight, targetEl){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.className = 'overload-jet-fx'+(fromRight?' from-right':'');
+    const stageRect = stage.getBoundingClientRect();
+    const tRect = (targetEl && targetEl.offsetParent) ? targetEl.getBoundingClientRect() : null;
+    if(tRect && tRect.width>0){
+      // 포탑 스프라이트 안에서 포신 끝(발사구)은 대략 가로 45%, 세로 38%
+      // 지점(autobot.png 실측 기준)에 있다 — 그 점이 곧 빔 이미지의 발사
+      // 기준점(jet.png의 밝은 원점은 이미지 좌하단 근처)과 겹치도록 el의
+      // 좌상단을 역산한다. 오른쪽 슬롯은 좌우 반전이라 발사구도 거울상(55%)이 된다.
+      // 크기(254x190, index.html의 .overload-jet-fx와 반드시 동일해야 함)는
+      // .archway가 겨우 210px 높이인데 원래 360x280으로 뒀다가 그 자체가
+      // 무대보다 커서 클램핑을 해도 못 다 담겨 잘렸었다(사용자 피드백) — 원본
+      // 이미지 비율(1456:1088≈1.338)에 맞춰 무대 높이 안에 들어오도록 줄였다.
+      const W = 254, H = 190;
+      const muzzleX = tRect.left + tRect.width*(fromRight?0.55:0.45);
+      const muzzleY = tRect.top + tRect.height*0.38;
+      const originFracX = fromRight ? 0.92 : 0.08; // jet.png 안에서 밝은 원점의 대략적 위치
+      const originFracY = 0.88;
+      let left = muzzleX - stageRect.left - W*originFracX;
+      let top = muzzleY - stageRect.top - H*originFracY;
+      // 클램핑(사용자 피드백 — 포탑이 .archway의 overflow:hidden 경계에 바짝
+      // 붙어 있어(bottom:-100px로 몸통 대부분이 이미 가려진 상태), 위 계산이
+      // 조금만 어긋나도 빔의 밝은 원점 쪽이 그대로 잘려 보였다. 정확한 픽셀
+      // 정렬 대신, 최소한 이미지 전체가 무대 안에 들어오도록 좌표를 안전
+      // 범위로 밀어넣는다 — 포탑 바로 옆이라는 느낌은 유지하면서 잘림만 없앤다.
+      left = Math.max(4, Math.min(left, stageRect.width - W - 4));
+      top = Math.max(4, Math.min(top, stageRect.height - H - 4));
+      el.style.left = Math.round(left) + 'px';
+      el.style.top = Math.round(top) + 'px';
+      el.style.bottom = 'auto';
+      el.style.right = 'auto';
+    }
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 450);
+  }
+  // atEl을 주면 그 요소 위치(가로 중앙/세로 35% 지점)에서, 안 주면 기존처럼
+  // 적 위치(.overload-explode-fx 기본 CSS, 화면 중앙 42%)에서 터진다 —
+  // 오메가 유닛의 "발사" 연출을 이 함수 재사용만으로 해결한다(사용자 요청).
+  function spawnOverloadExplodeFx(atEl){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.className = 'overload-explode-fx';
+    if(atEl && atEl.offsetParent){
+      const stageRect = stage.getBoundingClientRect();
+      const tRect = atEl.getBoundingClientRect();
+      const cx = tRect.left + tRect.width*0.5;
+      const cy = tRect.top + tRect.height*0.35;
+      el.style.left = Math.round(cx - stageRect.left) + 'px';
+      el.style.top = Math.round(cy - stageRect.top) + 'px';
+    }
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 550);
+  }
+  // 포탑/오메가 자동 틱 전용 경량 스파크(사용자 요청 — 폭주 사출용 큰
+  // 이미지는 자동 평타치고 너무 쎔). 빔/폭발 이미지 없이 적 위치에 작고
+  // 빠른 CSS 플래시만 띄운다.
+  function spawnRigTickSpark(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.className = 'rig-tick-spark';
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 320);
+  }
+  // 현재 배치된 장치 구성을 보고 사출 연출을 정한다(사용자 요청). 오메가
+  // 유닛(#bt-rigomega, battleFlags.omegaRig)은 빔 대신 그 자리에서 폭발
+  // 이미지가 바로 터지는 것으로 단순화했다. 일반 포탑(battleFlags.rig/rig2,
+  // rigKind:'turret')은 그 포탑이 실제로 놓인 DOM 요소(#bt-rig1/#bt-rig2)
+  // 위치에서 빔이 나간다. 아무 장치도 없으면(폭주 화부는 마스터리로 포탑
+  // 없이도 압력이 쌓일 수 있다) 화면 왼쪽 아래 구석을 기본값으로 쓴다.
+  function spawnOverloadJetBurst(){
+    const hasOmega = !!(battleFlags && battleFlags.omegaRig && battleFlags.omegaRig.turnsLeft>0);
+    if(hasOmega){
+      spawnOverloadExplodeFx(document.getElementById('bt-rigomega'));
+      return;
+    }
+    const rig2Active = !!(battleFlags && battleFlags.rig2 && battleFlags.rig2.turnsLeft>0);
+    const rig1Active = !!(battleFlags && battleFlags.rig && battleFlags.rig.turnsLeft>0);
+    // rig(왼쪽 슬롯)가 비어있고 rig2(오른쪽 슬롯)만 차 있는 드문 경우에만
+    // 오른쪽에서 발사하고, 그 외(둘 다 있거나 둘 다 없거나)엔 왼쪽 기준.
+    const fromRight = !rig1Active && rig2Active;
+    const targetEl = document.getElementById(fromRight ? 'bt-rig2' : 'bt-rig1');
+    spawnOverloadJetFx(fromRight, targetEl);
   }
 
   // 사기꾼 "이중주사위" 전용 연출(사용자 요청 — 나란히 굴러가는 주사위 2개).
@@ -694,6 +827,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const el = document.getElementById(id);
     if(!el) return;
     el.classList.remove('rig-fire'); void el.offsetWidth; el.classList.add('rig-fire');
+  }
+
+  // 장치 소환 입장 연출(사용자 요청 — 오메가 유닛 투입이 심심함). 배치
+  // 코드가 updateRigVisuals()로 화면에 이미 그려 넣은 직후 한 번만 호출한다
+  // (renderOneRigSlot 안에 넣으면 매 턴 재렌더링될 때마다 재생돼버림).
+  function flashRigDeploy(slotKey){
+    const id = slotKey==='rig' ? 'bt-rig1' : slotKey==='rig2' ? 'bt-rig2' : 'bt-rigomega';
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.classList.remove('rig-deploy-in'); void el.offsetWidth; el.classList.add('rig-deploy-in');
   }
 
   function updateStatusBadges(){

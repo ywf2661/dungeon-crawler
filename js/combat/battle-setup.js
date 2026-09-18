@@ -716,6 +716,33 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     return true;
   }
 
+  // 시간의 파수꾼(timeguardian) 전용 직업 반응 — 사용자 기획: 파수꾼의
+  // 정체(시간 오류의 틈으로 끌려온 과거의 아코스)는 게임 내에 직접 밝히지
+  // 않는다(8장 간접 서술 원칙). 대신 아코스와 가장 직접적으로 얽힌
+  // 회랑의 기사(칼리버X)는 검이 격렬히 반응하는 것으로, 같은 "시간" 테마를
+  // 공유하는 시간술사/찰나의 검사는 이질감/공명으로 각각 암시만 준다.
+  // 고정 중간보스(nodeMidboss 소비 1회성)라 런당 최대 1회만 마주치므로
+  // 별도 확률/카운터 없이 항상 발동한다.
+  const TIME_GUARDIAN_KNIGHT_LINE = ['칼리버 X가 갑자기 무겁게 진동한다. 칼날 전체가 미세하게 떨린다.', '손끝까지 타고 오르는 낯선 저릿함 — 마치 검 자체가, 저 갑주를 알아보기라도 하듯.'];
+  const TIME_GUARDIAN_TIMEMAGE_LINES = ['...이 존재도, 어딘가에서 시간을 빌려온 걸까.', '아니, 다르다. 이건 그 누구에게도 빌리지 못한 시간이다.'];
+  const TIME_GUARDIAN_CHALNA_LINES = ['벨 때마다 손끝에 스며드는 그 찰나의 감각이, 이번엔 거꾸로 나를 벤다.', '...이 안에 갇힌 순간은, 대체 누구의 것이었을까.'];
+  function maybeShowTimeGuardianJobDialogue(){
+    if(!enemy || enemy.type !== 'timeguardian') return false;
+    if(player.specialization === 'paladin_knight'){
+      showDialogueSequence(TIME_GUARDIAN_KNIGHT_LINE, {title: enemy.name});
+      return true;
+    }
+    if(player.specialization === 'mage_time'){
+      showDialogueSequence(TIME_GUARDIAN_TIMEMAGE_LINES, {title: enemy.name});
+      return true;
+    }
+    if(player.specialization === 'warrior_chalna'){
+      showDialogueSequence(TIME_GUARDIAN_CHALNA_LINES, {title: enemy.name});
+      return true;
+    }
+    return false;
+  }
+
   // 아이온(시간의 마녀) 본체와의 조우 — 회랑의 기사(칼리버 X 단계별) 또는
   // 아코스의 유품 착용자가 마녀와 직접 마주하는, 서사적으로 가장 무거운
   // 순간. isTrueFinal 전투는 런당 최대 1회뿐이라 빈도 조절이 필요 없다.
@@ -738,12 +765,27 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     ],
   };
   const AION_KEEPSAKE_LINE = ['그녀의 시선이 그대의 손끝에 멈춘다. 아주 오랫동안.', '"...그건 왜 네가 가지고 있지." 목소리에 억누른 무언가가 스며 있다.'];
+  // 원혼강탈자가 시간의 파수꾼을 계약(player.necroSummonType, 마을에서
+  // 고정한 영구 계약이라 이 전투에 실제로 소환했는지와 무관하게 체크
+  // 가능)한 채로 아이온과 조우했을 때(사용자 기획). 아이온 본인도 파수꾼이
+  // 자신의 마법이 남긴 부산물인 줄 모른다는 설정 — 당혹해서 스스로에게
+  // 설명하려다 끝내 실패하고 말을 돌린다. 기사 형상이라는 단서에 무의식적
+  // 동요를 살짝 비치되, 이름은 여전히 직접 말하지 않는다(8장 원칙 유지).
+  const AION_TIMEGUARDIAN_CONTRACT_LINES = [
+    '"...저건, 대체 뭐지?" 그녀의 눈이 가늘어진다.',
+    '"내가 만든 것들은... 전부 알고 있었을 텐데." 스스로에게 답하려는 듯 중얼거리지만, 목소리 끝이 흔들린다.',
+    '끝내 말을 잇지 못한 채, 그녀는 시선을 거둔다. "...아니다. 신경 쓰지 마라."',
+  ];
   function maybeShowAionEncounterDialogue(isTrueFinal){
     if(!isTrueFinal || enemy.type !== 'timewitch') return false;
     if(player.specialization === 'paladin_knight'){
       const stage = (player.equipment && player.equipment.weapon) || 'caliberx_1';
       const lines = AION_KNIGHT_LINES_BY_STAGE[stage] || AION_KNIGHT_LINES_BY_STAGE.caliberx_1;
       showDialogueSequence(lines, {title: enemy.name, tone:'grand'});
+      return true;
+    }
+    if(player.necroSummonType === 'timeguardian'){
+      showDialogueSequence(AION_TIMEGUARDIAN_CONTRACT_LINES, {title: enemy.name, tone:'grand'});
       return true;
     }
     if(player.equipment && player.equipment.accessory === 'r_achoskeepsake'){
@@ -797,10 +839,12 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
 
   // startBattle() 맨 끝에서 호출되는 진입점 — 우선순위: 아이온 조우 > 역병숙주-시조
   // 조우 > 거꾸로 된 왕관-시조 조우(셋 다 isTrueFinal 전용, enemy.type/보유
-  // 유물로 상호배타적) > 거울 보스 > 아이온 공명 > 회랑의 기사/시간술사 >
-  // 유품 착용자 > 엿듣기 > 마녀의 시계.
+  // 유물로 상호배타적) > 시간의 파수꾼 직업 반응(enemy.type==='timeguardian'
+  // 전용이라 다른 항목과 겹칠 일 없음) > 거울 보스 > 아이온 공명 >
+  // 회랑의 기사/시간술사 > 유품 착용자 > 엿듣기 > 마녀의 시계.
   function maybeShowSpecialEncounterDialogue(isBoss, isFinal, isTrueFinal){
     if(maybeShowAionEncounterDialogue(isTrueFinal)) return;
+    if(maybeShowTimeGuardianJobDialogue()) return;
     if(maybeShowPlagueHostProgenitorDialogue(isTrueFinal)) return;
     if(maybeShowReverseCrownProgenitorDialogue(isTrueFinal)) return;
     if(maybeShowMirrorBossDialogue(isFinal, isTrueFinal)) return;

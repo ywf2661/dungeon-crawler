@@ -367,6 +367,18 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       if(rig.kind==='omega') Sound.bomb();
       else if(['recon','firepower','shield'].includes(rig.kind)) Sound.droneAttack();
       else Sound.hit();
+      // 자동 틱 VFX(사용자 요청 — "포탑들이 공격할 때 뿅뿅거리는게 너무
+      // 심심함"): 기존엔 데미지 숫자 팝업 하나뿐이라 화면에 아무 이펙트가
+      // 없었다. [수정] 처음엔 폭주 사출용 전용 이미지(overload_jet/explode.png)를
+      // 그대로 재사용했는데, "자동 평타치고 너무 쎄다"는 피드백으로 매 라운드
+      // 자동 발동하는 이 틱에는 경량 스파크(spawnRigTickSpark, 새 이미지 없는
+      // 작은 CSS 플래시)만 쓰기로 바꿨다 — 큰 빔/폭발 이미지는 플레이어가 직접
+      // 누르는 폭주 사출 액티브 전용으로 남겨 "평타 대 필살기"의 무게 차이를
+      // 살린다. 정찰/화력/방벽 드론과 강령술사 소환수는 이미 자기만의 호버링
+      // 애니메이션/사운드가 있어 대상에서 제외.
+      if(rig.kind==='turret' || rig.kind==='omega'){
+        if(typeof spawnRigTickSpark==='function') spawnRigTickSpark();
+      }
       // 메카닉 리뉴얼(사용자 요청) — 장치가 사격할 때마다 압력도 함께 쌓는다.
       let pressureMsg = '';
       if(rig.pressurePerTick && battleFlags){
@@ -399,7 +411,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 패시브에서 "혼백 해방" 액티브 스킬로 교체되었다(player-actions.js의
       // necroRelease 분기 참고) — 플레이어가 직접 타이밍을 골라 터뜨린다.
       const lastRitesMsg = '';
-      if(expired) battleFlags[slotKey] = null;
+      if(expired){
+        battleFlags[slotKey] = null;
+        // 결속의 각인(re_conjurer_bond, 원혼 강탈자 방어구): 소환수가 자연
+        // 소멸해도 쌓인 방어력 스택이 함께 초기화된다.
+        if(slotKey==='necroPet'){ battleFlags.necroBondStacks = 0; battleFlags.necroBondShieldPct = 0; }
+      }
       renderStatus();
       updateRigVisuals();
       if(checkBattleEnd()) return;
@@ -1029,6 +1046,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
       if(battleFlags && battleFlags.omegaRig && battleFlags.omegaRig.shieldPct){
         reduceMult -= battleFlags.omegaRig.shieldPct;
+      }
+      // 결속의 각인(re_conjurer_bond) — necroCommand 분기에서 쌓아둔 스택(최대 15%).
+      if(battleFlags && battleFlags.necroBondShieldPct){
+        reduceMult -= battleFlags.necroBondShieldPct;
       }
       reduceMult += getRelicSum('dmgTakenPctMult');
       // 잔심의 각인(ch_lingering) — 위에서 계산해둔 hasLingering 재사용.

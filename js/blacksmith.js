@@ -206,6 +206,17 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
     // 판을 +21% 끌어올려주는 지점이었음(30%는 평균까지 과하게 깎여서 기각).
     ch_grace: {slot:'accessory', specId:'warrior_chalna', name:'유예의 각인', prefix:'유예의',
       desc:'찰나의 유지시간이 1턴 늘어나 다다음 내 턴까지 이을 수 있게 된다. 대신 예약 시 소모하는 MP가 20% 늘어난다.'},
+    // 원혼 강탈자(rogue_conjurer) 신규 각인 3종(사용자 기획). 강령 소환/원혼의
+    // 명령/혼백 해방 세 스킬을 각각 무기(화력+리스크)/방어구(명령 스택 생존형)/
+    // 장신구(해방 특성 재발동) 축으로 나눠 강화한다. 실제 발동은
+    // combat/player-actions.js의 necrosummon2/necroCommand/necroRelease 분기에서
+    // player.equipment.weapon/armor/accessory에 getEnhancementsFor()로 조회한다.
+    re_conjurer_gluttony: {slot:'weapon', specId:'rogue_conjurer', name:'폭식하는 원혼 각인', prefix:'폭식하는',
+      desc:'강령 소환으로 부르는 소환수의 공격력이 30% 늘어난다. 대신 소환 유지시간이 4턴에서 3턴으로 줄어든다.'},
+    re_conjurer_bond: {slot:'armor', specId:'rogue_conjurer', name:'결속의 각인', prefix:'결속의',
+      desc:'원혼의 명령을 쓸 때마다 이번 전투 동안 유지되는 방어력이 3%p씩 쌓인다(최대 5스택, 15%). 소환수가 소멸하면 스택이 초기화된다.'},
+    re_conjurer_residue: {slot:'accessory', specId:'rogue_conjurer', name:'잔혼의 각인', prefix:'잔혼의',
+      desc:'혼백 해방으로 소환수를 해방시키면, 소환수의 특성(흡혈/저주 전이/회복/도둑질)이 폭발 피해와 별개로 한 번 더 확정 발동한다. 대신 해방 자체의 폭발 배율이 20% 줄어든다.'},
   };
   Object.assign(ENHANCEMENTS, EPIC_JOB_ENCHANTS);
 
