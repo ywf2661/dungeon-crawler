@@ -124,7 +124,7 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         // 별도 skillId를 새로 만들지 않고 combat/enemy-turn.js의 방어 판정부에서
         // player.specialization==='warrior_purist'로 직접 분기한다 — activeSkillId는
         // 여전히 null이지만, 전직 각성 안내 문구/UI에 노출되도록 이름/설명만 채운다.
-        activeName:'간파', activeDesc:'방어태세를 쓰면 40% 확률로 적 공격을 완전히 무효화하고 그 자리에서 곧장 되받아친다. 실패해도 방어 효과는 그대로 유지된다.', activeSkillId:null,
+        activeName:'간파', activeDesc:'적의 공격을 꿰뚫어보고 되받아친다. 40% 확률로 공격을 완전히 무효화하며 그 자리에서 곧장 반격한다. 성공하면 메아리 타격 스택도 2개 즉시 쌓인다. 실패해도 방어 효과는 그대로 유지된다.', activeSkillId:null,
         // 레벨12: 메아리 타격(짝수 번째 기본 공격 강화), 레벨15: 쌍격의 파문(확률로
         // 기본 공격이 한 번 더 나감). 전부 combat/player-actions.js의 playerAttack()
         // 안에서 직접 처리한다.

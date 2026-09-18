@@ -1028,9 +1028,16 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       const kindTag = isPassive
         ? `<span class="skill-kind-tag passive">⚙ 패시브</span>`
         : `<span class="skill-kind-tag active">⚔ 액티브</span>`;
+      // 간파(일격의 구도자 전용) — 전투 중 스킬 목록과 동일한 이름/설명
+      // 바꿔치기를 상태창에도 적용(사용자 요청).
+      let skName = sk.name, skDesc = sk.desc||'';
+      if(k==='guard' && player.specialization==='warrior_purist'){
+        skName = '간파';
+        skDesc = '적의 공격을 꿰뚫어보고 되받아친다. 40% 확률로 공격을 완전히 무효화하며 그 자리에서 곧장 반격한다. 성공하면 메아리 타격 스택도 2개 즉시 쌓인다. 실패해도 방어 효과는 그대로 유지된다.';
+      }
       return `<div class="shop-item" style="border-left:3px solid ${borderColor}; padding-left:8px;">
-        <span class="si-info"><span class="si-name"><b>${sk.name}</b></span> ${kindTag}<br>
-        <span style="font-size:12px; color:var(--parchment-dim);">${sk.desc||''}</span></span>
+        <span class="si-info"><span class="si-name"><b>${skName}</b></span> ${kindTag}<br>
+        <span style="font-size:12px; color:var(--parchment-dim);">${skDesc}</span></span>
       </div>`;
     }).join('');
     const overlay = document.createElement('div');
@@ -1139,6 +1146,14 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         if(s.type==='chalnaStrike' && battleFlags && battleFlags.chalnaReserve){
           const combo = CHALNA_COMBOS[[battleFlags.chalnaReserve.beat, s.beat].sort().join('+')];
           if(combo){ displayName = combo.name; displayDesc = combo.desc; displayHanja = combo.hanja; }
+        }
+        // 간파(일격의 구도자 전용, 사용자 제보 — "방어를 간파로 바꾸는 건
+        // 안 했냐"): activeSkillId 없이 방어태세(guard, 전 직업 공용)에 전용
+        // 효과만 얹은 구조라(data/jobs.js 주석 참고) 실제 시전 로직은 그대로
+        // guard 타입을 타지만, 목록 표시만 이 직업일 때 "간파"로 바꿔친다.
+        if(s.type==='guard' && player.specialization==='warrior_purist'){
+          displayName = '간파';
+          displayDesc = '적의 공격을 꿰뚫어보고 되받아친다. 40% 확률로 공격을 완전히 무효화하며 그 자리에서 곧장 반격한다. 성공하면 메아리 타격 스택도 2개 즉시 쌓인다. 실패해도 방어 효과는 그대로 유지된다.';
         }
         // 원혼의 명령(necroCommand, 원혼강탈자 레벨12): 계약 중인 소환수가
         // 보스(data/monsters.js의 BOSS_SIGNATURE_SKILLS에 등록된 종류)면
