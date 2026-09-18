@@ -238,6 +238,16 @@
   .job-chip.locked{opacity:.4; cursor:not-allowed;}
   .job-chip.locked:hover{border-color:#4a3a24;}
 
+  /* .job-card-grid: 전직(2차 분기) 선택 화면(job-advancement.js) 전용 그리드
+     컨테이너. 예전엔 타이틀 화면과 .job-select를 공유했는데, 타이틀 화면이
+     세로 리스트+아코디언으로 바뀌면서 그 .job-select도 column 레이아웃으로
+     바뀌어 전직 카드까지 세로로 쌓여버리는 회귀가 생겼다(버그 리포트로 발견).
+     둘은 이제 다른 레이아웃이 필요하므로 컨테이너를 분리한다. */
+  .job-card-grid{
+    display:flex; flex-wrap:wrap; justify-content:center; align-content:flex-start;
+    gap:7px; width:100%; max-width:420px;
+    flex-shrink:0;
+  }
   /* .job-card: 전직(2차 분기) 선택 화면(job-advancement.js)에서 계속 쓰는
      카드형 스타일. 타이틀 화면 직업 선택은 위 .job-chip(세로 리스트+아코디언)로
      분리됐지만, 분기 수가 적은(보통 2~3개) 전직 화면은 기존 카드형이 더 알아보기 쉬워 유지한다. */

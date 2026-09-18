@@ -43,7 +43,7 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     panel.innerHTML = `<h3>전직의 때가 왔다!</h3>
       ${introHtml}
       <p class="relic-lock-msg" id="jobadv-lock-msg">내용을 살펴보는 중…</p>
-      <div class="job-select" id="jobadv-select"></div>`;
+      <div class="job-card-grid" id="jobadv-select"></div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
     const grid = panel.querySelector('#jobadv-select');
