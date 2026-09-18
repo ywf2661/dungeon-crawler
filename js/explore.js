@@ -24,6 +24,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   // onAdvance() 내부에서 depth 증가 등은 동기적으로 즉시 일어나지만, 이어지는 전투/제단
   // 진입은 setTimeout(350~500ms)으로 지연되어 그 사이 버튼이 계속 클릭 가능한 상태로 남는다.
   let exploreAdvanceLock = false;
+  // 확정 시작 저주(사용자 기획) — startGame()에서 적용된 저주의 id를 잠깐
+  // 들고 있다가, finishNewGameStart()(시작 유물을 다 고른 뒤 마을에 들어서는
+  // 시점)에서 토스트로 알린다. 문지기 대화보다 먼저 토스트가 튀어나오는
+  // 문제를 피하려고 타이밍을 분리했다.
+  let pendingStartingCurseId = null;
 
   function startGame(isContinue){
     if(isContinue && window.__savedGame){
@@ -182,8 +187,9 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     // 확정 시작 저주(사용자 기획 — 난이도 상승 장치): 보통/하드코어는 런
     // 시작과 동시에 영구 저주 하나를 무작위로 짊어진다. 쉬움은 제외.
     // relics.js의 PERMANENT_CURSE_POOL(10종)에서 무작위 1개.
+    pendingStartingCurseId = null;
     if(player.difficulty==='normal' || player.difficulty==='hardcore'){
-      applyStartingCurse();
+      pendingStartingCurseId = applyStartingCurse();
     }
     depth = 0; town = true; enemy = null; battleOver = false; subMode = null;
     inBossDen = false; bossDenFloor = 0;
@@ -351,6 +357,13 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     showScreen('explore');
     renderStatus();
     renderExplore(['회랑 어귀에 첫 발을 내디뎠다.', {text:'💡 상단의 이름과 레벨을 누르면 언제든 상태창(능력치·스킬 목록)을 볼 수 있다.', cls:'warn'}]);
+    // 확정 시작 저주(사용자 기획) — 시작 유물까지 다 고른 뒤, 실제로 마을에
+    // 들어서는 이 시점에 토스트로 알린다(startGame()에서 curse는 이미 적용됨).
+    if(pendingStartingCurseId && typeof showToast==='function'){
+      const r = RELICS[pendingStartingCurseId];
+      showToast(`<h3>☠ ${r ? r.name : '저주'}</h3><p>사악한 기운이 그대의 영혼에 낙인을 새겼다. 유물창(✦)을 열면 확인할 수 있다.</p>`, '#9a5aff');
+    }
+    pendingStartingCurseId = null;
     saveGame();
   }
 

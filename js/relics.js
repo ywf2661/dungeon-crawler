@@ -188,6 +188,9 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
 
   // 확정 시작 저주(사용자 기획) — 유물과 결속되지 않은 단독 영구 저주.
   // player.tempCurses에 기록하지 않으므로(=영구) 구간 보스로도 안 풀린다.
+  // 토스트는 여기서 띄우지 않는다 — 오프닝 심리테스트/시작 유물 선택
+  // 화면보다 먼저 나와버리는 문제가 있어, explore.js의 finishNewGameStart()가
+  // 시작 유물을 다 고른 뒤 타이밍에 대신 띄운다.
   function applyStartingCurse(){
     const id = rollPermanentCurse();
     if(!id) return null;
@@ -688,6 +691,10 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     opts = opts || {};
     const namedCount = opts.namedCount || 2;
     let rerollLeft = opts.freeReroll ? 1 : 0;
+    // 게임 시작 시 첫 유물 제단(atDepth===0, origin.js에서 호출) — 어차피
+    // 확정 시작 저주로 하나는 이미 짊어지므로, 시작 유물 선택 자체에는
+    // 저주가 묶이지 않는다.
+    const isStartAltar = atDepth===0;
     let choices, mysteryIdx;
     ({choices, mysteryIdx} = rollRelicChoices(namedCount));
     if(!choices.length){ if(typeof onDone==='function') onDone(); return; } // 고를 수 있는 신규 유물이 더 없다
@@ -695,9 +702,11 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     // 제외한) 선택지 중 하나가 몰래 저주와 묶여 나온다. 카드 겉모습은 완전히
     // 평범하다 — 고른 순간에만 발각된다(applyCursedRelicBundle의 토스트).
     let cursedIdx = -1;
-    const cursedCandidates = choices.map((_,i)=>i).filter(i=>i!==mysteryIdx);
-    if(cursedCandidates.length && Math.random() < 0.20){
-      cursedIdx = cursedCandidates[Math.floor(Math.random()*cursedCandidates.length)];
+    if(!isStartAltar){
+      const cursedCandidates = choices.map((_,i)=>i).filter(i=>i!==mysteryIdx);
+      if(cursedCandidates.length && Math.random() < 0.20){
+        cursedIdx = cursedCandidates[Math.floor(Math.random()*cursedCandidates.length)];
+      }
     }
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
     const overlay = document.createElement('div');
@@ -709,9 +718,13 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     const slotNote = slotUsage>=player.relicSlots
       ? `<p style="text-align:center;color:#ff9a7a;font-size:12px;margin:0 0 8px;">유물 슬롯(${player.relicSlots})이 가득 찼다. 새 유물을 고르면 하나를 내려놓아야 한다.</p>`
       : `<p style="text-align:center;color:var(--parchment-dim);font-size:12px;margin:0 0 8px;">유물 슬롯 ${slotUsage}/${player.relicSlots}</p>`;
-    const skipCost = getRelicSkipCost();
+    // 시작 제단(atDepth===0)은 고르지 않아도 골드를 받지 않는다 — 아직
+    // 골드가 없는 시점이라 사실상 강제 선택이 되는 문제를 막기 위함. 이후
+    // 던전 내 제단(6/12/18층…)은 기존 그대로 유료.
+    const skipCost = isStartAltar ? 0 : getRelicSkipCost();
     const canSkip = player.gold >= skipCost;
-    const countWord = {2:'세', 3:'네'}[choices.length] || String(choices.length);
+    // choices.length = namedCount(2 또는 3) + ？？？ 슬롯 1개 = 3장 또는 4장.
+    const countWord = {3:'세', 4:'네'}[choices.length] || String(choices.length);
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
 
@@ -739,7 +752,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
         </div>
         <div style="text-align:center; margin-top:10px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
           ${rerollLeft>0 ? `<button class="link-btn" id="relic-reroll-btn" disabled>다시 굴린다 (무료, 1회)</button>` : ''}
-          <button class="link-btn" id="relic-skip-btn" disabled>${canSkip ? `고르지 않는다 (골드 ${skipCost} 소모)` : `고르지 않는다 (골드 부족, ${skipCost} 필요)`}</button>
+          <button class="link-btn" id="relic-skip-btn" disabled>${skipCost===0 ? '고르지 않는다 (무료)' : (canSkip ? `고르지 않는다 (골드 ${skipCost} 소모)` : `고르지 않는다 (골드 부족, ${skipCost} 필요)`)}</button>
         </div>`;
 
       const LOCK_MS = 1500;
@@ -786,14 +799,18 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
       if(skipBtn){
         skipBtn.addEventListener('click', ()=>{
           if(skipBtn.disabled) return;
-          const cost = getRelicSkipCost();
+          const cost = isStartAltar ? 0 : getRelicSkipCost();
           if(player.gold < cost) return;
-          player.gold -= cost;
-          player.relicSkipRerollCount = (player.relicSkipRerollCount||0) + 1;
+          if(cost>0){
+            player.gold -= cost;
+            // 무료인 시작 제단 스킵은 이후 던전 내 제단의 누적 상승 비용에
+            // 영향을 주지 않는다 — 카운터를 올리지 않는다.
+            player.relicSkipRerollCount = (player.relicSkipRerollCount||0) + 1;
+          }
           renderStatus();
           saveGame();
           overlay.remove();
-          addLog(`골드 ${cost}을(를) 지불하고 제단을 뒤로했다.`, 'warn');
+          addLog(cost>0 ? `골드 ${cost}을(를) 지불하고 제단을 뒤로했다.` : '제단을 뒤로했다.', 'warn');
           if(typeof onDone==='function') onDone();
         });
       }
