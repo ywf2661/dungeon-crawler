@@ -28,14 +28,14 @@ export(전역): init, showMaintenanceModal, isAdminName
       block.style.display = 'flex';
       divider.style.display = 'flex';
       toggleBtn.style.display = 'inline-block';
-      panel.style.display = 'none';
+      panel.classList.add('collapsed');
       toggleBtn.classList.remove('open');
       label.textContent = '🗡️ 새로운 모험을 시작하다';
     } else {
       block.style.display = 'none';
       divider.style.display = 'none';
       toggleBtn.style.display = 'none';
-      panel.style.display = 'flex';
+      panel.classList.remove('collapsed');
     }
   }
 
@@ -108,8 +108,8 @@ export(전역): init, showMaintenanceModal, isAdminName
       const panel = document.getElementById('newgame-panel');
       const toggleBtn = document.getElementById('btn-newgame-toggle');
       const label = document.getElementById('btn-newgame-label');
-      const open = panel.style.display === 'none';
-      panel.style.display = open ? 'flex' : 'none';
+      const open = panel.classList.contains('collapsed');
+      panel.classList.toggle('collapsed', !open);
       toggleBtn.classList.toggle('open', open);
       label.textContent = open ? '접기' : '🗡️ 새로운 모험을 시작하다';
       if(open) document.getElementById('name-input').focus();
