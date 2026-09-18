@@ -13,11 +13,55 @@ export(전역): init, showMaintenanceModal, isAdminName
     return raw.trim() === 'admin';
   }
 
+  // 이어서 하다 / 새로운 모험을 시작하다 흐름 전환(사용자 요청 — 두 동작이
+  // 한 화면에 섞여 보이지 않도록 분리). 세이브가 있으면 "이어서 하다"를
+  // 히어로 버튼으로 세우고 새 캐릭터 생성 패널은 접어 둔다. 세이브가 없으면
+  // (또는 삭제/게임 종료로 없어지면) 생성 패널을 바로 펼쳐 보여준다.
+  function refreshContinueUI(hasSave, info){
+    const block = document.getElementById('continue-block');
+    const divider = document.getElementById('newgame-divider');
+    const toggleBtn = document.getElementById('btn-newgame-toggle');
+    const panel = document.getElementById('newgame-panel');
+    const label = document.getElementById('btn-newgame-label');
+    if(hasSave){
+      document.getElementById('continue-info').textContent = info;
+      block.style.display = 'flex';
+      divider.style.display = 'flex';
+      toggleBtn.style.display = 'inline-block';
+      panel.style.display = 'none';
+      toggleBtn.classList.remove('open');
+      label.textContent = '🗡️ 새로운 모험을 시작하다';
+    } else {
+      block.style.display = 'none';
+      divider.style.display = 'none';
+      toggleBtn.style.display = 'none';
+      panel.style.display = 'flex';
+    }
+  }
+
+  // 타이틀 화면 잉걸불 파티클 생성(사용자 승인 목업 반영). 한 번만 생성해두면
+  // CSS 애니메이션이 알아서 반복 재생되므로 매번 다시 만들 필요는 없다.
+  function spawnTitleEmbers(){
+    const host = document.getElementById('title-embers');
+    if(!host || host.childElementCount) return;
+    const n = 14;
+    for(let i=0;i<n;i++){
+      const e = document.createElement('div');
+      e.className = 'ember';
+      e.style.left = (Math.random()*100)+'%';
+      e.style.setProperty('--drift', (Math.random()*28-14).toFixed(0)+'px');
+      e.style.animationDuration = (5+Math.random()*5)+'s';
+      e.style.animationDelay = '-'+(Math.random()*8)+'s';
+      host.appendChild(e);
+    }
+  }
+
   function init(){
     town = true; depth = 0; battleOver=false; subMode=null;
     inBossDen = false; bossDenFloor = 0;
     renderJobSelect();
     renderDifficultySelect();
+    spawnTitleEmbers();
 
     // 사운드 토글 버튼 — 최초 클릭 시 AudioContext를 깨워 브라우저 자동재생 제한을 해제한다
     const soundBtn = document.getElementById('sound-toggle');
@@ -58,9 +102,17 @@ export(전역): init, showMaintenanceModal, isAdminName
     });
     document.getElementById('btn-delete-save').addEventListener('click', async ()=>{
       await deleteSave();
-      document.getElementById('continue-info').style.display='none';
-      document.getElementById('btn-continue').style.display='none';
-      document.getElementById('btn-delete-save').style.display='none';
+      refreshContinueUI(false);
+    });
+    document.getElementById('btn-newgame-toggle').addEventListener('click', ()=>{
+      const panel = document.getElementById('newgame-panel');
+      const toggleBtn = document.getElementById('btn-newgame-toggle');
+      const label = document.getElementById('btn-newgame-label');
+      const open = panel.style.display === 'none';
+      panel.style.display = open ? 'flex' : 'none';
+      toggleBtn.classList.toggle('open', open);
+      label.textContent = open ? '접기' : '🗡️ 새로운 모험을 시작하다';
+      if(open) document.getElementById('name-input').focus();
     });
     document.getElementById('btn-relicdex').addEventListener('click', ()=>{ showRelicDex(); });
     document.getElementById('btn-monsterdex').addEventListener('click', ()=>{ showMonsterDex(); });
@@ -102,9 +154,7 @@ export(전역): init, showMaintenanceModal, isAdminName
       const newlyUnlocked = await checkAchievements(player, record, allRecords);
       await deleteSave();
       window.__savedGame = null;
-      document.getElementById('continue-info').style.display='none';
-      document.getElementById('btn-continue').style.display='none';
-      document.getElementById('btn-delete-save').style.display='none';
+      refreshContinueUI(false);
       document.getElementById('statusbar').style.display='none';
       showScreen('title');
       if(newlyUnlocked.length) showAchievementToast(newlyUnlocked);
@@ -163,11 +213,7 @@ export(전역): init, showMaintenanceModal, isAdminName
         const savedSpec = getSpecialization(saved.player);
         const savedHybrid = !savedSpec ? getHybrid(saved.player) : null; // 레거시 하이브리드 과도기 캐릭터용 폴백
         const jobLabel = savedSpec ? `${savedSpec.icon} ${savedSpec.name}` : (savedHybrid ? `${savedHybrid.icon} ${savedHybrid.name}` : `${savedJob.icon} ${savedJob.name}`);
-        document.getElementById('continue-info').textContent =
-          `${saved.player.name} · ${jobLabel} · Lv.${saved.player.level} · ${saved.town?'마을':'깊이 '+saved.depth}`;
-        document.getElementById('continue-info').style.display='block';
-        document.getElementById('btn-continue').style.display='inline-block';
-        document.getElementById('btn-delete-save').style.display='inline-block';
+        refreshContinueUI(true, `${saved.player.name} · ${jobLabel} · Lv.${saved.player.level} · ${saved.town?'마을':'깊이 '+saved.depth}`);
       }
     }).catch(e=>{ console.warn('불러오기 실패(무시):', e); });
 
