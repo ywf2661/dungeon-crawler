@@ -253,11 +253,11 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   }
   // 삼박난무 전용 — 베는 동작을 하는 사람 형상(사용자 제공 스프라이트 3종)을
   // spawnSlashImageFx와 동일한 무작위 위치/회전/반전으로 뿌린다.
-  const CHALNA_FIGURE_IMAGES = ['images/vfx/chalna_figure_1.png','images/vfx/chalna_figure_2.png','images/vfx/chalna_figure_3.png'];
+  const CHALNA_FIGURE_IMAGES = ['images/vfx/chalna_figure_1.webp','images/vfx/chalna_figure_2.webp','images/vfx/chalna_figure_3.webp'];
   // 백귀야행(환영도적) 전용 — 사용자가 직접 준비한 전용 슬래시 이미지 1장.
   // 사람 형상이 아니라 대각선 검광/잔영 덩어리라, opts.images로 넘겨서
   // spawnFigureSlashFx()의 기존 무작위 위치/회전/반전 로직을 그대로 재사용한다.
-  const PHANTOM_SLASH_IMAGES = ['images/vfx/phantom_slash.png'];
+  const PHANTOM_SLASH_IMAGES = ['images/vfx/phantom_slash.webp'];
   function spawnFigureSlashFx(opts){
     opts = opts || {};
     const stage = document.getElementById('bt-stage');
@@ -401,7 +401,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   }
 
   // 폭주 사출(mechanicOverloadDischarge) 전용 — 사용자가 직접 준비한 전용
-  // 이미지(images/vfx/overload_jet.png/overload_explode.png)를 재생한다.
+  // 이미지(images/vfx/overload_jet.webp/overload_explode.webp)를 재생한다.
   // spawnFrostFlashFx()와 동일한 생성 → setTimeout 제거 수명주기.
   //
   // [수정] 처음엔 .overload-jet-fx를 #bt-stage 구석에 고정 좌표(bottom/left)로
@@ -545,7 +545,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(!stage) return;
     const el = document.createElement('div');
     el.style.cssText = 'position:absolute; left:50%; top:42%; width:260px; height:260px; '
-      + "background-image:url('images/vfx/time_paradox_f01.png'); "
+      + "background-image:url('images/vfx/time_paradox_f01.webp'); "
       + 'background-size:contain; background-repeat:no-repeat; background-position:center; '
       + 'pointer-events:none; z-index:7; transform:translate(-50%,-50%); '
       + 'opacity:0; transition:opacity .15s ease-out;';
@@ -566,7 +566,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         }, 180);
         return;
       }
-      el.style.backgroundImage = `url('images/vfx/time_paradox_f${String(i).padStart(2,'0')}.png')`;
+      el.style.backgroundImage = `url('images/vfx/time_paradox_f${String(i).padStart(2,'0')}.webp')`;
     }, frameMs);
   }
 
@@ -626,7 +626,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(!stage) return;
     const el = document.createElement('div');
     el.style.cssText = "position:absolute; left:50%; top:42%; width:280px; height:280px; "
-      + "background-image:url('images/vfx/caliberx_finale.png'); background-size:contain; "
+      + "background-image:url('images/vfx/caliberx_finale.webp'); background-size:contain; "
       + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
       + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-4deg);";
     stage.appendChild(el);
@@ -649,7 +649,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(!stage) return;
     const el = document.createElement('div');
     el.style.cssText = "position:absolute; left:50%; top:42%; width:300px; height:300px; "
-      + "background-image:url('images/vfx/martyr_ultimate.png'); background-size:contain; "
+      + "background-image:url('images/vfx/martyr_ultimate.webp'); background-size:contain; "
       + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
       + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-4deg);";
     stage.appendChild(el);
@@ -677,7 +677,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(!stage) return;
     const el = document.createElement('div');
     el.style.cssText = "position:absolute; left:50%; top:42%; width:150px; height:150px; "
-      + "background-image:url('images/vfx/curse_nova.png'); background-size:contain; "
+      + "background-image:url('images/vfx/curse_nova.webp'); background-size:contain; "
       + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
       + "opacity:0; transform:translate(-50%,-50%) scale(0.85);";
     stage.appendChild(el);
@@ -699,7 +699,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(!stage) return;
     const el = document.createElement('div');
     el.style.cssText = "position:absolute; left:50%; top:42%; width:190px; height:190px; "
-      + "background-image:url('images/vfx/curse_brand.png'); background-size:contain; "
+      + "background-image:url('images/vfx/curse_brand.webp'); background-size:contain; "
       + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
       + "opacity:0; transform:translate(-50%,-50%) scale(0.8);";
     stage.appendChild(el);
@@ -720,7 +720,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(!stage) return;
     const el = document.createElement('div');
     el.style.cssText = "position:absolute; left:50%; top:42%; width:300px; height:300px; "
-      + "background-image:url('images/vfx/curse_bloom_ultimate.png'); background-size:contain; "
+      + "background-image:url('images/vfx/curse_bloom_ultimate.webp'); background-size:contain; "
       + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
       + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-4deg);";
     stage.appendChild(el);
@@ -736,7 +736,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 800);
   }
 
-  // 계약술사 원소 VFX(사용자 제공 images/vfx/<file>.png). tier 1=원소 각인,
+  // 계약술사 원소 VFX(사용자 제공 images/vfx/<file>.webp). tier 1=원소 각인,
   // 2=원소 파동, 3=원소 폭풍(궁극기) — 저주술사 3종과 같은 위상 규칙(크기·잔류
   // 시간이 점점 커지고, 궁극기만 회전+스케일 오버슛). 빙결/번개 이미지도 파일명만
   // 넘기면 그대로 재사용된다.
@@ -751,7 +751,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     ][tier];
     const el = document.createElement('div');
     el.style.cssText = "position:absolute; left:calc(50% + "+(dx||0)+"px); top:calc(42% + "+(dy||0)+"px); width:"+C.size+"px; height:"+C.size+"px; "
-      + "background-image:url('images/vfx/"+file+".png'); background-size:contain; "
+      + "background-image:url('images/vfx/"+file+".webp'); background-size:contain; "
       + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
       + "opacity:0; transform:translate(-50%,-50%) "+C.from+";";
     stage.appendChild(el);
@@ -1506,7 +1506,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   for(let i=1;i<=24;i++) names.push('time_paradox_f'+String(i).padStart(2,'0'));
   names.forEach(n=>{
     const img = new Image();
-    img.src = 'images/vfx/'+n+'.png';
+    img.src = 'images/vfx/'+n+'.webp';
     if(img.decode) img.decode().catch(()=>{});
   });
 })();

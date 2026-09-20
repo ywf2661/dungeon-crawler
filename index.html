@@ -490,7 +490,7 @@
   .slash-img-fx{
     position:absolute; width:220px; height:220px;
     left:var(--sx,50%); top:var(--sy,50%);
-    background-image:url('images/vfx/slash_ice.png');
+    background-image:url('images/vfx/slash_ice.webp');
     background-size:contain; background-repeat:no-repeat; background-position:center;
     pointer-events:none; z-index:6; opacity:0;
     animation:slashimgcut .22s ease-out forwards;
@@ -511,7 +511,7 @@
   .slash-img-fx.v7{ filter:hue-rotate(250deg) saturate(1.2) brightness(0.6) contrast(1.3); } /* 심연의 참격 */
   .slash-img-fx.v8::after, .slash-img-fx.v9::after{
     content:''; position:absolute; inset:0;
-    background-image:url('images/vfx/slash_ice.png');
+    background-image:url('images/vfx/slash_ice.webp');
     background-size:contain; background-repeat:no-repeat; background-position:center;
     opacity:.65;
   }
@@ -724,7 +724,7 @@
   .frost-flash-fx.echo{ animation-name: frostflashecho; }
 
   /* 폭주 사출(mechanicOverloadDischarge) 전용 연출(사용자 요청 — 손맛 개선).
-     사용자가 직접 준비한 전용 이미지 2장(images/vfx/overload_jet.png —
+     사용자가 직접 준비한 전용 이미지 2장(images/vfx/overload_jet.webp —
      포탑에서 뿜어져 나가는 대각선 증기/스파크 빔, overload_explode.png —
      적에게 명중하는 순간의 방사형 폭발) 재생. jet은 포신이 왼쪽 아래에서
      오른쪽 위를 향하는 구도(images/bot/autobot.png와 동일 앵글)로 그려져
@@ -753,7 +753,7 @@
      여기 bottom/left는 targetEl을 못 찾았을 때의 폴백 값으로만 쓰인다). */
   .overload-jet-fx{
     position:absolute; width:254px; height:190px; bottom:-10px; left:-30px;
-    background-image:url('images/vfx/overload_jet.png');
+    background-image:url('images/vfx/overload_jet.webp');
     background-size:contain; background-repeat:no-repeat; background-position:center;
     pointer-events:none; z-index:6; opacity:0; transform-origin:bottom left;
     animation: overloadjetpop .45s ease-out forwards;
@@ -769,7 +769,7 @@
   }
   .overload-explode-fx{
     position:absolute; left:50%; top:42%; width:280px; height:280px;
-    background-image:url('images/vfx/overload_explode.png');
+    background-image:url('images/vfx/overload_explode.webp');
     background-size:contain; background-repeat:no-repeat; background-position:center;
     pointer-events:none; z-index:7;
     animation: overloadexplodepop .55s ease-out forwards;
@@ -817,7 +817,7 @@
     color:#ffd25a;
   }
 
-  /* 시간의 파수꾼 스킬 전용 VFX 이미지 3종(사용자 제공, images/vfx/tg_*.png).
+  /* 시간의 파수꾼 스킬 전용 VFX 이미지 3종(사용자 제공, images/vfx/tg_*.webp).
      기존 .frost-flash-fx(섬광)/.screen-crack-fx(균열)에 겹쳐서 함께 재생된다
      — 하나만으론 밋밋하다는 사용자 피드백을 이번엔 이미지 레이어까지
      더해서 보강한다. */
@@ -836,10 +836,10 @@
     background-size:contain; background-repeat:no-repeat; background-position:center;
     pointer-events:none; z-index:7;
   }
-  .tg-vfx-img.frost{ background-image:url('images/vfx/tg_frost.png'); animation:tgvfxpop .7s ease-out forwards; }
+  .tg-vfx-img.frost{ background-image:url('images/vfx/tg_frost.webp'); animation:tgvfxpop .7s ease-out forwards; }
   .tg-vfx-img.frost.echo{ opacity:0.6; }
-  .tg-vfx-img.void{ background-image:url('images/vfx/tg_void.png'); animation:tgvfxsink .8s ease-in forwards; }
-  .tg-vfx-img.returnstrike{ background-image:url('images/vfx/tg_return.png'); animation:tgvfxpop .55s ease-out forwards; }
+  .tg-vfx-img.void{ background-image:url('images/vfx/tg_void.webp'); animation:tgvfxsink .8s ease-in forwards; }
+  .tg-vfx-img.returnstrike{ background-image:url('images/vfx/tg_return.webp'); animation:tgvfxpop .55s ease-out forwards; }
 
   /* 칼리버 X: 종언 / 불멸의 순교 전용 VFX 이미지는 combat/battle-fx.js의
      spawnCaliberXFx()/spawnMartyrFx()에서 인라인 스타일로 직접 제어한다
