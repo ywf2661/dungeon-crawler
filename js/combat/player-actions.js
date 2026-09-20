@@ -927,7 +927,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       brandDmg = applyOutgoingDamageMods(brandDmg, {type:'magicskill', mpCost, onHitMult:onHitMultBrand});
       enemy.hp = Math.max(0, enemy.hp-brandDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+brandDmg, curses>0?'crit':undefined);
-      Sound.magic(); playStatusFx('poison');
+      Sound.curseBrand(); playStatusFx('poison');
       if(typeof spawnCurseBrandFx==='function') spawnCurseBrandFx();
       applyDot({type:'poison', basis:'mag', ratio:dotRatioBrand, turns:s.dotTurns||4, label:'저주 각인'});
       renderStatus();
@@ -974,7 +974,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       bloomDmg = applyOutgoingDamageMods(bloomDmg, {type:'magicskill', mpCost, onHitMult:onHitMultBloom});
       enemy.hp = Math.max(0, enemy.hp-bloomDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+bloomDmg, 'crit');
-      Sound.magic(); playCastBurst();
+      Sound.curseBloom(); playCastBurst();
       // 궁극기 전용 강조 연출(사용자 요청). 저주 테마 보라색 화면 플래시 + 배너 +
       // 궁극기급 이미지(spawnCurseBloomFx)/화면 흔들림 — 저주 폭발/각인과
       // 위상을 확실히 구분한다.
@@ -3515,7 +3515,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     rogueRegisterHit(s.type==='phys');
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
-    if(s.type==='magic') Sound.magic();
+    if(key==='mageCurseNova') Sound.curseNova();
+    else if(s.type==='magic') Sound.magic();
     else if(key==='paladinCaliberXFinale' && typeof Sound.caliberxFinale==='function') Sound.caliberxFinale();
     else Sound.slash();
     // 칼리버 X: 종언 전용 VFX(사용자 제공) — 레벨15 궁극기라 이 게임에서
