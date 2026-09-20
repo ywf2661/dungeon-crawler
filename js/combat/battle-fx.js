@@ -1459,3 +1459,23 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     }
   }
   function closeSub(){ resetCommandUI(); }
+
+// VFX 이미지 프리로드(사용자 피드백 — "게임 처음 첫 전투에서 VFX가 안 보일 때가
+// 있다"). 이 이미지들은 스킬을 처음 쓰는 순간에야 브라우저가 다운로드를 시작해서,
+// 큰 PNG(약 17MB)는 이펙트가 끝난 뒤에야 도착하곤 했다. 파일 로드 시점(타이틀
+// 화면부터)에 미리 받고 디코딩까지 끝내둔다. 새 VFX 이미지를 추가하면 여기에도
+// 파일명을 추가할 것.
+(function preloadVfxImages(){
+  const names = [
+    'caliberx_finale','chalna_figure_1','chalna_figure_2','chalna_figure_3',
+    'curse_bloom_ultimate','curse_brand','curse_nova','martyr_ultimate',
+    'overload_explode','overload_jet','phantom_slash','slash_ice',
+    'tg_frost','tg_return','tg_void',
+  ];
+  for(let i=1;i<=24;i++) names.push('time_paradox_f'+String(i).padStart(2,'0'));
+  names.forEach(n=>{
+    const img = new Image();
+    img.src = 'images/vfx/'+n+'.png';
+    if(img.decode) img.decode().catch(()=>{});
+  });
+})();
