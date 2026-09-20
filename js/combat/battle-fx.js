@@ -736,6 +736,37 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 800);
   }
 
+  // 계약술사 원소 VFX(사용자 제공 images/vfx/<file>.png). tier 1=원소 각인,
+  // 2=원소 파동, 3=원소 폭풍(궁극기) — 저주술사 3종과 같은 위상 규칙(크기·잔류
+  // 시간이 점점 커지고, 궁극기만 회전+스케일 오버슛). 빙결/번개 이미지도 파일명만
+  // 넘기면 그대로 재사용된다.
+  // dx/dy(px, 선택): 연타 스킬이 타마다 위치를 흩뿌릴 때 쓰는 중심 오프셋.
+  function spawnPactFx(file, tier, dx, dy){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const C = [null,
+      {size:150, inMs:150, holdMs:180, outMs:250, from:'scale(0.85)', to:'scale(1)', out:''},
+      {size:190, inMs:180, holdMs:260, outMs:300, from:'scale(0.8)', to:'scale(1.02)', out:''},
+      {size:300, inMs:220, holdMs:280, outMs:450, from:'scale(0.7) rotate(-4deg)', to:'scale(1.08) rotate(2deg)', out:'scale(1.2) rotate(2deg)'},
+    ][tier];
+    const el = document.createElement('div');
+    el.style.cssText = "position:absolute; left:calc(50% + "+(dx||0)+"px); top:calc(42% + "+(dy||0)+"px); width:"+C.size+"px; height:"+C.size+"px; "
+      + "background-image:url('images/vfx/"+file+".png'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) "+C.from+";";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity '+C.inMs+'ms ease-out, transform '+C.inMs+'ms ease-out';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) '+C.to;
+    setTimeout(()=>{
+      el.style.transition = 'opacity '+C.outMs+'ms ease-in, transform '+C.outMs+'ms ease-in';
+      el.style.opacity = '0';
+      if(C.out) el.style.transform = 'translate(-50%,-50%) '+C.out;
+    }, C.holdMs);
+    setTimeout(()=>el.remove(), C.holdMs + C.outMs + 70);
+  }
+
   // 시간의 파수꾼 스킬 전용 VFX 이미지(사용자 제공). kind: 'frost'|'void'|'returnstrike'.
   function spawnGuardianVfxImage(kind){
     const stage = document.getElementById('bt-stage');
@@ -1470,7 +1501,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     'caliberx_finale','chalna_figure_1','chalna_figure_2','chalna_figure_3',
     'curse_bloom_ultimate','curse_brand','curse_nova','martyr_ultimate',
     'overload_explode','overload_jet','phantom_slash','slash_ice',
-    'tg_frost','tg_return','tg_void',
+    'tg_frost','tg_return','tg_void','pact_fire_strike','pact_fire_wave','pact_fire_storm','pact_ice_strike','pact_ice_wave','pact_ice_storm','pact_lightning_strike','pact_lightning_wave','pact_lightning_storm','necro_release','necro_sig_watchertablet','necro_sig_hornedwarden','necro_sig_bladedbloom','necro_sig_clockheart','necro_sig_hollowprophet',
   ];
   for(let i=1;i<=24;i++) names.push('time_paradox_f'+String(i).padStart(2,'0'));
   names.forEach(n=>{

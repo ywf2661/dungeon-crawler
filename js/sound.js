@@ -149,6 +149,23 @@ export(전역): const Sound
       curseNova: 'audio/sfx/cursenova.wav',
       curseBrand: 'audio/sfx/cursebrand.wav',
       curseBloom: 'audio/sfx/cursebloom.wav',
+      // 계약술사 원소 스킬 9종(원소×각인/파동/폭풍) — VFX 이미지와 같은 이름.
+      pact_fire_strike: 'audio/sfx/pact_fire_strike.wav',
+      pact_fire_wave: 'audio/sfx/pact_fire_wave.wav',
+      pact_fire_storm: 'audio/sfx/pact_fire_storm.wav',
+      pact_ice_strike: 'audio/sfx/pact_ice_strike.wav',
+      pact_ice_wave: 'audio/sfx/pact_ice_wave.wav',
+      pact_ice_storm: 'audio/sfx/pact_ice_storm.wav',
+      pact_lightning_strike: 'audio/sfx/pact_lightning_strike.wav',
+      pact_lightning_wave: 'audio/sfx/pact_lightning_wave.wav',
+      pact_lightning_storm: 'audio/sfx/pact_lightning_storm.wav',
+      necroRelease: 'audio/sfx/necro_release.wav', // 원혼 강탈자 혼백 해방(레벨15)
+      // 원혼의 명령(레벨12)이 재현하는 층별보스 고유 스킬 전용. 고쳐지지 않는 시계는
+      // 전용 음원이 없어 기존 clock 음원으로 대체(아래 necroSig 참고).
+      necro_sig_watchertablet: 'audio/sfx/necro_sig_watchertablet.wav',
+      necro_sig_hornedwarden: 'audio/sfx/necro_sig_hornedwarden.wav',
+      necro_sig_bladedbloom: 'audio/sfx/necro_sig_bladedbloom.wav',
+      necro_sig_hollowprophet: 'audio/sfx/necro_sig_hollowprophet.wav',
     };
     const sfxBuffers = {};
     function preloadSfx(){
@@ -442,6 +459,11 @@ export(전역): const Sound
     function curseBrand(){ if(muted) return; if(playSfxBuffer('curseBrand')) return; magic(); }
     function curseBloom(){ if(muted) return; if(playSfxBuffer('curseBloom')) return; magic(); }
 
+    // 계약술사 원소 스킬 효과음. name = 'pact_<원소>_<strike|wave|storm>'. 로딩 전이면 magic()으로 대체.
+    function necroSig(type){ if(muted) return; if(playSfxBuffer('necro_sig_'+type) || (type==='clockheart' && playSfxBuffer('clock'))) return; hit(); }
+    function necroRelease(){ if(muted) return; if(playSfxBuffer('necroRelease')) return; magic(); }
+    function pact(name){ if(muted) return; if(playSfxBuffer(name)) return; magic(); }
+
     // ---- 배경음(BGM): 저음 드론 + 간헐적 아르페지오를 실시간 스케줄링하는 루프 ----
     const SCALE_EXPLORE = [220, 261.6, 293.7, 329.6, 392, 440]; // A minor 계열, 잔잔하게
     const SCALE_BATTLE   = [220, 246.9, 277.2, 329.6, 369.9, 440]; // 살짝 긴장감 있는 스케일
@@ -559,7 +581,7 @@ export(전역): const Sound
     return {
       ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
-      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom,
+      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom, pact, necroRelease, necroSig,
       setMuted, toggleMuted, isMuted,
     };
   })();

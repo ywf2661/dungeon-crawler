@@ -1150,8 +1150,14 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 소리도 다시 즉시(다른 연출과 같은 tick) 재생하도록 되돌린다.
       // 시간의 파수꾼 전용 공격음(사용자 요청) — 플레이어 베기음을 피치
       // 다운해서 재사용(칼을 휘두르는 존재라는 정체성에 맞춰).
+      // 층별보스 5종의 고유 스킬은 원혼의 명령(플레이어 재현)과 같은 전용 VFX/SFX를
+      // 쓴다(necro_sig_<보스type>). 회피/무효화는 위에서 이미 return되므로 여기 도달 = 적중 연출.
+      const SIG_SKILL_BOSS = {unblinkingGaze:'watchertablet', judgmentKey:'hornedwarden', bladeStemSweep:'bladedbloom', pulseShockwave:'clockheart', prophecyFlame:'hollowprophet'};
+      const sigBoss = (skillKey && SIG_SKILL_BOSS[skillKey]) || null;
+      if(sigBoss && typeof spawnPactFx==='function') spawnPactFx('necro_sig_'+sigBoss, 2);
       if(mitigated>0){
-        if(enemy.type==='timeguardian') Sound.guardianSlash();
+        if(sigBoss) Sound.necroSig(sigBoss);
+        else if(enemy.type==='timeguardian') Sound.guardianSlash();
         else Sound.hit();
       }
 
@@ -1306,9 +1312,24 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   function tryFreezeEnemy(chance){
     if(!enemy || Math.random()>=chance) return false;
     enemy.freezeTurns = 1;
+    enemy.frostBrittle = true; // 다음 빙결 스킬이 산산조각 내며 추가 피해(consumeFrostBrittle)
     playStatusFx('pact-ice');
     updateStatusBadges();
     return true;
+  }
+  // 빙결 시너지: 동결은 적 턴을 즉시 소모하므로 "동결 중인 적"이 내 차례에 존재하지
+  // 않는다. 대신 동결이 걸리면 취약 표식을 남기고, 다음 빙결계약 스킬이 소비한다.
+  const FROST_BRITTLE_MULT = 1.5;
+  const FROST_BRITTLE_MSG = ' 얼어붙었던 몸이 산산이 부서지며 피해가 커졌다!';
+  function consumeFrostBrittle(){
+    if(!enemy || !enemy.frostBrittle) return false;
+    enemy.frostBrittle = false;
+    return true;
+  }
+  // 번개 시너지: 감전(속도 하락/스킬 봉인) 상태의 적에게는 번개 스킬 타수가 +1.
+  const SHOCK_EXTRA_MSG = ' 감전된 몸에 전류가 튀어 추가 타격이 들어갔다!';
+  function isEnemyShocked(){
+    return !!(enemy && (enemy.shockSpdTurns>0 || enemy.shockSealTurns>0));
   }
   function tryShockEnemy(chance){
     if(!enemy || Math.random()>=chance) return false;

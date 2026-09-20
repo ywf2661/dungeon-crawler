@@ -1369,7 +1369,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
         playBanner(bossSig.label, bossSig.cssClass);
-        Sound.hit();
+        // 층별보스 5종은 전용 VFX/SFX(necro_sig_<보스type>). timeguardian은 위 분기가 처리.
+        Sound.necroSig(pet.monsterType);
+        if(typeof spawnPactFx==='function') spawnPactFx('necro_sig_'+pet.monsterType, 2);
         renderStatus();
         setBattleMsg(`${player.name}의 ${bossSig.label}!`, `${pet.name}에게 명령해 보스 본체와 같은 ${bossSig.label}을(를) 그대로 재현했다! ${dmg}의 추가 피해.`);
         if(checkBattleEnd()) return;
@@ -1482,7 +1484,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.necroPet = null;
       battleFlags.necroBondStacks = 0;
       battleFlags.necroBondShieldPct = 0;
-      Sound.magic();
+      // 궁극기 전용 연출: 해방 이미지 + 화면 흔들림 + 배너(다른 레벨15 궁극기와 동일 급).
+      Sound.necroRelease();
+      if(typeof spawnPactFx==='function') spawnPactFx('necro_release', 3);
+      if(typeof shakeScreen==='function') shakeScreen();
+      playBanner('혼백 해방!', 'fx-necro');
       renderStatus();
       updateRigVisuals();
       setBattleMsg(`${player.name}의 ${s.name}!`, `${pet.name}을(를) 해방시켜 ${dmg}의 폭발 피해를 남겼다!${traitMsg}`);
@@ -2366,28 +2372,40 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
-        Sound.magic(); playStatusFx('burn');
+        Sound.pact('pact_fire_strike'); playStatusFx('burn');
+        if(typeof spawnPactFx==='function') spawnPactFx('pact_fire_strike', 1);
         applyDot({type:'burn', basis:'mag', ratio:0.5, turns:3, label:'원소 각인: 화염'});
         msg2 = `화염 각인이 ${enemy.name}에게 ${dmg}의 피해를 입히고 짙은 화상을 남겼다!`;
       } else if(pact==='ice'){
+        const brittleS = consumeFrostBrittle();
         let dmg = Math.max(1, Math.round(effectiveMag()*2.6) - edef);
+        if(brittleS) dmg = Math.round(dmg*FROST_BRITTLE_MULT);
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
-        Sound.magic(); playStatusFx('pact-ice');
-        msg2 = `빙결 각인이 ${enemy.name}에게 ${dmg}의 강력한 피해를 입혔다!`;
+        Sound.pact('pact_ice_strike'); playStatusFx('pact-ice');
+        if(typeof spawnPactFx==='function') spawnPactFx('pact_ice_strike', 1);
+        msg2 = `빙결 각인이 ${enemy.name}에게 ${dmg}의 강력한 피해를 입혔다!` + (brittleS ? FROST_BRITTLE_MSG : '');
         if(typeof tryFreezeEnemy==='function' && tryFreezeEnemy(0.25)) msg2 += ' 상처가 그대로 얼어붙어 움직임이 멎었다!';
       } else if(pact==='lightning'){
         const per = Math.max(1, Math.round(effectiveMag()*1.0) - Math.round(edef*0.85));
-        const totalRaw = per*2;
+        const shockedS = isEnemyShocked();
+        const hitsS = shockedS ? 3 : 2;
+        const totalRaw = per*hitsS;
         const total = applyOutgoingDamageMods(totalRaw, {type:'magicskill', mpCost, onHitMult});
         const scale = total/totalRaw;
-        const parts = [Math.max(1,Math.round(per*scale)), Math.max(1,Math.round(per*scale))];
-        enemy.hp = Math.max(0, enemy.hp - parts[0] - parts[1]);
+        const parts = Array.from({length:hitsS}, ()=>Math.max(1,Math.round(per*scale)));
+        enemy.hp = Math.max(0, enemy.hp - parts.reduce((a,b)=>a+b,0));
         updateEnemyHpBar(); shakeEnemy();
-        Sound.magic(); playStatusFx('pact-lightning');
-        parts.forEach((d,i)=>{ setTimeout(()=>{ spawnSlashMark(i); popDamage('-'+d); }, i*180); });
-        msg2 = `번개 각인이 두 번 연속 꽂혀 ${parts.join(' + ')}의 피해를 입혔다!`;
+        playStatusFx('pact-lightning');
+        // 연타라 타마다 이미지를 새로 띄우되 위치를 흩뿌려 겹쳐 보이지 않게 한다.
+        const STRIKE_OFFS = [[-45,-15],[45,15],[0,-35]];
+        parts.forEach((d,i)=>{ setTimeout(()=>{
+          spawnSlashMark(i); popDamage('-'+d);
+          Sound.pact('pact_lightning_strike');
+          if(typeof spawnPactFx==='function') spawnPactFx('pact_lightning_strike', 1, STRIKE_OFFS[i][0], STRIKE_OFFS[i][1]);
+        }, i*180); });
+        msg2 = `번개 각인이 ${hitsS===3?'세':'두'} 번 연속 꽂혀 ${parts.join(' + ')}의 피해를 입혔다!` + (shockedS ? SHOCK_EXTRA_MSG : '');
         if(typeof tryShockEnemy==='function' && tryShockEnemy(0.25)) msg2 += ` 전류가 ${enemy.name}의 몸을 타고 흘렀다!`;
       } else {
         let dmg = Math.max(1, Math.round(effectiveMag()*1.1) - Math.round(edef*0.5));
@@ -2424,33 +2442,41 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
           updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
           enemy.dots = enemy.dots.filter(d=>d!==burn);
           updateStatusBadges();
-          Sound.magic(); playStatusFx('burn');
+          Sound.pact('pact_fire_wave'); playStatusFx('burn');
+          if(typeof spawnPactFx==='function') spawnPactFx('pact_fire_wave', 2);
           msg2 = `타오르던 화상을 한꺼번에 터뜨려 ${enemy.name}에게 ${dmg}의 폭발적인 피해를 입혔다!`;
         } else {
           let dmg = Math.max(1, Math.round(effectiveMag()*1.0) - Math.round(edef*0.5));
           dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
           enemy.hp = Math.max(0, enemy.hp-dmg);
           updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
-          Sound.magic();
+          Sound.pact('pact_fire_wave');
+          if(typeof spawnPactFx==='function') spawnPactFx('pact_fire_wave', 2);
           msg2 = `타오르는 화상이 없어 터뜨릴 것이 없다. 대신 ${dmg}의 피해를 입혔다.`;
         }
       } else if(pact==='ice'){
+        const brittleW = consumeFrostBrittle();
         let dmg = Math.max(1, Math.round(effectiveMag()*0.8) - Math.round(edef*0.5));
+        if(brittleW) dmg = Math.round(dmg*FROST_BRITTLE_MULT);
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
-        Sound.magic(); playStatusFx('pact-ice');
+        Sound.pact('pact_ice_wave'); playStatusFx('pact-ice');
+        if(typeof spawnPactFx==='function') spawnPactFx('pact_ice_wave', 2);
         player.buffDefTurns = 2; player.buffDefMult = 0.7;
-        msg2 = `얼음 장벽을 두르며 ${dmg}의 피해를 입혔다. 2턴간 받는 피해가 줄어든다.`;
+        msg2 = `얼음 장벽을 두르며 ${dmg}의 피해를 입혔다. 2턴간 받는 피해가 줄어든다.` + (brittleW ? FROST_BRITTLE_MSG : '');
         if(typeof tryFreezeEnemy==='function' && tryFreezeEnemy(0.25)) msg2 += ` ${enemy.name}이(가) 그 자리에서 얼어붙었다!`;
       } else if(pact==='lightning'){
+        const shockedW = isEnemyShocked();
         let dmg = Math.max(1, Math.round(effectiveMag()*0.9) - Math.round(edef*0.6));
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
-        enemy.hp = Math.max(0, enemy.hp-dmg);
+        enemy.hp = Math.max(0, enemy.hp-dmg*(shockedW?2:1));
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
-        Sound.magic(); playStatusFx('pact-lightning');
+        if(shockedW) setTimeout(()=>popDamage('-'+dmg), 180);
+        Sound.pact('pact_lightning_wave'); playStatusFx('pact-lightning');
+        if(typeof spawnPactFx==='function') spawnPactFx('pact_lightning_wave', 2);
         player.lightningCritArmed = true;
-        msg2 = `번개의 기운을 벼려 ${dmg}의 피해를 입혔다. 다음 공격은 반드시 급소에 꽂힌다.`;
+        msg2 = `번개의 기운을 벼려 ${shockedW ? dmg+' + '+dmg : dmg}의 피해를 입혔다. 다음 공격은 반드시 급소에 꽂힌다.` + (shockedW ? SHOCK_EXTRA_MSG : '');
         if(typeof tryShockEnemy==='function' && tryShockEnemy(0.25)) msg2 += ` 번개의 잔재가 ${enemy.name}을(를) 감전시켰다!`;
       } else {
         let dmg = Math.max(1, Math.round(effectiveMag()*0.9) - Math.round(edef*0.5));
@@ -2523,28 +2549,42 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
-        Sound.magic(); playStatusFx('burn');
+        Sound.pact('pact_fire_storm'); playStatusFx('burn');
+        if(typeof spawnPactFx==='function') spawnPactFx('pact_fire_storm', 3);
+        if(typeof shakeScreen==='function') shakeScreen();
         applyDot({type:'burn', basis:'mag', ratio:0.7, turns:4, label:'원소 폭풍: 화염'});
         msg2 = `대화염이 ${enemy.name}을(를) 집어삼켜 ${dmg}의 피해를 입히고 격렬한 화상을 남겼다!`;
       } else if(pact==='ice'){
+        const brittleT = consumeFrostBrittle();
         let dmg = Math.max(1, Math.round(effectiveMag()*3.2)); // 방어 완전 무시(edef 차감 없음)
+        if(brittleT) dmg = Math.round(dmg*FROST_BRITTLE_MULT);
         dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, onHitMult});
         enemy.hp = Math.max(0, enemy.hp-dmg);
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
-        Sound.magic(); playStatusFx('pact-ice');
-        msg2 = `절대영도의 빙결이 방어를 완전히 무시하고 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`;
+        Sound.pact('pact_ice_storm'); playStatusFx('pact-ice');
+        if(typeof spawnPactFx==='function') spawnPactFx('pact_ice_storm', 3);
+        if(typeof shakeScreen==='function') shakeScreen();
+        msg2 = `절대영도의 빙결이 방어를 완전히 무시하고 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!` + (brittleT ? FROST_BRITTLE_MSG : '');
         if(typeof tryFreezeEnemy==='function' && tryFreezeEnemy(0.25)) msg2 += ` ${enemy.name}이(가) 절대영도 속에 얼어붙었다!`;
       } else if(pact==='lightning'){
         const per = Math.max(1, Math.round(effectiveMag()*1.1) - Math.round(edef*0.65));
-        const totalRaw = per*3;
+        const shockedT = isEnemyShocked();
+        const hitsT = shockedT ? 4 : 3;
+        const totalRaw = per*hitsT;
         const total = applyOutgoingDamageMods(totalRaw, {type:'magicskill', mpCost, onHitMult});
         const scale = total/totalRaw;
-        const parts = [0,1,2].map(()=>Math.max(1,Math.round(per*scale)));
+        const parts = Array.from({length:hitsT}, ()=>Math.max(1,Math.round(per*scale)));
         enemy.hp = Math.max(0, enemy.hp - parts.reduce((a,b)=>a+b,0));
         updateEnemyHpBar(); shakeEnemy();
-        Sound.magic(); playStatusFx('pact-lightning');
-        parts.forEach((d,i)=>{ setTimeout(()=>{ spawnSlashMark(i); popDamage('-'+d, 'crit'); }, i*180); });
-        msg2 = `벼락이 세 번 연속으로 방어를 꿰뚫으며 ${parts.join(' + ')}의 피해를 입혔다!`;
+        Sound.pact('pact_lightning_storm'); playStatusFx('pact-lightning');
+        // 이미지는 여러 줄기가 한 점에 떨어지는 한 장짜리라 첫 타에 한 번만 띄우고,
+        // 화면 흔들림은 마지막 타에 얹는다(타수가 3~4로 바뀌어도 그대로 동작).
+        if(typeof spawnPactFx==='function') spawnPactFx('pact_lightning_storm', 3);
+        parts.forEach((d,i)=>{ setTimeout(()=>{
+          spawnSlashMark(i); popDamage('-'+d, 'crit');
+          if(i===parts.length-1 && typeof shakeScreen==='function') shakeScreen();
+        }, i*180); });
+        msg2 = `벼락이 ${hitsT===4?'네':'세'} 번 연속으로 방어를 꿰뚫으며 ${parts.join(' + ')}의 피해를 입혔다!` + (shockedT ? SHOCK_EXTRA_MSG : '');
         if(typeof tryShockEnemy==='function' && tryShockEnemy(0.25)) msg2 += ` ${enemy.name}의 온몸에 벼락이 감돌았다!`;
       } else {
         let dmg = Math.max(1, Math.round(effectiveMag()*1.3) - Math.round(edef*0.5));
