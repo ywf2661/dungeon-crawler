@@ -784,6 +784,18 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       showDialogueSequence(lines, {title: enemy.name, tone:'grand'});
       return true;
     }
+    // 타임패트롤(mechanic_timepatrol) — 몸에 깃든 낯선 목소리가 마녀와 직접 마주하는 순간
+    // (사용자 요청). 목소리("???")와 마녀가 번갈아 말하며, 목소리의 정체(미래의 수사관)는
+    // 끝까지 밝히지 않는다(8장). 마녀는 "되돌리는 것"을 이미 수없이 시도해 봤다는 것만 흘린다.
+    if(player.specialization === 'mechanic_timepatrol'){
+      showDialogueSequence([
+        {text:'…찾았다. 이 시간대를 어긋나게 만든 손.', title:'???'},
+        {text:'"…누구지." 그녀의 눈이 그대를 지나 그대 안쪽을 더듬는다. "이 아이의 몸에서, 낯선 시간이 흐른다."', title:enemy.name},
+        {text:'이제 그만 되돌릴 시간이다. 너무 멀리 와버렸어.', title:'???'},
+        {text:'"…되돌린다고?" 그녀가 희미하게 웃는다. "그런 건, 이미 수없이 해봤다."', title:enemy.name},
+      ], {tone:'grand'});
+      return true;
+    }
     if(player.necroSummonType === 'timeguardian'){
       showDialogueSequence(AION_TIMEGUARDIAN_CONTRACT_LINES, {title: enemy.name, tone:'grand'});
       return true;
