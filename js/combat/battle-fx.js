@@ -964,7 +964,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 960);
   }
 
-  // 임계 폭주(폭주 화부 Lv15 궁극기) 전용 VFX(사용자 제공 explode.png) — 압력 게이지가
+  // 임계 폭주(폭주 화부 Lv15 궁극기) 전용 VFX(사용자 제공 critical_overload.webp) — 압력 게이지가
   // 터지며 증기/파편이 사방으로 퍼지는 대폭발. 중앙에서 확 커지며 나타나 잠깐 머문 뒤
   // 더 부풀며 사라진다. 이미지가 정사각형이라 스테이지 높이에 맞춰 크기를 정한다.
   function spawnCriticalOverloadFx(){
@@ -974,7 +974,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const sz = Math.round(H*1.1);
     const el = document.createElement('div');
     el.style.cssText = `position:absolute; left:50%; top:46%; width:${sz}px; height:${sz}px; `
-      + "background-image:url('images/vfx/explode.png'); background-size:contain; "
+      + "background-image:url('images/vfx/critical_overload.webp'); background-size:contain; "
       + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
       + "opacity:0; transform:translate(-50%,-50%) scale(0.45);";
     stage.appendChild(el);
