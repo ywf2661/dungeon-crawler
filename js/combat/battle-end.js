@@ -556,7 +556,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           '그때, 머릿속 깊은 곳에서 낯선 목소리가 낮게 울린다.',
           {text:'…끝났군. 시간이, 제자리로 흐르기 시작했다.', title:'???'},
           {text:'이 몸은 돌려주지. 나는 여기까지다. …빌려줘서, 고마웠다.', title:'???'},
-          {text:'…잘 가.', title:player.name},
+          {text:'…끝까지, 이름도 안 알려주는군.', title:player.name},
           '시계 소리처럼 아득하던 울림이 멀어지고, 오래도록 머릿속에 머물던 낯선 기척이 조용히 사라진다.',
         ];
         const at = isWitchRepeat ? lines.length-1 : lines.findIndex(l=> typeof l==='string' && l.startsWith('돌기둥이 하나씩 허물어지고, 시간의 파편들'));
