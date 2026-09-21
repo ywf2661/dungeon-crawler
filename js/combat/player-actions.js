@@ -448,6 +448,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    // 현장 검증(타임패트롤 레벨12)은 단서 2개가 필요하다. MP를 깎기 전에 막는다.
+    if(s.type==='tpVerify' && (battleFlags.timeClues||0) < 2){
+      setCommandsEnabled(true);
+      setBattleMsg(s.name, '단서가 부족하다! 단서가 2개 이상 있어야 현장을 검증할 수 있다.');
+      return;
+    }
+
     const freeCast = mpCost>0 && hasRelicFlag('freeCastChance') && Math.random() < getRelicSum('freeCastChance');
     if(isRetry){
       // 손버릇(사기꾼) 재시도 — 완전 무료, MP를 아예 건드리지 않는다.
@@ -493,6 +500,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       setCommandsEnabled(true);
       return;
     }
+
+    // 타임패트롤: 스킬을 쓸 때마다 단서 +1(잔상 발동 중이거나 검증/봉쇄령 자신은 제외 —
+    // 이 둘은 단서를 소모하는 스킬이라 여기서 다시 쌓으면 소모량이 상쇄된다).
+    if(!(battleFlags && battleFlags.borrowing) && s.type!=='tpVerify' && s.type!=='tpLockdown'){
+      tpAddClue(1);
+    }
+    if(s.type==='tpReceive'){ tpReceive(); return; }
+    if(s.type==='tpVerify'){ tpVerify(); return; }
+    if(s.type==='tpLockdown'){ tpLockdown(); return; }
 
     if(s.type==='elementpact'){
       // 화염/빙결/번개계약(계약술사) — 서로 배타적인 3방향 토글. 이미 이 원소로

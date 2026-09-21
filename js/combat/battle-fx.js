@@ -1737,7 +1737,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         const hasDoubleSwap2 = !!(wIdDS2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdDS2).includes('ju_doubleswap'));
         const fateSwapMax2 = hasDoubleSwap2 ? 2 : 1;
         const usedOnce = s.type==='hpswap' && battleFlags && (battleFlags.fateSwapUsedCount||0) >= fateSwapMax2;
-        const canUse = !usedOnce && player.mp>=mpCost && cdLeft<=0;
+        const canUse = !usedOnce && player.mp>=mpCost && cdLeft<=0
+          && !(s.type==='tpVerify' && !((battleFlags && battleFlags.timeClues)>=2));
         const div = document.createElement('div');
         const tierClsN = getSkillTier(k);
         div.className = 'sub-item'+(canUse?'':' disabled')+(tierClsN?' skill-tier'+tierClsN:'');
@@ -1776,6 +1777,10 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
               displayDesc = `${battleFlags.necroPet.name}에게 명령해, ${traitName}을(를) 확실하게 발동시킨다.`;
             }
           }
+        }
+        // 타임패트롤 스킬은 설명 끝에 현재 단서 수를 붙여 보여준다.
+        if(s.type==='tpReceive' || s.type==='tpVerify' || s.type==='tpLockdown'){
+          displayDesc += ` [단서 ${(battleFlags && battleFlags.timeClues)||0}/${TP_MAX_CLUES}]`;
         }
         // 2차 전직(찰나검사 등) 스킬에 한해 이름 옆에 한자를 괄호로 병기(사용자 요청).
         if(displayHanja) displayName = `${displayName}(${displayHanja})`;

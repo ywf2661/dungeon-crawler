@@ -56,4 +56,14 @@ assert.strictEqual(run('SKILLDB.tpVerify.mp'), 12);
 assert.strictEqual(run('SKILLDB.tpLockdown.mp'), 20);
 assert.strictEqual(run('SKILLDB.tpLockdown.cooldown'), 3);
 
+// 단서 시스템: 마스터리가 있을 때만, 최대 5
+run(`var player = {skills:[]}; var battleFlags = {};`);
+run('tpAddClue(1)');
+assert.strictEqual(run('tpClues()'), 0, '마스터리 없으면 단서 없음');
+run(`player.skills.push('mastery_timesync')`);
+run('tpAddClue(1)'); run('tpAddClue(1)');
+assert.strictEqual(run('tpClues()'), 2);
+run('tpAddClue(9)');
+assert.strictEqual(run('tpClues()'), 5, '상한 5');
+
 console.log('timepatrol.test.js: OK');

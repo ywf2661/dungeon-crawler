@@ -3,7 +3,8 @@
 기관사 2차 전직 "타임패트롤"(mechanic_timepatrol) — 다른 직업 2차 전직의 액티브 스킬을
 "잔상"으로 빌려 쓰는 로직.
 export(전역): TP_POOL_NORMAL, TP_POOL_ULT, TP_MAX_CLUES, tpClues, tpBorrowPower, tpWeight,
-              tpPickKeys, tpCanBorrow, castBorrowed, restoreBorrow
+              tpPickKeys, tpCanBorrow, castBorrowed, restoreBorrow,
+              tpAddClue, tpReceive, tpVerify, tpLockdown, tpShowChoice
 의존성: data/skills.js(SKILLDB). battleFlags는 전역 전투 상태(typeof로 방어).
 주의: 풀은 화이트리스트다. 예약형(선혈각인/분신 배가/정보료)·패시브·소환수 전제 스킬·
      총사령관의 명령·임계 폭주는 일부러 넣지 않았다(스펙 참고).
@@ -127,4 +128,76 @@ export(전역): TP_POOL_NORMAL, TP_POOL_ULT, TP_MAX_CLUES, tpClues, tpBorrowPowe
       player.necroSummonType = bosses[Math.floor(Math.random()*bosses.length)].type;
     }
     playerSkill(key, true);
+  }
+
+  /* ---------- 단서 / 스킬 핸들러 ---------- */
+  // 시간대 동조(mastery_timesync)가 있을 때만 쌓인다. 단서는 전투마다 초기화되는
+  // battleFlags에 저장되므로 전투가 끝나면 자연히 사라진다.
+  function tpAddClue(n){
+    if(!(player.skills && player.skills.includes('mastery_timesync'))) return;
+    battleFlags.timeClues = Math.min(TP_MAX_CLUES, (battleFlags.timeClues||0) + n);
+  }
+
+  // 타임라인 수신: 잔상 하나를 무작위로 발동.
+  function tpReceive(){
+    const key = tpPickKeys(1, tpClues(), {canBorrow: tpCanBorrow})[0];
+    if(!key){
+      setBattleMsg('타임라인 수신', '수신되는 잔상이 없다…');
+      enemyTurn();
+      return;
+    }
+    playBanner('⏳ 타임라인 수신!', 'def');
+    castBorrowed(key, ()=>enemyTurn());
+  }
+
+  // 현장 검증: (단서 2개는 playerSkill의 가드가 확인) 잔상 3개 중 하나를 골라 발동.
+  function tpVerify(){
+    const c = tpClues();
+    battleFlags.timeClues = c - 2;
+    const keys = tpPickKeys(3, c, {canBorrow: tpCanBorrow});
+    if(!keys.length){ enemyTurn(); return; }
+    // 위력은 소모 전 단서 기준으로 계산한다(c를 castBorrowed에 넘김).
+    tpShowChoice(keys, k=> castBorrowed(k, ()=>enemyTurn(), c));
+  }
+
+  // 시간 봉쇄령: 단서를 전부 소모해 2 + floor(단서/2)회(최대 4) 연속 발동. 궁극기 제외.
+  function tpLockdown(){
+    const c = tpClues();
+    const n = Math.min(4, 2 + Math.floor(c/2));
+    battleFlags.timeClues = 0;
+    playBanner('⏳ 시간 봉쇄령!', 'def');
+    let i = 0;
+    const next = ()=>{
+      if(i>=n){ enemyTurn(); return; }
+      i++;
+      const key = tpPickKeys(1, c, {allowUlt:false, canBorrow: tpCanBorrow})[0];
+      if(!key){ enemyTurn(); return; }
+      setTimeout(()=>{ if(!battleOver) castBorrowed(key, next, c); }, 350);
+    };
+    next();
+  }
+
+  // 3개 중 하나를 고르는 오버레이. 전직 선택창(showJobAdvancement)의 기존 클래스를
+  // 그대로 재사용한다(새 CSS 없음). 취소 불가 — MP는 이미 소모됐다.
+  function tpShowChoice(keys, onPick){
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `<h3>현장 검증</h3>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;line-height:1.6;margin-bottom:12px;">수신된 잔상 중 하나를 고른다.</p>
+      <div class="job-card-grid"></div>`;
+    const grid = panel.querySelector('.job-card-grid');
+    keys.forEach(k=>{
+      const sk = SKILLDB[k];
+      const card = document.createElement('div');
+      card.className = 'job-card';
+      card.innerHTML = `<div class="ji-icon">${TP_POOL_ULT.includes(k) ? '✨' : '⏳'}</div>
+        <div class="ji-name">${sk.name}</div>
+        <div class="ji-desc">${sk.desc}</div>`;
+      card.addEventListener('click', ()=>{ overlay.remove(); onPick(k); });
+      grid.appendChild(card);
+    });
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
   }

@@ -1137,6 +1137,8 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
 
       player.hp = Math.max(0, player.hp - mitigated);
+      // 타임패트롤(mastery_timesync): 피격당할 때마다 단서 +1.
+      if(mitigated>0 && typeof tpAddClue==='function') tpAddClue(1);
       checkPaladinAwoken();
       // 적 공격 연출(사용자 요청) — 회피/무효화된 경우는 위쪽 dodgeChance
       // 분기에서 이미 return돼서 여기까지 안 온다. 즉 이 지점에 도달했다는
