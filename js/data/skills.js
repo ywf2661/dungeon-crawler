@@ -253,11 +253,13 @@ export(전역): SKILLDB, CHALNA_COMBOS
       desc:'켜두면 전투가 끝나거나 직접 끌 때까지, 스킬을 쓸 때마다 HP 15%를 태워 위력을 크게 증폭시킨다. HP가 낮을수록 회피율도 오른다.'},
     warriorBloodpactActive: {name:'저돌', mp:6, desc:'앞뒤 재지 않고 돌진해 벤다. 체력이 낮을수록 위력이 크게 오른다',
       type:'phys', mult:1.6, selfHpBonusMax:0.9},
-    // 레벨12 "혈인": 혈서처럼 선택적(토글)이 아니라, 쓸 때마다 확정으로 HP를 태우는
-    // 스킬(hpCostPct — 최대HP 기준 비율, player-actions.js의 범용 phys/magic 분기에서
-    // 공용으로 처리). 저돌보다 한 단계 무거운 피의 대가를 요구하는 대신 짙은 출혈도 남긴다.
-    warriorBloodrend: {name:'혈인', mp:8, desc:'스스로의 피를 무기에 둘러 벤다. 최대HP의 12%를 확정으로 소모하는 대신 강력한 피해를 입히고 짙은 출혈을 남긴다',
-      type:'phys', mult:2.2, hpCostPct:0.12, dot:{type:'bleed', basis:'atk', ratio:0.35, turns:3, label:'출혈'}},
+    // 레벨12 "선혈각인": 턴을 소모하지 않는 1회성 예약 버프(분신 배가와 같은 패턴).
+    // 다음 피해 스킬 1회에 피해 +30%/추가 HP 소모(최대HP 15%)/출혈을 얹는다.
+    // 실제 효과는 player-actions.js의 범용 phys/magic 분기(bloodImprintArmed)에서 처리.
+    // 키는 기존 세이브 호환을 위해 warriorBloodrend를 그대로 쓴다.
+    warriorBloodrend: {name:'선혈각인', mp:8, cooldown:4, type:'bloodimprint',
+      desc:'칼날에 피를 새겨 다음 스킬 1회를 강화한다(턴 소모 없음). 다음 스킬의 피해가 30% 늘고 출혈을 남기지만, 최대HP의 15%를 추가로 소모한다',
+      imprintHpPct:0.15, dmgBonus:0.3, imprintDot:{type:'bleed', basis:'atk', ratio:0.35, turns:3, label:'출혈'}},
     // 레벨15 궁극기 "혈옥쇄": 최대HP의 50%를 제물로 바치는 필살기(HP 1은 항상 남도록
     // player-actions.js에서 방어적으로 클램프한다).
     warriorBloodpactUltimate: {name:'혈옥쇄', mp:14, cooldown:3, desc:'자신의 생명력 절반을 제물로 바쳐 필멸의 일격을 꽂는다. 최대HP의 50%를 소모하는 대신(HP 1은 항상 남는다) 압도적인 피해를 입힌다',
@@ -894,7 +896,7 @@ export(전역): SKILLDB, CHALNA_COMBOS
     // battle-fx.js의 openSub()에서 스킬 목록의 사용 가능 여부에도 반영).
     // 새 타입 'hpswap'. 실패해도 손버릇으로 1회 무료 재시도 가능(luck:true).
     jesterFateSwap: {name:'운명 뒤바꾸기', mp:14, cooldown:3, chance:0.5, type:'hpswap', luck:true,
-      desc:'운명의 저울을 조작해 나와 적의 "남은 체력 비율"을 서로 맞바꾼다(예: 적이 80% 남았으면 내가 내 최대HP의 80%가 되고, 적은 내가 남았던 비율만큼이 된다). 전투당 1회만 시도할 수 있다.'},
+      desc:'운명의 저울을 조작해 나와 적의 "남은 체력 비율"을 서로 맞바꾼다. 전투당 1회만 시도할 수 있다.'},
 
     // ---------- [레거시] 옛 외상 도박사(jester_debtor) — 더 이상 선택 불가 ----------
     // 실제 대출/이자/상환/봉인 로직은 relics.js에 헬퍼 함수로 구현했다

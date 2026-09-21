@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnScreenCrackFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -507,6 +507,10 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 새 이미지 없이 주사위 글리프 2개를 짧게 무작위로 바꾸다(굴러가는 느낌)
   // 최종 눈에 멈춘다. 더블(같은 눈)이면 .double 클래스로 금색 펄스를 얹는다.
   // spawnFrostFlashFx()와 동일한 "생성 → setTimeout 제거" 수명주기.
+  // 이중주사위 연출 타이밍: 70ms×N틱 굴린 뒤 눈이 확정되고, 잠시 보여준 다음
+  // (RESOLVE_MS) player-actions.js가 공격 판정/피해를 실행한다.
+  const DUAL_DICE_SPIN_TICKS = 10;
+  const DUAL_DICE_RESOLVE_MS = 1000;
   function spawnDualDiceFx(face1, face2, isDouble){
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
@@ -524,13 +528,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       d1.textContent = FACES[Math.floor(Math.random()*6)];
       d2.textContent = FACES[Math.floor(Math.random()*6)];
       ticks++;
-      if(ticks>=4){
+      if(ticks>=DUAL_DICE_SPIN_TICKS){
         clearInterval(spin);
         d1.textContent = face1; d2.textContent = face2;
         if(isDouble) el.classList.add('double');
       }
     }, 70);
-    setTimeout(()=>el.remove(), 950);
+    setTimeout(()=>el.remove(), DUAL_DICE_RESOLVE_MS + 500);
   }
 
   // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출 — 사용자가 새로 준 24프레임
@@ -570,32 +574,27 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     }, frameMs);
   }
 
-  // 화면 균열 이펙트(사용자 요청 — 시간의 파수꾼 공격 연출 다양화). 매번
-  // 살짝 다른 중심점/각도로 번개형 균열 6가닥을 그려서 반복돼도 똑같아
-  // 보이지 않게 한다.
-  function spawnScreenCrackFx(){
+  // 운명 뒤바꾸기(사기꾼 Lv15) 전용 VFX 이미지(사용자 제공) — 저울이 뒤집히며
+  // 회전하고 커졌다가 사라진다. 다른 이미지 VFX들과 같은 인라인 방식.
+  function spawnFateSwapFx(){
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
     const el = document.createElement('div');
-    el.className = 'screen-crack-fx';
-    const cx = 46 + Math.random()*8, cy = 40 + Math.random()*10;
-    const branches = 6;
-    let paths = '';
-    for(let i=0;i<branches;i++){
-      const angle = (Math.PI*2/branches)*i + (Math.random()*0.5-0.25);
-      let x = cx, y = cy;
-      let d = `M ${x.toFixed(1)} ${y.toFixed(1)}`;
-      const segs = 3 + Math.floor(Math.random()*2);
-      for(let s=0;s<segs;s++){
-        x += Math.cos(angle)*(8+Math.random()*6) + (Math.random()*6-3);
-        y += Math.sin(angle)*(8+Math.random()*6) + (Math.random()*6-3);
-        d += ` L ${x.toFixed(1)} ${y.toFixed(1)}`;
-      }
-      paths += `<path d="${d}"/>`;
-    }
-    el.innerHTML = `<svg viewBox="0 0 100 100" preserveAspectRatio="none">${paths}</svg>`;
+    el.style.cssText = "position:absolute; left:50%; top:44%; width:320px; height:320px; "
+      + "background-image:url('images/vfx/fateswap_scale.webp'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-180deg);";
     stage.appendChild(el);
-    setTimeout(()=>el.remove(), 650);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .25s ease-out, transform .45s cubic-bezier(.2,.8,.3,1)';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1.05) rotate(0deg)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .5s ease-in, transform .5s ease-in';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%,-50%) scale(1.2) rotate(0deg)';
+    }, 650);
+    setTimeout(()=>el.remove(), 1200);
   }
 
   // 칼리버 X: 종언 전용 VFX 이미지(사용자 제공). 명멸의 틈 페이드 때와 같은
@@ -607,10 +606,11 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 여러 번 겪은 것처럼, 클래스 기반 애니메이션이 다른 CSS 규칙과 얽혀
   // 안 먹혔던 전례가 있어 — 이 방식은 그럴 여지가 없다). 진폭이 점점
   // 줄어들다 원래 자리로 돌아온다, 총 길이 약 240ms.
-  function shakeScreen(){
+  function shakeScreen(scale){
     const el = document.getElementById('screen-battle');
     if(!el) return;
-    const offsets = [[-7,0],[7,-5],[-6,4],[5,-3],[-3,2],[2,-1],[0,0]];
+    const k = scale==null ? 1 : scale;
+    const offsets = [[-7,0],[7,-5],[-6,4],[5,-3],[-3,2],[2,-1],[0,0]].map(([x,y])=>[x*k,y*k]);
     let i = 0;
     (function step(){
       if(i>=offsets.length) return;
@@ -640,6 +640,29 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       el.style.transform = 'translate(-50%,-50%) scale(1.2) rotate(2deg)';
     }, 260);
     setTimeout(()=>el.remove(), 750);
+  }
+
+  // 혈옥쇄(혈맹의 검투사 Lv15) 전용 VFX 이미지(사용자 제공) — 중앙에 수직으로 꽂히는
+  // 결정 폭발. (저돌은 찰나검사 슬래시의 핏빛 변주 v4를 재사용한다.)
+  function spawnBloodUltimateFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.style.cssText = "position:absolute; left:50%; top:44%; width:340px; height:356px; "
+      + "background-image:url('images/vfx/bloodpact_ultimate.webp'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-62%) scale(0.75);";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .18s ease-out, transform .2s cubic-bezier(.2,.8,.3,1)';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1.06)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .5s ease-in, transform .5s ease-in';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%,-50%) scale(1.18)';
+    }, 420);
+    setTimeout(()=>el.remove(), 960);
   }
 
   // 불멸의 순교(순교자 레벨15 궁극기) 전용 VFX 이미지(사용자 제공). 위와
@@ -1031,6 +1054,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     const box = document.getElementById('bt-player-status');
     if(!box || !player || !player.skills) return;
     box.innerHTML = '';
+    const scr = document.getElementById('bt-stage');
+    if(scr) scr.classList.toggle('blood-imprint', !!(battleFlags && battleFlags.bloodImprintArmed));
     // 빙결/감전(사용자 요청 — "적이 걸린 UI와 구분되는" 강조 UI). 이 두 개만
     // player-badge가 아니라 전용 클래스(cc-badge)를 써서 펄스 애니메이션이
     // 붙는다 — 나머지 토글 배지(혈서/원소계약 등)는 그대로 정적 유지.
@@ -1095,6 +1120,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     // player.doubleImageArmed에 저장되므로(lightningCritArmed/stealthDmgBonusArmed와
     // 동일한 패턴 — 전투 중 계속 유지되다가 소모될 때 꺼짐) battleFlags가 아니라
     // player를 확인한다.
+    if(battleFlags && battleFlags.bloodImprintArmed){
+      const b = document.createElement('div');
+      b.className = 'status-badge player-badge';
+      b.textContent = '🩸 선혈각인 대기중';
+      b.title = '다음 피해 스킬 1회에 피해 +30%, 출혈, 추가 HP 소모(최대HP 15%)가 적용된다.';
+      box.appendChild(b);
+    }
     if(player.doubleImageArmed){
       const b = document.createElement('div');
       b.className = 'status-badge player-badge';
@@ -1361,7 +1393,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
           btn.className = 'toggle-btn'+(isActive?' active':'')+(tierCls?' skill-tier'+tierCls:'');
           btn.innerHTML = `<div>${s.name}</div>`;
           btn.title = s.desc;
-          btn.addEventListener('click', ()=>{ closeSub(); playerSkill(k); });
+          // 토글은 턴을 쓰지 않는 준비 동작 — 창을 닫지 않고 다시 그려 켜짐 상태만 갱신한다.
+          btn.addEventListener('click', ()=>{ playerSkill(k); openSub('skill'); });
           row.appendChild(btn);
         });
         wrap.appendChild(row);
@@ -1500,7 +1533,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   const names = [
     'caliberx_finale','chalna_figure_1','chalna_figure_2','chalna_figure_3',
     'curse_bloom_ultimate','curse_brand','curse_nova','martyr_ultimate',
-    'overload_explode','overload_jet','phantom_slash','slash_ice',
+    'bloodpact_ultimate','fateswap_scale','overload_explode','overload_jet','phantom_slash','slash_ice',
     'tg_frost','tg_return','tg_void','pact_fire_strike','pact_fire_wave','pact_fire_storm','pact_ice_strike','pact_ice_wave','pact_ice_storm','pact_lightning_strike','pact_lightning_wave','pact_lightning_storm','necro_release','necro_sig_watchertablet','necro_sig_hornedwarden','necro_sig_bladedbloom','necro_sig_clockheart','necro_sig_hollowprophet',
   ];
   for(let i=1;i<=24;i++) names.push('time_paradox_f'+String(i).padStart(2,'0'));

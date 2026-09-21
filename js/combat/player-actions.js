@@ -521,6 +521,29 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       return;
     }
 
+    if(s.type==='bloodimprint'){
+      // 선혈각인(혈맹의 검투사, 레벨12): 턴을 소모하지 않는 1회성 예약. 다음 phys/magic
+      // 피해 스킬 1회에 추가 HP 소모/피해 증가/출혈이 얹힌다(아래 범용 분기의 imprintOn).
+      // 이미 예약된 상태면 낭비 방지를 위해 MP/쿨다운을 되돌리고 안내만 한다.
+      if(!battleFlags) return;
+      if(battleFlags.bloodImprintArmed){
+        player.mp += mpCost;
+        if(battleFlags.skillCooldowns) battleFlags.skillCooldowns[key] = 0;
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, '이미 칼날에 피가 새겨져 있다. 다음 스킬을 먼저 쓰자.');
+        setCommandsEnabled(true);
+        return;
+      }
+      battleFlags.bloodImprintArmed = true;
+      renderStatus();
+      updatePlayerStatusBadges();
+      Sound.buff();
+      if(typeof shakeScreen==='function') shakeScreen(0.45); // 살짝 '쿵'
+      setBattleMsg(`${player.name}의 ${s.name}!`, '칼날에 피를 새겼다. 다음 스킬이 더 강하게, 출혈과 함께 꽂힌다 — 대신 피를 더 바친다.');
+      setCommandsEnabled(true);
+      return;
+    }
+
     if(s.type==='doubleimagenext'){
       // 분신 배가(환영검사, 레벨12, 재설계): 지속 토글이 아니라 "다음 공격형
       // 스킬 1회"에만 적용되는 1회성 예약이다(사용자 확정). MP는 혈서/원소계약과
@@ -2979,9 +3002,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         enemy.hp = Math.max(0, Math.min(enemyMaxHp, Math.round(enemyMaxHp*myPct)));
         updateEnemyHpBar(); renderStatus();
         Sound.bomb();
-        // 궁극기 전용 강조 연출(사용자 요청) — 기존 운명 균열 이펙트(마녀
-        // 조우 등에 쓰던 화면 균열)를 "운명이 뒤바뀐다"는 테마로 재사용.
-        spawnScreenCrackFx();
+        // 궁극기 전용 강조 연출 — 전용 이미지(fateswap_scale).
+        if(typeof spawnFateSwapFx==='function') spawnFateSwapFx();
         playBanner('운명 역전!', 'fx-fateswap');
         epicLuckPost(true, epicLuck);
         setBattleMsg(`${player.name}의 ${s.name}!`, `운명의 저울이 뒤집혔다! 서로의 남은 체력 비율이 맞바뀌었다(나 ${myPctLabel}% ↔ ${enemy.name} ${enemyPctLabel}%).`);
@@ -3149,42 +3171,52 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const finalFace = roll2!==null ? Math.max(roll, roll2) : roll;
       const isDouble = roll2!==null && roll===roll2;
       const mult = diceMults[finalFace-1] * (isDouble ? (s.doubleBonusMult||1.6) : 1);
-      const epicLuck = epicLuckPre(s);
-      const edef = getEffectiveEnemyDef(enemy.def);
-      let dmg = Math.max(1, Math.round(effectiveAtk()*mult) - edef);
-      const onHitMult = consumeOnHitBonuses();
-      dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, luck:true, onHitMult});
-      consumeAtkBuff();
-      rogueRegisterHit(true);
-      const success = finalFace>=4;
-      epicLuckPost(success, epicLuck);
-      enemy.hp = Math.max(0, enemy.hp-dmg);
-      updateEnemyHpBar(); shakeEnemy();
-      popDamage('-'+dmg, (finalFace===6||isDouble)?'crit':undefined);
-      Sound.slash();
-      const diceFace = ['⚀','⚁','⚂','⚃','⚄','⚅'][finalFace-1];
-      let msg2;
-      if(roll2!==null){
-        const diceFace2 = ['⚀','⚁','⚂','⚃','⚄','⚅'][roll2-1];
-        if(typeof spawnDualDiceFx==='function') spawnDualDiceFx(['⚀','⚁','⚂','⚃','⚄','⚅'][roll-1], diceFace2, isDouble);
-        if(isDouble){
-          Sound.coin();
-          playBanner(`${diceFace}${diceFace2} 더블!`);
-          msg2 = `두 주사위가 나란히 ${finalFace}을(를) 가리켰다! 완벽하게 조작된 눈이다! ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`;
+      // 이중주사위는 연출 순서를 지킨다: 주사위가 굴러 눈이 확정된 뒤에야 공격 판정/피해 계산이
+      // 들어간다(사용자 요청). 눈은 위에서 이미 정해졌고, 아래 resolveDice가 연출 후 실행된다.
+      const resolveDice = ()=>{
+        if(battleOver) return;
+        const epicLuck = epicLuckPre(s);
+        const edef = getEffectiveEnemyDef(enemy.def);
+        let dmg = Math.max(1, Math.round(effectiveAtk()*mult) - edef);
+        const onHitMult = consumeOnHitBonuses();
+        dmg = applyOutgoingDamageMods(dmg, {type:'physkill', mpCost, luck:true, onHitMult});
+        consumeAtkBuff();
+        rogueRegisterHit(true);
+        const success = finalFace>=4;
+        epicLuckPost(success, epicLuck);
+        enemy.hp = Math.max(0, enemy.hp-dmg);
+        updateEnemyHpBar(); shakeEnemy();
+        popDamage('-'+dmg, (finalFace===6||isDouble)?'crit':undefined);
+        Sound.slash();
+        const diceFace = ['⚀','⚁','⚂','⚃','⚄','⚅'][finalFace-1];
+        let msg2;
+        if(roll2!==null){
+          const diceFace2 = ['⚀','⚁','⚂','⚃','⚄','⚅'][roll2-1];
+          if(isDouble){
+            Sound.coin();
+            playBanner(`${diceFace}${diceFace2} 더블!`);
+            msg2 = `두 주사위가 나란히 ${finalFace}을(를) 가리켰다! 완벽하게 조작된 눈이다! ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!`;
+          } else {
+            playBanner(`${diceFace}${diceFace2} 눈 ${finalFace}`);
+            msg2 = `주사위 두 개 중 더 높은 ${finalFace}을(를) 골라냈다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+          }
         } else {
-          playBanner(`${diceFace}${diceFace2} 눈 ${finalFace}`);
-          msg2 = `주사위 두 개 중 더 높은 ${finalFace}을(를) 골라냈다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+          playBanner(roll===6 ? `${diceFace} 잭팟!` : `${diceFace} 눈 ${roll}`);
+          msg2 = `주사위 눈이 ${roll}이(가) 나왔다! ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+          if(roll===6) msg2 = `주사위가 6을 가리켰다! 운명이 그대의 손을 들어준다! ${enemy.name}에게 ${dmg}의 짜릿한 피해를 입혔다!`;
+          else if(roll===1) msg2 = `주사위가 1... 초라한 눈이지만, 그래도 공격은 공격이다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
         }
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+      };
+      if(roll2!==null){
+        if(typeof spawnDualDiceFx==='function') spawnDualDiceFx(['⚀','⚁','⚂','⚃','⚄','⚅'][roll-1], ['⚀','⚁','⚂','⚃','⚄','⚅'][roll2-1], isDouble);
+        setTimeout(resolveDice, DUAL_DICE_RESOLVE_MS);
       } else {
-        playBanner(roll===6 ? `${diceFace} 잭팟!` : `${diceFace} 눈 ${roll}`);
-        msg2 = `주사위 눈이 ${roll}이(가) 나왔다! ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
-        if(roll===6) msg2 = `주사위가 6을 가리켰다! 운명이 그대의 손을 들어준다! ${enemy.name}에게 ${dmg}의 짜릿한 피해를 입혔다!`;
-        else if(roll===1) msg2 = `주사위가 1... 초라한 눈이지만, 그래도 공격은 공격이다. ${enemy.name}에게 ${dmg}의 피해를 입혔다.`;
+        resolveDice();
       }
-      renderStatus();
-      setBattleMsg(`${player.name}의 ${s.name}!`, msg2);
-      if(checkBattleEnd()) return;
-      enemyTurn();
       return;
     }
 
@@ -3365,6 +3397,19 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         hpSacActualCost = actualCost;
         hpSacMsg = ` 스스로의 피 ${actualCost}을(를) 대가로 바쳤다.`;
       }
+    }
+    // 선혈각인(warriorBloodrend) 예약 소비: 이 스킬의 HP 소모에 최대HP 15%를 더하고
+    // 피해를 늘린다. 소모분은 hpSacActualCost에 합산되어 부활 각인이 함께 돌려준다.
+    let imprintOn = false;
+    if(battleFlags && battleFlags.bloodImprintArmed){
+      const ib = SKILLDB.warriorBloodrend;
+      battleFlags.bloodImprintArmed = false;
+      imprintOn = true;
+      const extra = Math.min(Math.max(1, Math.round(player.maxhp*ib.imprintHpPct)), player.hp-1);
+      if(extra>0){ player.hp -= extra; hpSacActualCost += extra; }
+      dmg = Math.round(dmg*(1+ib.dmgBonus));
+      hpSacMsg += ` 선혈각인이 발동해 피 ${Math.max(0,extra)}을(를) 더 바치고 위력이 늘었다!`;
+      updatePlayerStatusBadges();
     }
     // 원소 계약(mastery_elementpact): 마법 스킬을 쓸 때마다 화염/빙결/번개 중 하나를
     // 즉석에서 계약해 추가 효과를 싣는다.
@@ -3652,10 +3697,12 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(tripleElementMsg) msg2 += tripleElementMsg;
     if(hpSacMsg) msg2 += hpSacMsg;
     if(afterimageMsg2) msg2 += afterimageMsg2;
+    if(key==='warriorBloodpactActive' && typeof spawnSlashImageFx==='function') spawnSlashImageFx({variant:'v11'});
     if(key==='warriorBloodpactUltimate'){
       // 궁극기 전용 강조 연출(사용자 요청 — 삼박난무처럼 다른 직업도 특색 있게).
-      // 새 이미지 없이 기존 핏빛 참격 변주(v4)/화면 플래시/배너만 재사용.
-      spawnSlashImageFx({variant:'v4'});
+      // 전용 이미지(bloodpact_ultimate)/화면 흔들림/화면 플래시/배너.
+      if(typeof spawnBloodUltimateFx==='function') spawnBloodUltimateFx();
+      if(typeof shakeScreen==='function') shakeScreen();
       playStatusFx('blood');
       playBanner('혈맹의 대가!', 'fx-blood');
       const cIdBR = player.equipment && player.equipment.accessory;
@@ -3669,6 +3716,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
     if(chainExecMsg) msg2 += chainExecMsg;
     const dotLabels3 = applySkillDots(s);
+    if(imprintOn && enemy.hp>0) applyDot(SKILLDB.warriorBloodrend.imprintDot);
     if(dotLabels3) msg2 += ` ${dotLabels3} 효과 부여!`;
     if(healed2>0){ msg2 += ` HP ${healed2} 흡수.`; }
     setBattleMsg(`${player.name}은(는) ${s.name}을(를) 시전했다!`, msg2);

@@ -394,6 +394,13 @@
 
   /* ---------- battle screen ---------- */
   #screen-battle{flex:1; min-height:0;}
+  /* 선혈각인 대기중: 적이 있는 전투 무대(bt-stage) 가장자리에 핏빛 기운(비네트)이 천천히 맥동한다. */
+  #bt-stage.blood-imprint::after{
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:40;
+    box-shadow:inset 0 0 70px 18px rgba(170,10,20,.55), inset 0 0 160px 40px rgba(110,0,10,.35);
+    animation:bloodImprintPulse 2.2s ease-in-out infinite;
+  }
+  @keyframes bloodImprintPulse{0%,100%{opacity:.65}50%{opacity:1}}
   .archway{
   position:relative; margin:14px 16px 0; height:210px;
   background:
@@ -518,6 +525,8 @@
   .slash-img-fx.v8::after{ transform:rotate(calc(var(--ang,0deg) + 22deg)) scale(0.9); } /* 이중 참격 */
   .slash-img-fx.v9::after{ transform:rotate(calc(var(--ang,0deg) + 90deg)) scale(0.85); } /* 교차(X) 참격 */
   .slash-img-fx.v10{ width:300px; height:170px; filter:saturate(1.2); } /* 광폭 휩쓸기(부채꼴) */
+  /* 저돌(혈맹의 검투사) 전용 — 원본 색과 무관하게 붉게(grayscale→sepia→hue-rotate). 무작위 풀(SLASH_VARIANTS)에는 넣지 않는다. */
+  .slash-img-fx.v11{ width:240px; height:240px; filter:grayscale(1) sepia(1) hue-rotate(-50deg) saturate(6) brightness(0.95) contrast(1.1); }
   /* 삼박일섬 전용 - 베는 동작을 하는 사람 형상(사용자 제공 스프라이트 3종).
      .slash-img-fx와 완전히 같은 애니메이션/좌우반전을 재사용하되, 배경이미지는
      background-image 대신 매번 JS에서 인라인으로 지정한다(3종 중 무작위). */
@@ -849,25 +858,6 @@
   /* 명멸의 틈 페이드는 클래스+키프레임 대신 인라인 스타일로 직접 제어한다
      (combat/enemy-turn.js) — 다른 CSS 규칙과 우선순위가 얽혀 안 먹혔을 수
      있어, 항상 이기는 인라인 스타일 방식으로 바꿨다. */
-
-  /* 화면 균열 이펙트(사용자 요청 — 시간의 파수꾼 공격 연출 다양화). 새
-     이미지 리소스 없이 SVG 번개형 균열 6가닥을 매번 살짝 다른 각도/길이로
-     그려서 짧게 번쩍였다 사라진다. */
-  @keyframes screencrack{
-    0%{opacity:0;}
-    12%{opacity:1;}
-    35%{opacity:0.8;}
-    100%{opacity:0;}
-  }
-  .screen-crack-fx{
-    position:absolute; inset:0; pointer-events:none; z-index:6;
-    animation: screencrack .6s ease-out forwards;
-  }
-  .screen-crack-fx svg{ width:100%; height:100%; display:block; }
-  .screen-crack-fx path{
-    fill:none; stroke:#eef2ff; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round;
-    filter: drop-shadow(0 0 5px #cfe0ffcc) drop-shadow(0 0 10px #9ab4ff88);
-  }
 
   .pressure-gauge{
     margin:4px auto 0; max-width:180px; padding:4px 8px 6px; border-radius:6px;
