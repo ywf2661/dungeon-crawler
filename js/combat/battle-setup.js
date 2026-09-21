@@ -726,6 +726,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   const TIME_GUARDIAN_KNIGHT_LINE = ['칼리버 X가 갑자기 무겁게 진동한다. 칼날 전체가 미세하게 떨린다.', '손끝까지 타고 오르는 낯선 저릿함 — 마치 검 자체가, 저 갑주를 알아보기라도 하듯.'];
   const TIME_GUARDIAN_TIMEMAGE_LINES = ['...이 존재도, 어딘가에서 시간을 빌려온 걸까.', '아니, 다르다. 이건 그 누구에게도 빌리지 못한 시간이다.'];
   const TIME_GUARDIAN_CHALNA_LINES = ['벨 때마다 손끝에 스며드는 그 찰나의 감각이, 이번엔 거꾸로 나를 벤다.', '...이 안에 갇힌 순간은, 대체 누구의 것이었을까.'];
+  // 타임패트롤 — 몸에 깃든 목소리가 파수꾼에게서 마녀의 시간과 같은 냄새를 맡는다(사용자 요청).
+  // 파수꾼이 마녀의 부산물이라는 사실은 직접 말하지 않고 "부스러기"로만 흘린다(8장).
   function maybeShowTimeGuardianJobDialogue(){
     if(!enemy || enemy.type !== 'timeguardian') return false;
     if(player.specialization === 'paladin_knight'){
@@ -734,6 +736,14 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     }
     if(player.specialization === 'mage_time'){
       showDialogueSequence(TIME_GUARDIAN_TIMEMAGE_LINES, {title: enemy.name});
+      return true;
+    }
+    if(player.specialization === 'mechanic_timepatrol'){
+      showDialogueSequence([
+        {text:'…저건 살아 있는 게 아니야. 멈춘 시간이 뭉쳐 굳은 것이다.', title:'???'},
+        {text:'…그게 무슨 뜻이지.', title:player.name},
+        {text:'이 시간대를 어긋나게 한 것의 부스러기. 냄새가 같아. …가까이 왔군.', title:'???'},
+      ]);
       return true;
     }
     if(player.specialization === 'warrior_chalna'){
