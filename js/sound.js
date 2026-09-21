@@ -148,6 +148,8 @@ export(전역): const Sound
       timeParadox: 'audio/sfx/timeparadox.wav',
       curseNova: 'audio/sfx/cursenova.wav',
       curseBrand: 'audio/sfx/cursebrand.wav',
+      bloodImprint: 'audio/sfx/bloodimprint.wav', // 혈맹의 검투사 선혈각인(쿵 + 심장박동)
+      bloodUltimate: 'audio/sfx/bloodultimate.mp3', // 혈옥쇄(혈맹의 검투사 Lv15) — ElevenLabs 생성 음원
       curseBloom: 'audio/sfx/cursebloom.wav',
       // 계약술사 원소 스킬 9종(원소×각인/파동/폭풍) — VFX 이미지와 같은 이름.
       pact_fire_strike: 'audio/sfx/pact_fire_strike.wav',
@@ -457,6 +459,8 @@ export(전역): const Sound
     // 저주술사 스킬 3종 전용 효과음(사용자 제공). 로딩 전이면 기존 magic()으로 대체.
     function curseNova(){ if(muted) return; if(playSfxBuffer('curseNova')) return; magic(); }
     function curseBrand(){ if(muted) return; if(playSfxBuffer('curseBrand')) return; magic(); }
+    function bloodImprint(){ if(muted) return; if(playSfxBuffer('bloodImprint')) return; buff(); }
+    function bloodUltimate(){ if(muted) return; if(playSfxBuffer('bloodUltimate')) return; bomb(); }
     function curseBloom(){ if(muted) return; if(playSfxBuffer('curseBloom')) return; magic(); }
 
     // 계약술사 원소 스킬 효과음. name = 'pact_<원소>_<strike|wave|storm>'. 로딩 전이면 magic()으로 대체.
@@ -581,7 +585,7 @@ export(전역): const Sound
     return {
       ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
-      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom, pact, necroRelease, necroSig,
+      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom, bloodImprint, bloodUltimate, pact, necroRelease, necroSig,
       setMuted, toggleMuted, isMuted,
     };
   })();

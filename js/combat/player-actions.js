@@ -553,7 +553,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.bloodImprintArmed = true;
       renderStatus();
       updatePlayerStatusBadges();
-      Sound.buff();
+      Sound.bloodImprint();
       if(typeof shakeScreen==='function') shakeScreen(0.45); // 살짝 '쿵'
       setBattleMsg(`${player.name}의 ${s.name}!`, '칼날에 피를 새겼다. 다음 스킬이 더 강하게, 출혈과 함께 꽂힌다 — 대신 피를 더 바친다.');
       setCommandsEnabled(true);
@@ -3656,6 +3656,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     enemy.hp = Math.max(0, enemy.hp-dmg);
     updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, mod.triggered?'crit':undefined);
     if(key==='mageCurseNova') Sound.curseNova();
+    else if(key==='warriorBloodpactUltimate') Sound.bloodUltimate();
     else if(s.type==='magic') Sound.magic();
     else if(key==='paladinCaliberXFinale' && typeof Sound.caliberxFinale==='function') Sound.caliberxFinale();
     else Sound.slash();
