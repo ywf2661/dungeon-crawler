@@ -787,6 +787,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-hasteDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+hasteDmg);
       Sound.magic();
+      if(typeof spawnTimeHasteFx==='function') spawnTimeHasteFx();
       // 시간 조각: 가속 주문을 성공적으로 시전할 때마다 하나씩 쌓인다(최대 5).
       // 위쪽에서 MP 부족으로 취소된 경우엔 여기 도달하지 않으므로 자연히 제외된다.
       battleFlags.timeStacks = Math.min(5, (battleFlags.timeStacks||0)+1);
@@ -2180,6 +2181,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       player.knightVulnAtkBonus = atkAdd;
       player.knightVulnDefPenalty = defSub;
       renderStatus();
+      // 전용 연출(사용자 제공 knight_darkprayer) — HP를 바치는 순간의 붉은 플래시와 배너.
+      if(typeof spawnDarkPrayerFx==='function') spawnDarkPrayerFx();
+      playStatusFx('blood');
+      playBanner('검은 기도', 'fx-blood');
       playCastBurst();
       Sound.buff();
       setBattleMsg('"...기도를 올렸다."', `"...무언가가 응답했다."${costMsg} ${turnsUsed}턴간 공격력이 크게 오르지만, 방어가 허술해진다.`);
@@ -2649,6 +2654,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       player.hp = player.maxhp;
       player.mp = player.maxmp;
       renderStatus();
+      if(typeof spawnTimeRewindFx==='function') spawnTimeRewindFx();
       playCastBurst('heal');
       Sound.heal();
       setBattleMsg(`${player.name}의 ${s.name}!`, `쌓인 시간 조각(${stacks}개)의 힘으로 시간을 되돌려 HP와 MP를 가득 채웠다! (조각은 소모되지 않는다)`);
@@ -3627,6 +3633,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 가장 큰 이펙트 이미지를 한 번 크게 띄운다.
     // [보강] 사용자 피드백 — 이미지는 제일 큰데 배너/화면 흔들림이 없어
     // 심심하게 느껴짐. 새 이미지 없이 배너+shakeScreen만 추가.
+    if(key==='paladinHolyRend' && typeof spawnHolyRendFx==='function') spawnHolyRendFx();
+    if(key==='paladinJudgmentLight' && typeof spawnMartyrJudgmentFx==='function') spawnMartyrJudgmentFx();
     if(key==='paladinCaliberXFinale'){
       if(typeof spawnCaliberXFx==='function') spawnCaliberXFx();
       if(typeof shakeScreen==='function') shakeScreen();

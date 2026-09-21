@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnCoinTossFx, spawnVenomDrainFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnCoinTossFx, spawnVenomDrainFx, spawnHolyRendFx, spawnDarkPrayerFx, spawnMartyrJudgmentFx, spawnTimeHasteFx, spawnTimeRewindFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -648,6 +648,105 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     after(VENOM_DRAIN_RESOLVE_MS + 300, ()=>{ bite.remove(); stream.remove(); vortex.remove(); });
   }
 
+  // 회랑의 기사 성휘참(Lv10): 사용자 제공 knight_holyrend — 적 몸 위에 곧게 그어지는
+  // 금빛 참격. 이미지의 사선(좌하→우상)을 그대로 쓰되 무작위로 좌우 반전해 단조롭지
+  // 않게 한다. 번쩍이며 나타났다가 살짝 커지며 사라진다.
+  function spawnHolyRendFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    const flip = Math.random()<0.5 ? -1 : 1;
+    el.style.cssText = "position:absolute; left:50%; top:46%; width:300px; height:300px; "
+      + "background-image:url('images/vfx/knight_holyrend.webp'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + `opacity:0; transform:translate(-50%,-50%) scale(${.6*flip},.6);`;
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .08s ease-out, transform .2s cubic-bezier(.2,1.3,.4,1)';
+    el.style.opacity = '1';
+    el.style.transform = `translate(-50%,-50%) scale(${1*flip},1)`;
+    setTimeout(()=>{
+      el.style.transition = 'opacity .35s ease-in, transform .35s ease-in';
+      el.style.opacity = '0';
+      el.style.transform = `translate(-50%,-50%) scale(${1.15*flip},1.15)`;
+    }, 300);
+    setTimeout(()=>el.remove(), 750);
+  }
+
+  // 회랑의 기사 검은 기도(Lv12): 사용자 제공 knight_darkprayer — 금 간 검은 후광과
+  // 붉은 어둠이 화면 아래(플레이어 쪽)에서 솟아오르며 커졌다가 사라진다.
+  function spawnDarkPrayerFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const H = stage.clientHeight || 300;
+    const h = Math.round(H*0.95), w = Math.round(h*795/1236);
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute; left:50%; top:${Math.round(H*0.55)}px; width:${w}px; height:${h}px; `
+      + "background-image:url('images/vfx/knight_darkprayer.webp'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-25%) scale(.6);";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .3s ease-out, transform .7s cubic-bezier(.2,.8,.3,1)';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .5s ease-in, transform .5s ease-in';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%,-58%) scale(1.1)';
+    }, 800);
+    setTimeout(()=>el.remove(), 1400);
+  }
+
+  // 시간술사 가속 주문(Lv10): 사용자 제공 time_haste — 태엽 고리가 크게 나타나 회전하며
+  // 빠르게 안쪽으로 쪼그라든다(시간 압축). 압축이 끝나는 순간 중심 섬광에서 피해가
+  // 들어가는 느낌이라 살짝 화면을 흔든다. 적 턴을 건너뛰는 로직은 그대로다.
+  function spawnTimeHasteFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.style.cssText = "position:absolute; left:50%; top:46%; width:190px; height:190px; "
+      + "background-image:url('images/vfx/time_haste.webp'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) scale(1.6) rotate(-60deg);";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .12s ease-out, transform .32s cubic-bezier(.6,0,.9,.5)';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(.75) rotate(60deg)';
+    setTimeout(()=>{
+      if(typeof shakeScreen==='function') shakeScreen(0.35);
+      el.style.transition = 'opacity .3s ease-in, transform .3s ease-out';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%,-50%) scale(1.05) rotate(70deg)';
+    }, 330);
+    setTimeout(()=>el.remove(), 800);
+  }
+
+  // 시간술사 시간 역행(Lv12): 사용자 제공 time_rewind — 화면 아래(플레이어 쪽)에서 시계판이
+  // 반시계 방향으로 돌며 커졌다가 옅어진다. 회복(HP/MP 가득)은 기존 castBurst가 함께 맡는다.
+  function spawnTimeRewindFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const H = stage.clientHeight || 300;
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute; left:50%; top:${Math.round(H*0.68)}px; width:260px; height:260px; `
+      + "background-image:url('images/vfx/time_rewind.webp'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) scale(.6) rotate(0deg);";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .25s ease-out, transform 1s cubic-bezier(.25,.6,.3,1)';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1.1) rotate(-300deg)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .4s ease-in, transform .4s ease-in';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%,-50%) scale(1.25) rotate(-360deg)';
+    }, 800);
+    setTimeout(()=>el.remove(), 1300);
+  }
+
   // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출 — 사용자가 새로 준 24프레임
   // 루프형 스프라이트 시트(보라색 포탈, 256px 6x4 그리드)를 프레임 애니메이션
   // 으로 재생한다. 이번 시트는 원본 자체가 각 프레임 중심이 이미 거의 안 흔들
@@ -776,13 +875,37 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 960);
   }
 
+  // 순교자 심판의 빛(Lv10): 사용자 제공 martyr_judgment — 화면 위에서 적 몸까지 곧게
+  // 내리꽂히는 성스러운 빛기둥. 위에서 아래로 드러난 뒤(clip-path) 잠깐 머물다
+  // 사라진다. 이미지 하단의 착지 섬광이 적 중심(약 화면 절반 높이)에 오도록 맞춘다.
+  function spawnMartyrJudgmentFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const H = stage.clientHeight || 300;
+    const h = Math.round(H*0.62), w = Math.round(h*359/800);
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute; left:50%; top:0; width:${w}px; height:${h}px; `
+      + "background-image:url('images/vfx/martyr_judgment.webp'); background-size:100% 100%; "
+      + "background-repeat:no-repeat; pointer-events:none; z-index:7; "
+      + "opacity:1; transform:translateX(-50%); clip-path:inset(0 0 100% 0);";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'clip-path .2s ease-in';
+    el.style.clipPath = 'inset(0 0 0% 0)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .35s ease-out';
+      el.style.opacity = '0';
+    }, 420);
+    setTimeout(()=>el.remove(), 850);
+  }
+
   // 불멸의 순교(순교자 레벨15 궁극기) 전용 VFX 이미지(사용자 제공). 위와
   // 동일한 인라인 스타일 방식.
   function spawnMartyrFx(){
     const stage = document.getElementById('bt-stage');
     if(!stage) return;
     const el = document.createElement('div');
-    el.style.cssText = "position:absolute; left:50%; top:42%; width:300px; height:300px; "
+    el.style.cssText = "position:absolute; left:50%; top:42%; width:280px; height:360px; "
       + "background-image:url('images/vfx/martyr_ultimate.webp'); background-size:contain; "
       + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
       + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-4deg);";
@@ -1644,7 +1767,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   const names = [
     'caliberx_finale','chalna_figure_1','chalna_figure_2','chalna_figure_3',
     'curse_bloom_ultimate','curse_brand','curse_nova','martyr_ultimate',
-    'bloodpact_ultimate','fateswap_scale','coin_spin_1','coin_spin_2','coin_heads','coin_tails','venom_bite','venom_stream','venom_absorb','overload_explode','overload_jet','phantom_slash','slash_ice',
+    'bloodpact_ultimate','fateswap_scale','coin_spin_1','coin_spin_2','coin_heads','coin_tails','venom_bite','venom_stream','venom_absorb','knight_holyrend','knight_darkprayer','martyr_judgment','time_haste','time_rewind','overload_explode','overload_jet','phantom_slash','slash_ice',
     'tg_frost','tg_return','tg_void','pact_fire_strike','pact_fire_wave','pact_fire_storm','pact_ice_strike','pact_ice_wave','pact_ice_storm','pact_lightning_strike','pact_lightning_wave','pact_lightning_storm','necro_release','necro_sig_watchertablet','necro_sig_hornedwarden','necro_sig_bladedbloom','necro_sig_clockheart','necro_sig_hollowprophet',
   ];
   for(let i=1;i<=24;i++) names.push('time_paradox_f'+String(i).padStart(2,'0'));
