@@ -687,7 +687,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       venomDmg = applyOutgoingDamageMods(venomDmg, {type:'physkill', mpCost, onHitMult:onHitMultVenom});
       enemy.hp = Math.max(0, enemy.hp-venomDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+venomDmg);
-      Sound.slash(); playStatusFx('poison');
+      Sound.venomDrain(); playStatusFx('poison');
       // 체액 흡수 연출(사용자 제공 이미지 3종) — 피해는 위에서 타격 순간에 이미
       // 들어갔고, 스택/흡수 반영·메시지·적 턴은 연출이 끝난 뒤(아래 finishVenom)에 처리한다.
       const venomFx = typeof spawnVenomDrainFx==='function';

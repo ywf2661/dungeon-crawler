@@ -648,7 +648,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       enemy.hp = Math.max(0, enemy.hp - d.dmgPerTurn);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+d.dmgPerTurn, d.type);
       playStatusFx(d.type);
-      Sound.poisonHit();
+      Sound.dotTick(d.type);
       setBattleMsg(`${enemy.name}이(가) ${d.label}(으)로 ${d.dmgPerTurn}의 피해를 입었다!`, '');
       d.turns -= 1;
       updateStatusBadges();

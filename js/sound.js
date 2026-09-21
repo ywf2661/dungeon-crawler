@@ -150,6 +150,11 @@ export(전역): const Sound
       curseBrand: 'audio/sfx/cursebrand.wav',
       bloodImprint: 'audio/sfx/bloodimprint.wav', // 혈맹의 검투사 선혈각인(쿵 + 심장박동)
       timeHaste: 'audio/sfx/timehaste.mp3', // 가속 주문(마법사) — 4초 원본을 2초로 잘라 재생
+      dotTick_poison: 'audio/sfx/poisontick.mp3', // 독 지속피해 틱 (종류별 음원은 dotTick_<type>으로 추가)
+      dotTick_infection: 'audio/sfx/infectiontick.mp3', // 감염 틱
+      dotTick_burn: 'audio/sfx/burntick.mp3', // 화상 틱
+      dotTick_bleed: 'audio/sfx/bleedtick.mp3', // 출혈 틱
+      venomDrain: 'audio/sfx/venomdrain.mp3', // 체액 흡수(도적) — 타격 + 독액 줄기 + 소용돌이
       darkPrayer: 'audio/sfx/darkprayer.mp3', // 검은 기도(성기사) — 잔잔하고 으스스한 속삭임
       timeRewind: 'audio/sfx/timerewind.mp3', // 시간 역행(마법사)
       bloodUltimate: 'audio/sfx/bloodultimate.mp3', // 혈옥쇄(혈맹의 검투사 Lv15) — ElevenLabs 생성 음원
@@ -473,6 +478,9 @@ export(전역): const Sound
     function bloodImprint(){ if(muted) return; if(playSfxBuffer('bloodImprint')) return; buff(); }
     function timeHaste(){ if(muted) return; if(playSfxBuffer('timeHaste', 1, 2)) return; magic(); buff(); }
     function timeRewind(){ if(muted) return; if(playSfxBuffer('timeRewind')) return; heal(); }
+    // 지속피해 틱음: 종류(poison/burn/bleed/infection)별 음원이 있으면 그걸, 없으면 기존 poisonHit
+    function dotTick(type){ if(muted) return; if(playSfxBuffer('dotTick_'+type)) return; poisonHit(); }
+    function venomDrain(){ if(muted) return; if(playSfxBuffer('venomDrain')) return; slash(); }
     function darkPrayer(){ if(muted) return; if(playSfxBuffer('darkPrayer')) return; buff(); }
     function bloodUltimate(){ if(muted) return; if(playSfxBuffer('bloodUltimate')) return; bomb(); }
     function curseBloom(){ if(muted) return; if(playSfxBuffer('curseBloom')) return; magic(); }
@@ -599,7 +607,7 @@ export(전역): const Sound
     return {
       ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
-      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom, bloodImprint, bloodUltimate, timeHaste, timeRewind, darkPrayer, pact, necroRelease, necroSig,
+      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom, bloodImprint, bloodUltimate, timeHaste, timeRewind, darkPrayer, venomDrain, dotTick, pact, necroRelease, necroSig,
       setMuted, toggleMuted, isMuted,
     };
   })();
