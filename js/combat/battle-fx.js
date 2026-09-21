@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnCoinTossFx, spawnVenomDrainFx, spawnHolyRendFx, spawnDarkPrayerFx, spawnMartyrJudgmentFx, spawnTimeHasteFx, spawnTimeRewindFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnCoinTossFx, spawnVenomDrainFx, spawnHolyRendFx, spawnDarkPrayerFx, spawnMartyrJudgmentFx, spawnTimeHasteFx, spawnTimeRewindFx, spawnRigShotFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -482,6 +482,95 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 320);
   }
+  // 로봇 자동 사격 연출(사용자 요청 — "로봇이 총을 쏘는 게 타격감이 별로"). 새 이미지 없이
+  // CSS/WAAPI만으로 발사(총구 섬광) → 비행(탄환/빔/에너지구) → 명중(섬광+충격 링+적 흔들림)
+  // 3단계를 만든다. enemy-turn.js의 tickActiveRig()가 피해를 넣는 시점(landMs 뒤)에 맞춰
+  // 마지막 탄이 도착하도록 발사 타이밍을 역산하므로, 피해 판정 코드는 그대로다.
+  // 역할별: recon=가는 레이저, firepower=예광탄 3연사, shield=에너지 파동구, turret=탄 1발,
+  // omega=굵은 빔. 총사령관의 명령(legionCommandTurns>0) 중엔 금빛으로 강화된다.
+  function spawnRigShotFx(slotKey, rig, landMs){
+    const stage = document.getElementById('bt-stage');
+    if(!stage || !rig) return;
+    const kind = rig.kind;
+    if(!['recon','firepower','shield','turret','omega'].includes(kind)) return;
+    const srcEl = document.getElementById(slotKey==='rig' ? 'bt-rig1' : slotKey==='rig2' ? 'bt-rig2' : 'bt-rigomega');
+    const sr = stage.getBoundingClientRect();
+    if(!sr.width) return;
+    const er = (srcEl && srcEl.offsetParent) ? srcEl.getBoundingClientRect() : null;
+    const sx = er ? er.left + er.width/2 - sr.left : (slotKey==='rig2' ? sr.width*0.85 : sr.width*0.15);
+    const sy = er ? er.top + er.height*0.5 - sr.top : sr.height*0.3;
+    const tx = sr.width*0.5, ty = sr.height*0.46;
+    const boosted = !!(battleFlags && battleFlags.legionCommandTurns>0);
+    const C = boosted
+      ? {core:'#fff3c4', glow:'#ffc94a', edge:'rgba(255,190,60,0.0)'}
+      : (kind==='recon'   ? {core:'#e6fbff', glow:'#4fd8ff', edge:'rgba(79,216,255,0.0)'}
+      :  kind==='shield'  ? {core:'#ffffff', glow:'#8fb4ff', edge:'rgba(143,180,255,0.0)'}
+      :  kind==='omega'   ? {core:'#fff0d6', glow:'#ff9a3c', edge:'rgba(255,154,60,0.0)'}
+      :                     {core:'#fff1c9', glow:'#ff8a2b', edge:'rgba(255,138,43,0.0)'});
+    const mk = (css)=>{
+      const el = document.createElement('div');
+      el.style.cssText = 'position:absolute; pointer-events:none; z-index:7; opacity:0; will-change:transform,opacity; ' + css;
+      stage.appendChild(el);
+      return el;
+    };
+    const run = (el, frames, opt)=>{
+      const a = el.animate(frames, Object.assign({fill:'both', easing:'linear'}, opt));
+      a.onfinish = ()=>el.remove();
+      return a;
+    };
+    const FLIGHT = kind==='shield' ? 230 : kind==='omega' ? 170 : 150;
+    const shots = kind==='firepower' ? 3 : 1;
+    const STAGGER = 55;
+    const firstLaunch = landMs - FLIGHT - (shots-1)*STAGGER;
+    // ① 총구 섬광
+    {
+      const m = mk(`left:${sx-22}px; top:${sy-22}px; width:44px; height:44px; border-radius:50%; `
+        + `background:radial-gradient(circle, ${C.core} 0%, ${C.glow} 40%, ${C.edge} 75%);`);
+      run(m, [{opacity:0, transform:'scale(.3)'},{opacity:1, transform:'scale(1.1)', offset:.3},{opacity:0, transform:'scale(1.5)'}],
+        {delay:Math.max(0, firstLaunch-30), duration:170});
+    }
+    const dx = tx - sx, dy = ty - sy, len = Math.hypot(dx, dy), ang = Math.atan2(dy, dx)*180/Math.PI;
+    for(let i=0;i<shots;i++){
+      const t0 = Math.max(0, firstLaunch + i*STAGGER);
+      const jx = (Math.random()-0.5)*36, jy = (Math.random()-0.5)*30;
+      const ex = tx + jx, ey = ty + jy;
+      const ddx = ex - sx, ddy = ey - sy, dl = Math.hypot(ddx, ddy), da = Math.atan2(ddy, ddx)*180/Math.PI;
+      // ② 비행
+      if(kind==='recon' || kind==='omega'){
+        const h = kind==='omega' ? 9 : 3;
+        const b = mk(`left:${sx}px; top:${sy-h/2}px; width:${dl}px; height:${h}px; transform-origin:0 50%; `
+          + `background:linear-gradient(90deg, ${C.glow}00 0%, ${C.core} 55%, ${C.core} 100%); border-radius:${h}px; `
+          + `box-shadow:0 0 ${h*3}px ${C.glow}, 0 0 ${h*6}px ${C.glow}88;`);
+        run(b, [{opacity:1, transform:`rotate(${da}deg) scaleX(0)`},{opacity:1, transform:`rotate(${da}deg) scaleX(1)`, offset:.6},{opacity:0, transform:`rotate(${da}deg) scaleX(1)`}],
+          {delay:t0, duration:FLIGHT+80});
+      } else if(kind==='shield'){
+        const o = mk(`left:${sx-16}px; top:${sy-16}px; width:32px; height:32px; border-radius:50%; `
+          + `background:radial-gradient(circle, ${C.core} 0%, ${C.glow} 45%, ${C.edge} 72%); box-shadow:0 0 16px ${C.glow};`);
+        run(o, [{opacity:1, transform:'translate(0,0) scale(.6)'},{opacity:1, transform:`translate(${ddx}px,${ddy}px) scale(1.5)`}],
+          {delay:t0, duration:FLIGHT, easing:'ease-in'});
+      } else {
+        const b = mk(`left:${sx-14}px; top:${sy-2.5}px; width:28px; height:5px; border-radius:5px; transform-origin:50% 50%; `
+          + `background:linear-gradient(90deg, ${C.glow}00, ${C.core}); box-shadow:0 0 8px ${C.glow}, 0 0 16px ${C.glow}99;`);
+        run(b, [{opacity:1, transform:`translate(0,0) rotate(${da}deg)`},{opacity:1, transform:`translate(${ddx}px,${ddy}px) rotate(${da}deg)`}],
+          {delay:t0, duration:FLIGHT, easing:'ease-in'});
+      }
+      // ③ 명중: 섬광 + 충격 링(마지막 탄은 더 크게)
+      const last = i===shots-1;
+      const hitAt = t0 + FLIGHT;
+      const big = (last ? 1.25 : 0.8) * (kind==='omega' ? 1.5 : kind==='shield' ? 1.3 : 1);
+      const f = mk(`left:${ex-32}px; top:${ey-32}px; width:64px; height:64px; border-radius:50%; `
+        + `background:radial-gradient(circle, ${C.core} 0%, ${C.glow} 38%, ${C.edge} 72%);`);
+      run(f, [{opacity:0, transform:'scale(.2)'},{opacity:1, transform:`scale(${big})`, offset:.35},{opacity:0, transform:`scale(${big*1.5})`}],
+        {delay:hitAt, duration:230});
+      const r = mk(`left:${ex-30}px; top:${ey-30}px; width:60px; height:60px; border-radius:50%; `
+        + `border:${kind==='shield'?4:2}px solid ${C.core}; box-shadow:0 0 10px ${C.glow};`);
+      run(r, [{opacity:.9, transform:'scale(.3)'},{opacity:0, transform:`scale(${big*2.1})`}],
+        {delay:hitAt, duration:300, easing:'ease-out'});
+    }
+    // 적 몸이 맞는 반응(마지막 탄이 닿는 순간)
+    setTimeout(()=>{ if(!battleOver) shakeEnemy(); }, Math.max(0, firstLaunch + (shots-1)*STAGGER + FLIGHT));
+  }
+
   // 현재 배치된 장치 구성을 보고 사출 연출을 정한다(사용자 요청). 오메가
   // 유닛(#bt-rigomega, battleFlags.omegaRig)은 빔 대신 그 자리에서 폭발
   // 이미지가 바로 터지는 것으로 단순화했다. 일반 포탑(battleFlags.rig/rig2,

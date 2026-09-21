@@ -297,6 +297,8 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // onDone()을 호출해 다음 단계(다른 슬롯 틱 또는 enemyTurnReal)로 넘어간다.
   function tickActiveRig(slotKey, onDone){
     const rig = battleFlags[slotKey];
+    // 사격 연출(발사→비행→명중)을 피해가 들어가는 450ms 시점에 맞춰 깔아둔다.
+    if(typeof spawnRigShotFx==='function') spawnRigShotFx(slotKey, rig, 450);
     setTimeout(()=>{
       if(battleOver) return;
       // 1차 스킬 버프(사용자 요청 — "영리한 버프" A안) — 압력 연동 포탑 화력.
@@ -376,7 +378,8 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 누르는 폭주 사출 액티브 전용으로 남겨 "평타 대 필살기"의 무게 차이를
       // 살린다. 정찰/화력/방벽 드론과 강령술사 소환수는 이미 자기만의 호버링
       // 애니메이션/사운드가 있어 대상에서 제외.
-      if(rig.kind==='turret' || rig.kind==='omega'){
+      // (새 사격 연출 spawnRigShotFx가 명중 섬광까지 그리므로, 그 함수가 없을 때만 옛 스파크를 쓴다.)
+      if((rig.kind==='turret' || rig.kind==='omega') && typeof spawnRigShotFx!=='function'){
         if(typeof spawnRigTickSpark==='function') spawnRigTickSpark();
       }
       // 메카닉 리뉴얼(사용자 요청) — 장치가 사격할 때마다 압력도 함께 쌓는다.
