@@ -193,12 +193,13 @@ export(전역): showJobAdvancement, resolveJobAdvancement
       }
       // 타임패트롤(mechanic_timepatrol): 전직 확정 순간의 대화 팝업(사용자 요청 — 토스트 대신
       // 3줄 대화). 정체(미래의 수사관)를 직접 밝히지 않고 낯선 목소리로만 암시한다(간접 서술
-      // 원칙, story.md 8장). 화자 "???"는 아이온 공명 대사와 같은 표기.
+      // 원칙, story.md 8장). 화자 "???"는 아이온 공명 대사와 같은 표기. 기관사를 고른 이유는
+      // "기계를 읽는 손"으로만 흘린다.
       if(specId==='mechanic_timepatrol' && typeof showDialogueSequence==='function'){
         showDialogueSequence([
           {text:'…연결됐군. 들리나, 이 몸의 주인.', title:'???'},
           {text:'누구야… 내 머릿속에서 나가.', title:player.name},
-          {text:'그럴 수 없어. 저 시계 소리가 틀렸거든. 이 시간대는 어긋나 있어. 잠시 네 손을 빌리겠다.', title:'???'},
+          {text:'그럴 수 없어. 저 시계 소리가 틀렸거든. 이 시간대는 어긋나 있어. 태엽이 어떻게 물려 있는지 아는 손이 필요했다. 잠시, 빌리겠다.', title:'???'},
         ]);
       }
       // 찰나검사(warrior_chalna): 전직 확정 순간에 맞는 토스트 메시지(사용자 요청).
