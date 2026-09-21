@@ -3,7 +3,7 @@
 기관사 2차 전직 "타임패트롤"(mechanic_timepatrol) — 다른 직업 2차 전직의 액티브 스킬을
 "잔상"으로 빌려 쓰는 로직.
 export(전역): TP_POOL_NORMAL, TP_POOL_ULT, TP_MAX_CLUES, tpClues, tpBorrowPower, tpWeight,
-              tpPickKeys, tpCanBorrow
+              tpPickKeys, tpCanBorrow, castBorrowed, restoreBorrow
 의존성: data/skills.js(SKILLDB). battleFlags는 전역 전투 상태(typeof로 방어).
 주의: 풀은 화이트리스트다. 예약형(선혈각인/분신 배가/정보료)·패시브·소환수 전제 스킬·
      총사령관의 명령·임계 폭주는 일부러 넣지 않았다(스펙 참고).
@@ -66,4 +66,65 @@ export(전역): TP_POOL_NORMAL, TP_POOL_ULT, TP_MAX_CLUES, tpClues, tpBorrowPowe
       pool.splice(idx, 1);
     }
     return out;
+  }
+
+  /* ---------- 빌려쓰기 실행기 ---------- */
+  // playerSkill(key, true)로 스킬을 발동하되(isRetry=true → MP/쿨타임 검사·차감 생략),
+  // 그동안만 전역 enemyTurn/setCommandsEnabled/resetCommandUI/checkBattleEnd를 가로채
+  // "이 스킬이 끝났다"는 신호를 잡는다. 대부분의 스킬은 끝에서 enemyTurn()을 부르고, 턴을
+  // 소모하지 않는 스킬(강령 소환 등)은 setCommandsEnabled(true)로 끝난다. 신호가 오면 임시
+  // 상태를 전부 원복한 뒤 done()을 호출한다(연쇄 발동/마지막 적 턴 진입은 done의 몫).
+  // 전투가 그 사이 끝나면(checkBattleEnd()가 true) 원복만 하고 done()은 부르지 않는다.
+  const _tp = {active:false, key:null, real:null, saved:null};
+
+  function restoreBorrow(){
+    if(!_tp.active) return;
+    window.enemyTurn = _tp.real.enemyTurn;
+    window.setCommandsEnabled = _tp.real.setCommandsEnabled;
+    window.resetCommandUI = _tp.real.resetCommandUI;
+    window.checkBattleEnd = _tp.real.checkBattleEnd;
+    player.atk = _tp.saved.atk;
+    player.necroSummonType = _tp.saved.necroSummonType;
+    if(battleFlags){
+      ['borrowing','borrowMult','borrowBloodPact','borrowElementPact','borrowMartyr'].forEach(f=>{ delete battleFlags[f]; });
+      // playerSkill이 빌린 스킬 키로 쿨타임을 걸어 뒀다면 지운다(내 스킬이 아니다).
+      if(battleFlags.skillCooldowns) delete battleFlags.skillCooldowns[_tp.key];
+    }
+    _tp.active = false;
+  }
+
+  function castBorrowed(key, done, clues){
+    restoreBorrow(); // 혹시 남아 있는 이전 상태 정리(멱등)
+    const power = tpBorrowPower(clues===undefined ? tpClues() : clues);
+    _tp.key = key;
+    _tp.real = {enemyTurn, setCommandsEnabled, resetCommandUI, checkBattleEnd};
+    _tp.saved = {atk: player.atk, necroSummonType: player.necroSummonType};
+    _tp.active = true;
+    const finish = ()=>{
+      if(!_tp.active) return;
+      restoreBorrow();
+      done();
+    };
+    window.enemyTurn = finish;
+    window.resetCommandUI = finish;
+    window.setCommandsEnabled = en=>{ if(en) finish(); else _tp.real.setCommandsEnabled(false); };
+    window.checkBattleEnd = function(){
+      const over = _tp.real.checkBattleEnd.apply(null, arguments);
+      if(over) restoreBorrow();
+      return over;
+    };
+    // 잔상 위력(applyOutgoingDamageMods가 읽음) + 토글류 50% 랜덤 적용.
+    battleFlags.borrowing = true;
+    battleFlags.borrowMult = power;
+    battleFlags.borrowBloodPact = Math.random() < 0.5;
+    battleFlags.borrowElementPact = Math.random() < 0.5;
+    battleFlags.borrowMartyr = Math.random() < 0.5;
+    // 스탯 기준: 물리 스킬도 기관사에게 위력이 나오도록 max(공격력, 마력)을 쓴다.
+    player.atk = Math.max(player.atk, player.mag);
+    // 강령 소환: 마을 계약 대신 층별 보스(+시간의 파수꾼) 중 하나를 랜덤 소환한다.
+    if(key==='necroSummon'){
+      const bosses = BOSSES.concat(typeof TIME_GUARDIAN!=='undefined' ? [TIME_GUARDIAN] : []);
+      player.necroSummonType = bosses[Math.floor(Math.random()*bosses.length)].type;
+    }
+    playerSkill(key, true);
   }

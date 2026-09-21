@@ -1948,7 +1948,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 초과분(100 초과) 자해/회피스택은 applyOverheatOverflowDamage()가 처리.
     if(s.type==='pressuresurge'){
       const edefS = getEffectiveEnemyDef(enemy.def);
-      const pressure = battleFlags.pressure||0;
+      // 타임패트롤 잔상: 실제 압력 대신 가상 압력 100(폭주 화부의 기본 상한)으로 계산한다.
+      const pressure = battleFlags.borrowing ? 100 : (battleFlags.pressure||0);
       const overflow = Math.max(0, pressure-100);
       const effRate = s.dmgPerPressure + overflow*0.0006; // mastery_overheat의 초과분 보너스
       let dmg = Math.max(1, Math.round(effectiveMag()*pressure*effRate) - Math.round(edefS*0.5));
@@ -1970,8 +1971,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg);
         if(typeof spawnOverloadExplodeFx==='function') spawnOverloadExplodeFx();
         Sound.hit();
-        battleFlags.pressure = Math.min(getPressureCap(), pressure + (typeof getPressureGainUsed==='function' ? getPressureGainUsed(s) : s.pressureGainOnUse));
-        applyOverheatOverflowDamage(battleFlags.pressure);
+        if(!battleFlags.borrowing){ // 잔상은 실제 압력을 쌓지 않는다
+          battleFlags.pressure = Math.min(getPressureCap(), pressure + (typeof getPressureGainUsed==='function' ? getPressureGainUsed(s) : s.pressureGainOnUse));
+          applyOverheatOverflowDamage(battleFlags.pressure);
+        }
         if(typeof updatePressureGauge==='function') updatePressureGauge();
         // VFX(방향 2 — 게이지 오버로드형, 사용자 기획): 압력 게이지 자체가
         // 확 밝아졌다 가라앉는 스파이크로 "압력을 그 자리에서 터뜨렸다"는
@@ -1979,7 +1982,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         // 위에서 스파이크가 재생된다.
         if(typeof flashPressureGaugeSpike==='function') flashPressureGaugeSpike();
         renderStatus();
-        setBattleMsg(`${player.name}의 ${s.name}!`, `압력 ${pressure}을(를) 그대로 유지한 채 ${dmg}의 피해를 입혔다! 오히려 압력이 ${battleFlags.pressure}까지 더 쌓였다.`);
+        setBattleMsg(`${player.name}의 ${s.name}!`, battleFlags.borrowing
+          ? `잔상의 압력 ${pressure}이(가) 터져 ${dmg}의 피해를 입혔다!`
+          : `압력 ${pressure}을(를) 그대로 유지한 채 ${dmg}의 피해를 입혔다! 오히려 압력이 ${battleFlags.pressure}까지 더 쌓였다.`);
         if(checkBattleEnd()) return;
         enemyTurn();
       }, BURST_DELAYS[BURST_DELAYS.length-1] + 220);
@@ -3443,7 +3448,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 이제 세 원소 모두 전용 배너 + 화면 플래시(status-fx)를 띄워, 매 시전마다
     // "이번엔 무슨 원소가 걸렸는지"가 한눈에 보이도록 했다.
     let elementMsg = '';
-    if(s.type==='magic' && key!=='mageTripleElement' && player.skills && player.skills.includes('mastery_elementpact')){
+    if(s.type==='magic' && key!=='mageTripleElement' && ((player.skills && player.skills.includes('mastery_elementpact')) || (battleFlags && battleFlags.borrowElementPact))){
       const roll = ['fire','ice','lightning'][Math.floor(Math.random()*3)];
       if(roll==='fire'){
         playBanner('🔥 화염 계약!', 'pact-fire');
@@ -3506,7 +3511,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // — 그래서 여기서 더 이상 player.bloodPactArmed를 false로 되돌리지 않는다.
     // 켜둔 채로 스킬을 반복 사용하면 매번 HP가 깎이므로 체력 관리가 중요해진다.
     let bloodPactMsg = '';
-    if(player.bloodPactArmed){
+    if(player.bloodPactArmed || (battleFlags && battleFlags.borrowBloodPact)){
       const hpCost = Math.max(1, Math.round(player.hp*0.15));
       if(player.hp > hpCost){
         player.hp -= hpCost;
@@ -3519,6 +3524,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // 설명 그대로). 최대HP를 영구히 깎는 대신 공격력을 영구히 올린다.
     let martyrVowMsg = '';
     let instantMartyrTriggered = false;
+    // 타임패트롤 잔상: 희생의 맹세가 걸리면 영구 스탯 변화 없이 HP 8%를 바치고 피해 +50%.
+    if(key==='paladinJudgmentLight' && battleFlags && battleFlags.borrowMartyr){
+      const hpCostBM = Math.max(1, Math.round(player.maxhp*0.08));
+      if(player.hp > hpCostBM){
+        player.hp -= hpCostBM;
+        dmg = Math.round(dmg*1.5);
+        martyrVowMsg = ` 순교자의 맹세가 잔상으로 스쳐, HP ${hpCostBM}을(를) 바쳐 위력이 크게 올랐다!`;
+      }
+    }
     if(key==='paladinJudgmentLight' && player.martyrVowArmed){
       const hpLoss = Math.max(1, Math.round(player.maxhp*0.08));
       if(player.maxhp > hpLoss + 10){

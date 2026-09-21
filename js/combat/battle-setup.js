@@ -890,6 +890,9 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // HP 변화가 오작동으로 걸리지 않게 한다.
     player._prevHpForCurse = player.hp;
     if(enemy) enemy._prevHp = enemy.hp;
+    // 타임패트롤 잔상 실행 도중 전투가 끝나 임시 상태(가로챈 전역 함수, 바뀐 공격력)가 남아
+    // 있을 수 있으니 새 전투 시작 전에 멱등 원복한다(combat/timepatrol.js).
+    if(typeof restoreBorrow==='function') restoreBorrow();
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null, undyingArmorUsed:false, firstActionUsed:false, firstCritUsed:false, skillCooldowns:{}, cooldownTickPending:false, pressure:0, martyrReviveUsed:false};
     battleFlags.creed = null; battleFlags.creedStacks = 0;
     // 로봇군단장(mastery_multideploy)의 두 번째 로봇 슬롯, 데토네이터

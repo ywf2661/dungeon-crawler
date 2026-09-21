@@ -619,6 +619,8 @@ export(전역): SLOT_LABELS, STAT_LABELS, EQUIPMENT, RARE_EQUIPMENT, EPIC_EQUIPM
     mult *= getHourglassMult();
     mult *= getEmptySackMult();
     mult *= (ctx.onHitMult||1);
+    // 타임패트롤 잔상(combat/timepatrol.js의 castBorrowed): 빌려 쓴 스킬의 위력 배율.
+    if(typeof battleFlags!=='undefined' && battleFlags && battleFlags.borrowMult) mult *= battleFlags.borrowMult;
     if(ctx.type!=='basic' && hasBladeHiltSet()) mult *= 2;
     // 장신구 강화(사용자 요청) — 마력의 반지(스킬 피해 전용), 행운의 부적(치명타),
     // 도박사의 주사위(도박), 시간의 모래(전투 첫 행동)까지 전부 이 지점에서 처리.
