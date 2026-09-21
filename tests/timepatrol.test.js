@@ -41,4 +41,19 @@ for(let i=0;i<200;i++){
 assert.ok(!arr("tpPickKeys(50,0,{canBorrow:k=>k!=='jesterAllIn'})").includes('jesterAllIn'), 'canBorrow 필터');
 assert.strictEqual(arr('tpPickKeys(99,0)').length, 32, '풀보다 많이 요청하면 풀 전체');
 
+// 전직 분기/스킬 데이터
+const specIds = arr("JOB_SPECIALIZATIONS.mechanic.map(s=>s.id)");
+assert.ok(specIds.includes('mechanic_timepatrol'), '전직 분기 등록');
+assert.ok(specIds.includes('mechanic_stoker') && specIds.includes('mechanic_accumulator'), '기존 분기 보존');
+const spec = "JOB_SPECIALIZATIONS.mechanic.find(s=>s.id==='mechanic_timepatrol')";
+assert.strictEqual(run(`${spec}.masterySkillId`), 'mastery_timesync');
+assert.strictEqual(run(`${spec}.activeSkillId`), 'tpReceive');
+assert.strictEqual(run(`${spec}.skillLevels[12]`), 'tpVerify');
+assert.strictEqual(run(`${spec}.skillLevels[15]`), 'tpLockdown');
+['mastery_timesync','tpReceive','tpVerify','tpLockdown'].forEach(k=> assert.ok(run(`!!SKILLDB['${k}']`), `SKILLDB.${k}`));
+assert.strictEqual(run('SKILLDB.tpReceive.mp'), 8);
+assert.strictEqual(run('SKILLDB.tpVerify.mp'), 12);
+assert.strictEqual(run('SKILLDB.tpLockdown.mp'), 20);
+assert.strictEqual(run('SKILLDB.tpLockdown.cooldown'), 3);
+
 console.log('timepatrol.test.js: OK');

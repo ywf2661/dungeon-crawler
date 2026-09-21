@@ -812,6 +812,18 @@ export(전역): SKILLDB, CHALNA_COMBOS
     legionCommand: {name:'총사령관의 명령', mp:20, type:'legioncommand', buffTurns:3, buffMult:0.4, cooldown:3,
       desc:'3턴간 가동 중인 모든 로봇의 사격 위력이 40% 늘어난다. 즉발 피해는 없다.'},
 
+    // 기관사 - 타임패트롤(mechanic_timepatrol) — 다른 시간대의 잔상을 수신해 다른 직업의
+    // 2차 전직 액티브 스킬을 빌려 쓴다. 실제 로직은 combat/timepatrol.js(풀/실행기)와
+    // combat/player-actions.js의 tp* 분기에 있다. 잔상 풀은 timepatrol.js의 화이트리스트.
+    mastery_timesync: {name:'시간대 동조', mp:0, type:'passive',
+      desc:'스킬을 쓰거나 피격당할 때마다 단서가 쌓인다(최대 5). 단서가 많을수록 잔상 스킬의 위력이 오르고(원본의 70% + 단서당 6%), 궁극기 잔상이 나올 확률이 커진다'},
+    tpReceive: {name:'타임라인 수신', mp:8, type:'tpReceive',
+      desc:'다른 시간대의 잔상을 수신해, 다른 직업의 2차 전직 스킬 하나를 무작위로 발동한다'},
+    tpVerify: {name:'현장 검증', mp:12, type:'tpVerify',
+      desc:'단서 2개를 소모해, 수신된 잔상 3개 중 원하는 하나를 골라 발동한다'},
+    tpLockdown: {name:'시간 봉쇄령', mp:20, type:'tpLockdown', cooldown:3,
+      desc:'쌓인 단서를 전부 소모해 잔상을 연달아 쏟아낸다(기본 2회 + 단서 2개당 1회, 최대 4회). 궁극기 잔상은 나오지 않는다'},
+
     // 도박사 - 운명의 반란자(jester_rebel)
     // 마스터리 "행운의 파도": 매 라운드(적의 실제 턴이 열릴 때, combat/enemy-turn.js의
     // enemyTurnReal())마다 battleFlags.luckGauge가 -3~+3 사이에서 무작위로 오르내리고,

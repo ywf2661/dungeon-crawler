@@ -191,6 +191,11 @@ export(전역): showJobAdvancement, resolveJobAdvancement
       if(specId==='mage_time' && typeof showToast==='function'){
         showToast(`<h3>⏳ 시간술사</h3><p>멈춰버린 회랑 어딘가에서 새어 나온 시간의 파편이, 어느새 손끝에 스며들어 있었다.</p>`, '#9fd8ff');
       }
+      // 타임패트롤(mechanic_timepatrol): 전직 확정 순간의 토스트. 정체(미래의 수사관)를
+      // 직접 밝히지 않고 낯선 목소리로만 암시한다(간접 서술 원칙, story.md 8장).
+      if(specId==='mechanic_timepatrol' && typeof showToast==='function'){
+        showToast(`<h3>🕰️ 타임패트롤</h3><p>머릿속에서 낯선 목소리가 낮게 속삭였다. "이 시간대는… 어긋나 있어."</p>`, '#9fd8ff');
+      }
       // 찰나검사(warrior_chalna): 전직 확정 순간에 맞는 토스트 메시지(사용자 요청).
       // 시간술사와 같은 "시간의 파편" 계열 이미지를 검술 쪽으로 변주 — 벤 순간에
       // 스며든다는 표현으로 desc의 톤을 그대로 이어받는다.

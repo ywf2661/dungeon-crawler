@@ -272,6 +272,14 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
         masteryName:'군단 편성', masteryDesc:'정찰/화력/방벽 로봇을 최대 2기까지 동시에 배치할 수 있게 된다. 여기에 오메가 유닛 전용 고정 슬롯이 별도로 하나 더 있다.', masterySkillId:'mastery_multideploy',
         activeName:'로봇 배치', activeDesc:'정찰/화력/방벽 중 원하는 역할의 로봇을 직접 골라 배치한다. 이미 2기가 있으면 가장 먼저 배치된 로봇을 대신 교체한다.', activeSkillIds:['mechanicDeployRecon','mechanicDeployFirepower','mechanicDeployShield'],
         skillLevels: {12:'legionFullSquadSynergy', 15:'legionCommand'}},
+      // 타임패트롤(mechanic_timepatrol): 미래에서 정신만 넘어온 시간 수사관. 다른 직업 2차
+      // 전직의 액티브 스킬을 "잔상"으로 랜덤 발동한다(combat/timepatrol.js). 압력도 로봇도 쓰지
+      // 않고, 단서를 쌓아 랜덤을 통제해 가는 것이 핵심 루프다. 설계: docs/superpowers/specs/.
+      {id:'mechanic_timepatrol', name:'타임패트롤', icon:'🕰️',
+        desc:'미래의 어느 시점에서 정신만 넘어온 시간 수사관. 다른 시간대, 다른 직업의 스킬을 잔상으로 불러와 쓴다. 무엇이 나올지는 모르지만, 단서를 쌓을수록 수사는 진척된다.',
+        masteryName:'시간대 동조', masteryDesc:'스킬을 쓰거나 피격당할 때마다 단서가 쌓인다(최대 5). 단서가 많을수록 잔상 스킬의 위력이 오르고 궁극기 잔상이 나올 확률이 커진다.', masterySkillId:'mastery_timesync',
+        activeName:'타임라인 수신', activeDesc:'다른 시간대의 잔상을 수신해, 다른 직업의 2차 전직 스킬 하나를 무작위로 발동한다.', activeSkillId:'tpReceive',
+        skillLevels: {12:'tpVerify', 15:'tpLockdown'}},
     ],
     jester: [
       // [교체됨] 운명의 반란자(jester_rebel)는 사용자 요청으로 폐기되고 "황금
