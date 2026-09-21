@@ -805,10 +805,31 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     '"...어쩌면, 이곳의 끝은 다를지도 모른다."',
   ];
 
-  function showFinalFloorConfirm(){
+  // 타임패트롤(mechanic_timepatrol) 전용 — 마녀(아이온)와 실제로 조우하는 조건(무결 + 마녀의 시계 +
+  // 이 난이도 시조 클리어 기록)일 때 진입 멘트. 몸에 깃든 목소리가 마녀의 기운을 먼저 알아챈다.
+  const FINAL_FLOOR_SEEK_LINES_TIMEPATROL_WITCH = [
+    '시간의 기운이 느껴진다...',
+    '멈춰 있어야 할 초침 소리가, 어딘가에서 희미하게 되살아나는 듯한...',
+    '"여기가... 마지막 층인가."',
+    {text:'…가깝군. 이 시간대를 어긋나게 한 것이, 바로 저 너머에 있다.', title:'???'},
+    '머릿속의 낯선 목소리가, 처음으로 낮게 숨을 고른다.',
+    '단 한 번도 무릎 꿇지 않은 걸음이, 그대를 이곳까지 이끌었다.',
+    '"...끝을 볼 시간이다."',
+  ];
+
+  async function showFinalFloorConfirm(){
     const flawless = (player.deathCount||0) === 0;
     const traitKey = (player.originTraits && player.originTraits[0]) || 'unknown';
-    const lines = flawless ? FINAL_FLOOR_SEEK_LINES_TRUE : (FINAL_FLOOR_SEEK_LINES[traitKey] || FINAL_FLOOR_SEEK_LINES.unknown);
+    let lines = flawless ? FINAL_FLOOR_SEEK_LINES_TRUE : (FINAL_FLOOR_SEEK_LINES[traitKey] || FINAL_FLOOR_SEEK_LINES.unknown);
+    // 마녀 조우 조건 판정은 실제 전투 시작 때(아래 final-step-fight)와 같은 기준이다.
+    if(flawless && player.specialization==='mechanic_timepatrol' && (player.relics||[]).includes('relic_witchclock')){
+      try{
+        const records = await loadRecords();
+        if(records.some(r=> r.difficulty===player.difficulty && r.trueEnding && r.bossType!=='timewitch')){
+          lines = FINAL_FLOOR_SEEK_LINES_TIMEPATROL_WITCH;
+        }
+      }catch(e){ /* 기록을 못 읽으면 기본 멘트 */ }
+    }
     // 사용자 요청 — 서사를 한 블록으로 보여주던 걸 대화 팝업 시퀀스로 바꾼다.
     // 진행을 다 넘기면 실제 선택지(물러난다/계속 나아간다) 패널을 띄운다.
     showDialogueSequence(lines, {tone: flawless?'grand':'default', onDone: ()=> showFinalFloorChoice(flawless)});
