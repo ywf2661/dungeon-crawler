@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnCoinTossFx, spawnVenomDrainFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -535,6 +535,117 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       }
     }, 70);
     setTimeout(()=>el.remove(), DUAL_DICE_RESOLVE_MS + 500);
+  }
+
+  // 황금 도박사 베팅/올인 코인토스 연출(사용자 제공 coin_spin_1/2, coin_heads,
+  // coin_tails). 동전의 회전각(θ)을 rAF로 굴리며 각도에 맞는 프레임을 고른다:
+  // 정면(앞/뒤) → 기울어진 면(spin_1, 뒷면 쪽은 좌우반전) → 옆면(spin_2) → …
+  // 끝으로 갈수록 느려지다가(ease-out) 결과 면(성공=앞면 왕관, 실패=뒷면 해골)에
+  // 정확히 멈춘다. 위치는 던져 올렸다 받는 포물선. 피해/배너는
+  // COIN_TOSS_RESOLVE_MS 뒤에 player-actions.js가 실행한다(결과가 먼저 보이도록).
+  const COIN_TOSS_SPIN_MS = 1000;
+  const COIN_TOSS_RESOLVE_MS = 1400;
+  function spawnCoinTossFx(success, big){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const size = big ? 240 : 180;
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute; left:50%; top:62%; width:${size}px; height:${size}px; `
+      + "background-size:contain; background-repeat:no-repeat; background-position:center; "
+      + "pointer-events:none; z-index:7; will-change:transform;";
+    stage.appendChild(el);
+    let cur = '';
+    const show = (n, mirror)=>{
+      if(n!==cur){ el.style.backgroundImage = `url('images/vfx/${n}.webp')`; cur = n; }
+      return mirror ? -1 : 1;
+    };
+    // 앞면(θ=0)에서 출발해 짝수 반바퀴면 앞면, 홀수 반바퀴면 뒷면으로 끝난다.
+    const halfTurns = success ? 8 : 9;
+    const thetaEnd = halfTurns * Math.PI;
+    const rise = size * 0.9;
+    const t0 = performance.now();
+    const frame = now=>{
+      if(!el.isConnected) return;
+      const t = Math.min(1, (now - t0) / COIN_TOSS_SPIN_MS);
+      const th = thetaEnd * (1 - Math.pow(1 - t, 2.2));      // 감속하며 멈춤
+      const c = Math.cos(th), a = Math.abs(c);
+      let sx;
+      if(a > 0.85)      sx = show(c > 0 ? 'coin_heads' : 'coin_tails', false);
+      else if(a > 0.4)  sx = show('coin_spin_1', c < 0);
+      else              sx = show('coin_spin_2', false);
+      const y = -rise * 4 * t * (1 - t);                       // 포물선(위로 던져 받음)
+      const sc = 0.85 + 0.25 * 4 * t * (1 - t);                // 정점에서 살짝 커짐
+      el.style.opacity = String(Math.min(1, t * 8));
+      el.style.transform = `translate(-50%,-50%) translateY(${y}px) scale(${sx*sc},${sc})`;
+      if(t < 1) requestAnimationFrame(frame);
+      else {
+        show(success ? 'coin_heads' : 'coin_tails', false);
+        el.style.transition = 'transform .2s cubic-bezier(.2,1.6,.4,1)';
+        el.style.transform = 'translate(-50%,-50%) scale(1.15)';
+        if(success && big && typeof shakeScreen==='function') shakeScreen(0.5);
+      }
+    };
+    requestAnimationFrame(frame);
+    setTimeout(()=>{
+      el.style.transition = 'opacity .35s ease-in, transform .35s ease-in';
+      el.style.opacity = '0';
+      el.style.transform = `translate(-50%,-50%) scale(${success?1.35:0.85})`;
+    }, COIN_TOSS_RESOLVE_MS + 250);
+    setTimeout(()=>el.remove(), COIN_TOSS_RESOLVE_MS + 700);
+  }
+
+  // 체액 흡수(역병숙주 Lv10 액티브) 전용 연출(사용자 제공 venom_bite/venom_stream/
+  // venom_absorb): ① 적 몸에 독액이 튀며 송곳니 자국이 남고 → ② 상처에서 독액
+  // 줄기가 아래(플레이어 쪽)로 흘러내리고 → ③ 화면 아래쪽에서 독기 소용돌이가
+  // 몸으로 빨려든다. 피해는 ①에 맞춰 바로 들어가고, 스택/공격력 흡수 메시지와 적
+  // 턴은 연출이 끝나는 VENOM_DRAIN_RESOLVE_MS 뒤에 player-actions.js가 처리한다.
+  // big=true(레벨15 완전 기생화)면 전부 크게/짙게 나온다.
+  const VENOM_DRAIN_RESOLVE_MS = 1250;
+  function spawnVenomDrainFx(big){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const H = stage.clientHeight || 300;
+    const k = big ? 1.25 : 1;
+    const mk = (img, css)=>{
+      const el = document.createElement('div');
+      el.style.cssText = "position:absolute; pointer-events:none; z-index:7; opacity:0; "
+        + "background-size:contain; background-repeat:no-repeat; background-position:center; "
+        + `background-image:url('images/vfx/${img}.webp'); ` + css;
+      stage.appendChild(el);
+      return el;
+    };
+    const after = (ms, fn)=>setTimeout(fn, ms);
+    // ① 적 몸 타격
+    const bite = mk('venom_bite', `left:50%; top:46%; width:${230*k}px; height:${230*k}px; transform:translate(-50%,-50%) scale(.4);`);
+    void bite.offsetWidth;
+    bite.style.transition = 'opacity .1s ease-out, transform .25s cubic-bezier(.2,1.4,.4,1)';
+    bite.style.opacity = '1'; bite.style.transform = 'translate(-50%,-50%) scale(1)';
+    after(450, ()=>{ bite.style.transition = 'opacity .35s ease-in'; bite.style.opacity = '0'; });
+    // ② 독액 줄기: 적 중심에서 화면 아래로. 위에서 아래로 드러났다가(clip-path) 위쪽부터 사라진다.
+    const sh = H * 0.62, sw = sh * (290/640) * (big?1.15:1);
+    const stream = mk('venom_stream', `left:50%; top:46%; width:${sw}px; height:${sh}px; transform:translateX(-50%); clip-path:inset(0 0 100% 0);`);
+    after(250, ()=>{
+      stream.style.opacity = '1';
+      stream.style.transition = 'clip-path .4s ease-in';
+      stream.style.clipPath = 'inset(0 0 0% 0)';
+    });
+    after(760, ()=>{
+      stream.style.transition = 'clip-path .4s ease-out, opacity .4s ease-out';
+      stream.style.clipPath = 'inset(100% 0 0 0)';
+      stream.style.opacity = '0';
+    });
+    // ③ 아래쪽에서 소용돌이가 회전하며 수축(빨려듦)
+    const vs = 200*k;
+    const vortex = mk('venom_absorb', `left:50%; top:${Math.round(H*0.9)}px; width:${vs}px; height:${vs}px; transform:translate(-50%,-50%) scale(.3) rotate(0deg);`);
+    after(650, ()=>{
+      vortex.style.transition = 'opacity .2s ease-out, transform .35s ease-out';
+      vortex.style.opacity = '1'; vortex.style.transform = 'translate(-50%,-50%) scale(1.05) rotate(-120deg)';
+    });
+    after(1000, ()=>{
+      vortex.style.transition = 'opacity .25s ease-in, transform .25s ease-in';
+      vortex.style.opacity = '0'; vortex.style.transform = 'translate(-50%,-50%) scale(.2) rotate(-300deg)';
+    });
+    after(VENOM_DRAIN_RESOLVE_MS + 300, ()=>{ bite.remove(); stream.remove(); vortex.remove(); });
   }
 
   // 시간의 역설(시간술사 레벨15 궁극기) 전용 연출 — 사용자가 새로 준 24프레임
@@ -1533,7 +1644,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   const names = [
     'caliberx_finale','chalna_figure_1','chalna_figure_2','chalna_figure_3',
     'curse_bloom_ultimate','curse_brand','curse_nova','martyr_ultimate',
-    'bloodpact_ultimate','fateswap_scale','overload_explode','overload_jet','phantom_slash','slash_ice',
+    'bloodpact_ultimate','fateswap_scale','coin_spin_1','coin_spin_2','coin_heads','coin_tails','venom_bite','venom_stream','venom_absorb','overload_explode','overload_jet','phantom_slash','slash_ice',
     'tg_frost','tg_return','tg_void','pact_fire_strike','pact_fire_wave','pact_fire_storm','pact_ice_strike','pact_ice_wave','pact_ice_storm','pact_lightning_strike','pact_lightning_wave','pact_lightning_storm','necro_release','necro_sig_watchertablet','necro_sig_hornedwarden','necro_sig_bladedbloom','necro_sig_clockheart','necro_sig_hollowprophet',
   ];
   for(let i=1;i<=24;i++) names.push('time_paradox_f'+String(i).padStart(2,'0'));

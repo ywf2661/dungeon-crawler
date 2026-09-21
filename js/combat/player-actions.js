@@ -672,6 +672,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       enemy.hp = Math.max(0, enemy.hp-venomDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+venomDmg);
       Sound.slash(); playStatusFx('poison');
+      // 체액 흡수 연출(사용자 제공 이미지 3종) — 피해는 위에서 타격 순간에 이미
+      // 들어갔고, 스택/흡수 반영·메시지·적 턴은 연출이 끝난 뒤(아래 finishVenom)에 처리한다.
+      const venomFx = typeof spawnVenomDrainFx==='function';
+      if(venomFx) spawnVenomDrainFx(!!(player.skills && player.skills.includes('rogueVenomTriple')));
       rogueRegisterHit(true);
       // 폭주 주입 각인(re_venomrush, 역병숙주 무기)과 고독 각인(re_solovenom,
       // 역병숙주 장신구): 둘 다 자기 전용 스택 보너스를 2배로 만드는데, 고독
@@ -716,12 +720,16 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         battleFlags.venomAbsorbPoints = (battleFlags.venomAbsorbPoints||0) + absorbGain;
         venomAbsorbMsg = ` 공격력을 ${absorbGain}%만큼 흡수했다!`;
       }
-      updateStatusBadges();
-      if(typeof updatePlayerStatusBadges==='function') updatePlayerStatusBadges();
-      renderStatus();
-      setBattleMsg(`${player.name}의 ${s.name}!`, `${enemy.name}에게 ${venomDmg}의 피해를 입히고 잠식을 더 진행시켰다! (잠식 ${enemy.venomStacks}/${venomCap})${venomAbsorbMsg}${venomOverflowMsg}`);
-      if(checkBattleEnd()) return;
-      enemyTurn();
+      const finishVenom = ()=>{
+        if(battleOver) return;
+        updateStatusBadges();
+        if(typeof updatePlayerStatusBadges==='function') updatePlayerStatusBadges();
+        renderStatus();
+        setBattleMsg(`${player.name}의 ${s.name}!`, `${enemy.name}에게 ${venomDmg}의 피해를 입히고 잠식을 더 진행시켰다! (잠식 ${enemy.venomStacks}/${venomCap})${venomAbsorbMsg}${venomOverflowMsg}`);
+        if(checkBattleEnd()) return;
+        enemyTurn();
+      };
+      if(venomFx) setTimeout(finishVenom, VENOM_DRAIN_RESOLVE_MS); else finishVenom();
       return;
     }
 
@@ -2843,6 +2851,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const lossStreak = (player.skills && player.skills.includes('mastery_goldsense')) ? Math.min(3, battleFlags.goldbetLossStreak||0) : 0;
       const chance = epicLuckApplyChance(Math.min(0.95, s.successChance + fateChance + lossStreak*0.10), epicLuckBet);
       const success = Math.random() < chance;
+      // 코인토스 연출 순서(사용자 요청): 동전이 던져져 결과 면이 먼저 보인 뒤에야
+      // 피해/배너/판정 메시지가 나간다. 결과(success)는 위에서 이미 확정됐다.
+      const resolveBet = ()=>{
+      if(battleOver) return;
       if(success){
         battleFlags.goldbetLossStreak = 0;
         const stakeBonusMult = s.stakeBonusMult + fateMult;
@@ -2887,6 +2899,13 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(checkBattleEnd()) return;
       if(checkGamblerRetry(key, isRetry)) return;
       enemyTurn();
+      };
+      if(typeof spawnCoinTossFx==='function'){
+        spawnCoinTossFx(success, key==='jesterAllIn');
+        setTimeout(resolveBet, COIN_TOSS_RESOLVE_MS);
+      } else {
+        resolveBet();
+      }
       return;
     }
 
