@@ -732,13 +732,13 @@ export(전역): SKILLDB, CHALNA_COMBOS
       pressureCapBonus:50, overflowSelfDmgPerPoint:1.5, ventPowerBonusPerOverflow:0.0006, passiveGainPerTurn:10,
       desc:'압력 상한이 150으로 늘어나고, 매 라운드 압력이 자동으로 10씩 쌓인다. 100을 넘는 압력은 매번 초과분만큼 자해 피해를 입히지만, 압력 방출 스킬의 위력도 초과분에 비례해 강해진다.'},
     // 레벨10 액티브 "폭주 사출": 압력을 소모하지 않고 즉시 압력비례 피해를
-    // 준 뒤, 오히려 압력을 25 더 쌓는 스노우볼형 스킬(기존 밸브개방과 정반대
+    // 준 뒤, 오히려 압력을 40 더 쌓는 스노우볼형 스킬(기존 밸브개방과 정반대
     // 방향). 강철 군단장(구 축압 기술자) 리뉴얼 밸런스 시뮬레이션 결과, 자해
     // 리스크가 있는데도 강철 군단장(리스크 없음)보다 총딜이 낮게 나와
     // dmgPerPressure를 0.03→0.04로 상향(자해량은 그대로 유지).
     mechanicOverloadDischarge: {name:'폭주 사출', mp:6, type:'pressuresurge',
-      dmgPerPressure:0.04, pressureGainOnUse:25,
-      desc:'압력을 소모하지 않고 즉시 압력량에 비례한 피해를 입힌다. 사용할 때마다 오히려 압력이 25 더 쌓인다.'},
+      dmgPerPressure:0.04, pressureGainOnUse:40,
+      desc:'압력을 소모하지 않고 즉시 압력량에 비례한 피해를 입힌다. 사용할 때마다 오히려 압력이 40 더 쌓인다.'},
     // 레벨12: 과부하 자해를 입을 때마다 회피 스택이 쌓이는 생존 보상 패시브.
     mechanicHeatResist: {name:'과열 내성', mp:0, type:'passive',
       dodgePerOverflowTrigger:0.02, maxDodgeStacks:10,

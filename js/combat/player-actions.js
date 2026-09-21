@@ -296,11 +296,11 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   function getPressureCap(){
     return (player.skills && player.skills.includes('mastery_overheat')) ? 150 : 100;
   }
-  // 폭주 가속 각인(me_pressurerush)의 압력 증가율 상향(25->35) 적용 헬퍼.
+  // 폭주 가속 각인(me_pressurerush)의 압력 증가율 상향(40->50) 적용 헬퍼.
   function getPressureGainUsed(s){
     const wIdPR2 = player.equipment && player.equipment.weapon;
     const hasPressureRush2 = !!(wIdPR2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdPR2).includes('me_pressurerush'));
-    return hasPressureRush2 ? 35 : s.pressureGainOnUse;
+    return hasPressureRush2 ? 50 : s.pressureGainOnUse;
   }
   // 폭주 화부(mastery_overheat) 전용 — 압력이 100을 넘긴 초과분만큼 즉시 자해
   // 피해를 입힌다(다른 궁극기 hpCostPct들과 동일하게 HP 1은 항상 남도록 클램프
@@ -2021,10 +2021,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       dmg = applyOutgoingDamageMods(dmg, {type:'magicskill', mpCost, pressureConsumed: pressureCO});
       enemy.hp = Math.max(0, enemy.hp-dmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg,'crit');
-      Sound.bomb();
+      Sound.criticalOverload();
       // 궁극기 전용 강조 연출(사용자 요청) — 압력 전량 방출이니 화면 전체가
-      // 흔들리는 shakeScreen()과 광폭 휩쓸기 참격 변주(v10)로 폭발감을 낸다.
-      spawnSlashImageFx({variant:'v10'});
+      // 흔들리는 shakeScreen()과 전용 폭발 이미지(spawnCriticalOverloadFx)로 폭발감을 낸다.
+      if(typeof spawnCriticalOverloadFx==='function') spawnCriticalOverloadFx();
       shakeScreen();
       playBanner('폭주 임계점!', 'fx-overload');
       // 돌이킬 수 없는 각인(me_permanentcost, 폭주 화부 장신구 각인 —

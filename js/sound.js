@@ -154,6 +154,7 @@ export(전역): const Sound
       dotTick_infection: 'audio/sfx/infectiontick.mp3', // 감염 틱
       dotTick_burn: 'audio/sfx/burntick.mp3', // 화상 틱
       dotTick_bleed: 'audio/sfx/bleedtick.mp3', // 출혈 틱
+      criticalOverload: 'audio/sfx/criticaloverload.mp3', // 임계 폭주(폭주 화부 Lv15) — 증기 보일러 대폭발
       venomDrain: 'audio/sfx/venomdrain.mp3', // 체액 흡수(도적) — 타격 + 독액 줄기 + 소용돌이
       darkPrayer: 'audio/sfx/darkprayer.mp3', // 검은 기도(성기사) — 잔잔하고 으스스한 속삭임
       timeRewind: 'audio/sfx/timerewind.mp3', // 시간 역행(마법사)
@@ -480,6 +481,7 @@ export(전역): const Sound
     function timeRewind(){ if(muted) return; if(playSfxBuffer('timeRewind')) return; heal(); }
     // 지속피해 틱음: 종류(poison/burn/bleed/infection)별 음원이 있으면 그걸, 없으면 기존 poisonHit
     function dotTick(type){ if(muted) return; if(playSfxBuffer('dotTick_'+type)) return; poisonHit(); }
+    function criticalOverload(){ if(muted) return; if(playSfxBuffer('criticalOverload')) return; bomb(); }
     function venomDrain(){ if(muted) return; if(playSfxBuffer('venomDrain')) return; slash(); }
     function darkPrayer(){ if(muted) return; if(playSfxBuffer('darkPrayer')) return; buff(); }
     function bloodUltimate(){ if(muted) return; if(playSfxBuffer('bloodUltimate')) return; bomb(); }
@@ -607,7 +609,7 @@ export(전역): const Sound
     return {
       ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
-      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom, bloodImprint, bloodUltimate, timeHaste, timeRewind, darkPrayer, venomDrain, dotTick, pact, necroRelease, necroSig,
+      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom, bloodImprint, bloodUltimate, timeHaste, timeRewind, darkPrayer, venomDrain, dotTick, criticalOverload, pact, necroRelease, necroSig,
       setMuted, toggleMuted, isMuted,
     };
   })();

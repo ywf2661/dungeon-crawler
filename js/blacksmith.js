@@ -172,7 +172,7 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
     pa_transcend: {slot:'accessory', specId:'paladin_knight', name:'종언을 넘어서', prefix:'초월한',
       desc:'칼리버 X: 종언으로 적 최대HP의 30% 이상을 깎으면, 반동 HP와 쿨다운이 즉시 되돌아온다.'},
     me_pressurerush: {slot:'weapon', specId:'mechanic_stoker', name:'폭주 가속 각인', prefix:'폭주 가속의',
-      desc:'폭주 사출을 쓸 때마다 압력이 25 대신 35씩 쌓인다. 대신 압력 초과분 자해 배율이 1.5배/점→2.0배/점으로 커진다.'},
+      desc:'폭주 사출을 쓸 때마다 압력이 40 대신 50씩 쌓인다. 대신 압력 초과분 자해 배율이 1.5배/점→2.0배/점으로 커진다.'},
     me_phoenixash: {slot:'armor', specId:'mechanic_stoker', name:'불사조의 재 각인', prefix:'불사조의',
       desc:'과부하 자해로 죽을 뻔하면 전투당 1회, 압력을 0으로 리셋하고 회피 스택을 최대치로 채운 채 살아남는다.'},
     me_permanentcost: {slot:'accessory', specId:'mechanic_stoker', name:'돌이킬 수 없는 각인', prefix:'대가의',

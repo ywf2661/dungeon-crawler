@@ -964,6 +964,32 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     setTimeout(()=>el.remove(), 960);
   }
 
+  // 임계 폭주(폭주 화부 Lv15 궁극기) 전용 VFX(사용자 제공 explode.png) — 압력 게이지가
+  // 터지며 증기/파편이 사방으로 퍼지는 대폭발. 중앙에서 확 커지며 나타나 잠깐 머문 뒤
+  // 더 부풀며 사라진다. 이미지가 정사각형이라 스테이지 높이에 맞춰 크기를 정한다.
+  function spawnCriticalOverloadFx(){
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const H = stage.clientHeight || 300;
+    const sz = Math.round(H*1.1);
+    const el = document.createElement('div');
+    el.style.cssText = `position:absolute; left:50%; top:46%; width:${sz}px; height:${sz}px; `
+      + "background-image:url('images/vfx/explode.png'); background-size:contain; "
+      + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
+      + "opacity:0; transform:translate(-50%,-50%) scale(0.45);";
+    stage.appendChild(el);
+    void el.offsetWidth;
+    el.style.transition = 'opacity .12s ease-out, transform .22s cubic-bezier(.15,.9,.3,1)';
+    el.style.opacity = '1';
+    el.style.transform = 'translate(-50%,-50%) scale(1)';
+    setTimeout(()=>{
+      el.style.transition = 'opacity .55s ease-in, transform .55s ease-out';
+      el.style.opacity = '0';
+      el.style.transform = 'translate(-50%,-50%) scale(1.2)';
+    }, 550);
+    setTimeout(()=>el.remove(), 1200);
+  }
+
   // 순교자 심판의 빛(Lv10): 사용자 제공 martyr_judgment — 화면 위에서 적 몸까지 곧게
   // 내리꽂히는 성스러운 빛기둥. 위에서 아래로 드러난 뒤(clip-path) 잠깐 머물다
   // 사라진다. 이미지 하단의 착지 섬광이 적 중심(약 화면 절반 높이)에 오도록 맞춘다.
