@@ -275,7 +275,8 @@ export(전역): JOBS, getJob, sortedPairKey, JOB_HYBRIDS, getHybrid, JOB_SPECIAL
       // 타임패트롤(mechanic_timepatrol): 미래에서 정신만 넘어온 시간 수사관. 다른 직업 2차
       // 전직의 액티브 스킬을 "잔상"으로 랜덤 발동한다(combat/timepatrol.js). 압력도 로봇도 쓰지
       // 않고, 단서를 쌓아 랜덤을 통제해 가는 것이 핵심 루프다. 설계: docs/superpowers/specs/.
-      {id:'mechanic_timepatrol', name:'타임패트롤', icon:'🕰️',
+      {id:'mechanic_timepatrol', name:'타임패트롤', icon:'🕰️', secret:true, // secret: 한 번도 선택해 본 적 없으면 전직 카드가 ???로 가려진다(job-advancement.js)
+       
         desc:'미래의 어느 시점에서 정신만 넘어온 시간 수사관. 다른 시간대, 다른 직업의 스킬을 잔상으로 불러와 쓴다. 무엇이 나올지는 모르지만, 단서를 쌓을수록 수사는 진척된다.',
         masteryName:'시간대 동조', masteryDesc:'스킬을 쓰거나 피격당할 때마다 단서가 쌓인다(최대 5). 단서가 많을수록 잔상 스킬의 위력이 오르고 궁극기 잔상이 나올 확률이 커진다.', masterySkillId:'mastery_timesync',
         activeName:'타임라인 수신', activeDesc:'다른 시간대의 잔상을 수신해, 다른 직업의 2차 전직 스킬 하나를 무작위로 발동한다.', activeSkillId:'tpReceive',

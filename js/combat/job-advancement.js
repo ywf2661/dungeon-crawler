@@ -21,7 +21,10 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     return (map[n] || n) + ' 갈래';
   }
 
-  function showJobAdvancement(){
+  async function showJobAdvancement(){
+    // 비밀 전직(secret:true)은 한 번도 선택해 본 적 없으면 카드의 이름/설명을 ???로 가린다.
+    // 전직 도감(storage.js)을 읽어야 해서 창을 그리기 전에 먼저 await한다.
+    const seenSpecs = await loadSpecDex();
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'jobadv-overlay';
@@ -54,9 +57,10 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     branches.forEach(spec=>{
       const card = document.createElement('div');
       card.className = 'job-card';
+      const hidden = !!spec.secret && !seenSpecs.includes(spec.id);
       card.innerHTML = `<div class="ji-icon">${spec.icon}</div>
-        <div class="ji-name">${spec.name}</div>
-        <div class="ji-desc">${spec.desc}</div>`;
+        <div class="ji-name">${hidden ? '???' : spec.name}</div>
+        <div class="ji-desc">${hidden ? '???' : spec.desc}</div>`;
       card.addEventListener('click', ()=>{
         if(locked) return;
         resolveJobAdvancement(spec.id);
@@ -100,6 +104,7 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     player.jobAdvancePending = false;
     player.job2 = null; // 레거시 하이브리드 파트너 직업 필드 — 신규 시스템에서는 더 이상 쓰지 않는다.
     player.specialization = specId;
+    if(typeof addToSpecDex==='function') addToSpecDex(specId); // 전직 도감 — 이 분기는 이제 ???가 풀린다
     // 스탯 보너스: 기존 하이브리드 시스템의 "본인 직업 재선택" 보너스 공식을 그대로 재사용.
     // 버그 수정(사용자 제보) — 최대체력/마나만 늘어나고 현재 체력/마나는 그대로라
     // "레벨업했는데 체력이 꽉 안 찬" 것처럼 보였다. 다른 maxhp 증가 지점들

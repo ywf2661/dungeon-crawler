@@ -5,6 +5,7 @@
 의존성 없음(이 파일 내부에서 SAVE_KEY 등 상수도 함께 선언).
 export(전역): SAVE_KEY, saveGame, loadGame, deleteSave, RECORDS_KEY, addRecord, loadRecords,
               RELICDEX_KEY, 관련 함수들, MONSTERDEX_KEY, loadMonsterDex, addToMonsterDex,
+              SPECDEX_KEY, loadSpecDex, addToSpecDex,
               ACHIEVEMENTS_KEY, loadAchievements, unlockAchievement,
               PATCHNOTE_VERSION, PATCHNOTE_KEY, loadDismissedPatchNote, markPatchNoteDismissed 등
 주의: saveGame()은 player/depth/town 등 게임 상태 전역 변수(state.js)를 참조한다.
@@ -172,6 +173,33 @@ export(전역): SAVE_KEY, saveGame, loadGame, deleteSave, RECORDS_KEY, addRecord
     try{
       if(hasArtifactStorage()) await window.storage.set(MONSTERDEX_KEY, payload, false);
       else if(hasLocalStorage()) window.localStorage.setItem(MONSTERDEX_KEY, payload);
+    }catch(e){ /* ignore */ }
+    return dex;
+  }
+  // ---------- 전직 도감(선택해 본 전직 분기 id, 런이 끝나도 영구 — monsterDex와 동일 패턴) ----------
+  // 비밀 전직(jobs.js의 secret:true)의 카드가 처음엔 ???로 가려지는 근거로 쓴다.
+  const SPECDEX_KEY = 'specdex';
+  async function loadSpecDex(){
+    if(!storageAvailable()) return [];
+    try{
+      if(hasArtifactStorage()){
+        const res = await window.storage.get(SPECDEX_KEY, false);
+        if(res && res.value) return JSON.parse(res.value);
+      } else if(hasLocalStorage()){
+        const raw = window.localStorage.getItem(SPECDEX_KEY);
+        if(raw) return JSON.parse(raw);
+      }
+    }catch(e){ /* 기록 없음, 정상 */ }
+    return [];
+  }
+  async function addToSpecDex(specId){
+    const dex = await loadSpecDex();
+    if(dex.includes(specId)) return dex;
+    dex.push(specId);
+    const payload = JSON.stringify(dex);
+    try{
+      if(hasArtifactStorage()) await window.storage.set(SPECDEX_KEY, payload, false);
+      else if(hasLocalStorage()) window.localStorage.setItem(SPECDEX_KEY, payload);
     }catch(e){ /* ignore */ }
     return dex;
   }
