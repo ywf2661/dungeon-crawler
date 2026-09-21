@@ -10,9 +10,9 @@ const arr = code => Array.from(run(code));
 
 // 풀 규모와 유효성
 const normal = arr('TP_POOL_NORMAL'), ult = arr('TP_POOL_ULT');
-assert.strictEqual(normal.length, 22, '일반 22개');
+assert.strictEqual(normal.length, 21, '일반 21개');
 assert.strictEqual(ult.length, 10, '궁극기 10개');
-assert.strictEqual(new Set(normal.concat(ult)).size, 32, '중복 없음');
+assert.strictEqual(new Set(normal.concat(ult)).size, 31, '중복 없음');
 normal.concat(ult).forEach(k=>{
   const t = run(`SKILLDB['${k}'] && SKILLDB['${k}'].type`);
   assert.ok(t, `SKILLDB에 없음: ${k}`);
@@ -24,9 +24,9 @@ ult.forEach(k=> assert.ok(run(`SKILLDB['${k}'].cooldown===3`) , `궁극기는 �
 assert.ok(Math.abs(run('tpBorrowPower(0)') - 0.7) < 1e-9);
 assert.ok(Math.abs(run('tpBorrowPower(5)') - 1.0) < 1e-9);
 assert.ok(Math.abs(run('tpBorrowPower(9)') - 1.0) < 1e-9, '상한 100%');
-const ultShare = c => { const u = 10*run(`tpWeight('jesterAllIn',${c})`); return u/(u+22); };
-assert.ok(Math.abs(ultShare(0) - 3/25) < 1e-9);
-assert.ok(Math.abs(ultShare(5) - 8/30) < 1e-9);
+const ultShare = c => { const u = 10*run(`tpWeight('jesterAllIn',${c})`); return u/(u+21); };
+assert.ok(Math.abs(ultShare(0) - 3/24) < 1e-9);
+assert.ok(Math.abs(ultShare(5) - 8/29) < 1e-9);
 assert.strictEqual(run("tpWeight('tpNothing',0)"), 1);
 
 // 추첨
@@ -39,7 +39,7 @@ for(let i=0;i<200;i++){
   assert.ok(!ult.includes(run('tpPickKeys(1,5,{allowUlt:false})[0]')), 'allowUlt:false면 궁극기 없음');
 }
 assert.ok(!arr("tpPickKeys(50,0,{canBorrow:k=>k!=='jesterAllIn'})").includes('jesterAllIn'), 'canBorrow 필터');
-assert.strictEqual(arr('tpPickKeys(99,0)').length, 32, '풀보다 많이 요청하면 풀 전체');
+assert.strictEqual(arr('tpPickKeys(99,0)').length, 31, '풀보다 많이 요청하면 풀 전체');
 
 // 전직 분기/스킬 데이터
 const specIds = arr("JOB_SPECIALIZATIONS.mechanic.map(s=>s.id)");

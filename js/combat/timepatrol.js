@@ -7,14 +7,14 @@ export(전역): TP_POOL_NORMAL, TP_POOL_ULT, TP_MAX_CLUES, tpClues, tpBorrowPowe
               tpAddClue, tpReceive, tpVerify, tpLockdown, tpShowChoice
 의존성: data/skills.js(SKILLDB). battleFlags는 전역 전투 상태(typeof로 방어).
 주의: 풀은 화이트리스트다. 예약형(선혈각인/분신 배가/정보료)·패시브·소환수 전제 스킬·
-     총사령관의 명령·임계 폭주는 일부러 넣지 않았다(스펙 참고).
+     총사령관의 명령·임계 폭주·시간 역행(시간 조각 3개 전제, 조건 미달 시 MP 환불 경로가 잔상에선 공짜 MP가 됨)은 일부러 넣지 않았다(스펙 참고).
 */
-  // 일반 22개(각 직업 2차 전직의 Lv10/12 액티브).
+  // 일반 21개(각 직업 2차 전직의 Lv10/12 액티브).
   const TP_POOL_NORMAL = [
     'warriorBloodpactActive',                                   // 혈맹의 검투사
     'chalnaSlowStrike','chalnaMidStrike','chalnaFastStrike',    // 찰나의 검사(예약형 제외)
     'mageElementStrike','mageElementWave',                      // 계약술사
-    'mageHaste','mageTimeRewind',                               // 시간술사
+    'mageHaste',                                                // 시간술사(시간 역행은 시간 조각 전제라 제외)
     'mageCurseNova','mageCurseBrand',                           // 저주술사
     'rogueShadowStrike',                                        // 환영도적
     'rogueVenomInject',                                         // 역병숙주
