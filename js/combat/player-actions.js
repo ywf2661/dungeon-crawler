@@ -802,7 +802,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       hasteDmg = applyOutgoingDamageMods(hasteDmg, {type:'magicskill', mpCost, onHitMult:onHitMultHaste});
       enemy.hp = Math.max(0, enemy.hp-hasteDmg);
       updateEnemyHpBar(); shakeEnemy(); popDamage('-'+hasteDmg);
-      Sound.magic();
+      Sound.timeHaste();
       if(typeof spawnTimeHasteFx==='function') spawnTimeHasteFx();
       // 시간 조각: 가속 주문을 성공적으로 시전할 때마다 하나씩 쌓인다(최대 5).
       // 위쪽에서 MP 부족으로 취소된 경우엔 여기 도달하지 않으므로 자연히 제외된다.
@@ -810,7 +810,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       updatePlayerStatusBadges();
       renderStatus();
       playCastBurst('def');
-      Sound.buff();
       let hasteMsg = `시간이 압축되어 ${enemy.name}에게 ${hasteDmg}의 피해를 입혔다! 그대로 시간이 뒤틀려, 적의 턴을 건너뛰고 곧바로 다시 행동할 수 있게 되었다! (시간 조각 ${battleFlags.timeStacks}/5)`;
       if(extraCost>0) hasteMsg += ` (연속 사용으로 MP ${extraCost} 추가 소모)`;
       setBattleMsg(`${player.name}의 ${s.name}!`, hasteMsg);
@@ -2207,7 +2206,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       playStatusFx('blood');
       playBanner('검은 기도', 'fx-blood');
       playCastBurst();
-      Sound.buff();
+      Sound.darkPrayer();
       setBattleMsg('"...기도를 올렸다."', `"...무언가가 응답했다."${costMsg} ${turnsUsed}턴간 공격력이 크게 오르지만, 방어가 허술해진다.`);
       if(checkBattleEnd()) return;
       enemyTurn();
@@ -2677,7 +2676,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       renderStatus();
       if(typeof spawnTimeRewindFx==='function') spawnTimeRewindFx();
       playCastBurst('heal');
-      Sound.heal();
+      Sound.timeRewind();
       setBattleMsg(`${player.name}의 ${s.name}!`, `쌓인 시간 조각(${stacks}개)의 힘으로 시간을 되돌려 HP와 MP를 가득 채웠다! (조각은 소모되지 않는다)`);
       if(checkBattleEnd()) return;
       enemyTurn();

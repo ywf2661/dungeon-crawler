@@ -149,6 +149,9 @@ export(전역): const Sound
       curseNova: 'audio/sfx/cursenova.wav',
       curseBrand: 'audio/sfx/cursebrand.wav',
       bloodImprint: 'audio/sfx/bloodimprint.wav', // 혈맹의 검투사 선혈각인(쿵 + 심장박동)
+      timeHaste: 'audio/sfx/timehaste.mp3', // 가속 주문(마법사) — 4초 원본을 2초로 잘라 재생
+      darkPrayer: 'audio/sfx/darkprayer.mp3', // 검은 기도(성기사) — 잔잔하고 으스스한 속삭임
+      timeRewind: 'audio/sfx/timerewind.mp3', // 시간 역행(마법사)
       bloodUltimate: 'audio/sfx/bloodultimate.mp3', // 혈옥쇄(혈맹의 검투사 Lv15) — ElevenLabs 생성 음원
       curseBloom: 'audio/sfx/cursebloom.wav',
       // 계약술사 원소 스킬 9종(원소×각인/파동/폭풍) — VFX 이미지와 같은 이름.
@@ -186,13 +189,21 @@ export(전역): const Sound
     // SFX로 자연스럽게 대체(fallback)하도록 한다. rate(선택): 재생 속도=피치
     // 배율. 기존 호출부는 인자를 안 넘기므로 기본값 1로 지금까지와 동일하게
     // 동작한다.
-    function playSfxBuffer(name, rate){
+    function playSfxBuffer(name, rate, maxDur){
       const c = ensureCtx(); if(!c) return false;
       const buf = sfxBuffers[name];
       if(!buf) return false;
       const src = c.createBufferSource();
       src.buffer = buf;
       if(rate && rate!==1) src.playbackRate.value = rate;
+      if(maxDur && buf.duration>maxDur){
+        // 긴 음원은 maxDur초에서 끊고 마지막 0.4초 페이드아웃(파일을 못 자를 때의 대안)
+        const g = c.createGain(), t = c.currentTime;
+        g.gain.setValueAtTime(1, t+maxDur-0.4); g.gain.linearRampToValueAtTime(0, t+maxDur);
+        src.connect(g); g.connect(sfxGain);
+        src.start(0, 0, maxDur);
+        return true;
+      }
       src.connect(sfxGain);
       src.start(0);
       return true;
@@ -460,6 +471,9 @@ export(전역): const Sound
     function curseNova(){ if(muted) return; if(playSfxBuffer('curseNova')) return; magic(); }
     function curseBrand(){ if(muted) return; if(playSfxBuffer('curseBrand')) return; magic(); }
     function bloodImprint(){ if(muted) return; if(playSfxBuffer('bloodImprint')) return; buff(); }
+    function timeHaste(){ if(muted) return; if(playSfxBuffer('timeHaste', 1, 2)) return; magic(); buff(); }
+    function timeRewind(){ if(muted) return; if(playSfxBuffer('timeRewind')) return; heal(); }
+    function darkPrayer(){ if(muted) return; if(playSfxBuffer('darkPrayer')) return; buff(); }
     function bloodUltimate(){ if(muted) return; if(playSfxBuffer('bloodUltimate')) return; bomb(); }
     function curseBloom(){ if(muted) return; if(playSfxBuffer('curseBloom')) return; magic(); }
 
@@ -585,7 +599,7 @@ export(전역): const Sound
     return {
       ensureCtx, ensureBgmRunning, setBgmMode, rerollDungeonTrack,
       slash, multiSlash, bomb, magic, heal, guard, buff, hit, poisonHit, coin, fail, potion, click,
-      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom, bloodImprint, bloodUltimate, pact, necroRelease, necroSig,
+      levelUp, victory, gameOver, statusApply, clockChime, droneDeploy, droneAttack, guardianSlash, caliberxFinale, martyrUltimate, timeParadox, curseNova, curseBrand, curseBloom, bloodImprint, bloodUltimate, timeHaste, timeRewind, darkPrayer, pact, necroRelease, necroSig,
       setMuted, toggleMuted, isMuted,
     };
   })();
