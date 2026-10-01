@@ -178,6 +178,7 @@ export(전역): init, showMaintenanceModal, isAdminName
     });
     document.getElementById('btn-advance').addEventListener('click', onAdvance);
     document.getElementById('btn-shop').addEventListener('click', openShop);
+    document.getElementById('btn-potion').addEventListener('click', ()=>{ Sound.click(); showItemUseMenu(); });
     document.getElementById('btn-equip').addEventListener('click', openEquipment);
     document.getElementById('btn-relics').addEventListener('click', showMyRelics);
     document.getElementById('btn-exchange').addEventListener('click', openExchange);
@@ -191,12 +192,8 @@ export(전역): init, showMaintenanceModal, isAdminName
     if(namewrapEl) namewrapEl.addEventListener('click', ()=>{ if(typeof openStatusSheet==='function') openStatusSheet(); });
     document.getElementById('cmd-item').addEventListener('click', ()=>{ Sound.click(); openSub('item'); });
     document.getElementById('cmd-run').addEventListener('click', ()=>{
-      Sound.click();
-      // (사용자 요청 — 굴복 시스템) 버튼 라벨은 resetCommandUI()가 난이도에
-      // 맞춰 이미 바꿔뒀으니, 여기서는 실행할 함수만 난이도로 분기한다.
-      const canFlee = !player || player.difficulty==='easy';
-      if(canFlee) playerRun();
-      else if(typeof playerSurrender==='function') playerSurrender();
+      // 보통/하드코어는 resetCommandUI()가 이 버튼을 아예 숨기므로 도망만 처리한다.
+      if(!player || player.difficulty==='easy'){ Sound.click(); playerRun(); }
     });
     document.getElementById('cmd-back').addEventListener('click', ()=>{ Sound.click(); closeSub(); });
     document.getElementById('name-input').addEventListener('keydown', e=>{

@@ -91,15 +91,11 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       if(isRealTurnBoundary) player.shockSealTurns -= 1;
     }
     const runBtn = document.getElementById('cmd-run');
-    // (사용자 요청 — 굴복 시스템) 도망(쉬움 전용, 확률제)과 굴복(보통/하드코어
-    // 전용, 확정 성공 + 골드 대가)은 같은 버튼 자리를 난이도에 따라 바꿔 쓴다 —
-    // 둘 다 "이번 조우를 중단하고 재도전한다"는 같은 역할이라 동시에 보일
-    // 필요가 없다.
+    // 도망은 쉬움 전용(확률제). 보통/하드코어는 전투 이탈 수단이 없다 —
+    // 한번 들어간 전투는 이기거나 지는 것뿐(굴복 시스템 폐지, 사용자 요청).
     const canFlee = !player || player.difficulty==='easy';
-    runBtn.style.display = '';
-    runBtn.innerHTML = canFlee
-      ? '<span class="icon">💨</span>도망'
-      : '<span class="icon">🏳️</span>굴복';
+    runBtn.style.display = canFlee ? '' : 'none';
+    runBtn.innerHTML = '<span class="icon">💨</span>도망';
     updatePlayerStatusBadges();
     updateRigVisuals();
     updatePressureGauge();

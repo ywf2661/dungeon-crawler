@@ -4,6 +4,7 @@
 보스소굴 진입, 층 진행(다음 층 이동, 유물/저주 제단 조우, 보스/최종보스 조우 판정).
 export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementCheck, renderStatus,
               currentLocation, renderExplore, addLog, onRest, showRestChoice,
+              showItemUseMenu, useItemOutOfBattle,
               makeTownCheckpoint, applyTownCheckpoint, onAdvance,
               showFinalFloorConfirm, proceedAdvance
 주의(신규): 마을로 가기 버튼이 삭제되어 onReturnTown()은 완전히 제거했다
@@ -653,6 +654,71 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       player.buffAtkTurns = 99; player.buffAtkMult = 1.15;
       finish('명상을 통해 정신을 집중했다. 다음 전투에서 공격력이 15% 상승한다.');
     });
+  }
+
+  // 노드맵 포션 사용(사용자 요청 — 굴복 시스템 폐지 대신). 전투 밖에서 지닌
+  // 물약/에테르를 개수 제한 없이 자유롭게 소비할 수 있다. combat/player-actions.js의
+  // playerItem()과 회복량/저주 판정은 동일하되, 턴 소모·콤보 체인 끊김·계율
+  // 위반 같은 전투 전용 부수효과는 없다(전투 중이 아니므로 의미가 없음).
+  function showItemUseMenu(){
+    if(isBattleActive()) return;
+    const items = [
+      {key:'potion', name:'물약', desc:'HP 40 회복'},
+      {key:'hipotion', name:'상급 물약', desc:'HP 110 회복'},
+      {key:'ether', name:'에테르', desc:'MP 30 회복'},
+      {key:'hiether', name:'상급 에테르', desc:'MP 85 회복'},
+    ];
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'item-use-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    function render(){
+      panel.innerHTML = `
+        <h3>아이템 사용</h3>
+        <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
+          지닌 물약/에테르를 여기서 자유롭게 마실 수 있다.
+        </p>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${items.map(it=>{
+            const count = player.inv[it.key]||0;
+            return `<button class="btn" data-key="${it.key}" ${count>0?'':'disabled'}>${it.name} ×${count} — ${it.desc}</button>`;
+          }).join('')}
+          <button class="btn" id="item-use-close">닫기</button>
+        </div>`;
+      items.forEach(it=>{
+        const btn = panel.querySelector(`[data-key="${it.key}"]`);
+        if(btn) btn.addEventListener('click', ()=>{ useItemOutOfBattle(it.key); render(); });
+      });
+      panel.querySelector('#item-use-close').addEventListener('click', ()=> overlay.remove());
+    }
+    render();
+  }
+
+  function useItemOutOfBattle(key){
+    if((player.inv[key]||0)<=0) return;
+    if(typeof isCurseSealActive==='function' && isCurseSealActive('potionLocked', '저주를 찢고 물약을 들이켰다!')){
+      addLog('저주가 목을 조여온다… 물약을 마실 수 없다!', 'warn');
+      return;
+    }
+    if(typeof isDebtHealSealActive==='function' && isDebtHealSealActive()){
+      addLog('빚쟁이가 손목을 붙잡는다… 빚 때문에 물약을 마실 수 없다!', 'warn');
+      return;
+    }
+    player.inv[key] -= 1;
+    let potBoost = Math.max(0.2, 1 + getRelicSum('potionEffMult'));
+    potBoost *= getDebtorPotionMult();
+    let msg = '';
+    if(key==='potion'){ const h=Math.round(40*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`물약을 마셨다. HP ${h} 회복.`; }
+    else if(key==='hipotion'){ const h=Math.round(110*potBoost); player.hp=Math.min(player.maxhp,player.hp+h); msg=`상급 물약을 마셨다. HP ${h} 회복.`; }
+    else if(key==='ether'){ const m=Math.round(30*potBoost); player.mp=Math.min(player.maxmp,player.mp+m); msg=`에테르를 마셨다. MP ${m} 회복.`; }
+    else if(key==='hiether'){ const m=Math.round(85*potBoost); player.mp=Math.min(player.maxmp,player.mp+m); msg=`상급 에테르를 마셨다. MP ${m} 회복.`; }
+    Sound.potion();
+    renderStatus();
+    addLog(msg, 'gold');
+    saveGame();
   }
 
   function enterBossDen(){
