@@ -38,8 +38,17 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(enemy && typeof enemy._prevHp==='number' && enemy.hp < enemy._prevHp){
       const dealt = enemy._prevHp - enemy.hp;
       if(typeof handleEliteOnHitTraits==='function') handleEliteOnHitTraits(dealt);
+      // 일반 몬스터 기믹 공용 "빈틈"(곡괭이 끊기/앙코르 인사) — 철갑 환불과 같은
+      // 사후 처리 방식으로, 어느 경로의 피해든 50%를 한 번 더 얹는다.
+      if(enemy.vulnTurns>0 && enemy.hp>0){
+        const extra = Math.max(1, Math.round(dealt*0.5));
+        enemy.hp = Math.max(0, enemy.hp - extra);
+        popDamage('-'+extra, 'crit');
+      }
       // 최후의 발악(3페이즈) 트리거 체크(사용자 요청 — 보스전 리뉴얼).
       if(typeof checkLastStand==='function') checkLastStand();
+      // 치켜든 곡괭이 — 끊기까지 얼마나 깎았는지 카드에 실시간 반영.
+      if(enemy.chargePending && typeof updateBossIntentCard==='function') updateBossIntentCard();
     }
     if(enemy) enemy._prevHp = enemy.hp;
     document.getElementById('bt-ehp-bar').style.width = Math.max(0,(enemy.hp/enemy.maxhp*100))+'%';
@@ -334,6 +343,21 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       card.style.display = 'block';
       card.className = 'boss-intent-card warn';
       card.textContent = `⚠ [${BOSS_SKILL_LABELS[enemy.pendingSkillKey]||'강공격'}] — 다음 턴 발동!`;
+      return;
+    }
+    // 일반 몬스터 기믹(combat/enemy-turn.js) — 치켜든 곡괭이 예고 / 빈틈.
+    if(enemy.chargePending){
+      const need = Math.round(getChargeBreakRatio()*100);
+      const done = Math.max(0, Math.round((enemy.chargeHpSnap - enemy.hp)/enemy.maxhp*100));
+      card.style.display = 'block';
+      card.className = 'boss-intent-card warn';
+      card.textContent = `⛏ 곡괭이를 치켜들었다 — 최대HP ${need}% 피해로 끊기 (${Math.min(done, need)}/${need}%)`;
+      return;
+    }
+    if(enemy.vulnTurns>0){
+      card.style.display = 'block';
+      card.className = 'boss-intent-card chance';
+      card.textContent = '✨ 빈틈 — 이번 턴 받는 피해 +50%';
       return;
     }
     // 시간의 파수꾼 메아리 예고(사용자 기획) — 대기 중인 메아리가 바로 다음

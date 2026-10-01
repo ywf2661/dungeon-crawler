@@ -96,6 +96,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   }
   // combat/battle-fx.js의 updateEnemyHpBar()가 enemy.hp 감소를 감지할 때마다
   // 호출한다(dealt = 방금 줄어든 양). 철갑/반사/복수 예약을 처리한다.
+  // 치켜든 곡괭이 문턱 — 일반 전투는 플레이어 한 턴 평균 피해(최대HP의 약 25%)보다
+  // 높게, 정예는 HP가 1.8배라 한 턴 평균이 13% 안팎이어서 낮춰 잡았다(시뮬레이션 기준).
+  function getChargeBreakRatio(){ return (enemy && enemy.isElite) ? 0.2 : 0.3; }
+
   function handleEliteOnHitTraits(dealt){
     if(!enemy || battleOver || dealt<=0) return;
     if(!enemy.eliteTraits || !enemy.eliteTraits.length) return;
@@ -658,6 +662,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   }
   function enemyAction(){
     setTimeout(()=>{
+      // 일반 몬스터 기믹 공용 "빈틈"(받는 피해 +50%, battle-fx.js의 updateEnemyHpBar
+      // 참고) — 직전 플레이어 턴 한정이라 적이 다시 움직이는 이 시점에 끝난다.
+      if(enemy && enemy.vulnTurns>0) enemy.vulnTurns -= 1;
       // 찰나검사(warrior_chalna) "완급" 콤보의 경직 — 게임 내 최초의 "적 턴
       // 스킵" 메커닉이라 다른 로직(보스 예고 등)과 얽히지 않도록 함수 맨
       // 앞에서 가장 먼저 확인하고 조기 반환한다.
@@ -693,6 +700,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 다른 몬스터는 setBossPoseImage() 안에서 type 체크로 즉시 무시된다.
       if(typeof setBossPoseImage==='function') setBossPoseImage('idle');
       let skillKey = null;
+      let chargeSmash = false; // 끊지 못한 곡괭이 강타(×2.0)
       // 시간의 파수꾼(사용자 기획) — 메아리 큐 기반 전용 행동 결정. 일반
       // enemy.skills 순환/보스 예고 로직을 완전히 건너뛰고 여기서 skillKey를
       // 직접 확정한다. tgEchoMult(전역 아님, 이 클로저 지역 변수)는 메아리
@@ -776,8 +784,34 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         enemy.pendingSkillKey = null;
         if(typeof updateBossIntentCard==='function') updateBossIntentCard();
         if(typeof setBossPoseImage==='function') setBossPoseImage('slam');
+      } else if(enemy.chargePending){
+        // 치켜든 곡괭이(회랑의 굴착꾼 기믹) 판정 — 예고 이후 지금까지 순수하게
+        // 깎인 HP(공격·스킬·소환수·지속피해 전부 합산, 회복분은 상쇄)가 문턱을
+        // 넘었거나 감전으로 스킬이 봉인됐으면 강타가 끊기고 빈틈이 생긴다.
+        enemy.chargePending = false;
+        const dealtSinceCharge = enemy.chargeHpSnap - enemy.hp;
+        if(shockSealedThisTurn || dealtSinceCharge >= enemy.maxhp*getChargeBreakRatio()){
+          enemy.vulnTurns = 1;
+          playBanner('곡괭이가 빗나간다!', 'dodge');
+          shakeEnemy();
+          setBattleMsg(`${enemy.name}이(가) 휘청이며 곡괭이를 헛짚는다!`, '빈틈이다 — 이번 턴 받는 피해 +50%!');
+          if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+          finishEnemyTurn();
+          return;
+        }
+        skillKey = 'smash';
+        chargeSmash = true;
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
       } else if(enemy.skills.length && !shockSealedThisTurn && Math.random()<(enemy.skillChance||0.4)){
         const chosen = enemy.skills[Math.floor(Math.random()*enemy.skills.length)];
+        if(enemy.gimmick==='charge' && chosen==='smash'){
+          enemy.chargePending = true;
+          enemy.chargeHpSnap = enemy.hp;
+          setBattleMsg(`${enemy.name}이(가) 곡괭이를 높이 치켜든다…`, `⚠ 다음 턴 강타! 그 전에 최대HP의 ${Math.round(getChargeBreakRatio()*100)}% 이상 피해를 주면 끊을 수 있다.`);
+          if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+          finishEnemyTurn();
+          return;
+        }
         // 보스이고 치유가 아닌 스킬이면 즉시 쓰지 않고 한 턴 예고부터 한다.
         // 치유는 플레이어에게 위협이 아니라 예고할 이유가 없어 그대로 즉시 사용.
         if(enemy.isBoss && chosen !== 'heal'){
@@ -806,7 +840,8 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       let label = `${enemy.name}의 공격!`;
       // 정예 특성(광폭/사냥꾼/복수/광기)을 전부 반영한 이번 턴의 실제 공격력.
       const effAtk = getEffectiveEnemyAtk();
-      if(skillKey==='smash'){ dmg = Math.round(effAtk*1.6); label = `${enemy.name}이(가) 강타를 날린다!`; }
+      if(skillKey==='smash' && chargeSmash){ dmg = Math.round(effAtk*2.0); label = `${enemy.name}이(가) 치켜들었던 곡괭이를 그대로 내리찍는다!`; }
+      else if(skillKey==='smash'){ dmg = Math.round(effAtk*1.6); label = `${enemy.name}이(가) 강타를 날린다!`; }
       else if(skillKey==='bite'){ dmg = Math.round(effAtk*1.4); label = `${enemy.name}이(가) 물어뜯는다!`; }
       else if(skillKey==='curse'){ dmg = Math.round(effAtk*1.3); label = `${enemy.name}이(가) 저주를 건다!`; }
       // 해골 전사 전용(신규 태그 — 사용자 요청, 후반부 몬스터가 죄다 'smash'로
@@ -1137,6 +1172,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       }
 
       player.hp = Math.max(0, player.hp - mitigated);
+      // 앙코르 인사(회랑의 어릿광대 기믹) — 강타/저주가 실제로 들어가면 텅 빈
+      // 객석에 인사하느라 다음 플레이어 턴 동안 빈틈(받는 피해 +50%)을 보인다.
+      if(mitigated>0 && enemy.gimmick==='encore' && (skillKey==='smash' || skillKey==='curse')){
+        enemy.vulnTurns = 1;
+        extraMsg += ' 광대가 텅 빈 객석을 향해 깊이 인사한다 — 빈틈이다!';
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+      }
       // 타임패트롤(mastery_timesync): 피격당할 때마다 단서 +1.
       if(mitigated>0 && typeof tpAddClue==='function') tpAddClue(1);
       checkPaladinAwoken();

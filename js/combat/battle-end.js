@@ -80,6 +80,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       // canEnrage()(최종보스/진최종보스 전용)와 겹치지 않는 정예 전용 부활이다.
       if(typeof hasEliteTrait==='function' && hasEliteTrait('undying') && !enemy.usedUndying){
         enemy.usedUndying = true;
+        enemy.chargePending = false; // 부활로 HP가 다시 차면 곡괭이 판정 기준(스냅샷)이 무의미해진다
         enemy.hp = Math.max(1, Math.round(enemy.maxhp*0.25));
         enemy._prevHp = enemy.hp;
         updateEnemyHpBar();

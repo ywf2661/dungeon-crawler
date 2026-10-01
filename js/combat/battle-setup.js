@@ -448,8 +448,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       40: 'clockheart',      // 고쳐지지 않는 시계(시계공의 미완성 유작)
       50: 'hollowprophet',   // 빈 옷의 예언자
     };
-    // player.debugMonsterType: 관리자 테스트 전용 일반 몬스터 고정(explore.js의 setupAdminEggTest).
-    const debugBase = player && player.debugMonsterType && MONSTERS.find(m=>m.type===player.debugMonsterType);
+    // player.debugMonsterType: 관리자 테스트 전용 일반 몬스터 고정(explore.js의 setupAdminMonsterTest).
+    // 배열이면 그중 무작위 하나(구버전 admin4 세이브는 문자열 하나로 저장돼 있어 둘 다 받는다).
+    const dbg = player && player.debugMonsterType;
+    const dbgType = Array.isArray(dbg) ? dbg[Math.floor(Math.random()*dbg.length)] : dbg;
+    const debugBase = dbgType && MONSTERS.find(m=>m.type===dbgType);
     const base = isBoss
       ? (BOSSES.find(m=>m.type===FLOOR_BOSS_BY_DEPTH[depth]) || BOSSES[0])
       : (debugBase || pickTieredMonster(depth) || MONSTERS[0]);
@@ -481,6 +484,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       exp: Math.round(base.exp*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult),
       gold: [Math.round(base.gold[0]*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult), Math.round(base.gold[1]*(1+depth*0.08)*eliteMult.reward*bossDenRewardMult)],
       skills, guarding:false,
+      gimmick: isBoss ? undefined : base.gimmick, // 일반 몬스터 기믹(combat/enemy-turn.js의 charge/encore 참고)
     };
     if(isElite){
       const traitCount = getEliteTraitCount(depth, player && player.difficulty);

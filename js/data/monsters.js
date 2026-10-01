@@ -45,11 +45,11 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
       dex:'천 번을 되뇐 기도가, 이제는 저주에 더 가까운 소리로 들린다.'},
     {type:'egg',name:'회랑의 껍질',  minDepth:17, hp:66, atk:18, def:8,  spd:6,  exp:56, gold:[28,42], skills:['smash'],
       dex:'형체를 다 갖추지 못한 채 굳어버렸다. 사람의 말은, 이제 나오지 않는다.'},
-    {type:'golem',   name:'회랑의 굴착꾼',       minDepth:20, hp:90, atk:16, def:14, spd:2,  exp:68, gold:[30,48], skills:['smash'],
+    {type:'golem',   name:'회랑의 굴착꾼',       minDepth:20, hp:90, atk:16, def:14, spd:2,  exp:68, gold:[30,48], skills:['smash'], gimmick:'charge',
       dex:'성벽을 보수하던 손이, 이제는 다른 목적으로 움직인다.'},
     {type:'jack',  name:'회랑의 인형수집가 잭',     minDepth:22, hp:95, atk:15, def:10, spd:3,  exp:70, gold:[32,50], skills:['heal'],
       dex:'정성껏 인형을 만들던 손끝이, 여전히 누군가를 기다리듯 움직인다.'},
-    {type:'demon',   name:'회랑의 어릿광대',     minDepth:26, hp:80, atk:22, def:10, spd:8,  exp:90, gold:[45,65], skills:['smash','curse'],
+    {type:'demon',   name:'회랑의 어릿광대',     minDepth:26, hp:80, atk:22, def:10, spd:8,  exp:90, gold:[45,65], skills:['smash','curse'], gimmick:'encore',
       dex:'박수쳐줄 관객 하나 없는 무대에서, 여전히 마지막 공연을 반복한다.'},
     // 신규 3종(사용자 요청 — 미믹/오크전사/마녀 삭제 후 3·4구간용으로 추가).
     // 데몬(minDepth26) 이후로 이어지는 구간이라 데몬보다 소폭씩 더 강하게 잡았다.

@@ -214,7 +214,13 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     // [디버그 전용 — 회랑의 알 부화 테스트용] 이름이 "admin4"면 알이 기본 등장하는
     // 3구간(20층대) 마을에서 시작하고, 이 캐릭터의 일반/정예 전투는 전부 알로 고정된다.
     if(player.name && player.name.trim().toLowerCase()==='admin4'){
-      setupAdminEggTest();
+      setupAdminMonsterTest({level:12, tierIndex:2, types:['egg'], label:'회랑의 껍질(정예 노드는 정예 껍질)'});
+      return;
+    }
+    // [디버그 전용 — 일반 몬스터 기믹 테스트용] "admin5": 4구간(30층대) 마을 시작, 일반/정예
+    // 전투에 회랑의 굴착꾼(치켜든 곡괭이)과 회랑의 어릿광대(앙코르 인사)만 무작위로 나온다.
+    if(player.name && player.name.trim().toLowerCase()==='admin5'){
+      setupAdminMonsterTest({level:14, tierIndex:3, types:['golem','demon'], label:'회랑의 굴착꾼/회랑의 어릿광대'});
       return;
     }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
@@ -353,18 +359,19 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     saveGame();
   }
 
-  // [디버그 전용] 회랑의 알 부화 테스트. 장비 지급 없이 레벨만 올려 실제 체감에
-  // 가깝게 두고, player.debugMonsterType으로 일반/정예 전투를 알로 고정한다
-  // (combat/battle-setup.js의 pickEnemy() 참고). 보스/중간보스는 그대로 나온다.
-  function setupAdminEggTest(){
-    while(player.level < 12) applyLevelUpEffects();
+  // [디버그 전용] 일반 몬스터 기믹 테스트(admin4/admin5). 장비 지급 없이 레벨만 올려
+  // 실제 체감에 가깝게 두고, player.debugMonsterType으로 일반/정예 전투를 지정한
+  // 몬스터(여러 개면 무작위)로 고정한다(combat/battle-setup.js의 pickEnemy() 참고).
+  // 레벨은 조우 시뮬레이션의 중앙값 기준. 보스/중간보스는 그대로 나온다.
+  function setupAdminMonsterTest(opts){
+    while(player.level < opts.level) applyLevelUpEffects();
     player.jobAdvancePending = true;
     if(typeof CONSUMABLE_CAPS!=='undefined'){
       Object.keys(CONSUMABLE_CAPS).forEach(key=>{ player.inv[key] = CONSUMABLE_CAPS[key]; });
     }
     player.gold = 1000;
-    player.debugMonsterType = 'egg';
-    player.tierIndex = 2;
+    player.debugMonsterType = opts.types;
+    player.tierIndex = opts.tierIndex;
     player.nodeMap = null;
     player.nodeRow = -1;
     player.nodeCurrentId = null;
@@ -375,7 +382,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
-    renderExplore(['[관리자 테스트] 레벨12 · 포션 최대 · 3구간(20층대) 마을에서 시작. "나아가기" 후 전투/정예 노드를 고르면 회랑의 껍질(정예 노드는 정예 껍질)이 나온다.']);
+    renderExplore([`[관리자 테스트] 레벨${opts.level} · 포션 최대 · ${opts.tierIndex+1}구간(${opts.tierIndex*10}층대) 마을에서 시작. "나아가기" 후 전투/정예 노드를 고르면 ${opts.label}이(가) 나온다.`]);
     saveGame();
   }
 
