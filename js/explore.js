@@ -211,6 +211,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       setupAdmin2TrueFinalBossTest({randomRelics:true});
       return;
     }
+    // [디버그 전용 — 회랑의 알 부화 테스트용] 이름이 "admin4"면 알이 기본 등장하는
+    // 3구간(20층대) 마을에서 시작하고, 이 캐릭터의 일반/정예 전투는 전부 알로 고정된다.
+    if(player.name && player.name.trim().toLowerCase()==='admin4'){
+      setupAdminEggTest();
+      return;
+    }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
     // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
     // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
@@ -344,6 +350,32 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     renderStatus();
     const relicMsg = opts.randomRelics ? '무작위 유물 지급(마녀의 시계 항상 포함)' : '회랑자의 칼날/칼자루 장착';
     renderExplore([`[관리자 테스트] 레벨17(자연 진행 평균) · 직업 맞춤 에픽 풀템 · 강화석 100개 · ${relicMsg} 완료. 마을에서 "나아가기"를 누르면 4구간부터 정상적으로 노드맵을 밟는다(4구간 보스 클리어 후 자연스럽게 고요한 제단으로 이어짐).`]);
+    saveGame();
+  }
+
+  // [디버그 전용] 회랑의 알 부화 테스트. 장비 지급 없이 레벨만 올려 실제 체감에
+  // 가깝게 두고, player.debugMonsterType으로 일반/정예 전투를 알로 고정한다
+  // (combat/battle-setup.js의 pickEnemy() 참고). 보스/중간보스는 그대로 나온다.
+  function setupAdminEggTest(){
+    while(player.level < 12) applyLevelUpEffects();
+    player.jobAdvancePending = true;
+    if(typeof CONSUMABLE_CAPS!=='undefined'){
+      Object.keys(CONSUMABLE_CAPS).forEach(key=>{ player.inv[key] = CONSUMABLE_CAPS[key]; });
+    }
+    player.gold = 1000;
+    player.debugMonsterType = 'egg';
+    player.tierIndex = 2;
+    player.nodeMap = null;
+    player.nodeRow = -1;
+    player.nodeCurrentId = null;
+    player.nodeVisited = [];
+    town = true;
+    depth = player.tierIndex*10;
+    player.townCheckpoint = makeTownCheckpoint();
+    document.getElementById('statusbar').style.display='flex';
+    showScreen('explore');
+    renderStatus();
+    renderExplore(['[관리자 테스트] 레벨12 · 포션 최대 · 3구간(20층대) 마을에서 시작. "나아가기" 후 전투/정예 노드를 고르면 회랑의 껍질(정예 노드는 정예 껍질)이 나온다.']);
     saveGame();
   }
 

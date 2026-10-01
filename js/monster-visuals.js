@@ -46,7 +46,8 @@ export(전역): heroBossSvg, svgMonster
     golem:  'images/monsters/golem.png',
     demon:  'images/monsters/demon.png',
     jack:   'images/monsters/jack.png', 
-    egg:   'images/monsters/egg.png',    
+    egg:   'images/monsters/egg.png',
+    egghatch: 'images/monsters/egg2.png', // 회랑의 알 부화체(combat/battle-setup.js의 HATCH_TABLE)
     ogre:   'images/monsters/ogre.png',   
     
     herowarrior:  'images/monsters/herowarrior.png',

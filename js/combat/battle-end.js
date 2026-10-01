@@ -72,6 +72,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         triggerEnragePhase();
         return true;
       }
+      if(canHatch(enemy)){
+        triggerHatchPhase();
+        return true;
+      }
       // 정예 특성 "불사"(사용자 요청): 사망 시 1회, HP 25%로 되살아난다.
       // canEnrage()(최종보스/진최종보스 전용)와 겹치지 않는 정예 전용 부활이다.
       if(typeof hasEliteTrait==='function' && hasEliteTrait('undying') && !enemy.usedUndying){

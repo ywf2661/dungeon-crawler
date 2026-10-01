@@ -147,6 +147,59 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     }, 1400);
   }
 
+  // 회랑의 알 부화(사용자 기획) — 껍질(egg)을 쓰러뜨려도 전투가 끝나지 않고, 같은
+  // 슬롯의 enemy가 유체로 바뀌어 2차전이 이어진다(엘리트 "불사"는 같은 개체 부활,
+  // 이쪽은 다른 개체로 교체). 알 상태에선 최종 공격력을 EGG_ATK_MULT만큼 낮춰두고
+  // (pickEnemy() 끝), 부화하면 원래 공격력으로 되돌리는 대신 방어력이 줄어든다.
+  const EGG_ATK_MULT = 0.7;
+  const HATCH_TABLE = {
+    egg: {type:'egghatch', name:'갓 깨어난 회랑의 유체', skills:['bite'],
+      hpRatio:0.55, defRatio:0.7, spdRatio:1.5, rewardMult:1.5,
+      dex:'껍질을 깨고 나온 것은 다 자란 무엇이 아니었다. 굶주림이 먼저 생겼고, 형체는 아직 그 뒤를 따라오는 중이다.'},
+  };
+  // 몬스터 도감 전용 항목(records.js) — 부화체는 MONSTERS에 없어 자연 등장하지 않는다.
+  const HATCHLING_DEX = [{type:'egghatch', name:HATCH_TABLE.egg.name, minDepth:17, dex:HATCH_TABLE.egg.dex}];
+  function canHatch(e){ return !!(e && HATCH_TABLE[e.type]); }
+  function triggerHatchPhase(){
+    setCommandsEnabled(false);
+    const h = HATCH_TABLE[enemy.type];
+    enemy.type = h.type;
+    enemy.name = (enemy.isElite?'정예 ':'')+h.name;
+    enemy.skills = enemy.isElite ? h.skills.concat(['eliteFerocity']) : h.skills.slice();
+    enemy.maxhp = Math.max(1, Math.round(enemy.maxhp*h.hpRatio));
+    enemy.hp = enemy.maxhp;
+    enemy._prevHp = enemy.hp;
+    enemy.atk = Math.max(1, Math.round(enemy.atk/EGG_ATK_MULT));
+    enemy.def = Math.max(0, Math.round(enemy.def*h.defRatio));
+    enemy.spd = Math.round(enemy.spd*h.spdRatio);
+    enemy.exp = Math.round(enemy.exp*h.rewardMult);
+    enemy.gold = enemy.gold.map(g=>Math.round(g*h.rewardMult));
+    enemy.dots = [];
+    if(typeof addToMonsterDex==='function') addToMonsterDex(enemy.type);
+    const eliteTagHtml = enemy.isElite
+      ? (enemy.eliteTraits && enemy.eliteTraits.length
+          ? enemy.eliteTraits.map(k=>`<span class="elite-tag">[${ELITE_TRAITS[k].label}]</span>`).join('')
+          : '<span class="elite-tag">⚔ 정예</span>')
+      : '';
+    document.getElementById('bt-ename').innerHTML = eliteTagHtml + (eliteTagHtml ? h.name : enemy.name);
+    const stage = document.getElementById('bt-stage');
+    stage.innerHTML = svgMonster(enemy.type);
+    stage.classList.remove('dying');
+    fixMonsterImageGrounding(stage.querySelector('img'));
+    updateEnemyHpBar();
+    updateStatusBadges();
+    shakeEnemy();
+    playBanner('알이 깨진다', 'enrage');
+    Sound.hit();
+    setBattleMsg('껍질이 갈라지며 무언가 기어 나온다…!', `${enemy.name}이(가) 굶주린 아가리를 벌린다!`);
+    // 광폭화와 같은 규칙 — 플레이어가 자기 턴을 써서 일어난 일이라 적에게
+    // 추가 턴을 주지 않고 연출이 끝나면 그대로 플레이어 턴으로 돌려준다.
+    setTimeout(()=>{
+      if(battleOver) return;
+      resetCommandUI();
+    }, 1400);
+  }
+
   // 난이도에 따라 몬스터 스탯을 조금씩(보통) 또는 크게(하드코어) 강화한다.
   function getDifficultyMonsterMult(){
     const d = player && player.difficulty;
@@ -395,9 +448,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       40: 'clockheart',      // 고쳐지지 않는 시계(시계공의 미완성 유작)
       50: 'hollowprophet',   // 빈 옷의 예언자
     };
+    // player.debugMonsterType: 관리자 테스트 전용 일반 몬스터 고정(explore.js의 setupAdminEggTest).
+    const debugBase = player && player.debugMonsterType && MONSTERS.find(m=>m.type===player.debugMonsterType);
     const base = isBoss
       ? (BOSSES.find(m=>m.type===FLOOR_BOSS_BY_DEPTH[depth]) || BOSSES[0])
-      : (pickTieredMonster(depth) || MONSTERS[0]);
+      : (debugBase || pickTieredMonster(depth) || MONSTERS[0]);
     const scale = 1 + depth*0.06;
     // 엘리트: 보스가 아닌 일반 몬스터 중 낮은 확률로 강화판이 등장한다. 처치 시 유물이 확정으로 주어진다.
     // 정예: 노드맵의 '정예 전투' 노드를 골랐으면(nodeForcedElite) 확정으로
@@ -446,7 +501,9 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       // weakness가 있으면 그대로 옮겨 심는다(없으면 undefined로 아무 효과 없음).
       if(base.weakness) built.weakness = base.weakness;
     }
-    return scaleEnemyForDifficulty(built);
+    const scaled = scaleEnemyForDifficulty(built);
+    if(canHatch(scaled)) scaled.atk = Math.max(1, Math.round(scaled.atk*EGG_ATK_MULT));
+    return scaled;
   }
 
   // 사기꾼(jesterRiggedTable) "조작된 도박판" — 전투 시작 시 내 무작위

@@ -49,15 +49,20 @@ lines가 비어 있으면 즉시 onDone()만 호출하고 아무것도 띄우지
       void box.offsetWidth;
       box.classList.add('fade-in');
     }
+    // 페이드아웃 중 들어온 클릭은 무시한다 — 연타하면 renderLine이 여러 번 예약돼
+    // idx가 대사 수를 넘어가 "undefined"가 그려지던 버그(빠른 더블탭으로 재현).
+    let fading = false;
     function advance(){
+      if(fading) return;
       if(idx >= lines.length){
         overlay.remove();
         if(typeof opts.onDone==='function') opts.onDone();
         return;
       }
+      fading = true;
       box.classList.remove('fade-in');
       box.classList.add('fade-out');
-      setTimeout(renderLine, fadeOutMs);
+      setTimeout(()=>{ fading = false; renderLine(); }, fadeOutMs);
     }
     overlay.addEventListener('click', advance);
     renderLine(); // 첫 대사는 곧바로 페이드인
