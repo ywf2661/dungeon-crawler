@@ -26,6 +26,15 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
   function playerAttack(){
     if(battleOver) return;
     setCommandsEnabled(false);
+    if(battleFlags) battleFlags.actingSkill = false;
+    // 마름질 태세(회랑의 재단사 기믹) — 기본 공격 한 번이면 태세가 잘린다. 평타가
+    // 약한 직업도 손해를 메울 수 있게 이 공격과 다음 턴까지 빈틈(받는 피해 +50%).
+    if(enemy && enemy.cutStance){
+      enemy.cutStance = false;
+      enemy.vulnTurns = 2;
+      playBanner('태세를 끊었다!', 'dodge');
+      if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+    }
     // 무한 가속 각인(me_infiniteaccel): 기본 공격도 가속 주문 연쇄를 끊는다.
     if(battleFlags) battleFlags.hasteCastCount = 0;
     // 은신 연속 사용 방지: 기본 공격을 포함해 은신이 아닌 어떤 행동을 해도 쿨다운이
@@ -371,6 +380,9 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
 
   function playerSkill(key, isRetry){
     if(battleOver) return;
+    // 마름질 태세 판정용 — 이 스킬로 들어가는 피해는 battle-fx.js의
+    // updateEnemyHpBar()에서 무효 처리된다(enemyTurn() 진입 시 해제).
+    if(battleFlags){ battleFlags.actingSkill = true; if(!isRetry) battleFlags.cutBlockShown = false; }
     // 이중 손버릇 각인: 새로운(재시도가 아닌) 캐스팅마다 보너스 재시도
     // 사용 여부를 초기화한다.
     if(!isRetry && battleFlags) battleFlags.doubleLuckUsedThisCast = false;
@@ -3823,6 +3835,14 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       battleFlags.creedStacks = Math.min(5, (battleFlags.creedStacks||0)+1);
     }
     player.inv[key]-=1;
+    if(battleFlags) battleFlags.actingSkill = false;
+    // 적히는 이름(회랑의 금서 기믹) — 아이템을 쓰면 잉크가 번져 처음부터 다시 적힌다.
+    let inkMsg = '';
+    if(enemy && enemy.gimmick==='name' && enemy.nameLetters>0){
+      enemy.nameLetters = 0;
+      inkMsg = ' 잉크가 번져 적히던 이름이 지워졌다!';
+      if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+    }
     let potBoost = Math.max(0.2, 1 + getRelicSum('potionEffMult'));
     // 칼리버 X: 종언(회랑의 기사)의 회복 감소 저주 — 사용 후 전투가 끝날 때까지
     // 물약 회복 효율이 절반으로 줄어든다.
@@ -3839,6 +3859,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       msg += ` (다음 공격 피해 +${battleFlags.flaskStacks*20}%)`;
     }
     if(creedMsg) msg += creedMsg;
+    msg += inkMsg;
     renderStatus();
     popDamage('+','heal');
     Sound.potion();

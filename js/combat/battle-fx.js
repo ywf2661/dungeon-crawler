@@ -35,6 +35,17 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 실제로 줄어들 때마다 항상 호출되는 이 함수에서 델타(직전 대비 감소량)를
   // 감지해 한 곳에서 처리한다(combat/enemy-turn.js의 handleEliteOnHitTraits 참고).
   function updateEnemyHpBar(){
+    // 마름질 태세(회랑의 재단사 기믹) — 태세 중 스킬로 들어온 피해는 철갑 환불과
+    // 같은 사후 방식으로 전액 되돌린다(소환수·지속피해 틱은 enemyTurn()에서 표시가
+    // 꺼진 뒤라 그대로 들어간다). 다른 피격 후처리(정예 특성/빈틈)도 건너뛴다.
+    if(enemy && enemy.cutStance && battleFlags && battleFlags.actingSkill
+       && typeof enemy._prevHp==='number' && enemy.hp < enemy._prevHp){
+      enemy.hp = enemy._prevHp;
+      if(!battleFlags.cutBlockShown){
+        battleFlags.cutBlockShown = true;
+        playBanner('가위가 잘라냈다!', 'dodge');
+      }
+    }
     if(enemy && typeof enemy._prevHp==='number' && enemy.hp < enemy._prevHp){
       const dealt = enemy._prevHp - enemy.hp;
       if(typeof handleEliteOnHitTraits==='function') handleEliteOnHitTraits(dealt);
@@ -47,8 +58,15 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       }
       // 최후의 발악(3페이즈) 트리거 체크(사용자 요청 — 보스전 리뉴얼).
       if(typeof checkLastStand==='function') checkLastStand();
-      // 치켜든 곡괭이 — 끊기까지 얼마나 깎았는지 카드에 실시간 반영.
-      if(enemy.chargePending && typeof updateBossIntentCard==='function') updateBossIntentCard();
+      // 짐승이 다 되기 전에(회랑의 뿔짐승 기믹) — HP 50% 이하로 처음 떨어지는 순간
+      // 카운트가 시작된다(일반 2/정예 3 — 적 행동마다 1씩 감소, enemy-turn.js).
+      if(enemy.gimmick==='feral' && !enemy.feralStarted && enemy.hp>0 && enemy.hp <= enemy.maxhp*0.5){
+        enemy.feralStarted = true;
+        enemy.feralCount = enemy.isElite ? 3 : 2;
+        playBanner('짐승의 울음이 차오른다', 'enrage');
+      }
+      // 곡괭이/짐승화 — 진행도를 카드에 실시간 반영.
+      if((enemy.chargePending || enemy.feralCount>0) && typeof updateBossIntentCard==='function') updateBossIntentCard();
     }
     if(enemy) enemy._prevHp = enemy.hp;
     document.getElementById('bt-ehp-bar').style.width = Math.max(0,(enemy.hp/enemy.maxhp*100))+'%';
@@ -354,10 +372,32 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       card.textContent = `⛏ 곡괭이를 치켜들었다 — 최대HP ${need}% 피해로 끊기 (${Math.min(done, need)}/${need}%)`;
       return;
     }
+    if(enemy.cutStance){
+      card.style.display = 'block';
+      card.className = 'boss-intent-card warn';
+      card.textContent = '✂ 마름질 태세 — 스킬 피해 무효 · 기본 공격으로 끊기';
+      return;
+    }
     if(enemy.vulnTurns>0){
       card.style.display = 'block';
       card.className = 'boss-intent-card chance';
-      card.textContent = '✨ 빈틈 — 이번 턴 받는 피해 +50%';
+      card.textContent = enemy.vulnTurns>1 ? '✨ 빈틈 — 2턴간 받는 피해 +50%' : '✨ 빈틈 — 이번 턴 받는 피해 +50%';
+      return;
+    }
+    if(enemy.feralCount>0){
+      const pct = Math.max(0, Math.round(enemy.hp/enemy.maxhp*100));
+      card.style.display = 'block';
+      card.className = 'boss-intent-card warn';
+      card.textContent = `🐾 ${enemy.feralCount===1 ? '다음 행동에 폭주!' : enemy.feralCount+'턴 뒤 폭주'} — HP 20% 이하로 몰아붙여라 (현재 ${pct}%)`;
+      return;
+    }
+    if(enemy.gimmick==='name' && enemy.nameLetters>0){
+      const limit = getNameLetterLimit();
+      const chars = Array.from(player.name||'');
+      const written = Array.from({length:limit}, (_, i)=> i < enemy.nameLetters ? (chars[i]||'·') : '_').join('');
+      card.style.display = 'block';
+      card.className = 'boss-intent-card warn';
+      card.textContent = `✒ 이름이 적히고 있다: ${written} (${enemy.nameLetters}/${limit}) — 아이템을 쓰면 번진다`;
       return;
     }
     // 시간의 파수꾼 메아리 예고(사용자 기획) — 대기 중인 메아리가 바로 다음

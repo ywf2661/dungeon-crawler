@@ -99,6 +99,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
   // 치켜든 곡괭이 문턱 — 일반 전투는 플레이어 한 턴 평균 피해(최대HP의 약 25%)보다
   // 높게, 정예는 HP가 1.8배라 한 턴 평균이 13% 안팎이어서 낮춰 잡았다(시뮬레이션 기준).
   function getChargeBreakRatio(){ return (enemy && enemy.isElite) ? 0.2 : 0.3; }
+  // 적히는 이름 — 일반 전투는 평균 4턴이라 2글자여야 전투 중 실제로 한 번은 고민하게
+  // 되고, 정예(약 7턴)는 3글자로 늘려 폭발이 너무 잦지 않게 했다.
+  function getNameLetterLimit(){ return (enemy && enemy.isElite) ? 3 : 2; }
 
   function handleEliteOnHitTraits(dealt){
     if(!enemy || battleOver || dealt<=0) return;
@@ -149,6 +152,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
 
   function enemyTurn(){
     if(battleOver) return;
+    // 마름질 태세 판정용 "지금 스킬로 피해를 주는 중" 표시 — 플레이어 행동이 끝나
+    // 적 차례로 넘어오면 끈다(이후 소환수·지속피해 틱은 스킬 피해가 아니다).
+    if(battleFlags) battleFlags.actingSkill = false;
     if(battleFlags && !battleFlags.witchClockUsedThisTurn){
       const chance = getWitchClockExtraChance() + getTimeWarpExtraChance();
       if(chance>0 && Math.random()<chance){
@@ -695,6 +701,44 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         enemy.shockSealTurns -= 1;
         updateStatusBadges();
       }
+      // 마름질 태세(회랑의 재단사 기믹) — 플레이어가 기본 공격으로 끊지 않았으면
+      // 재단사가 다시 움직이는 이 시점에 저절로 풀린다(그 턴의 스킬 피해는 이미 잘림).
+      if(enemy.cutStance){
+        enemy.cutStance = false;
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+      }
+      // 짐승이 다 되기 전에(회랑의 뿔짐승 기믹) — HP 50% 이하에서 시작된 카운트를
+      // 적 행동마다 1씩 깎는다. 그 전에 HP 20% 이하로 몰아붙였으면 사람의 목소리가
+      // 새어 나오며 무너지고, 카운트가 다 되면 이번 행동이 폭주로 바뀐다.
+      if(enemy.feralCount>0){
+        if(enemy.hp <= enemy.maxhp*0.2){
+          enemy.feralCount = 0;
+          enemy.vulnTurns = 2;
+          enemy.gold = enemy.gold.map(g=>Math.round(g*1.3));
+          playBanner('짐승이 무너진다!', 'dodge');
+          shakeEnemy();
+          setBattleMsg(`울음 사이로 사람의 목소리가 새어 나온다. "...도망쳐..."`, `${enemy.name}이(가) 무너졌다 — 2턴간 받는 피해 +50%!`);
+          if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+          finishEnemyTurn();
+          return;
+        }
+        enemy.feralCount -= 1;
+        if(enemy.feralCount<=0){
+          // 방어를 무시하는 고정 피해라 생존 장치(촛불/깃털 등)를 거치지 않으므로,
+          // 이것만으로는 쓰러지지 않게 HP 1에서 멈춘다.
+          const boom = Math.round(player.maxhp*0.25);
+          player.hp = Math.max(1, player.hp - boom);
+          renderStatus();
+          shakePlayerArea();
+          Sound.hit();
+          playBanner('폭주!', 'enrage');
+          setBattleMsg(`${enemy.name}이(가) 완전히 짐승이 되어 날뛴다!`, `${player.name}은(는) ${boom}의 피해를 입었다.`);
+          if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+          finishEnemyTurn();
+          return;
+        }
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+      }
       // 회랑의 시조 포즈 리셋(사용자 요청) — 이번 턴 판정 결과(예고/즉시발동/
       // 평범한 공격)에 따라 아래에서 다시 telegraph/slam으로 바뀔 수 있다.
       // 다른 몬스터는 setBossPoseImage() 안에서 type 체크로 즉시 무시된다.
@@ -812,6 +856,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           finishEnemyTurn();
           return;
         }
+        if(enemy.gimmick==='cut' && chosen==='curse'){
+          enemy.cutStance = true;
+          setBattleMsg(`${enemy.name}이(가) 가위를 크게 벌린다…`, '✂ 마름질 태세 — 이번 턴 스킬 피해가 잘려 나간다. 기본 공격으로 끊을 수 있다.');
+          if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+          finishEnemyTurn();
+          return;
+        }
         // 보스이고 치유가 아닌 스킬이면 즉시 쓰지 않고 한 턴 예고부터 한다.
         // 치유는 플레이어에게 위협이 아니라 예고할 이유가 없어 그대로 즉시 사용.
         if(enemy.isBoss && chosen !== 'heal'){
@@ -835,6 +886,27 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         setBattleMsg(`${enemy.name}이(가) 상처를 치유했다!`, `HP +${h}`);
         finishEnemyTurn();
         return;
+      }
+      // 적히는 이름(회랑의 금서 기믹) — 공격할 때마다 플레이어 이름이 한 글자씩
+      // 적히고, 다 적히면 이번 공격이 낙인 폭발로 바뀐다. 전투 중 아이템을 쓰면
+      // 잉크가 번져 지워진다(player-actions.js의 playerItem()).
+      if(enemy.gimmick==='name'){
+        enemy.nameLetters = (enemy.nameLetters||0) + 1;
+        if(enemy.nameLetters >= getNameLetterLimit()){
+          enemy.nameLetters = 0;
+          // 짐승화 폭주와 같은 이유로 이것만으로는 쓰러지지 않게 HP 1에서 멈춘다.
+          const brand = Math.round(player.maxhp*0.25);
+          player.hp = Math.max(1, player.hp - brand);
+          renderStatus();
+          shakePlayerArea();
+          Sound.hit();
+          playBanner('낙인!', 'enrage');
+          setBattleMsg(`${player.name}의 이름이 모두 적혔다 — 낙인이 터진다!`, `${player.name}은(는) ${brand}의 피해를 입었다.`);
+          if(typeof updateBossIntentCard==='function') updateBossIntentCard();
+          finishEnemyTurn();
+          return;
+        }
+        if(typeof updateBossIntentCard==='function') updateBossIntentCard();
       }
       let dmg;
       let label = `${enemy.name}의 공격!`;

@@ -223,6 +223,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       setupAdminMonsterTest({level:14, tierIndex:3, types:['golem','demon'], label:'회랑의 굴착꾼/회랑의 어릿광대'});
       return;
     }
+    // [디버그 전용] "admin6": 금서(적히는 이름)/재단사(마름질 태세)/뿔짐승(짐승화) 테스트.
+    if(player.name && player.name.trim().toLowerCase()==='admin6'){
+      setupAdminMonsterTest({level:15, tierIndex:3, types:['tome','tailor','hornbeast'], label:'회랑의 금서/회랑의 재단사/회랑의 뿔짐승'});
+      return;
+    }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
     // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
     // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.

@@ -53,11 +53,11 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
       dex:'박수쳐줄 관객 하나 없는 무대에서, 여전히 마지막 공연을 반복한다.'},
     // 신규 3종(사용자 요청 — 미믹/오크전사/마녀 삭제 후 3·4구간용으로 추가).
     // 데몬(minDepth26) 이후로 이어지는 구간이라 데몬보다 소폭씩 더 강하게 잡았다.
-    {type:'tome',    name:'회랑의 금서',        minDepth:30, hp:75, atk:20, def:9,  spd:10, exp:96,  gold:[42,62], skills:['curse','heal'],
+    {type:'tome',    name:'회랑의 금서',        minDepth:30, hp:75, atk:20, def:9,  spd:10, exp:96,  gold:[42,62], skills:['curse','heal'], gimmick:'name',
       dex:'페이지마다 빼곡한 글씨, 그러나 정작 가장 중요한 이름 하나만은 끝내 적혀 있지 않다.'},
-    {type:'tailor',  name:'회랑의 재단사',      minDepth:33, hp:88, atk:22, def:10, spd:7,  exp:104, gold:[45,66], skills:['smash','curse'],
+    {type:'tailor',  name:'회랑의 재단사',      minDepth:33, hp:88, atk:22, def:10, spd:7,  exp:104, gold:[45,66], skills:['smash','curse'], gimmick:'cut',
       dex:'마름질하던 손끝이, 완성하지 못한 옷감을 여전히 매만진다.'},
-    {type:'hornbeast', name:'회랑의 뿔짐승',    minDepth:37, hp:98, atk:26, def:13, spd:8,  exp:120, gold:[50,72], skills:['smash'],
+    {type:'hornbeast', name:'회랑의 뿔짐승',    minDepth:37, hp:98, atk:26, def:13, spd:8,  exp:120, gold:[50,72], skills:['smash'], gimmick:'feral',
       dex:'짐승의 울음 사이로, 아주 가끔 사람의 말이 섞여 나온다.'},
   ];
 
