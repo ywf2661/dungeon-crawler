@@ -319,7 +319,10 @@
   .location-card .depth-tag{font-family:var(--font-ui); font-size:10px; color:var(--gold); letter-spacing:.1em; text-transform:uppercase;}
   .location-card h2{font-size:17px; color:var(--parchment); margin:3px 0 4px;}
   .location-card p{color:var(--parchment-dim); font-size:12.5px; line-height:1.4; font-style:italic; margin:0;}
-  .explore-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; flex-shrink:0;}
+  /* 탐험 버튼 3열(사용자 요청 — 아이템 버튼 추가로 2열이 4줄까지 늘어 메시지창이 좁아졌다).
+     주 행동인 출발/나아가기만 한 줄 전체 폭. 노드맵에선 아이템/장비/유물이 한 줄에 들어간다. */
+  .explore-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; flex-shrink:0;}
+  .explore-grid #btn-advance{grid-column:1/-1;}
   /* 노드맵(사용자 요청 — 슬레이 더 스파이어식 절차적 경로 선택). 마을/보스소굴이
      아니고 진행 중인 구간이 있을 때만 보이며, 이때 '나아가다'/'휴식'/'상점'
      버튼은 nodemap.js의 renderNodeMapArea()가 자동으로 숨긴다(상점/휴식은
@@ -1505,7 +1508,7 @@
       <button class="btn" id="btn-potion">🧪 아이템</button>
       <button class="btn" id="btn-equip">🎽 장비</button>
       <button class="btn" id="btn-relics">✦ 유물</button>
-      <button class="btn" id="btn-exchange" style="display:none;">🔱 정예의 교환소</button>
+      <button class="btn" id="btn-exchange" style="display:none;">🔱 교환소</button>
       <button class="btn" id="btn-blacksmith" style="display:none;">🔨 대장간</button>
       <button class="btn" id="btn-necropact" style="display:none;">🕯 소환 계약</button>
     </div>
