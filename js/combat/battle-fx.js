@@ -101,6 +101,12 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     document.getElementById('cmd-sub').style.display='none';
     document.getElementById('cmd-back-row').style.display='none';
     setCommandsEnabled(true);
+    // 플레이어가 행동하고 다음 턴이 돌아오면 메시지/버튼 영역 스크롤을 맨 위로(사용자 요청).
+    // 메뉴 열기/닫기 같은 턴 경계가 아닌 호출에선 그대로 둔다.
+    if(isRealTurnBoundary){
+      document.querySelector('#screen-battle .battle-lower').scrollTop = 0;
+      document.getElementById('bt-msgbox').scrollTop = 0;
+    }
     // 시간의 파수꾼 "결빙의 궤적" 속도 감소 디버프 되돌리기(사용자 기획).
     // 플레이어 턴이 다시 시작될 때마다 하나씩 줄이고, 0이 되면 원상복구.
     if(battleFlags && battleFlags.tgSpdDebuff && battleFlags.tgSpdDebuff.turnsLeft>0){
