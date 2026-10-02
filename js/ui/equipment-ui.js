@@ -68,11 +68,11 @@ export(전역): renderSetProgressHTML, openEquipment, showSetEffectPopup
   }
 
   // 칼리버 X 이름 색(사용자 요청) — 1단계 성검(은백색+푸른 광채) → 2단계 중간(빛바랜 장밋빛,
-  // 광채가 흐려짐) → 3단계 저주받은 검(기존 붉은색 + ☠). 검이 변해가는 서사를 색으로도 보여준다.
+  // 광채가 흐려짐) → 3단계 저주받은 검(기존 붉은색 + 핏빛 광채 + ☠). 검이 변해가는 서사를 색으로도 보여준다.
   const CALIBER_NAME_STYLE = {
     caliberx_1: '#f0f6ff;text-shadow:0 0 6px #8fbcffdd,0 0 14px #6fa0ff88,0 0 22px #e6c34a55',
     caliberx_2: '#e6b2a6;text-shadow:0 0 6px #b58aa088,0 0 12px #8a405055',
-    caliberx_3: 'var(--rust-bright)',
+    caliberx_3: 'var(--rust-bright);text-shadow:0 0 6px #ff3a2add,0 0 14px #b0101888,0 0 22px #5a000077',
   };
 
   function openEquipment(){
