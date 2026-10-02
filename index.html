@@ -839,7 +839,7 @@
   .jt-streak{text-align:center; letter-spacing:8px; font-size:14px; color:#5a4a30; margin:0 0 6px;}
   .jt-streak .on{color:var(--gold-bright); text-shadow:0 0 6px #e6c34a99;}
   .jt-board{display:flex; justify-content:center; gap:18px; margin:4px 0 6px; perspective:600px;}
-  .jt-card{width:58px; height:84px; position:relative; transform-style:preserve-3d; transition:transform .45s ease, filter .4s; border-radius:6px;}
+  .jt-card{width:58px; height:84px; position:relative; transform-style:preserve-3d; transition:transform .45s ease; border-radius:6px;}
   .jt-card.face-up{transform:rotateY(180deg);}
   .jt-card .jt-back, .jt-card .jt-front{position:absolute; inset:0; border-radius:6px; backface-visibility:hidden;
     display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:Cinzel,serif;}
@@ -857,7 +857,8 @@
   .jt-card.lose{animation:jtLose .5s ease;}
   .jt-card.lose .jt-front{background:linear-gradient(180deg,#f0c8c0,#c98a80);}
   @keyframes jtLose{0%,100%{translate:0 0;} 20%{translate:-6px 0;} 40%{translate:6px 0;} 60%{translate:-4px 0;} 80%{translate:4px 0;}}
-  .jt-card.tie{filter:grayscale(1) brightness(.6);}
+  /* 잿빛 필터는 앞면에만 — 카드 자체(preserve-3d)에 filter를 걸면 3D가 평면으로 펴져 뒷면이 보인다. */
+  .jt-card.tie .jt-front{filter:grayscale(1) brightness(.6); transition:filter .4s;}
   .jt-hint{text-align:center; color:var(--parchment-dim); font-size:11px; margin:0 0 6px;}
   .jt-ace{text-align:center; font-family:Cinzel,serif; font-size:34px; color:var(--gold-bright);
     text-shadow:0 0 14px #e6c34acc; animation:jtAce .8s ease-out;}
