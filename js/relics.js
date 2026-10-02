@@ -165,9 +165,14 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     // "시간의 모래"(firstActionBonus)와 같은 "전투 첫 행동 1회 소모" 패턴을
     // 재사용하되, 서로 다른 battleFlags 플래그(firstCritUsed)를 써서 간섭하지 않는다.
     relic_firststrike: {type:'blessing', name:'선공의 감각', desc:'전투에서 처음 가하는 공격은 항상 치명타(피해 +50%)가 된다.', effect:{guaranteedCritFirstTurn:true}},
+    // 소매 속 에이스(도박사 전용 이벤트 "뒷골목 카드판" 3연승 보상, js/jester-table.js).
+    // eventOnly — 유물 제단에는 나오지 않는다. 효과는 전투 시작 시 기존 1회 보정 장치
+    // (player.fateBoostChance — 정보료/촉과 같은 것)를 채우는 방식(combat/battle-setup.js).
+    relic_aceinsleeve: {type:'wild', name:'소매 속 에이스', desc:'전투가 시작될 때마다, 다음 운 스킬(동전 던지기·승부수·마지막 카드·베팅) 하나의 성공 확률이 15%p 오른다.', effect:{firstLuckBonus:0.15}, eventOnly:true},
   };
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
-  const RELIC_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type!=='curse');
+  // eventOnly(소매 속 에이스 등 이벤트 전용 보상)도 제단에서 뺀다.
+  const RELIC_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type!=='curse' && !RELICS[id].eventOnly);
   const RELIC_ALTAR_FLOORS = [6,12,18,24,36,42,48];
   const CURSE_ALTAR_POOL = Object.keys(RELICS).filter(id=>RELICS[id].type==='curse' && !RELICS[id].deprecated && !RELICS[id].permanentOnly);
   // 영구 컨텍스트(확정 시작 저주/저주받은 유물/저주받은 유물함) 전용 풀.

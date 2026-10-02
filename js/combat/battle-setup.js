@@ -964,6 +964,10 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     battleFlags.creed = null; battleFlags.creedStacks = 0;
     // 두 번 찍힌 발자국(전직 전용 이벤트 ①, js/spec-story.js) — 매 전투 단서 1개로 시작.
     if(hasSpecPerk(player, 'mechanic_timepatrol')) battleFlags.timeClues = SPEC_PERK.mechanic_timepatrol;
+    // 소매 속 에이스(relic_aceinsleeve) — 매 전투 다음 운 스킬 하나의 성공 확률 +15%p.
+    // 정보료/촉이 이미 더 큰 보정을 걸어 뒀다면 그 값을 유지한다.
+    const aceLuckBonus = getRelicSum('firstLuckBonus');
+    if(aceLuckBonus>0) player.fateBoostChance = Math.max(player.fateBoostChance||0, aceLuckBonus);
     // 로봇군단장(mastery_multideploy)의 두 번째 로봇 슬롯, 데토네이터
     // (mastery_chaindetonate)의 기폭 스택 — 둘 다 매 전투 새로 초기화된다.
     battleFlags.rig2 = null;
