@@ -53,6 +53,11 @@ export(전역): showMysteryEvent
     // jackPrinceDialogueCount>=3)에서만 이벤트 풀에 등장하고, 한 번 보면
     // 다시 뜨지 않는다(재회 이벤트와 같은 "조건부 예외" 패턴).
     if((player.jackPrinceDialogueCount||0) >= 3 && !player.nurseryEventSeen) handlers.push(showNurseryEvent);
+    // 전직 전용 이벤트(js/spec-story.js, 스토리 연결 5종): 전직 후 다른 이벤트의
+    // 5배 가중치로 풀에 들어가고, 한 번 보면(player.specEventSeen) 그 런에선 다시 안 뜬다.
+    if(typeof specEventEligible==='function' && specEventEligible(player)){
+      for(let i=0;i<SPEC_EVENT_WEIGHT;i++) handlers.push(showSpecEvent);
+    }
     handlers[Math.floor(Math.random()*handlers.length)]();
   }
 
@@ -1058,6 +1063,37 @@ export(전역): showMysteryEvent
     });
     panel.querySelector('#me-skip').addEventListener('click', ()=>{
       addLog('일기장을 서랍에 도로 넣어두었다.');
+      closeMysteryEvent(overlay);
+    });
+  }
+
+  // 전직 전용 이벤트(js/spec-story.js의 SPEC_EVENTS) — ①메커닉 강화/②안전 보상/③지나간다.
+  // 뜬 순간 specEventSeen을 세워 어떤 선택을 하든 런당 1회로 끝난다.
+  function showSpecEvent(){
+    const ev = SPEC_EVENTS[player.specialization];
+    if(!ev) return;
+    player.specEventSeen = true;
+    const {overlay, panel} = eventOverlay(ev.title,
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">${ev.intro}</p>`,
+      `<div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn" id="me-perk">${ev.perkLabel}</button>
+        <button class="btn" id="me-safe">${ev.safeLabel}</button>
+        <button class="btn" id="me-skip">지나간다</button>
+      </div>`);
+    const finish = res=>{
+      overlay.remove();
+      const done = ()=>{ renderStatus(); addLog(res.log, res.cls); saveGame(); renderExplore([]); };
+      if(res.lines && res.lines.length) showDialogueSequence(res.lines, {onDone: done});
+      else done();
+    };
+    panel.querySelector('#me-perk').addEventListener('click', ()=>{
+      player.specEventPerk = true;
+      finish(ev.perk(player));
+    });
+    panel.querySelector('#me-safe').addEventListener('click', ()=> finish(ev.safe(player)));
+    panel.querySelector('#me-skip').addEventListener('click', ()=>{
+      addLog(ev.skipLog);
+      saveGame();
       closeMysteryEvent(overlay);
     });
   }

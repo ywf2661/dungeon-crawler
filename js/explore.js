@@ -614,6 +614,10 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 걸쳐 누적되지만, 사망 시엔 "직전 마을 당시의 누적 횟수"로 되돌아가야
       // 하므로 체크포인트에 포함시킨다.
       relicSkipRerollCount: player.relicSkipRerollCount||0,
+      // 전직 전용 이벤트(js/spec-story.js) — 최대HP 같은 대가는 위 스탯과 함께
+      // 되돌아가므로, 퍼크/노출 여부도 같이 되돌려야 공짜 퍼크가 안 생긴다.
+      specEventSeen: !!player.specEventSeen,
+      specEventPerk: !!player.specEventPerk,
     };
   }
 
