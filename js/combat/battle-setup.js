@@ -962,6 +962,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     if(typeof restoreBorrow==='function') restoreBorrow();
     battleFlags = {guardian:false, phoenix:false, firstStrikeUsed:false, execCount:0, execReady:false, gambleStacks:0, jackpotGauge:0, jackpotArmed:false, paladinAwoken:false, paladinUltUsed:false, hourglassTurn:0, witchClockUsedThisTurn:false, snakeskinUsed:false, revengeArmed:false, flaskStacks:0, diceEffect:null, rig:null, undyingArmorUsed:false, firstActionUsed:false, firstCritUsed:false, skillCooldowns:{}, cooldownTickPending:false, pressure:0, martyrReviveUsed:false};
     battleFlags.creed = null; battleFlags.creedStacks = 0;
+    // 두 번 찍힌 발자국(전직 전용 이벤트 ①, js/spec-story.js) — 매 전투 단서 1개로 시작.
+    if(hasSpecPerk(player, 'mechanic_timepatrol')) battleFlags.timeClues = SPEC_PERK.mechanic_timepatrol;
     // 로봇군단장(mastery_multideploy)의 두 번째 로봇 슬롯, 데토네이터
     // (mastery_chaindetonate)의 기폭 스택 — 둘 다 매 전투 새로 초기화된다.
     battleFlags.rig2 = null;

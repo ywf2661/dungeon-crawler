@@ -1130,6 +1130,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         const hasForestrike2 = !!(wIdFore2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(wIdFore2).includes('ch_forestrike'));
         if(hasForestrike2) mult *= 0.85;
       }
+      // 끝나지 않은 검격(전직 전용 이벤트 ①, js/spec-story.js) — 콤보 검격만 +15%.
+      if(combo && hasSpecPerk(player, 'warrior_chalna')) mult *= SPEC_PERK.warrior_chalna;
       const defPierce = (combo && combo.defPierce) || 0;
       const edef = Math.round(getEffectiveEnemyDef(enemy.def)*(1-defPierce));
       // 버그 수정(사용자 제보) — mult는 기존 multihit 스킬(연속 베기 등)과
@@ -3516,6 +3518,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       playStatusFx('pact-ice');
       tripleElementMsg = ` 빙결로 위력이 15% 오르고, 번개로 방어를 ${pierced2}만큼 꿰뚫었다!`;
     }
+    // 빈 검집(전직 전용 이벤트 ①, js/spec-story.js) — 성휘참 피해 영구 +15%.
+    if(key==='paladinHolyRend' && hasSpecPerk(player, 'paladin_knight')) dmg = Math.round(dmg*SPEC_PERK.paladin_knight);
     // 성좌의 가호(pa_knight_b, 회랑의 기사 방어구 각인 — 택1 B안): 안정적으로
     // 버티는 방향. 이 스킬 자체의 즉발 피해는 10% 줄어드는 대신, 흡혈이
     // 2배가 되고(아래 lifesteal 처리부에서 추가 회복으로 반영) 적중 시

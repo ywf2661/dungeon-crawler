@@ -1614,7 +1614,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     // 낮아지는데, 그 표시는 enemyTurn()의 발동 지점에서 battleFlags에 심는다.
     const armorId = player.equipment && player.equipment.armor;
     const hasRegression = armorId && typeof getEnhancementsFor==='function' && getEnhancementsFor(armorId).includes('me_regression');
-    return hasRegression ? 0.35 : 0.20;
+    // 거꾸로 흐르는 모래시계(전직 전용 이벤트 ①, js/spec-story.js) — +5%p.
+    const perk = hasSpecPerk(player, 'mage_time') ? SPEC_PERK.mage_time : 0;
+    return (hasRegression ? 0.35 : 0.20) + perk;
   }
   // 계율(mastery_creed): 계율을 유지한 스택 수만큼 공격력이 오른다(스택당 +5%, 최대 +25%).
   function getCreedAtkBonus(){
@@ -1695,6 +1697,8 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
     const aIdCor2 = player.equipment && player.equipment.armor;
     const hasCorrosion2 = !!(aIdCor2 && typeof getEnhancementsFor==='function' && getEnhancementsFor(aIdCor2).includes('re_corrosion'));
     if(hasCorrosion2) per *= 0.75;
+    // 역병 의원의 진료실(전직 전용 이벤트 ①, js/spec-story.js) — 스택당 피해 +20%.
+    if(hasSpecPerk(player, 'rogue_alchemist')) per *= SPEC_PERK.rogue_alchemist;
     const boost = getDotBoostRatio('poison');
     if(boost>0) per *= (1+boost);
     return per;
