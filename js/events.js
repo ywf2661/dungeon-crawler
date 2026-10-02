@@ -1200,7 +1200,10 @@ export(전역): showMysteryEvent
     placeCard(left, 0);
     placeCard(right, 0);
     setButtons([
-      {label:`판에 앉는다 (판돈 ${stake}G)`, disabled: player.gold<stake, on:()=>{ player.gold -= stake; renderStatus(); deal(); }},
+      {label:`판에 앉는다 (판돈 ${stake}G)`, disabled: player.gold<stake, on:()=>{
+        // 판돈을 낸 즉시 저장(jesterTableSeen 포함) — 지고 새로고침해 판돈을 되찾고 다시 굴리는 걸 막는다.
+        player.gold -= stake; renderStatus(); saveGame(); deal();
+      }},
       {label:'지나간다', on:()=> end('카드판을 지나쳤다.')},
     ]);
   }

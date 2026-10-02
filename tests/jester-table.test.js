@@ -48,4 +48,11 @@ assert.strictEqual(run('jesterTableCardLabel(11)'), 'J');
 assert.strictEqual(run('jesterTableCardLabel(12)'), 'Q');
 assert.strictEqual(run('jesterTableCardLabel(13)'), 'K');
 
+// 예전 세이브의 마을 체크포인트(필드 없음)는 "안 봄"으로 채운다 — 롤백으로 유물이 사라져도 다시 얻을 수 있게
+run("var oldCp = {gold:100}; migrateJesterCheckpoint(oldCp);");
+assert.strictEqual(run("oldCp.jesterTableSeen"), false);
+run("var newCp = {jesterTableSeen:true}; migrateJesterCheckpoint(newCp);");
+assert.strictEqual(run("newCp.jesterTableSeen"), true, "이미 있는 값은 그대로");
+run("migrateJesterCheckpoint(null);");
+
 console.log('jester-table: OK');

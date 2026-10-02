@@ -3,7 +3,7 @@
 도박사 전용 물음표 이벤트 "뒷골목 카드판"(하이로우 3연승) — 순수 로직.
 설계: docs/superpowers/specs/2026-10-02-jester-card-table-design.md
 export(전역): JESTER_TABLE_WEIGHT, JESTER_TABLE_WIN_STREAK, jesterTableEligible, jesterTableStake,
-       jesterTablePayout, jesterTableDraw, jesterTableJudge, jesterTableCardLabel
+       jesterTablePayout, jesterTableDraw, jesterTableJudge, jesterTableCardLabel, migrateJesterCheckpoint
 주의: 화면/연출은 events.js의 showJesterTableEvent()와 index.html의 .jt-* CSS. 이 파일은
      DOM을 만지지 않는다(tests/jester-table.test.js가 node vm으로 바로 불러 쓴다).
 */
@@ -39,4 +39,10 @@ export(전역): JESTER_TABLE_WEIGHT, JESTER_TABLE_WIN_STREAK, jesterTableEligibl
   // 1=A, 11=J, 12=Q, 13=K. A가 가장 낮다.
   function jesterTableCardLabel(n){
     return n===1 ? 'A' : n===11 ? 'J' : n===12 ? 'Q' : n===13 ? 'K' : String(n);
+  }
+  // 쉬움/보통 사망 롤백(마을 체크포인트)은 유물도 되돌린다 — jesterTableSeen도 함께 되돌려야
+  // 잃은 소매 속 에이스를 다시 노릴 수 있다. 이 기능 이전 체크포인트엔 키가 없으므로 false로 채운다
+  // (explore.js의 세이브 로드 마이그레이션이 호출, 새 체크포인트는 makeTownCheckpoint()가 기록).
+  function migrateJesterCheckpoint(cp){
+    if(cp && cp.jesterTableSeen===undefined) cp.jesterTableSeen = false;
   }

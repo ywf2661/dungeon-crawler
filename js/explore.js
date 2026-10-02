@@ -99,6 +99,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 기준으로 하나 만들어둔다(다음 보스 클리어 때 정상적으로 갱신됨).
       if(player.townCheckpoint===undefined) player.townCheckpoint = town ? makeTownCheckpoint() : null;
       migrateSpecCheckpoint(player.townCheckpoint); // 전직 전용 이벤트 이전 체크포인트(js/spec-story.js)
+      migrateJesterCheckpoint(player.townCheckpoint); // 뒷골목 카드판 이전 체크포인트(js/jester-table.js)
       if(player.eliteSealFirstSeen===undefined) player.eliteSealFirstSeen = (player.eliteSeals||0) > 0;
       // [해제됨] 메카닉 2차(폭주 화부/축압 기술자)가 압력 게이지 리뉴얼에 맞춰
       // 새로 구현되어, 더 이상 10레벨 전직 선택 화면을 건너뛰지 않는다.
@@ -619,6 +620,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 되돌아가므로, 퍼크/노출 여부도 같이 되돌려야 공짜 퍼크가 안 생긴다.
       specEventSeen: !!player.specEventSeen,
       specEventPerk: !!player.specEventPerk,
+      // 뒷골목 카드판(js/jester-table.js) — 롤백으로 소매 속 에이스가 사라지면 다시 노릴 수 있게.
+      jesterTableSeen: !!player.jesterTableSeen,
     };
   }
 

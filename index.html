@@ -848,10 +848,15 @@
     transform:rotateY(180deg); font-size:22px; font-weight:700;}
   .jt-card .jt-front.red{color:#a01818;}
   .jt-card .jt-suit{font-size:16px; margin-top:2px;}
+  /* 투명도는 앞뒷면(> div)에만 — 카드 자체(preserve-3d)에 opacity를 걸면 3D가 평면으로 펴져 뒷면이 보인다. */
   .jt-card.deal-in{animation:jtDealIn .35s ease-out;}
-  @keyframes jtDealIn{from{opacity:0; translate:0 -40px;} to{opacity:1; translate:0 0;}}
+  .jt-card.deal-in > div{animation:jtFadeIn .35s ease-out;}
+  @keyframes jtDealIn{from{translate:0 -40px;} to{translate:0 0;}}
+  @keyframes jtFadeIn{from{opacity:0;} to{opacity:1;}}
   .jt-card.swap-out{animation:jtSwapOut .3s ease-in forwards;}
-  @keyframes jtSwapOut{to{opacity:0; translate:60px 0; rotate:20deg;}}
+  .jt-card.swap-out > div{animation:jtFadeOut .3s ease-in forwards;}
+  @keyframes jtSwapOut{to{translate:60px 0; rotate:20deg;}}
+  @keyframes jtFadeOut{to{opacity:0;}}
   .jt-card.win{animation:jtWin .6s ease-out forwards;}
   @keyframes jtWin{0%{box-shadow:0 0 0 #e6c34a00;} 40%{box-shadow:0 0 24px #e6c34aee;} 100%{box-shadow:0 0 8px #e6c34a77;}}
   .jt-card.lose{animation:jtLose .5s ease;}
