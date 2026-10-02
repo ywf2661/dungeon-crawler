@@ -833,6 +833,35 @@
     animation: dualdicepulse .5s ease-in-out 2;
     color:#ffd25a;
   }
+  /* 뒷골목 카드판(도박사 전용 이벤트, js/events.js showJesterTableEvent) — 카드 딜/3D 뒤집기/
+     승패 연출. 이미지 없이 순수 CSS. 뒤집기는 transform, 흔들림/등장은 개별 속성
+     (translate/rotate/scale)을 써서 서로 덮어쓰지 않게 했다. */
+  .jt-streak{text-align:center; letter-spacing:8px; font-size:14px; color:#5a4a30; margin:0 0 6px;}
+  .jt-streak .on{color:var(--gold-bright); text-shadow:0 0 6px #e6c34a99;}
+  .jt-board{display:flex; justify-content:center; gap:18px; margin:4px 0 6px; perspective:600px;}
+  .jt-card{width:58px; height:84px; position:relative; transform-style:preserve-3d; transition:transform .45s ease, filter .4s; border-radius:6px;}
+  .jt-card.face-up{transform:rotateY(180deg);}
+  .jt-card .jt-back, .jt-card .jt-front{position:absolute; inset:0; border-radius:6px; backface-visibility:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:Cinzel,serif;}
+  .jt-card .jt-back{background:repeating-linear-gradient(45deg,#3a1d14 0 6px,#5a2a1c 6px 12px); border:2px solid #8a6a3a;}
+  .jt-card .jt-front{background:linear-gradient(180deg,#f3ead2,#dccba0); border:2px solid #6b5230; color:#1a1410;
+    transform:rotateY(180deg); font-size:22px; font-weight:700;}
+  .jt-card .jt-front.red{color:#a01818;}
+  .jt-card .jt-suit{font-size:16px; margin-top:2px;}
+  .jt-card.deal-in{animation:jtDealIn .35s ease-out;}
+  @keyframes jtDealIn{from{opacity:0; translate:0 -40px;} to{opacity:1; translate:0 0;}}
+  .jt-card.swap-out{animation:jtSwapOut .3s ease-in forwards;}
+  @keyframes jtSwapOut{to{opacity:0; translate:60px 0; rotate:20deg;}}
+  .jt-card.win{animation:jtWin .6s ease-out forwards;}
+  @keyframes jtWin{0%{box-shadow:0 0 0 #e6c34a00;} 40%{box-shadow:0 0 24px #e6c34aee;} 100%{box-shadow:0 0 8px #e6c34a77;}}
+  .jt-card.lose{animation:jtLose .5s ease;}
+  .jt-card.lose .jt-front{background:linear-gradient(180deg,#f0c8c0,#c98a80);}
+  @keyframes jtLose{0%,100%{translate:0 0;} 20%{translate:-6px 0;} 40%{translate:6px 0;} 60%{translate:-4px 0;} 80%{translate:4px 0;}}
+  .jt-card.tie{filter:grayscale(1) brightness(.6);}
+  .jt-hint{text-align:center; color:var(--parchment-dim); font-size:11px; margin:0 0 6px;}
+  .jt-ace{text-align:center; font-family:Cinzel,serif; font-size:34px; color:var(--gold-bright);
+    text-shadow:0 0 14px #e6c34acc; animation:jtAce .8s ease-out;}
+  @keyframes jtAce{from{opacity:0; translate:0 20px; scale:.6;} to{opacity:1; translate:0 0; scale:1;}}
 
   /* 시간의 파수꾼 스킬 전용 VFX 이미지 3종(사용자 제공, images/vfx/tg_*.webp).
      기존 .frost-flash-fx(섬광)/.screen-crack-fx(균열)에 겹쳐서 함께 재생된다

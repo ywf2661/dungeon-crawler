@@ -58,6 +58,10 @@ export(전역): showMysteryEvent
     if(typeof specEventEligible==='function' && specEventEligible(player)){
       for(let i=0;i<SPEC_EVENT_WEIGHT;i++) handlers.push(showSpecEvent);
     }
+    // 도박사 전용 "뒷골목 카드판"(js/jester-table.js): 기본 직업이 도박사면 3배 가중치, 런당 1회.
+    if(typeof jesterTableEligible==='function' && jesterTableEligible(player)){
+      for(let i=0;i<JESTER_TABLE_WEIGHT;i++) handlers.push(showJesterTableEvent);
+    }
     handlers[Math.floor(Math.random()*handlers.length)]();
   }
 
@@ -1065,6 +1069,140 @@ export(전역): showMysteryEvent
       addLog('일기장을 서랍에 도로 넣어두었다.');
       closeMysteryEvent(overlay);
     });
+  }
+
+  // 도박사 전용 — 뒷골목 카드판(js/jester-table.js). 손만 남은 딜러와 하이로우 3연승.
+  // 버튼 영역을 단계마다 갈아 끼우는 상태 머신: 앉기 → (딜 → 높다/낮다 → 공개) 반복 →
+  // 멈춤/패배/3연승. 클릭 즉시 버튼을 비우고(연타 방지), 카드 연출이 끝난 뒤 다음 버튼을
+  // 띄운다. 연출 타이머는 오버레이가 이미 닫혔으면 아무것도 하지 않는다(later()).
+  const JT_ANIM_MS = 800;
+  const JT_SUITS = ['♠','♥','♦','♣'];
+  function jtCardHtml(n, cls){
+    const suit = n ? JT_SUITS[Math.floor(Math.random()*4)] : '';
+    const red = suit==='♥' || suit==='♦';
+    return `<div class="jt-card ${cls||''}"><div class="jt-back"></div><div class="jt-front${red?' red':''}">${n?jesterTableCardLabel(n):''}<span class="jt-suit">${suit}</span></div></div>`;
+  }
+  function showJesterTableEvent(){
+    player.jesterTableSeen = true;
+    const stake = jesterTableStake(player, depth);
+    const {overlay, panel} = eventOverlay('뒷골목 카드판',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
+        회랑 한구석, 낡은 탁자 위에서 카드를 섞는 손이 있다. 손목 위로는 아무것도 없다.<br>손가락이 탁자를 두 번 두드리고, 빈 의자 쪽을 가리킨다.
+      </p>
+      <div class="jt-streak" id="jt-streak"></div>
+      <div class="jt-board"><div id="jt-left"></div><div id="jt-right"></div></div>
+      <p class="jt-hint">A가 가장 낮고, K가 가장 높다. 같은 숫자는 딜러의 몫.</p>
+      <p id="jt-info" style="text-align:center;color:var(--gold-bright);font-size:13px;min-height:18px;margin:0 0 10px;">판돈 ${stake}G — 세 판을 내리 이기면, 딜러의 소매 속에 든 것을 건넨다.</p>`,
+      `<div id="jt-btns" style="display:flex; flex-direction:column; gap:8px;"></div>`);
+    const info = panel.querySelector('#jt-info');
+    const btns = panel.querySelector('#jt-btns');
+    const left = panel.querySelector('#jt-left');
+    const right = panel.querySelector('#jt-right');
+    const streak = panel.querySelector('#jt-streak');
+    let wins = 0, card = 0;
+    let swapLeft = player.specialization==='jester_debtcollector' ? 1 : 0;
+    const later = (fn, ms)=> setTimeout(()=>{ if(overlay.isConnected) fn(); }, ms===undefined ? JT_ANIM_MS : ms);
+    const setButtons = list=>{
+      btns.innerHTML = list.map((b,i)=>`<button class="btn" data-i="${i}" ${b.disabled?'disabled':''}>${b.label}</button>`).join('');
+      btns.querySelectorAll('button').forEach(el=> el.addEventListener('click', ()=>{
+        setButtons([]);
+        list[+el.dataset.i].on();
+      }, {once:true}));
+    };
+    const drawStreak = ()=>{
+      streak.innerHTML = Array.from({length:JESTER_TABLE_WIN_STREAK}, (_,i)=> `<span class="${i<wins?'on':''}">●</span>`).join('');
+    };
+    // n이 있으면 뒷면으로 놓은 뒤 다음 프레임에 뒤집는다(transition이 걸리도록 2프레임 뒤).
+    const placeCard = (slot, n, cls)=>{
+      slot.innerHTML = jtCardHtml(n, cls);
+      const el = slot.firstElementChild;
+      if(n) requestAnimationFrame(()=> requestAnimationFrame(()=> el.classList.add('face-up')));
+      return el;
+    };
+    const end = (text, cls)=>{
+      addLog(text, cls);
+      renderStatus();
+      saveGame();
+      closeMysteryEvent(overlay);
+    };
+    const deal = ()=>{
+      card = jesterTableDraw();
+      drawStreak();
+      placeCard(left, card, 'deal-in');
+      placeCard(right, 0, 'deal-in');
+      info.textContent = `${wins}승 — 딜러의 카드보다 높을까, 낮을까?`;
+      const opts = [{label:'⬆ 높다', on:()=>reveal(true)}, {label:'⬇ 낮다', on:()=>reveal(false)}];
+      if(swapLeft>0) opts.push({label:'🃏 패를 바꿔치기 (1회)', on:()=>{
+        swapLeft--;
+        left.firstElementChild.classList.add('swap-out');
+        later(deal, 300);
+      }});
+      later(()=> setButtons(opts));
+    };
+    const reveal = pickHigh=>{
+      const next = jesterTableDraw();
+      const leftEl = left.firstElementChild;
+      const nextEl = placeCard(right, next);
+      const won = jesterTableJudge(card, next, pickHigh);
+      later(()=>{
+        if(next===card){ leftEl.classList.add('tie'); nextEl.classList.add('tie'); }
+        else nextEl.classList.add(won ? 'win' : 'lose');
+      }, 500);
+      if(!won){
+        later(()=>{
+          info.textContent = next===card ? '같은 숫자. 손가락이 판돈을 쓸어 간다.' : '손가락이 판돈을 쓸어 간다.';
+          setButtons([{label:'일어선다', on:()=> end(`뒷골목 카드판에서 졌다. 판돈 ${stake}G를 잃었다.`, 'warn')}]);
+        }, 1100);
+        return;
+      }
+      wins++;
+      if(wins>=JESTER_TABLE_WIN_STREAK){
+        later(()=>{
+          drawStreak();
+          info.textContent = '세 판을 내리 이겼다.';
+          setButtons([{label:'손을 내민다', on:winAll}]);
+        }, 1100);
+        return;
+      }
+      const pay = jesterTablePayout(stake, wins, false);
+      later(()=>{
+        drawStreak();
+        info.textContent = `${wins}승! 지금 멈추면 ${pay}G.`;
+        setButtons([
+          {label:`멈춘다 (${pay}G 받기)`, on:()=>{ player.gold += pay; end(`뒷골목 카드판에서 ${wins}승 후 멈췄다. 골드 +${pay}G`, 'gold'); }},
+          {label:'계속한다', on:deal},
+        ]);
+      }, 1100);
+    };
+    const winAll = ()=>{
+      const hasAce = (player.relics||[]).includes('relic_aceinsleeve');
+      const pay = jesterTablePayout(stake, wins, hasAce);
+      player.gold += pay;
+      if(hasAce){
+        end(`뒷골목 카드판에서 세 판을 내리 이겼다. 딜러가 빈 소매를 털어 보이고는 골드를 밀어 준다. 골드 +${pay}G`, 'gold');
+        return;
+      }
+      addLog(`뒷골목 카드판에서 세 판을 내리 이겼다. 판돈 ${pay}G를 돌려받았다.`, 'gold');
+      panel.querySelector('.jt-board').insertAdjacentHTML('afterend', '<div class="jt-ace">A♠</div>');
+      later(()=>{
+        overlay.remove();
+        const done = ()=>{ renderStatus(); saveGame(); renderExplore([]); };
+        showDialogueSequence([
+          '딜러의 손이 잠시 멈추더니, 소매 속에서 카드 한 장을 꺼내 탁자 위로 밀어 준다.',
+          '스페이드 에이스. 모서리가 닳도록 오래 쥐고 있던 카드다.',
+        ], {onDone: ()=>{
+          if(getRelicSlotUsage() >= player.relicSlots) showRelicSwapPrompt('relic_aceinsleeve', null, false, done);
+          else { finalizeRelicPick('relic_aceinsleeve', false); done(); }
+        }});
+      }, 900);
+    };
+    drawStreak();
+    placeCard(left, 0);
+    placeCard(right, 0);
+    setButtons([
+      {label:`판에 앉는다 (판돈 ${stake}G)`, disabled: player.gold<stake, on:()=>{ player.gold -= stake; renderStatus(); deal(); }},
+      {label:'지나간다', on:()=> end('카드판을 지나쳤다.')},
+    ]);
   }
 
   // 전직 전용 이벤트(js/spec-story.js의 SPEC_EVENTS) — ①메커닉 강화/②안전 보상/③지나간다.
