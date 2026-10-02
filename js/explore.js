@@ -98,6 +98,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       // 마을 체크포인트 시스템(신규) — 예전 세이브엔 없으므로 지금 상태를
       // 기준으로 하나 만들어둔다(다음 보스 클리어 때 정상적으로 갱신됨).
       if(player.townCheckpoint===undefined) player.townCheckpoint = town ? makeTownCheckpoint() : null;
+      migrateSpecCheckpoint(player.townCheckpoint); // 전직 전용 이벤트 이전 체크포인트(js/spec-story.js)
       if(player.eliteSealFirstSeen===undefined) player.eliteSealFirstSeen = (player.eliteSeals||0) > 0;
       // [해제됨] 메카닉 2차(폭주 화부/축압 기술자)가 압력 게이지 리뉴얼에 맞춰
       // 새로 구현되어, 더 이상 10레벨 전직 선택 화면을 건너뛰지 않는다.

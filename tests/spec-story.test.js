@@ -108,4 +108,11 @@ assert.strictEqual(run("insertSpecEndingLines(['앵커 없는 본문'], 'paladin
 // 기존 타임패트롤 작별 장면이 그대로 옮겨졌다
 assert.ok(run("SPEC_ENDING_LINES.mechanic_timepatrol.witch('테스터').some(l=> l.title==='테스터' && l.text==='…끝까지, 이름도 안 알려주는군.')"));
 
+// 예전 세이브의 마을 체크포인트(필드 없음)는 "퍼크 없음"으로 채운다 — 롤백 시 공짜 퍼크 방지
+run("var oldCp = {maxhp:1000}; migrateSpecCheckpoint(oldCp);");
+assert.strictEqual(run("oldCp.specEventPerk"), false);
+assert.strictEqual(run("oldCp.specEventSeen"), false);
+run("var newCp = {specEventSeen:true, specEventPerk:true}; migrateSpecCheckpoint(newCp);");
+assert.strictEqual(run("newCp.specEventPerk"), true, "이미 있는 값은 건드리지 않음");
+run("migrateSpecCheckpoint(null);");
 console.log('spec-story: OK');

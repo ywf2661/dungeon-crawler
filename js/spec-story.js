@@ -3,7 +3,7 @@
 전직별 물음표 이벤트 · 엔딩 분기(스토리 연결 5종) — 데이터와 순수 로직.
 설계: docs/superpowers/specs/2026-10-02-spec-events-endings-design.md
 export(전역): SPEC_EVENT_WEIGHT, SPEC_PERK, hasSpecPerk, specEventEligible, SPEC_EVENTS,
-       SPEC_ENDING_ANCHORS, SPEC_ENDING_LINES, insertSpecEndingLines
+       SPEC_ENDING_ANCHORS, SPEC_ENDING_LINES, insertSpecEndingLines, migrateSpecCheckpoint
 의존성(호출 시점에만): events.js(applyNextBattleCurse/grantSpecificPotion)
 주의: 화면(오버레이/버튼)은 events.js의 showSpecEvent()가 맡는다. 이 파일은 DOM을
      만지지 않는다(tests/spec-story.test.js가 node vm으로 바로 불러 쓴다).
@@ -26,6 +26,12 @@ export(전역): SPEC_EVENT_WEIGHT, SPEC_PERK, hasSpecPerk, specEventEligible, SP
   }
   function specEventEligible(p){
     return !!(p && p.specialization && !p.specEventSeen && SPEC_EVENTS[p.specialization]);
+  }
+  // 이 기능 이전 세이브의 마을 체크포인트엔 두 필드가 없어, 롤백 때 퍼크만 남는 구멍이
+  // 생긴다(applyTownCheckpoint는 체크포인트에 있는 키만 되돌린다). 그때는 아무도 퍼크를
+  // 가질 수 없었으므로 false로 채운다. explore.js의 세이브 로드 마이그레이션이 호출.
+  function migrateSpecCheckpoint(cp){
+    if(cp && cp.specEventPerk===undefined){ cp.specEventSeen = false; cp.specEventPerk = false; }
   }
 
   // 기존 이벤트 관례(낡은 서고 등): 스탯의 5%, 최소 1.
