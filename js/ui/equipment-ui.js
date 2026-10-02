@@ -67,6 +67,14 @@ export(전역): renderSetProgressHTML, openEquipment, showSetEffectPopup
     panel.querySelector('#setinfo-close').addEventListener('click', ()=> overlay.remove());
   }
 
+  // 칼리버 X 이름 색(사용자 요청) — 1단계 성검(은백색+푸른 광채) → 2단계 중간(빛바랜 장밋빛,
+  // 광채가 흐려짐) → 3단계 저주받은 검(기존 붉은색 + ☠). 검이 변해가는 서사를 색으로도 보여준다.
+  const CALIBER_NAME_STYLE = {
+    caliberx_1: '#f0f6ff;text-shadow:0 0 6px #8fbcffdd,0 0 14px #6fa0ff88,0 0 22px #e6c34a55',
+    caliberx_2: '#e6b2a6;text-shadow:0 0 6px #b58aa088,0 0 12px #8a405055',
+    caliberx_3: 'var(--rust-bright)',
+  };
+
   function openEquipment(){
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
@@ -89,7 +97,7 @@ export(전역): renderSetProgressHTML, openEquipment, showSetEffectPopup
       const equippedRow = equippedId
         ? `<div class="shop-item">
             <div class="si-info">
-              <span class="si-name" style="font-family:Cinzel;color:${equippedDef.epic?'var(--epic-bright)':(equippedDef.storyWeapon?'#f0f6ff;text-shadow:0 0 6px #8fbcffdd,0 0 14px #6fa0ff88,0 0 22px #e6c34a55':'var(--gold-bright)')};">★ ${equippedDef.epic?'✦✦ ':(equippedDef.rare?'✨ ':'')}${typeof getEnhancedDisplayName==='function'?getEnhancedDisplayName(equippedId):equippedDef.name}</span>
+              <span class="si-name" style="font-family:Cinzel;color:${equippedDef.epic?'var(--epic-bright)':(CALIBER_NAME_STYLE[equippedId]||'var(--gold-bright)')};">★ ${equippedDef.epic?'✦✦ ':(equippedDef.rare?'✨ ':(equippedId==='caliberx_3'?'☠ ':''))}${typeof getEnhancedDisplayName==='function'?getEnhancedDisplayName(equippedId):equippedDef.name}</span>
               <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">${statsText(equippedDef.stats)}</span>
               <div class="${equippedDef.epic?'item-desc-epic':(equippedDef.rare?'item-desc-rare':'item-desc')}">${equippedDef.desc}</div>
             </div>
