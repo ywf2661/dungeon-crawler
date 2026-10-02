@@ -89,7 +89,7 @@ export(전역): renderSetProgressHTML, openEquipment, showSetEffectPopup
       const equippedRow = equippedId
         ? `<div class="shop-item">
             <div class="si-info">
-              <span class="si-name" style="font-family:Cinzel;color:${equippedDef.epic?'var(--epic-bright)':(equippedDef.storyWeapon?'var(--rust-bright)':'var(--gold-bright)')};">★ ${equippedDef.epic?'✦✦ ':(equippedDef.rare?'✨ ':(equippedDef.storyWeapon?'☠ ':''))}${typeof getEnhancedDisplayName==='function'?getEnhancedDisplayName(equippedId):equippedDef.name}</span>
+              <span class="si-name" style="font-family:Cinzel;color:${equippedDef.epic?'var(--epic-bright)':(equippedDef.storyWeapon?'#f0f6ff;text-shadow:0 0 6px #8fbcffdd,0 0 14px #6fa0ff88,0 0 22px #e6c34a55':'var(--gold-bright)')};">★ ${equippedDef.epic?'✦✦ ':(equippedDef.rare?'✨ ':'')}${typeof getEnhancedDisplayName==='function'?getEnhancedDisplayName(equippedId):equippedDef.name}</span>
               <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">${statsText(equippedDef.stats)}</span>
               <div class="${equippedDef.epic?'item-desc-epic':(equippedDef.rare?'item-desc-rare':'item-desc')}">${equippedDef.desc}</div>
             </div>
