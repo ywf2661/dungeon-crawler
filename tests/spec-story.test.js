@@ -74,4 +74,38 @@ SPECS.forEach(s=>{
   ['perk','safe'].forEach(f=> assert.ok(run(`typeof SPEC_EVENTS.${s}.${f}(mk('${s}')).log==='string'`), `${s}.${f}().log`));
 });
 
+// ── 엔딩 분기 ──
+const ENDING_SPECS = SPECS;
+// 15칸(5전직 × 3엔딩)이 전부 채워져 있다
+ENDING_SPECS.forEach(s=> ['watcher','progenitor','witch'].forEach(k=>{
+  const out = run(`SPEC_ENDING_LINES.${s}.${k}('테스터')`);
+  assert.ok(Array.isArray(out) && out.length>=2, `${s}.${k}`);
+}));
+// 앵커가 실제 battle-end.js 본문에 존재한다(본문 문구가 바뀌면 여기서 잡힌다)
+const endSrc = fs.readFileSync('js/combat/battle-end.js','utf8');
+Object.values(run('SPEC_ENDING_ANCHORS')).forEach(a=> assert.ok(endSrc.includes(a), `앵커 없음: ${a}`));
+
+ctx.base = (kind) => kind==='watcher'
+  ? ['첫 줄', '이제 이 회랑의 가장 깊은 곳을 지키는 것은, 한때 용사였던 무언가다.']
+  : kind==='progenitor'
+  ? ['첫 줄', '돌기둥이 하나씩 허물어지고, 회랑을 지탱하던 저주의 뿌리가 빛무리와 함께 흩어진다.', '끝']
+  : ['첫 줄', '돌기둥이 하나씩 허물어지고, 시간의 파편들이 빛무리와 함께 흩어진다.', '끝'];
+// 앵커 바로 앞에 끼운다
+run("var w = insertSpecEndingLines(base('watcher'), 'paladin_knight', 'watcher', '테스터', false);");
+assert.strictEqual(run('w.length'), 4);
+assert.ok(run("w[w.length-1].startsWith('이제 이 회랑의 가장 깊은 곳을')"), '앵커 줄이 맨 뒤에 유지');
+assert.ok(run("w.some(l=> typeof l==='string' && l.includes('테스터'))"), '기사 파수꾼 엔딩에 이름');
+run("var pr = insertSpecEndingLines(base('progenitor'), 'mage_time', 'progenitor', '테스터', false);");
+assert.ok(run("pr[pr.length-2].startsWith('돌기둥이 하나씩 허물어지고, 회랑을')"));
+// 마녀 재클리어는 마지막 줄 앞
+run("var wr = insertSpecEndingLines(['a','b','\"회랑, 두 번째로 놓아주다.\"'], 'warrior_chalna', 'witch', '테스터', true);");
+assert.strictEqual(run('wr[wr.length-1]'), '"회랑, 두 번째로 놓아주다."');
+assert.strictEqual(run('wr.length'), 5);
+// 대상 밖 전직/전직 전/앵커 없음 → 그대로
+assert.strictEqual(run("insertSpecEndingLines(base('watcher'), 'warrior_purist', 'watcher', 'x', false).length"), 2);
+assert.strictEqual(run("insertSpecEndingLines(base('watcher'), null, 'watcher', 'x', false).length"), 2);
+assert.strictEqual(run("insertSpecEndingLines(['앵커 없는 본문'], 'paladin_knight', 'progenitor', 'x', false).length"), 1);
+// 기존 타임패트롤 작별 장면이 그대로 옮겨졌다
+assert.ok(run("SPEC_ENDING_LINES.mechanic_timepatrol.witch('테스터').some(l=> l.title==='테스터' && l.text==='…끝까지, 이름도 안 알려주는군.')"));
+
 console.log('spec-story: OK');

@@ -2,7 +2,8 @@
 /*
 전직별 물음표 이벤트 · 엔딩 분기(스토리 연결 5종) — 데이터와 순수 로직.
 설계: docs/superpowers/specs/2026-10-02-spec-events-endings-design.md
-export(전역): SPEC_EVENT_WEIGHT, SPEC_PERK, hasSpecPerk, specEventEligible, SPEC_EVENTS
+export(전역): SPEC_EVENT_WEIGHT, SPEC_PERK, hasSpecPerk, specEventEligible, SPEC_EVENTS,
+       SPEC_ENDING_ANCHORS, SPEC_ENDING_LINES, insertSpecEndingLines
 의존성(호출 시점에만): events.js(applyNextBattleCurse/grantSpecificPotion)
 주의: 화면(오버레이/버튼)은 events.js의 showSpecEvent()가 맡는다. 이 파일은 DOM을
      만지지 않는다(tests/spec-story.test.js가 node vm으로 바로 불러 쓴다).
@@ -120,3 +121,56 @@ export(전역): SPEC_EVENT_WEIGHT, SPEC_PERK, hasSpecPerk, specEventEligible, SP
       },
     },
   };
+
+  // ── 엔딩 분기 ── combat/battle-end.js의 showEnding()이 기존 본문의 앵커 줄 바로 앞에
+  // 전직 전용 대사를 끼운다(마녀 재클리어만 마지막 타이틀 줄 앞). 앵커 문구를 바꾸면
+  // tests/spec-story.test.js가 잡는다.
+  const SPEC_ENDING_ANCHORS = {
+    watcher: '이제 이 회랑의 가장 깊은 곳을 지키는 것은',
+    progenitor: '돌기둥이 하나씩 허물어지고, 회랑을 지탱하던',
+    witch: '돌기둥이 하나씩 허물어지고, 시간의 파편들',
+  };
+  const SPEC_ENDING_LINES = {
+    // 파수꾼 엔딩: 지워졌던 "Achos" 자리에 플레이어 이름이 새겨진다 — 다음 아코스가 된다.
+    paladin_knight: {
+      watcher: name=>['손에 쥔 칼리버 X가, 처음으로 조용해진다.', `검신 밑동, 이름이 지워졌던 자리에 낯선 글자가 희미하게 새겨지기 시작한다 — ${name}.`],
+      progenitor: name=>['칼리버 X가 손을 떠나, 무너진 왕좌 앞에 스스로 꽂힌다.', '오래 지켜온 자리로, 이제야 돌아간 것처럼.'],
+      witch: name=>['칼리버 X가 그녀 쪽으로 기울어진다.', '그녀가 아무 말 없이, 이름이 있던 자리를 손끝으로 쓸어내린다.'],
+    },
+    mage_time: {
+      watcher: name=>['빌려 쓴 시간이, 한꺼번에 이자를 청구해 온다.', '손끝부터 굳어간다 — 멈춘 시계처럼.'],
+      progenitor: name=>['몸에 깃들어 있던 낯선 시간의 감각이, 썰물처럼 빠져나간다.', '처음으로, 남들과 같은 속도로 숨을 쉰다.'],
+      witch: name=>[{text:'"…그 힘. 내 것이었군."', title:'아이온'}, {text:'"괜찮다. 이제 그대 것이다. 나는 더는 쓸 일이 없으니."', title:'아이온'}],
+    },
+    // 마녀 엔딩: 직업 설명의 "시간의 파편"이 어디서 왔는지 회수한다.
+    warrior_chalna: {
+      watcher: name=>['마지막 일격의 찰나가, 끝내 다음 검격으로 이어지지 않는다.', `그 찰나 안에, ${name}은(는) 영원히 남겨진다.`],
+      progenitor: name=>['시간이 흐르기 시작하자, 손끝에 스며 있던 파편들이 하나씩 빠져나가 빛무리에 섞인다.', '더는 찰나를 붙잡을 수 없다. 그래도 검은, 여전히 가볍다.'],
+      witch: name=>['산산조각 난 시계의 파편 하나가 손등에 닿는다. 익숙한 감각 — 벨 때마다 스며들던, 그 찰나.', '그것이 어디서 왔는지, 이제야 안다.'],
+    },
+    rogue_alchemist: {
+      watcher: name=>['몸 안의 역병이, 회랑의 공기와 처음으로 같은 박자로 숨 쉰다.', '병든 몸은, 이곳에서 가장 잘 어울리는 파수꾼이 된다.'],
+      progenitor: name=>['원혼들이 빠져나갈 때, 몸 안의 검은 기운도 함께 끌려 나간다.', '핏줄이 처음으로, 원래 색을 되찾는다.'],
+      witch: name=>['멈춰 있던 시간이 흐르자, 몸 안의 역병도 다시 나아가기 시작한다.', '흐르는 시간은, 병든 자에게도 공평하다.'],
+    },
+    // 시조 엔딩의 "시계를 찾아라"는 마녀 엔딩 루트 힌트. 마녀 엔딩은 기존 작별 장면을 그대로 옮겨왔다.
+    mechanic_timepatrol: {
+      watcher: name=>[{text:'…이 시간대는 실패다.', title:'???'}, {text:'기록은 남겨두지. 다음 시간대의 나를 위해.', title:'???'},
+        {text:'…이 몸은 데려갈 수 없다. 미안하다.', title:'???'}, '머릿속의 낯선 기척이 먼저 사라지고, 혼자 남는다.'],
+      progenitor: name=>[{text:'…아니다. 뒤틀림의 중심은 여기가 아니었다.', title:'???'}, {text:'…다음엔, 시계를 찾아라.', title:'???'}],
+      witch: name=>[
+        '그때, 머릿속 깊은 곳에서 낯선 목소리가 낮게 울린다.',
+        {text:'…끝났군. 시간이, 제자리로 흐르기 시작했다.', title:'???'},
+        {text:'이 몸은 돌려주지. 나는 여기까지다. …빌려줘서, 고마웠다.', title:'???'},
+        {text:'…끝까지, 이름도 안 알려주는군.', title:name},
+        '시계 소리처럼 아득하던 울림이 멀어지고, 오래도록 머릿속에 머물던 낯선 기척이 조용히 사라진다.',
+      ],
+    },
+  };
+  function insertSpecEndingLines(lines, specId, kind, name, atEnd){
+    const make = specId && SPEC_ENDING_LINES[specId] && SPEC_ENDING_LINES[specId][kind];
+    if(!make) return lines;
+    const at = atEnd ? lines.length-1 : lines.findIndex(l=> typeof l==='string' && l.startsWith(SPEC_ENDING_ANCHORS[kind]));
+    if(at>=0) lines.splice(at, 0, ...make(name));
+    return lines;
+  }

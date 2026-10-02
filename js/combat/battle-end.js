@@ -553,20 +553,9 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         }
         return progenitorLines;
       })();
-      // 타임패트롤(mechanic_timepatrol) 전용 작별 장면(사용자 요청) — 마녀를 쓰러뜨린 뒤
-      // 몸에 깃들었던 낯선 목소리가 임무를 마치고 떠난다. 정체는 끝까지 밝히지 않는다(8장).
-      // 재클리어 엔딩은 마지막 타이틀 줄 앞에, 첫 클리어 엔딩은 회랑이 허물어지는 줄 앞에 끼운다.
-      if(isWitch && player.specialization==='mechanic_timepatrol'){
-        const farewell = [
-          '그때, 머릿속 깊은 곳에서 낯선 목소리가 낮게 울린다.',
-          {text:'…끝났군. 시간이, 제자리로 흐르기 시작했다.', title:'???'},
-          {text:'이 몸은 돌려주지. 나는 여기까지다. …빌려줘서, 고마웠다.', title:'???'},
-          {text:'…끝까지, 이름도 안 알려주는군.', title:player.name},
-          '시계 소리처럼 아득하던 울림이 멀어지고, 오래도록 머릿속에 머물던 낯선 기척이 조용히 사라진다.',
-        ];
-        const at = isWitchRepeat ? lines.length-1 : lines.findIndex(l=> typeof l==='string' && l.startsWith('돌기둥이 하나씩 허물어지고, 시간의 파편들'));
-        if(at>=0) lines.splice(at, 0, ...farewell);
-      }
+      // 전직별 엔딩 대사(js/spec-story.js의 SPEC_ENDING_LINES) — 타임패트롤 작별 장면도
+      // 이 표로 옮겼다. 마녀 재클리어는 마지막 타이틀 줄 앞, 나머지는 앵커 줄 앞에 끼운다.
+      insertSpecEndingLines(lines, player.specialization, isWitch ? 'witch' : 'progenitor', player.name, isWitchRepeat);
       showDialogueSequence(lines, {tone:'grand', onDone: ()=>{
         showScreen('ending');
         document.getElementById('ending-title').textContent = isWitchRepeat ? '회랑, 두 번째로 놓아주다' : (isWitch ? '회랑, 마침내 시간을 되찾다' : '회랑, 마침내 안식에 들다');
@@ -587,6 +576,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         `의식이 흐려지는 사이, ${player.name}(${jobLabel})의 형상이 서서히 어둠 속으로 녹아든다.`,
         '이제 이 회랑의 가장 깊은 곳을 지키는 것은, 한때 용사였던 무언가다.',
       ];
+      insertSpecEndingLines(lines, player.specialization, 'watcher', player.name, false);
       showDialogueSequence(lines, {onDone: ()=>{
         showScreen('ending');
         document.getElementById('ending-title').textContent = '회랑의 새로운 파수꾼';
