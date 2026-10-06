@@ -556,6 +556,10 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       // 전직별 엔딩 대사(js/spec-story.js의 SPEC_ENDING_LINES) — 타임패트롤 작별 장면도
       // 이 표로 옮겼다. 마녀 재클리어는 마지막 타이틀 줄 앞, 나머지는 앵커 줄 앞에 끼운다.
       insertSpecEndingLines(lines, player.specialization, isWitch ? 'witch' : 'progenitor', player.name, isWitchRepeat);
+      // 진실의 조각 다섯을 모두 본 도박사(js/jester-den.js) — 편지/손수건 장면을 더한다.
+      if(player.job==='jester' && typeof truthComplete==='function' && typeof jesterTruthSeen!=='undefined' && truthComplete(jesterTruthSeen)){
+        insertTruthEndingLines(lines, isWitch ? 'witch' : 'progenitor');
+      }
       showDialogueSequence(lines, {tone:'grand', onDone: ()=>{
         showScreen('ending');
         document.getElementById('ending-title').textContent = isWitchRepeat ? '회랑, 다시 놓아주다' : (isWitch ? '회랑, 마침내 시간을 되찾다' : '시조, 마침내 안식에 들다');

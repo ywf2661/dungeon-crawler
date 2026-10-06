@@ -1079,12 +1079,14 @@ export(전역): showMysteryEvent
   // 맞힌 횟수로 정산. 섞는 순서는 jesterShellSwaps()가 미리 정하고 화면은 그대로 재생한다(정직한 게임).
   // 연출 중엔 picking=false라 컵을 눌러도 무시되고, 타이머는 오버레이가 닫혔으면 아무것도 하지 않는다.
   const JS_SLOT_W = 94;
-  function showJesterShellEvent(){
-    player.jesterShellSeen = true;
+  function showJesterShellEvent(opts){
+    // 숨겨진 도박장(js/jester-den.js)에서 열면 런당 1회 플래그를 세우지 않는다.
+    const den = !!(opts && opts.den);
+    if(!den) player.jesterShellSeen = true;
     const stake = jesterShellStake(player, depth);
     const {overlay, panel} = eventOverlay('야바위 컵',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
-        엎어진 컵 세 개와, 그 위를 맴도는 손. 손목 위로는 아무것도 없다.<br>손가락이 금화 한 닢을 튕겨 올렸다가, 가운데 컵 아래로 밀어 넣는다.
+        ${den ? '촛불 아래 탁자 위, 엎어진 컵 세 개. 손이 소매를 걷어 올린다.' : '엎어진 컵 세 개와, 그 위를 맴도는 손. 손목 위로는 아무것도 없다.'}<br>손가락이 금화 한 닢을 튕겨 올렸다가, 가운데 컵 아래로 밀어 넣는다.
       </p>
       <div class="jt-streak" id="js-hits"></div>
       <div class="js-table" id="js-table"><div class="js-hand" id="js-hand">🫳</div></div>
@@ -1227,12 +1229,14 @@ export(전역): showMysteryEvent
     const red = suit==='♥' || suit==='♦';
     return `<div class="jt-card ${cls||''}"><div class="jt-back"></div><div class="jt-front${red?' red':''}">${n?jesterTableCardLabel(n):''}<span class="jt-suit">${suit}</span></div></div>`;
   }
-  function showJesterTableEvent(){
-    player.jesterTableSeen = true;
+  function showJesterTableEvent(opts){
+    // 숨겨진 도박장(js/jester-den.js)에서 열면 런당 1회 플래그를 세우지 않는다.
+    const den = !!(opts && opts.den);
+    if(!den) player.jesterTableSeen = true;
     const stake = jesterTableStake(player, depth);
     const {overlay, panel} = eventOverlay('뒷골목 카드판',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
-        회랑 한구석, 낡은 탁자 위에서 카드를 섞는 손이 있다. 손목 위로는 아무것도 없다.<br>손가락이 탁자를 두 번 두드리고, 빈 의자 쪽을 가리킨다.
+        ${den ? '촛불 아래 탁자 위에서, 손이 카드를 섞고 있다.' : '회랑 한구석, 낡은 탁자 위에서 카드를 섞는 손이 있다. 손목 위로는 아무것도 없다.'}<br>손가락이 탁자를 두 번 두드리고, 빈 의자 쪽을 가리킨다.
       </p>
       <div class="jt-streak" id="jt-streak"></div>
       <div class="jt-board"><div id="jt-left"></div><div id="jt-right"></div></div>

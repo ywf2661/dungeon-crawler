@@ -5,7 +5,7 @@
 의존성 없음(이 파일 내부에서 SAVE_KEY 등 상수도 함께 선언).
 export(전역): SAVE_KEY, saveGame, loadGame, deleteSave, RECORDS_KEY, addRecord, loadRecords,
               RELICDEX_KEY, 관련 함수들, MONSTERDEX_KEY, loadMonsterDex, addToMonsterDex,
-              SPECDEX_KEY, loadSpecDex, addToSpecDex,
+              SPECDEX_KEY, loadSpecDex, addToSpecDex, JESTERTRUTH_KEY, loadJesterTruth, addJesterTruth,
               ACHIEVEMENTS_KEY, loadAchievements, unlockAchievement,
               PATCHNOTE_VERSION, PATCHNOTE_KEY, loadDismissedPatchNote, markPatchNoteDismissed 등
 주의: saveGame()은 player/depth/town 등 게임 상태 전역 변수(state.js)를 참조한다.
@@ -202,6 +202,33 @@ export(전역): SAVE_KEY, saveGame, loadGame, deleteSave, RECORDS_KEY, addRecord
       else if(hasLocalStorage()) window.localStorage.setItem(SPECDEX_KEY, payload);
     }catch(e){ /* ignore */ }
     return dex;
+  }
+  // ---------- 진실의 조각(도박사 전용 숨겨진 장소, 본 조각 번호 배열 — 런이 끝나도 영구) ----------
+  // js/jester-den.js가 시작 시 한 번 읽어 캐시(jesterTruthSeen)에 두고, 조각을 볼 때 여기에 추가한다.
+  const JESTERTRUTH_KEY = 'jestertruth';
+  async function loadJesterTruth(){
+    if(!storageAvailable()) return [];
+    try{
+      if(hasArtifactStorage()){
+        const res = await window.storage.get(JESTERTRUTH_KEY, false);
+        if(res && res.value) return JSON.parse(res.value);
+      } else if(hasLocalStorage()){
+        const raw = window.localStorage.getItem(JESTERTRUTH_KEY);
+        if(raw) return JSON.parse(raw);
+      }
+    }catch(e){ /* 기록 없음, 정상 */ }
+    return [];
+  }
+  async function addJesterTruth(idx){
+    const seen = await loadJesterTruth();
+    if(seen.includes(idx)) return seen;
+    seen.push(idx);
+    const payload = JSON.stringify(seen);
+    try{
+      if(hasArtifactStorage()) await window.storage.set(JESTERTRUTH_KEY, payload, false);
+      else if(hasLocalStorage()) window.localStorage.setItem(JESTERTRUTH_KEY, payload);
+    }catch(e){ /* ignore */ }
+    return seen;
   }
   // ---------- 업적(계정 단위 영구 기록, relicDex와 동일 패턴) ----------
   const ACHIEVEMENTS_KEY = 'achievements';
