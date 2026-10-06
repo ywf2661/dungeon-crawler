@@ -680,7 +680,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
   // 아코스의 유품("낡은 병사의 반지", 회랑의 정령 처치 시 드롭)을 착용한
   // 채로 회랑의 정령을 만나면 — 직업 무관. 회랑의 기사/시간술사 전용
   // 대사가 이미 떴다면(우선순위상 먼저 체크되므로) 겹치지 않는다.
-  const KEEPSAKE_RECOGNITION_LINE = ['정령의 시선이 그대의 손끝에 머문다.', '"...그 반지, 아코스 경의 것이다." 목소리가 낮게 깔린다. "그분 곁에 두고 온 것을... 침입자 따위가 감히."'];
+  const KEEPSAKE_RECOGNITION_LINE = ['정령의 시선이 그대의 손끝에 머문다.', '"...그 반지, 아코스 경께서 병상에서 우리에게 맡기신 것이다." 목소리가 낮게 깔린다. "그걸 침입자 따위가 감히 손에 끼다니."'];
   function maybeShowKeepsakeRecognitionDialogue(){
     if(enemy.type !== 'ogre') return false;
     if(!(player.equipment && player.equipment.accessory === 'r_achoskeepsake')) return false;
@@ -860,7 +860,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         {text:'…드디어 찾았다. 범인은, 너였군.', title:'???'},
         {text:'"…누구지." 그녀의 눈이 그대를 지나 그대 안쪽을 더듬는다. "이 아이의 몸에서, 낯선 시간이 흐른다."', title:enemy.name},
         {text:'이제 그만 되돌릴 시간이다. 너무 멀리 와버렸어.', title:'???'},
-        {text:'"…되돌린다고?" 그녀가 희미하게 웃는다. "나는 되돌리려던 게 아니다. 그저, 흐르지 못하게 붙들어 두었을 뿐."', title:enemy.name},
+        {text:'"…되돌린다고?" 그녀가 희미하게 웃는다. "나는 그저, 흐르지 못하게 붙들어 두었을 뿐이다. 되감는 건… 이 시계가 나를 놓아주질 않아서지."', title:enemy.name},
       ], {tone:'grand'});
       return true;
     }
@@ -882,8 +882,16 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       );
       return true;
     }
-    return false;
+    // 그 외 모두(사용자 확정 — story.md 2-1/3-1): 끝내주길 바라는 마음과 놓지 못하는 마음이
+    // 갈라져 있다는 걸 보여주는 기본 조우. 이 전투엔 항상 마녀의 시계가 있으므로 시계를 매개로 한다.
+    showDialogueSequence(AION_DEFAULT_LINES, {title: enemy.name, tone:'grand'});
+    return true;
   }
+  const AION_DEFAULT_LINES = [
+    '시간의 마녀의 시선이, 그대 손에 들린 시계에 오래 머문다.',
+    '"…그걸 들고, 여기까지 와 주었구나." 목소리가 한순간 누그러졌다가, 이내 차갑게 굳는다.',
+    '"하지만 이건 놓을 수 없다. 놓으면, 남은 이들마저 — …물러서라. 아니, 덤벼라."',
+  ];
 
   // 역병숙주(rogue_alchemist)가 무결 클리어로 회랑의 시조와 마주쳤을 때 —
   // 직접 대화(showDialogueSequence)가 아니라 토스트 한 번으로 짧게 스친다
