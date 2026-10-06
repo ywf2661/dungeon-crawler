@@ -78,4 +78,76 @@ assert.strictEqual(run('nc.jesterShellSeen'), true);
 assert.strictEqual(run('nc.nodeSwapTier'), 3);
 run('migrateJesterShellCheckpoint(null);');
 
+// ── 숨겨진 장소 ──
+assert.strictEqual(run('JESTER_TRUTH_COUNT'), 5);
+
+// 드러난 비밀 칸은 바꿔치기 대상이 아니다
+assert.deepStrictEqual(JSON.parse(run(`JSON.stringify(nodeSwapCandidates([[{id:'s',type:'secret'},{id:'k',type:'shop'}]], -1).map(n=>n.id))`)), ['k']);
+
+// 비밀 배정: 진짜 1 + 미끼 최대 2, 전부 후보 안, 중복 없음
+run(`var smap = [
+  [{id:'x0', type:'combat'}],
+  [{id:'s1', type:'shop'}, {id:'s2', type:'event'}, {id:'s3', type:'relic'}],
+  [{id:'s4', type:'elite'}, {id:'s5', type:'rest'}],
+  [{id:'sb', type:'boss'}],
+];`);
+for(let i=0;i<100;i++){
+  const sec = JSON.parse(run('JSON.stringify(assignNodeSecret(smap, 0))'));
+  const pool = ['s1','s2','s4','s5'];
+  assert.ok(pool.includes(sec.id));
+  assert.strictEqual(sec.decoys.length, 2);
+  sec.decoys.forEach(d=>{ assert.ok(pool.includes(d)); assert.notStrictEqual(d, sec.id); });
+  assert.notStrictEqual(sec.decoys[0], sec.decoys[1]);
+  assert.strictEqual(sec.found, false);
+}
+// 후보가 적으면 있는 만큼, 없으면 null
+assert.strictEqual(JSON.parse(run('JSON.stringify(assignNodeSecret(smap, 1))')).decoys.length, 1, '남은 후보 s4,s5 → 진짜 1 + 미끼 1');
+assert.strictEqual(run('assignNodeSecret(smap, 2)'), null);
+assert.strictEqual(run('assignNodeSecret(null, -1)'), null);
+// rng 경계
+assert.ok(['s1','s2','s4','s5'].includes(JSON.parse(run('JSON.stringify(assignNodeSecret(smap, 0, ()=>0))')).id));
+assert.ok(['s1','s2','s4','s5'].includes(JSON.parse(run('JSON.stringify(assignNodeSecret(smap, 0, ()=>0.999999))')).id));
+
+// 바꿔치기 판정
+run("var sec = {id:'s2', decoys:['s1','s4'], found:false};");
+assert.strictEqual(run("resolveSecretSwap({id:'s2'},{id:'s5'},sec).id"), 's2');
+assert.strictEqual(run("resolveSecretSwap({id:'s5'},{id:'s2'},sec).id"), 's2');
+assert.strictEqual(run("resolveSecretSwap({id:'s1'},{id:'s4'},sec)"), null, '미끼만');
+assert.strictEqual(run("resolveSecretSwap({id:'s2'},{id:'s5'},Object.assign({},sec,{found:true}))"), null, '이미 찾음');
+assert.strictEqual(run("resolveSecretSwap({id:'s2'},{id:'s5'},null)"), null);
+
+// 조각 순서
+assert.strictEqual(run('nextTruthIndex([])'), 1);
+assert.strictEqual(run('nextTruthIndex([1,2])'), 3);
+assert.strictEqual(run('nextTruthIndex([2,3])'), 1, '가장 앞 미열람');
+assert.strictEqual(run('nextTruthIndex([1,2,3,4,5])'), -1);
+assert.strictEqual(run('nextTruthIndex(null)'), 1);
+assert.strictEqual(run('truthComplete([5,4,3,2,1])'), true);
+assert.strictEqual(run('truthComplete([1,2,3,4])'), false);
+
+// 종류 굴리기
+assert.strictEqual(run('rollSecretKind([], ()=>0.59)'), 'story');
+assert.strictEqual(run('rollSecretKind([], ()=>0.6)'), 'den');
+assert.strictEqual(run('rollSecretKind([1,2,3,4,5], ()=>0)'), 'den', '다 모으면 항상 도박장');
+
+// 도박장 탁자
+assert.strictEqual(JSON.parse(run("JSON.stringify(pickDenTables(['a','b','c'], 2))")).length, 2);
+assert.deepStrictEqual(JSON.parse(run("JSON.stringify(pickDenTables(['a','b'], 2).sort())")), ['a','b']);
+assert.strictEqual(JSON.parse(run("JSON.stringify(pickDenTables(['a'], 2))")).length, 1);
+for(let i=0;i<50;i++){ const t = JSON.parse(run("JSON.stringify(pickDenTables(['a','b','c'], 2))")); assert.notStrictEqual(t[0], t[1]); }
+
+// 엔딩 줄 끼우기
+run(`var pl = ['왕관이 굴러떨어진다.', '손자국.', '"...하나를 지키지 못했다. 그래서 남은 이들만큼은, 놓을 수가 없었지."', '원혼들.'];`);
+run("insertTruthEndingLines(pl, 'progenitor');");
+assert.strictEqual(run('pl[3]'), run('TRUTH_ENDING_LINES.progenitor[0]'));
+assert.strictEqual(run('pl.length'), 4 + run('TRUTH_ENDING_LINES.progenitor.length'));
+assert.strictEqual(run('pl[pl.length-1]'), '원혼들.');
+run(`var wl = ['시계가 산산조각 난다.', {text:'"…또 왔군."', title:'아이온'}];`);
+run("insertTruthEndingLines(wl, 'witch');");
+assert.strictEqual(run('wl[1]'), run('TRUTH_ENDING_LINES.witch[0]'));
+assert.strictEqual(run('wl[wl.length-1].title'), '아이온');
+run("var nl = ['a','b']; insertTruthEndingLines(nl, 'progenitor');");
+assert.strictEqual(run('nl[1]'), run('TRUTH_ENDING_LINES.progenitor[0]'), '앵커가 없으면 첫 줄 뒤');
+run("var xl = ['a']; insertTruthEndingLines(xl, 'nope');");
+assert.strictEqual(run('xl.length'), 1);
 console.log('jester-shell: OK');
