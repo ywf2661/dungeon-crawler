@@ -108,7 +108,7 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
     // 그대로, 시드값만 변경).
     {type:'hollowprophet',  name:'빈 옷의 예언자',    minDepth:50, hp:240, atk:25, def:22, spd:10, exp:200, gold:[140,190], skills:['lockedVoices','prophecyFlame'], weakness:'dot',
       dex:'속은 텅 비었으나, 그 안에는 여전히 다 읽지 못한 별자리가 빛나고 있다.'},
-    {type:'hornedwarden',   name:'열쇠 두른 파수꾼',  minDepth:30, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['judgmentKey','whisperingHorn'],
+    {type:'hornedwarden',   name:'열쇠 두른 간수',    minDepth:30, hp:145, atk:21, def:9,  spd:12, exp:150, gold:[105,145], skills:['judgmentKey','whisperingHorn'],
       dex:'수많은 열쇠들 틈에, 유독 작고 낡은 금빛 열쇠 하나가 놓여 있다.'},
     /* 층별보스 정리(A안, 사용자 요청) — 이번엔 사용하지 않음. 이미지/스탯/
        스킬 데이터는 소스만 남겨두고 무작위 풀에서도, 고정 배치에서도 완전히
@@ -163,7 +163,7 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
   // "그 보스의 진짜 스킬"(사용자 요청 — "다른 몬스터들도 스킬이름이 있을거
   // 아냐, 특히 층별보스는 스킬 발동할 때 이름이 뜨잖아"). 각 보스는
   // combat/enemy-turn.js에 스킬이 2개씩 정의돼 있는데, 그중 보스 이름과
-  // 가장 잘 맞아떨어지는 하나만 골랐다(예: 열쇠 두른 파수꾼 → 심판의 "열쇠").
+  // 가장 잘 맞아떨어지는 하나만 골랐다(예: 열쇠 두른 간수 → 심판의 "열쇠").
   // 배율/배너 문구/CSS 클래스는 전부 enemy-turn.js의 원본 정의와 동일하게
   // 맞췄다 — 시간의 파수꾼(결빙의 궤적)만 추가로 속도 디버프/전용 VFX/전용
   // 타격음이 붙는 진짜 예외라 combat/player-actions.js의 necroCommand가

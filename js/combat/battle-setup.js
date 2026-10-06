@@ -450,7 +450,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     const FLOOR_BOSS_BY_DEPTH = {
       10: 'watchertablet',   // 감시자의 석판
       20: 'bladedbloom',     // 넝쿨진 칼날꽃(정원사) — 사용자 요청으로 2번째 자리
-      30: 'hornedwarden',    // 열쇠 두른 파수꾼(왕자의 방을 봉인한 문지기) — 칼날꽃과 자리 교체
+      30: 'hornedwarden',    // 열쇠 두른 간수(왕자의 방을 봉인한 간수) — 칼날꽃과 자리 교체
       40: 'clockheart',      // 고쳐지지 않는 시계(시계공의 미완성 유작)
       50: 'hollowprophet',   // 빈 옷의 예언자
     };
