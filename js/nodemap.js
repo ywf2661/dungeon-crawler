@@ -56,6 +56,8 @@ TIME_GUARDIAN 참고.
     // 강제 수렴 노드. weight:0이라 무작위 배정 풀에는 절대 안 뜨고,
     // generateNodeMap()에서 tierIndex===2일 때만 직접 끼워 넣는다.
     midboss:{icon:'⏳', label:'???',        weight:0},
+    // 딜러의 장갑으로 드러난 숨겨진 장소(js/jester-den.js) — 무작위 배정 풀에는 안 나온다.
+    secret: {icon:'🕯', label:'숨겨진 장소', weight:0},
   };
   // 구간(타이어)별 행 개수. 사용자 요청 — 1구간(첫 보스 전)은 왕복 없이도
   // 자연스럽게 레벨업할 수 있도록 넉넉하게, 이후 점점 줄여 템포를 올린다.
@@ -207,6 +209,8 @@ TIME_GUARDIAN 참고.
     player.nodeRow = -1;
     player.nodeCurrentId = null;
     player.nodeVisited = [];
+    // 숨은 칸(딜러의 장갑) — 노드 id 형식이 구간마다 같아서 새 지도마다 반드시 비운다.
+    player.nodeSecret = null;
     // 사용자 요청 — "이전 노드맵과 다음 노드맵끼리는 곡이 달라야 한다."
     // 새 노드맵이 실제로 생성되는 이 시점에만 던전 BGM을 강제 재추첨한다
     // (전투 갔다 돌아오는 것만으로는 곡이 안 바뀌도록 sound.js에서 처리됨).
@@ -324,6 +328,10 @@ TIME_GUARDIAN 참고.
         addLog('무언가 심상치 않은 기운이 느껴진다…', 'gold');
         setTimeout(()=>showMysteryEvent(), 400);
         break;
+      case 'secret':
+        addLog('촛불 하나가, 계단 아래를 비춘다.', 'gold');
+        setTimeout(()=> node.secretKind==='story' ? showJesterTruthRoom() : showJesterDen(), 400);
+        break;
       default:
         addLog('그림자 속에서 무언가 튀어나왔다!', 'warn');
         setTimeout(()=>startBattle(false), 350);
@@ -345,11 +353,25 @@ TIME_GUARDIAN 참고.
     const la = (NODE_TYPES[a.type]||{}).label, lb = (NODE_TYPES[b.type]||{}).label;
     [a.type, b.type] = [b.type, a.type];
     player.nodeSwapTier = player.tierIndex;
+    // 숨은 칸을 들었다면 그 자리가 숨겨진 장소가 된다(그 자리로 옮겨 오던 종류는 사라진다).
+    const hit = resolveSecretSwap(a, b, player.nodeSecret);
+    if(hit){
+      hit.type = 'secret';
+      hit.secretKind = rollSecretKind(typeof jesterTruthSeen!=='undefined' ? jesterTruthSeen : []);
+      player.nodeSecret.found = true;
+    }
     nodeSwapMode = false; nodeSwapFirst = null; nodeSwapAnimating = false;
     addLog(hidden ? '🫳 딜러의 장갑으로 무언가를 바꿔쳤다.' : `🫳 딜러의 장갑으로 [${la}]과(와) [${lb}]을(를) 바꿔쳤다.`, 'gold');
+    if(hit) addLog('🕯 숨겨진 장소를 찾았다.', 'gold');
     saveGame();
     refreshNodeMapOverlay();
     renderNodeMapArea();
+    if(hit){
+      // 드러나는 순간 보랏빛이 한 번 번진다(index.html .node-secret-new).
+      const el = document.querySelector(`#node-map-rows [data-nodeid="${hit.id}"]`);
+      if(el) el.classList.add('node-secret-new');
+      showDialogueSequence(['들어 올린 자리 밑으로, 계단이 아래로 이어진다.', '숨겨진 장소를 찾았다.']);
+    }
   }
   function onNodeSwapPick(id){
     if(nodeSwapAnimating) return;
@@ -500,6 +522,23 @@ TIME_GUARDIAN 참고.
     renderNodeMapRows(rows, closeNodeMapOverlay);
   }
 
+  // 딜러의 장갑 — 바꿔치기를 쓸 수 있는 구간이면 숨은 칸을 정해 둔다(지연 배정). 정하자마자 저장해
+  // 새로고침으로 위치를 다시 굴릴 수 없게 한다.
+  function ensureNodeSecret(){
+    if(player.nodeSecret || typeof nodeSwapAvailable!=='function' || !nodeSwapAvailable(player)) return;
+    player.nodeSecret = assignNodeSecret(player.nodeMap, player.nodeRow);
+    if(player.nodeSecret) saveGame();
+  }
+  // 칸 바닥에 찍힌 잿빛 손자국(index.html의 #dealer-hand 그림). 각도·위치·얼룩 질감을 칸 id에서
+  // 정해서 다시 그려도 같은 자리에 같은 모양으로 남는다. 진짜/미끼는 겉으로 구분되지 않는다.
+  function handprintSvg(id){
+    let h = 0;
+    for(const c of id) h = (h*31 + c.charCodeAt(0)) >>> 0;
+    const rot = h%77 - 38, dx = (h>>>7)%19 - 9, dy = (h>>>12)%13 - 7, v = (h>>>17)%3;
+    return `<svg class="node-secret-mark" viewBox="0 0 100 130" aria-hidden="true" style="--rot:${rot}deg; --dx:${dx}px; --dy:${dy}px">`
+      + `<g filter="url(#dealer-smudge${v})"><use href="#dealer-hand"/></g></svg>`;
+  }
+
   function renderNodeMapRows(rowsEl, onPick){
     // 유물 "hideDepth"(깊이를 알 수 없게 만드는 유물): 아직 안 가본 노드는
     // 종류를 미리 보여주면 안 되는 게 컨셉이라, 지나온/현재 노드를 제외한 전부를
@@ -507,6 +546,9 @@ TIME_GUARDIAN 참고.
     const hideAll = (typeof hasRelicFlag==='function') && hasRelicFlag('hideDepth');
     const curNode = player.nodeRow>=0 ? player.nodeMap[player.nodeRow].find(n=>n.id===player.nodeCurrentId) : null;
     const swapIds = nodeSwapMode ? new Set(nodeSwapCandidates(player.nodeMap, player.nodeRow).map(n=>n.id)) : null;
+    ensureNodeSecret();
+    const sec = player.nodeSecret;
+    const markIds = (sec && !sec.found && nodeSwapAvailable(player)) ? new Set([sec.id, ...sec.decoys]) : null;
     rowsEl.innerHTML = player.nodeMap.map((row, rIdx)=>{
       const isPast = rIdx <= player.nodeRow;
       const isNext = rIdx === player.nodeRow+1;
@@ -519,6 +561,9 @@ TIME_GUARDIAN 참고.
         // 시간의 파수꾼 노드(사용자 요청) — 상태(과거/다음/잠김)와 무관하게
         // 항상 보라색 기운이 감돌도록 별도 클래스를 얹는다.
         if(n.type==='midboss') cls += ' node-midboss';
+        if(n.type==='secret') cls += ' node-secret';
+        const marked = !!(markIds && markIds.has(n.id));
+        if(marked) cls += ' node-marked';
         if(isPast){
           cls += isChosenHere ? ' node-visited-chosen' : ' node-visited-skip';
         } else if(isNext){
@@ -544,6 +589,7 @@ TIME_GUARDIAN 참고.
         }
         return `<button class="${cls}" data-nodeid="${n.id}" ${attrs}>`
           + `<span class="node-icon">${def.icon}</span><span class="node-label">${def.label}</span>`
+          + (marked ? handprintSvg(n.id) : '')
           + `</button>`;
       }).join('');
       return `<div class="node-row">${nodesHtml}</div>`;
