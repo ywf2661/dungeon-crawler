@@ -62,6 +62,10 @@ export(전역): showMysteryEvent
     if(typeof jesterTableEligible==='function' && jesterTableEligible(player)){
       for(let i=0;i<JESTER_TABLE_WEIGHT;i++) handlers.push(showJesterTableEvent);
     }
+    // 도박사 전용 "야바위 컵"(js/jester-shell.js): 기본 직업이 도박사면 3배 가중치, 런당 1회.
+    if(typeof jesterShellEligible==='function' && jesterShellEligible(player)){
+      for(let i=0;i<JESTER_SHELL_WEIGHT;i++) handlers.push(showJesterShellEvent);
+    }
     handlers[Math.floor(Math.random()*handlers.length)]();
   }
 
@@ -1069,6 +1073,147 @@ export(전역): showMysteryEvent
       addLog('일기장을 서랍에 도로 넣어두었다.');
       closeMysteryEvent(overlay);
     });
+  }
+
+  // 도박사 전용 — 야바위 컵(js/jester-shell.js). 손만 남은 딜러가 컵 셋을 섞는다. 3판을 끝까지 하고
+  // 맞힌 횟수로 정산. 섞는 순서는 jesterShellSwaps()가 미리 정하고 화면은 그대로 재생한다(정직한 게임).
+  // 연출 중엔 picking=false라 컵을 눌러도 무시되고, 타이머는 오버레이가 닫혔으면 아무것도 하지 않는다.
+  const JS_SLOT_W = 94;
+  function showJesterShellEvent(){
+    player.jesterShellSeen = true;
+    const stake = jesterShellStake(player, depth);
+    const {overlay, panel} = eventOverlay('야바위 컵',
+      `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
+        엎어진 컵 세 개와, 그 위를 맴도는 손. 손목 위로는 아무것도 없다.<br>손가락이 금화 한 닢을 튕겨 올렸다가, 가운데 컵 아래로 밀어 넣는다.
+      </p>
+      <div class="jt-streak" id="js-hits"></div>
+      <div class="js-table" id="js-table"><div class="js-hand" id="js-hand">🫳</div></div>
+      <p id="js-info" style="text-align:center;color:var(--gold-bright);font-size:13px;min-height:18px;margin:0 0 10px;">판돈 ${stake}G — 세 판. 맞힌 만큼 돌려준다. 세 번 다 맞히면, 딜러가 무언가를 벗어 준다.</p>`,
+      `<div id="js-btns" style="display:flex; flex-direction:column; gap:8px;"></div>`);
+    const table = panel.querySelector('#js-table');
+    const hand = panel.querySelector('#js-hand');
+    const info = panel.querySelector('#js-info');
+    const btns = panel.querySelector('#js-btns');
+    const hitsEl = panel.querySelector('#js-hits');
+    let round = 0, hits = 0, coinSlot = 1, picking = false, peeking = false;
+    let peekLeft = player.specialization==='jester_debtcollector' ? 1 : 0;
+    const wait = ms=> new Promise(res=> setTimeout(res, ms));
+    const later = (fn, ms)=> setTimeout(()=>{ if(overlay.isConnected) fn(); }, ms);
+    const setButtons = list=>{
+      btns.innerHTML = list.map((b,i)=>`<button class="btn" data-i="${i}" ${b.disabled?'disabled':''}>${b.label}</button>`).join('');
+      btns.querySelectorAll('button').forEach(el=> el.addEventListener('click', ()=>{
+        setButtons([]);
+        list[+el.dataset.i].on();
+      }, {once:true}));
+    };
+    const drawHits = ()=>{ hitsEl.innerHTML = [0,1,2].map(i=> `<span class="${i<hits?'on':''}">●</span>`).join(''); };
+    const cups = []; // cups[slot] = 그 슬롯에 지금 놓인 컵 요소
+    const placeCup = (el, slot)=>{ el.style.transform = `translateX(${slot*JS_SLOT_W}px)`; el.dataset.slot = slot; };
+    const lift = (slot, on)=> cups[slot].classList.toggle('lifted', on);
+    for(let s=0;s<3;s++){
+      const el = document.createElement('div');
+      el.className = 'js-cup' + (s===1 ? ' has-coin' : '');
+      el.innerHTML = '<div class="js-coin"></div><div class="js-shell"></div>';
+      table.appendChild(el);
+      placeCup(el, s);
+      cups.push(el);
+      el.addEventListener('click', ()=> onCup(+el.dataset.slot));
+    }
+    hand.style.transform = `translateX(${JS_SLOT_W+21}px)`;
+    // 두 컵이 서로 슬롯을 바꾼다: 하나는 앞으로 크게(커지며 위로 겹침), 하나는 뒤로 작게 지나간다.
+    const swapOnce = (a, b, ms)=> new Promise(res=>{
+      const A = cups[a], B = cups[b];
+      const ax = a*JS_SLOT_W, bx = b*JS_SLOT_W, mid = (ax+bx)/2;
+      hand.style.transform = `translateX(${mid+21}px)`;
+      A.style.zIndex = 3; B.style.zIndex = 1;
+      const opt = {duration:ms, easing:'ease-in-out', fill:'forwards'};
+      const animA = A.animate([{transform:`translateX(${ax}px)`}, {transform:`translateX(${mid}px) translateY(10px) scale(1.12)`}, {transform:`translateX(${bx}px)`}], opt);
+      const animB = B.animate([{transform:`translateX(${bx}px)`}, {transform:`translateX(${mid}px) translateY(-8px) scale(0.9)`}, {transform:`translateX(${ax}px)`}], opt);
+      animB.onfinish = ()=>{
+        placeCup(A, b); placeCup(B, a);
+        animA.cancel(); animB.cancel();
+        A.style.zIndex = ''; B.style.zIndex = '';
+        cups[a] = B; cups[b] = A;
+        res();
+      };
+    });
+    const end = (text, cls)=>{ addLog(text, cls); renderStatus(); saveGame(); closeMysteryEvent(overlay); };
+    const playRound = async ()=>{
+      const cfg = JESTER_SHELL_ROUNDS[round];
+      info.textContent = `${round+1}판 — 동전은 이 컵 아래.`;
+      lift(coinSlot, true); await wait(750); if(!overlay.isConnected) return;
+      lift(coinSlot, false); await wait(400); if(!overlay.isConnected) return;
+      info.textContent = `${round+1}판 — 손이 컵을 섞는다…`;
+      const swaps = jesterShellSwaps(cfg.swaps);
+      for(const [a,b] of swaps){
+        if(!overlay.isConnected) return;
+        await swapOnce(a, b, cfg.ms);
+      }
+      coinSlot = jesterShellTrack(coinSlot, swaps);
+      info.textContent = '동전이 든 컵을 고르세요.';
+      picking = true;
+      table.classList.add('picking');
+      setButtons(peekLeft>0 ? [{label:'👁 소매로 슬쩍 들추기 (1회)', on:()=>{
+        peekLeft--; peeking = true;
+        info.textContent = '몰래 들춰 볼 컵을 고르세요.';
+      }}] : []);
+    };
+    const onCup = slot=>{
+      if(!picking) return;
+      if(peeking){
+        peeking = false; picking = false;
+        lift(slot, true);
+        later(()=>{ lift(slot, false); picking = true; info.textContent = '동전이 든 컵을 고르세요.'; }, 700);
+        return;
+      }
+      picking = false;
+      table.classList.remove('picking');
+      setButtons([]);
+      const won = slot===coinSlot;
+      lift(slot, true);
+      if(won){ hits++; cups[slot].classList.add('win'); }
+      else { cups[slot].classList.add('lose'); later(()=> lift(coinSlot, true), 500); }
+      later(()=>{
+        drawHits();
+        info.textContent = won ? `맞혔다! (${hits}/3)` : `빈 컵이다. (${hits}/3)`;
+        round++;
+        if(round < JESTER_SHELL_ROUNDS.length){
+          setButtons([{label:`다음 판 (${round+1}/3)`, on:()=>{
+            cups.forEach(c=> c.classList.remove('lifted','win','lose'));
+            later(playRound, 400);
+          }}]);
+        } else {
+          setButtons([{label:'정산한다', on:settle}]);
+        }
+      }, 1100);
+    };
+    const settle = ()=>{
+      const hasGlove = (player.relics||[]).includes('relic_dealerglove');
+      const pay = jesterShellPayout(stake, hits, hasGlove);
+      player.gold += pay;
+      if(hits<3 || hasGlove){
+        end(hits===0 ? `야바위 컵에서 하나도 못 맞혔다. 판돈 ${stake}G를 잃었다.` : `야바위 컵에서 ${hits}번 맞혔다. 골드 +${pay}G`, hits===0 ? 'warn' : 'gold');
+        return;
+      }
+      addLog(`야바위 컵에서 세 번 모두 맞혔다. 골드 +${pay}G`, 'gold');
+      overlay.remove();
+      const done = ()=>{ renderStatus(); saveGame(); renderExplore([]); };
+      showDialogueSequence([
+        '딜러의 손이 멈칫하더니, 천천히 장갑 한 짝을 벗어 탁자 위에 내려놓는다.',
+        '장갑 안은 비어 있다. 그런데도 손가락 끝이, 아직 무언가를 쥐고 있는 것처럼 오므라져 있다.',
+      ], {onDone: ()=>{
+        if(getRelicSlotUsage() >= player.relicSlots) showRelicSwapPrompt('relic_dealerglove', null, false, done);
+        else { finalizeRelicPick('relic_dealerglove', false); done(); }
+      }});
+    };
+    drawHits();
+    setButtons([
+      {label:`판에 앉는다 (판돈 ${stake}G)`, disabled: player.gold<stake, on:()=>{
+        // 판돈을 낸 즉시 저장(jesterShellSeen 포함) — 새로고침으로 무르기 방지(카드판과 같음).
+        player.gold -= stake; renderStatus(); saveGame(); playRound();
+      }},
+      {label:'지나간다', on:()=> end('야바위 판을 지나쳤다.')},
+    ]);
   }
 
   // 도박사 전용 — 뒷골목 카드판(js/jester-table.js). 손만 남은 딜러와 하이로우 3연승.

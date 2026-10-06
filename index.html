@@ -882,6 +882,24 @@
   .jt-ace{text-align:center; font-family:Cinzel,serif; font-size:34px; color:var(--gold-bright);
     text-shadow:0 0 14px #e6c34acc; animation:jtAce .8s ease-out;}
   @keyframes jtAce{from{opacity:0; translate:0 20px; scale:.6;} to{opacity:1; translate:0 0; scale:1;}}
+  /* 야바위 컵(도박사 전용 이벤트, js/events.js showJesterShellEvent). 컵 위치는 .js-cup의
+     transform(translateX — 섞기는 Web Animations API), 들림은 안쪽 .js-shell의 translate로
+     따로 움직여 서로 덮어쓰지 않는다. 3D는 쓰지 않는다. */
+  .js-table{position:relative; height:120px; width:258px; margin:4px auto 6px;}
+  .js-hand{position:absolute; top:0; left:0; font-size:28px; transition:transform .18s ease; pointer-events:none; z-index:5;}
+  .js-cup{position:absolute; left:0; bottom:6px; width:70px; height:66px; z-index:2;}
+  .js-table.picking .js-cup{cursor:pointer;}
+  .js-table.picking .js-cup:hover .js-shell{filter:brightness(1.18);}
+  .js-shell{position:absolute; inset:0; z-index:2; background:linear-gradient(180deg,#a06c3c,#5a3418);
+    clip-path:polygon(16% 0,84% 0,100% 100%,0 100%); transition:translate .3s ease;}
+  .js-cup.lifted .js-shell{translate:0 -48px;}
+  .js-coin{display:none; position:absolute; left:50%; bottom:4px; width:26px; height:26px; margin-left:-13px; border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#fff3b0,#e6c34a 55%,#a07a1a); box-shadow:0 0 6px #e6c34a88; z-index:1;}
+  .js-cup.has-coin .js-coin{display:block;}
+  .js-cup.win .js-coin{animation:jsCoinWin .7s ease-out;}
+  @keyframes jsCoinWin{0%{box-shadow:0 0 0 #e6c34a00; scale:1;} 40%{box-shadow:0 0 26px #ffe27aee; scale:1.25;} 100%{box-shadow:0 0 8px #e6c34a88; scale:1;}}
+  .js-cup.lose .js-shell{background:linear-gradient(180deg,#a8503a,#5a2418); animation:jsLose .5s ease;}
+  @keyframes jsLose{0%,100%{rotate:0deg;} 25%{rotate:-7deg;} 50%{rotate:7deg;} 75%{rotate:-4deg;}}
 
   /* 시간의 파수꾼 스킬 전용 VFX 이미지 3종(사용자 제공, images/vfx/tg_*.webp).
      기존 .frost-flash-fx(섬광)/.screen-crack-fx(균열)에 겹쳐서 함께 재생된다

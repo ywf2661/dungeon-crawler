@@ -169,6 +169,9 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     // eventOnly — 유물 제단에는 나오지 않는다. 효과는 전투 시작 시 기존 1회 보정 장치
     // (player.fateBoostChance — 정보료/촉과 같은 것)를 채우는 방식(combat/battle-setup.js).
     relic_aceinsleeve: {type:'wild', name:'소매 속 에이스', desc:'전투가 시작될 때마다, 다음 운 스킬(동전 던지기·승부수·마지막 카드·베팅) 하나의 성공 확률이 15%p 오른다.', effect:{firstLuckBonus:0.15}, eventOnly:true},
+    // 딜러의 장갑(도박사 전용 이벤트 "야바위 컵" 3번 모두 맞힘 보상, js/jester-shell.js).
+    // eventOnly — 제단에 안 나온다. 효과는 nodemap.js의 바꿔치기 버튼(nodeSwapAvailable)이 처리한다.
+    relic_dealerglove: {type:'wild', name:'딜러의 장갑', desc:'구간마다 한 번, 노드맵에서 아직 가지 않은 칸 두 개의 정체를 서로 바꿔치기할 수 있다(보스·제단 제외).', effect:{nodeSwap:true}, eventOnly:true},
   };
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
   // eventOnly(소매 속 에이스 등 이벤트 전용 보상)도 제단에서 뺀다.

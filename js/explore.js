@@ -100,6 +100,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.townCheckpoint===undefined) player.townCheckpoint = town ? makeTownCheckpoint() : null;
       migrateSpecCheckpoint(player.townCheckpoint); // 전직 전용 이벤트 이전 체크포인트(js/spec-story.js)
       migrateJesterCheckpoint(player.townCheckpoint); // 뒷골목 카드판 이전 체크포인트(js/jester-table.js)
+      migrateJesterShellCheckpoint(player.townCheckpoint); // 야바위 컵/딜러의 장갑 이전 체크포인트(js/jester-shell.js)
       if(player.eliteSealFirstSeen===undefined) player.eliteSealFirstSeen = (player.eliteSeals||0) > 0;
       // [해제됨] 메카닉 2차(폭주 화부/축압 기술자)가 압력 게이지 리뉴얼에 맞춰
       // 새로 구현되어, 더 이상 10레벨 전직 선택 화면을 건너뛰지 않는다.
@@ -624,6 +625,9 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       specEventPerk: !!player.specEventPerk,
       // 뒷골목 카드판(js/jester-table.js) — 롤백으로 소매 속 에이스가 사라지면 다시 노릴 수 있게.
       jesterTableSeen: !!player.jesterTableSeen,
+      // 야바위 컵/딜러의 장갑(js/jester-shell.js) — 롤백되면 다시 노리고, 그 구간에서 장갑을 다시 쓸 수 있게.
+      jesterShellSeen: !!player.jesterShellSeen,
+      nodeSwapTier: player.nodeSwapTier===undefined ? null : player.nodeSwapTier,
     };
   }
 
