@@ -191,9 +191,6 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       // combat/battle-setup.js의 startBattle()이 isFinal일 때 이미 건너뛰고
       // 있으므로, 여기서 처치 시점에만 별도로 등록해준다).
       if(isFinalKill && enemy.type && typeof addToMonsterDex==='function') addToMonsterDex(enemy.type);
-      if(leveled.includes(10) && !player.jobChosenAt10){
-        player.jobAdvancePending = true;
-      }
       let rareDropId = null;
       if(!isFinalKill){
         // 정예 처치 보상 재설계(사용자 요청): 예전엔 정예를 잡으면 유물 제단이
@@ -868,6 +865,13 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       player.exp -= player.expNext;
       applyLevelUpEffects();
       levelsGained.push(player.level);
+    }
+    // 전직 대기 플래그는 경험치를 주는 모든 경로(전투/이벤트)가 여기를 지나므로 여기서
+    // 세운다 — 예전엔 전투 승리 쪽에서만 세워서, 이벤트로 10레벨을 넘기면 새로고침
+    // 전까지 전직 창이 영영 안 떴다(사망 롤백 후 재도달 시 특히 잘 걸림).
+    if(player.level>=10 && !player.jobChosenAt10){
+      player.jobAdvancePending = true;
+      scheduleJobAdvancementCheck();
     }
     return levelsGained;
   }
