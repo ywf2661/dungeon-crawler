@@ -30,7 +30,8 @@ export(전역): player, enemy, depth, town, log, battleOver, subMode, battleFlag
   function isAdminNameEntered(){
     const input = document.getElementById('name-input');
     const raw = input ? input.value.trim().toLowerCase() : '';
-    return raw==='admin' || raw==='admin2' || raw==='admin3';
+    // admin4(시간의 파수꾼 테스트)는 보통/하드코어가 필수라 같이 인정한다.
+    return raw==='admin' || raw==='admin2' || raw==='admin3' || raw==='admin4';
   }
 
   function renderJobSelect(){

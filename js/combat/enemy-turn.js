@@ -760,24 +760,38 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         // 귀환의 일격(사용자 기획) — 지난 턴에 명멸의 틈으로 사라졌었다면,
         // 이번 턴은 무조건 예고 없는 강타로 복귀한다. 메아리 큐/결빙의 궤적
         // 판단보다 최우선이다.
+        if(!enemy.echoQueue) enemy.echoQueue = [];
+        if(!enemy.hpHistory) enemy.hpHistory = [];
+        const tgHpHistory = enemy.hpHistory;
         if(enemy.vanishedTurns>0){
           enemy.vanishedTurns = 0;
           skillKey = 'guardianReturnStrike';
+          // 버프(사용자 요청) — 귀환의 일격도 메아리에 싣는다. 사라짐 →
+          // 귀환 강타 → 2턴 뒤 강타의 메아리로 이어지는 3박자 패턴.
+          if(!enemy.echoQueue.length) enemy.echoQueue.push({skillKey, turnsLeft:2});
         } else {
-          if(!enemy.echoQueue) enemy.echoQueue = [];
           if(enemy.echoQueue.length) enemy.echoQueue[0].turnsLeft -= 1;
           let firedEcho = null;
           let echoIsRewind = false;
-          if(enemy.echoQueue.length && enemy.echoQueue[0].turnsLeft<=0){
-            firedEcho = enemy.echoQueue.shift();
-          } else if(!enemy.rewindUsed && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5 && enemy.echoQueue.length){
-            // 시간 역행: HP 50% 이하에서 1회, 대기 중인 메아리를 예고 없이
-            // 즉시 앞당겨 터뜨린다. 이건 "예고 없는 기습"이 핵심이라 아래
+          if(!enemy.rewindUsed && enemy.maxhp>0 && (enemy.hp/enemy.maxhp)<=0.5){
+            // 시간 역행(버프 — 사용자 요청): HP 50% 이하에서 1회, 3턴 전 HP로
+            // 되감는다(회복량 상한 최대HP 20%). 대기 중인 메아리가 있으면
+            // 예고 없이 앞당겨 터뜨린다 — "예고 없는 기습"이 핵심이라 아래
             // 일반 메아리(스택형)와 다르게 그 턴을 그대로 단독 대체한다.
             enemy.rewindUsed = true;
+            const rewindHeal = Math.min(Math.round(enemy.maxhp*0.2), Math.max(0, (tgHpHistory[0]||0) - enemy.hp));
+            if(rewindHeal>0){
+              enemy.hp += rewindHeal;
+              updateEnemyHpBar();
+              popDamage('+'+rewindHeal, 'heal');
+            }
+            tgRewindPrefix = `${enemy.name}의 몸이 일그러진다… 시간이 역행하며 상처가 되감긴다. `;
+            if(enemy.echoQueue.length){
+              firedEcho = enemy.echoQueue.shift();
+              echoIsRewind = true;
+            }
+          } else if(enemy.echoQueue.length && enemy.echoQueue[0].turnsLeft<=0){
             firedEcho = enemy.echoQueue.shift();
-            echoIsRewind = true;
-            tgRewindPrefix = `${enemy.name}의 몸이 일그러진다… 시간이 역행하며, `;
           }
           if(firedEcho && echoIsRewind){
             skillKey = firedEcho.skillKey; // null이면 기본 공격(무거운 참격)의 메아리
@@ -793,7 +807,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
               // 파수꾼 턴엔 위 guardianReturnStrike로 예고 없이 돌아와 강타한다.
               skillKey = 'guardianVanish';
               enemy.vanishedTurns = 1;
-              enemy.vanishCooldown = 5;
+              enemy.vanishCooldown = 4; // 버프(사용자 요청) 5→4
             } else {
               enemy.vanishCooldown = Math.max(0, (enemy.vanishCooldown||0) - 1);
               if((enemy.frostCooldown||0) <= 0){
@@ -817,6 +831,8 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
             }
           }
         }
+        tgHpHistory.push(enemy.hp);
+        if(tgHpHistory.length>3) tgHpHistory.shift();
         if(typeof updateBossIntentCard==='function') updateBossIntentCard();
       } else
       // 보스 예고 스킬(사용자 요청 — 어떤 스킬이든 매번 예고). 예고했던 다음
@@ -976,6 +992,8 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 재현한다.
       else if(skillKey==='frostTrajectory'){
         dmg = Math.round(effAtk*1.7*tgEchoMult);
+        // 공격 포즈(사용자 요청) — 다음 적 턴 시작 시 위 setBossPoseImage('idle')로 복귀.
+        if(typeof setBossPoseImage==='function') setBossPoseImage('slam');
         if(tgEchoMult>=1){
           label = `${enemy.name}이(가) 얼어붙은 궤적을 그으며 짓쳐든다!`;
           const spdDelta = Math.min(player.spd-1, 3);
@@ -1010,10 +1028,13 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
         // 적용되므로 다른 규칙과 부딪힐 여지가 없다.
         const imgEl = document.querySelector('#bt-stage svg, #bt-stage img');
         if(imgEl){
-          imgEl.style.transition = 'opacity .7s ease-in, transform .7s ease-in, filter .7s ease-in';
+          // 버그 수정(사용자 재제보 — 귀환 후 초상화가 어둡게 남음): 예전엔
+          // filter(밝기/채도 저하)도 같이 걸었는데, 귀환 때 지워도 어둡게 남는
+          // 사례가 계속 나왔다. 투명도가 0으로 가니 어둡게 만들 필요 자체가
+          // 없어 filter는 아예 건드리지 않는다.
+          imgEl.style.transition = 'opacity .7s ease-in, transform .7s ease-in';
           imgEl.style.opacity = '0';
           imgEl.style.transform = 'translateX(80px) scale(0.8)';
-          imgEl.style.filter = 'brightness(0.3) saturate(0.3)';
         }
         // 연출 순서 조정(사용자 제보 — "사라지는 느낌이 안 든다"): 보이드
         // VFX 이미지(260px, 꽤 큼)가 캐릭터랑 동시에 뜨면 자리를 덮어버려서
@@ -1027,9 +1048,10 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 원래 상태로 스냅되게 하고, 곧바로 공용 lungeEnemy() 베기 애니메이션이
       // 이어지게 한다.
       else if(skillKey==='guardianReturnStrike'){
-        dmg = Math.round(effAtk*2.0);
-        label = `사라졌던 ${enemy.name}이(가) 예고 없이 돌아와 후려친다!`;
-        playBanner('귀환의 일격','fx-voidstep');
+        dmg = Math.round(effAtk*2.0*tgEchoMult);
+        // 시간 역행이 귀환의 일격 메아리를 앞당겨 터뜨린 경우(tgEchoMult<1).
+        label = tgEchoMult>=1 ? `사라졌던 ${enemy.name}이(가) 예고 없이 돌아와 후려친다!` : `사라졌던 일격이 메아리처럼 한 번 더 덮쳐온다!`;
+        playBanner(tgEchoMult>=1 ? '귀환의 일격' : '메아리 · 귀환의 일격','fx-voidstep');
         if(typeof spawnGuardianVfxImage==='function') spawnGuardianVfxImage('returnstrike');
         const imgEl2 = document.querySelector('#bt-stage svg, #bt-stage img');
         if(imgEl2){
@@ -1043,8 +1065,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           void imgEl2.offsetWidth;
           imgEl2.style.opacity = '';
           imgEl2.style.transform = '';
-          imgEl2.style.filter = '';
+          imgEl2.style.filter = ''; // 예전 버전(filter를 걸던 명멸)이 남긴 값 정리
         }
+        if(typeof setBossPoseImage==='function') setBossPoseImage('slam'); // 공격 포즈(사용자 요청)
       }
       else {
         dmg = effAtk + Math.floor(Math.random()*3)-1;
@@ -1073,9 +1096,9 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // 생명유지 판정 파이프라인을 두 번 타지 않게 한다(전투 파일 간
       // 결합도가 높아 그쪽을 건드리는 게 훨씬 위험하다고 판단).
       if(tgEchoBonus){
-        const bonusDmg = tgEchoBonus.skillKey==='frostTrajectory'
-          ? Math.round(effAtk*1.7*0.6)
-          : Math.round(effAtk*1.4*0.6);
+        const echoBaseMult = tgEchoBonus.skillKey==='frostTrajectory' ? 1.7
+          : (tgEchoBonus.skillKey==='guardianReturnStrike' ? 2.0 : 1.4);
+        const bonusDmg = Math.round(effAtk*echoBaseMult*0.6);
         dmg += bonusDmg;
         label += ` 거기에 한 박자 늦은 메아리가 곧바로 겹쳐 든다!`;
       }

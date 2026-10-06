@@ -1190,6 +1190,9 @@
   }
   .shop-panel h3{color:var(--gold-bright); text-align:center; margin-bottom:12px;}
   .shop-x{position:sticky; top:0; float:right; z-index:1; margin:-8px -8px 0 0; padding:4px 10px;}
+  /* 떠있는 닫기 버튼이 제목 줄을 오른쪽에서 깎아 제목이 왼쪽으로 밀리던 문제 —
+     양쪽에 버튼 폭만큼 같은 여백을 줘서 패널 기준 가운데에 오게 한다. */
+  .shop-x + h3{padding:0 76px;}
   .shop-item{display:flex; justify-content:space-between; align-items:flex-start; padding:10px 6px; border-bottom:1px solid #3a2c1c; gap:10px;}
   .shop-item:last-of-type{border-bottom:none;}
   .shop-item .si-info{flex:1; min-width:0;}

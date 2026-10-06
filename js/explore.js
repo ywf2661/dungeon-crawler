@@ -213,10 +213,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       setupAdmin2TrueFinalBossTest({randomRelics:true});
       return;
     }
-    // [디버그 전용 — 회랑의 알 부화 테스트용] 이름이 "admin4"면 알이 기본 등장하는
-    // 3구간(20층대) 마을에서 시작하고, 이 캐릭터의 일반/정예 전투는 전부 알로 고정된다.
+    // [디버그 전용 — 시간의 파수꾼 테스트용] 이름이 "admin4"면 파수꾼이 노드맵 중간에
+    // 고정 배치되는 3구간(20층대) 마을에서 시작한다. 일반/정예 전투는 평소대로 나온다
+    // (파수꾼 노드까지 몇 칸 걸으며 자연스럽게 레벨 13 안팎이 되도록 12로 시작).
     if(player.name && player.name.trim().toLowerCase()==='admin4'){
-      setupAdminMonsterTest({level:12, tierIndex:2, types:['egg'], label:'회랑의 껍질(정예 노드는 정예 껍질)'});
+      setupAdminMonsterTest({level:12, tierIndex:2, types:null,
+        msg:'노드맵 중간의 ??? 노드에서 시간의 파수꾼이 나온다(보통/하드코어 전용 — 쉬움에서는 나오지 않음).'});
       return;
     }
     // [디버그 전용 — 일반 몬스터 기믹 테스트용] "admin5": 4구간(30층대) 마을 시작, 일반/정예
@@ -389,7 +391,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     document.getElementById('statusbar').style.display='flex';
     showScreen('explore');
     renderStatus();
-    renderExplore([`[관리자 테스트] 레벨${opts.level} · 포션 최대 · ${opts.tierIndex+1}구간(${opts.tierIndex*10}층대) 마을에서 시작. "나아가기" 후 전투/정예 노드를 고르면 ${opts.label}이(가) 나온다.`]);
+    renderExplore([`[관리자 테스트] 레벨${opts.level} · 포션 최대 · ${opts.tierIndex+1}구간(${opts.tierIndex*10}층대) 마을에서 시작. ${opts.msg || `"나아가기" 후 전투/정예 노드를 고르면 ${opts.label}이(가) 나온다.`}`]);
     saveGame();
   }
 

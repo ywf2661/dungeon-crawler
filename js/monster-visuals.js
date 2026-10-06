@@ -115,11 +115,18 @@ export(전역): heroBossSvg, svgMonster
     telegraph: 'images/monsters/timewitch_telegraph.png',
     slam: 'images/monsters/timewitch_slam.png',
   };
+  // 시간의 파수꾼 공격 포즈(사용자 제공) — 결빙의 궤적/귀환의 일격 때만 쓴다.
+  // 예고 기믹이 없어 telegraph는 없다(없는 키는 idle로 대체됨).
+  const TIMEGUARDIAN_POSE_IMG = {
+    idle: 'images/monsters/timeguardian.png',
+    slam: 'images/monsters/timeguardian_slam.png',
+  };
   // combat/battle-fx.js의 setBossPoseImage()가 enemy.type으로 어느 포즈셋을
   // 쓸지 고를 때 참조하는 매핑(진 최종보스 종류가 늘어나도 여기만 추가하면 됨).
   const BOSS_POSE_IMG_BY_TYPE = {
     progenitor: PROGENITOR_POSE_IMG,
     timewitch: TIMEWITCH_POSE_IMG,
+    timeguardian: TIMEGUARDIAN_POSE_IMG,
   };
 
   // PNG 몬스터 그림 하단의 투명 여백을 자동으로 감지해 보정한다(사용자 피드백

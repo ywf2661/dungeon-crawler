@@ -73,6 +73,11 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     exp:500, gold:[300,400], skills:['frostTrajectory','timeRewind'],
     dex:'사람이었던 적 없는, 멈춘 시간이 스스로 빚어낸 형상.',
     isBoss:true,
+    // 버프(사용자 요청 — "너무 약하다"): 깊이 스케일링을 안 타는 고정값이라
+    // 보통 기준 ATK 33으로 같은 구간 일반몹(굴착꾼 ~46)보다도 약했다. 보스전
+    // 전용 수치만 따로 올린다 — hp/atk 원본은 원혼강탈자 계약 화력
+    // (player-actions.js, atk×0.9)이 그대로 참조하므로 건드리지 않는다.
+    encounterHp:460, encounterAtk:48,
   };
   function pickFinalBossJob(){
     const ids = JOBS.map(j=>j.id);
@@ -312,8 +317,8 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       nodeMidboss = false;
       return scaleEnemyForDifficulty({
         type: TIME_GUARDIAN.type, name: TIME_GUARDIAN.name, isBoss:true,
-        maxhp: TIME_GUARDIAN.hp, hp: TIME_GUARDIAN.hp,
-        atk: TIME_GUARDIAN.atk, def: TIME_GUARDIAN.def, spd: TIME_GUARDIAN.spd,
+        maxhp: TIME_GUARDIAN.encounterHp, hp: TIME_GUARDIAN.encounterHp,
+        atk: TIME_GUARDIAN.encounterAtk, def: TIME_GUARDIAN.def, spd: TIME_GUARDIAN.spd,
         exp: TIME_GUARDIAN.exp,
         // 버그 수정(사용자 제보 — 파수꾼 처치 후 소지금이 NaN/null이 됨):
         // 다른 몬스터는 전부 gold를 [최소,최대] 배열로 두고 승리 시
@@ -329,6 +334,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
         vanishCooldown: 2, // 명멸의 틈(사용자 기획) — 이것도 초반엔 약간의 텀
         vanishedTurns: 0,
         rewindUsed: false,
+        hpHistory: [], // 시간 역행용 — 최근 3번의 파수꾼 턴 시작 시 HP
       });
     }
     if(isTrueFinal){
