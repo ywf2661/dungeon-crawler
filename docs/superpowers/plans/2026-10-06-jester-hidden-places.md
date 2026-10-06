@@ -14,7 +14,7 @@
 
 - 비밀 배정: 장갑 보유 + 이번 구간 바꿔치기 미사용 + 바꿀 쌍 존재(`nodeSwapAvailable`)일 때 지연 배정. 진짜 1 + 미끼 최대 2, 전부 `nodeSwapCandidates` 안에서. `player.nodeSecret = {id, decoys, found}`.
 - `enterNodeMapTier()`에서 `player.nodeSecret = null`.
-- 손자국(🖐)은 전체 지도 오버레이에서만, 진짜/미끼 구분 없이. 이번 구간 바꿔치기를 쓰면 사라짐.
+- 손자국은 잿빛 손바닥 SVG(희미하게, 칸 바닥에 깔려 글자를 가리지 않음, 잠긴 칸 흐림을 같이 받음), 전체 지도 오버레이에서만, 진짜/미끼 구분 없이. 이번 구간 바꿔치기를 쓰면 사라짐. 게임 안 안내 문구는 발견 팝업/로그 외에 추가하지 않는다.
 - 드러남: 바꿔치기 두 칸 중 하나가 진짜면 교환 직후 그 칸 `type='secret'`(옮겨 오던 종류는 사라짐), `secretKind` 저장, `found=true`.
 - 종류: 남은 조각 있으면 story 60% / den 40%, 다 모았으면 항상 den.
 - 발견 팝업: "들어 올린 자리 밑으로, 계단이 아래로 이어진다." / "숨겨진 장소를 찾았다." 로그 "🕯 숨겨진 장소를 찾았다."(가려진 지도여도 같음).
@@ -509,6 +509,15 @@ git commit -m "진실의 조각/숨겨진 도박장 화면, 영구 기록(jester
     player.nodeSecret = assignNodeSecret(player.nodeMap, player.nodeRow);
     if(player.nodeSecret) saveGame();
   }
+  // 칸 바닥에 찍힌 잿빛 손자국(index.html의 #dealer-hand 그림). 각도·위치·얼룩 질감을 칸 id에서
+  // 정해서 다시 그려도 같은 자리에 같은 모양으로 남는다. 진짜/미끼는 겉으로 구분되지 않는다.
+  function handprintSvg(id){
+    let h = 0;
+    for(const c of id) h = (h*31 + c.charCodeAt(0)) >>> 0;
+    const rot = h%77 - 38, dx = (h>>>7)%19 - 9, dy = (h>>>12)%13 - 7, v = (h>>>17)%3;
+    return `<svg class="node-secret-mark" viewBox="0 0 100 130" aria-hidden="true" style="--rot:${rot}deg; --dx:${dx}px; --dy:${dy}px">`
+      + `<g filter="url(#dealer-smudge${v})"><use href="#dealer-hand"/></g></svg>`;
+  }
 ```
 
 `renderNodeMapRows`의 `const swapIds = nodeSwapMode ? ...` 줄 다음에:
@@ -531,17 +540,47 @@ git commit -m "진실의 조각/숨겨진 도박장 화면, 영구 기록(jester
 
 ```js
           + `<span class="node-icon">${def.icon}</span><span class="node-label">${def.label}</span>`
-          + (marked ? `<span class="node-secret-mark">🖐</span>` : '')
+          + (marked ? handprintSvg(n.id) : '')
 ```
 
-- [ ] **Step 4: CSS**
+- [ ] **Step 4: 손자국 그림 + CSS**
+
+사용자 확정(미리보기 아티팩트 3판): 잿빛 손바닥이 칸 위에 비스듬히 찍힌 **희미한** 얼룩. 칸 바닥에 깔려
+아이콘/글자를 가리지 않고, 아직 못 가는 줄에선 칸의 흐림(40%)을 같이 받는다. 깜빡임 없음.
+게임 안 안내 문구는 발견 팝업/로그 외에 추가하지 않는다.
+
+`index.html`의 `<script src="js/sound.js"></script>` 줄 바로 앞에(그림 원본 — 화면에 보이지 않는 정의):
+
+```html
+<!-- 딜러의 장갑 손자국 그림(js/nodemap.js handprintSvg). 손바닥+손가락 넷+엄지, 필터가 가장자리를
+     번지게 하고(displacement) 군데군데 끊긴 얼룩(grain)을 만든다. 질감 3종은 seed만 다르다. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="dealer-smudge0" x="-25%" y="-25%" width="150%" height="150%"><feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="3" result="warp"/><feDisplacementMap in="SourceGraphic" in2="warp" scale="8" xChannelSelector="R" yChannelSelector="G" result="rough"/><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="11"/><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  3 0 0 0 -1.05" result="grain"/><feComposite in="rough" in2="grain" operator="in"/></filter>
+    <filter id="dealer-smudge1" x="-25%" y="-25%" width="150%" height="150%"><feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="17" result="warp"/><feDisplacementMap in="SourceGraphic" in2="warp" scale="8" xChannelSelector="R" yChannelSelector="G" result="rough"/><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="29"/><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  3 0 0 0 -1.05" result="grain"/><feComposite in="rough" in2="grain" operator="in"/></filter>
+    <filter id="dealer-smudge2" x="-25%" y="-25%" width="150%" height="150%"><feTurbulence type="fractalNoise" baseFrequency="0.07" numOctaves="2" seed="41" result="warp"/><feDisplacementMap in="SourceGraphic" in2="warp" scale="8" xChannelSelector="R" yChannelSelector="G" result="rough"/><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="53"/><feColorMatrix type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  3 0 0 0 -1.05" result="grain"/><feComposite in="rough" in2="grain" operator="in"/></filter>
+    <symbol id="dealer-hand" viewBox="0 0 100 130">
+      <path fill="currentColor" d="M22 64 Q19 100 35 117 Q52 128 70 118 Q85 104 82 68 Q66 57 51 59 Q35 57 22 64 Z"/>
+      <rect fill="currentColor" x="23" y="20" width="14" height="48" rx="7" transform="rotate(-9 30 66)"/>
+      <rect fill="currentColor" x="40" y="9" width="14" height="56" rx="7" transform="rotate(-2 47 64)"/>
+      <rect fill="currentColor" x="56" y="15" width="13.5" height="51" rx="6.8" transform="rotate(6 63 64)"/>
+      <rect fill="currentColor" x="70" y="32" width="12" height="39" rx="6" transform="rotate(14 76 68)"/>
+      <rect fill="currentColor" x="6" y="62" width="14" height="38" rx="7" transform="rotate(-40 18 92)"/>
+    </symbol>
+  </defs>
+</svg>
+```
 
 `index.html`의 `.node-btn.node-swap-dim{opacity:.3;}` 다음 줄에:
 
 ```css
-  /* 숨은 칸 손자국(진짜 1 + 미끼 2, 겉으로 구분 없음)과 드러난 숨겨진 장소(js/nodemap.js). */
+  /* 숨은 칸 손자국(진짜 1 + 미끼 2, 겉으로 구분 없음)과 드러난 숨겨진 장소(js/nodemap.js).
+     손자국은 칸 바닥의 얼룩 — 아이콘/글자를 그 위로 올려 가리지 않는다. */
+  .node-btn .node-icon, .node-btn .node-label{position:relative; z-index:1;}
   .node-btn.node-marked{position:relative;}
-  .node-secret-mark{position:absolute; top:-7px; right:-5px; font-size:13px; opacity:.55; pointer-events:none;}
+  .node-secret-mark{position:absolute; left:50%; top:50%; width:50px; height:65px; color:#e2d6bb; opacity:.42;
+    pointer-events:none; z-index:0; mix-blend-mode:screen;
+    transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) rotate(var(--rot));}
   .node-btn.node-secret{border-color:#b48cff; box-shadow:0 0 10px #b48cff66;}
 ```
 
@@ -752,7 +791,7 @@ Expected:
 - 설계: `docs/superpowers/specs/2026-10-06-jester-hidden-places-design.md`,
   계획: `docs/superpowers/plans/2026-10-06-jester-hidden-places.md`
 - 장갑 보유 구간이면 바꿀 수 있는 칸 중 하나 밑에 비밀(`player.nodeSecret`, 지연 배정 즉시 저장).
-  전체 지도에 손자국 🖐 3칸(진짜 1 + 미끼 2). 바꿔치기로 진짜를 들면 그 자리가 🕯 `type:'secret'`
+  전체 지도에 잿빛 손자국 3칸(진짜 1 + 미끼 2, 희미하게 칸 바닥에). 바꿔치기로 진짜를 들면 그 자리가 🕯 `type:'secret'`
   (옮겨 오던 종류는 사라짐) + 발견 팝업. 종류는 드러날 때 굴려 칸에 저장(조각 남음: 이야기 60/도박장 40).
 - 이야기 칸: 진실의 조각 ①~⑤를 발견 순서대로(`js/jester-den.js`), 화면 전에 영구 기록(`jestertruth`),
   최대HP 20% 회복. 다 본 뒤엔 도박장 폴백. 다 모은 도박사는 시조/아이온 엔딩에 장면 추가.
