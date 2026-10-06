@@ -29,8 +29,8 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
       dex:'발소리만 남아 정처 없이 회랑을 떠돈다. 정작 발은, 어디에도 보이지 않는다.'},
     {type:'spider',  name:'숲망꾼',        minDepth:3,  hp:28, atk:9,  def:3,  spd:7,  exp:18, gold:[9,16],  skills:['bite'],
       dex:'존재하지 않는 숲의 거미줄을, 여전히 짜고 있다.'},
-    {type:'skeleton',name:'해골 전사',     minDepth:3,  hp:32, atk:9,  def:4,  spd:5,  exp:20, gold:[8,18],  skills:['pierce'],
-      dex:'녹슨 갑주 안, 뼈마디가 그저 예전의 훈련을 몸으로 기억하고 있을 뿐이다.'},
+    {type:'skeleton',name:'창이 되어가는 초병',minDepth:3,  hp:32, atk:9,  def:4,  spd:5,  exp:20, gold:[8,18],  skills:['pierce'],
+      dex:'근무일지를 쓰던 손은 아직 사람의 것이다. 창을 쥐던 손은, 이제 창이 되어간다.'},
     {type:'ghost',   name:'옭아맨 통곡',   minDepth:5,  hp:30, atk:10, def:2,  spd:11, exp:24, gold:[12,20], skills:['curse'],
       dex:'형체 없는 통곡이 사슬처럼 발목을 휘감아 온다.'},
     {type:'knight',  name:'짓눌린 맹세',   minDepth:8,  hp:52, atk:13, def:8,  spd:5,  exp:36, gold:[20,34], skills:['smash'],
@@ -39,8 +39,8 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
       dex:'한때 성벽을 지키던 병사였다는 소문이 있다. 검을 든 자를 유독 오래 바라본다.'},
     {type:'harpy',   name:'울부짖는 깃털비', minDepth:11, hp:38, atk:12, def:3,  spd:14, exp:34, gold:[16,26], skills:['bite'],
       dex:'찢어진 깃털이 비처럼 흩날리며, 날카로운 울음을 흩뿌린다.'},
-    {type:'wraith',  name:'얼어붙은 유언', minDepth:13, hp:48, atk:13, def:6,  spd:8,  exp:42, gold:[20,32], skills:['curse','heal'],
-      dex:'마지막 남긴 말이 그대로 얼어붙어, 여전히 허공에 맴돈다.'},
+    {type:'wraith',  name:'얼어붙은 외침', minDepth:13, hp:48, atk:13, def:6,  spd:8,  exp:42, gold:[20,32], skills:['curse','heal'],
+      dex:'끝내 다 내뱉지 못한 외침이 그대로 얼어붙어, 여전히 허공에 맴돈다.'},
     {type:'cultist', name:'천 개의 기도',  minDepth:14, hp:40, atk:11, def:4,  spd:7,  exp:40, gold:[22,34], skills:['curse','heal'],
       dex:'천 번을 되뇐 기도가, 이제는 저주에 더 가까운 소리로 들린다.'},
     {type:'egg',name:'회랑의 껍질',  minDepth:17, hp:66, atk:18, def:8,  spd:6,  exp:56, gold:[28,42], skills:['smash'],
@@ -185,7 +185,7 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
   // 태그(bite/smash/curse/heal/pierce/steal)만 있어서, 그 태그를 스킬 이름처럼
   // 쓸 수 있게 명사형으로 다듬었다(combat/player-actions.js의 traitLabels —
   // "가끔 회복"처럼 서술형인 것과 별개 — 는 소환 시 안내 문구용이라 그대로 둠).
-  // 태그가 2개인 몬스터(예: 얼어붙은 유언 curse+heal)는 combat/battle-fx.js·
+  // 태그가 2개인 몬스터(예: 얼어붙은 외침 curse+heal)는 combat/battle-fx.js·
   // player-actions.js에서 이 표의 이름을 '·'로 이어붙여 표시한다.
   const NECRO_TRAIT_SKILL_NAMES = {bite:'흡혈', smash:'강타', curse:'저주 전이', heal:'회복의 손길', pierce:'처형', steal:'도둑질'};
 
@@ -199,7 +199,7 @@ export(전역): MONSTERS, TIER_MONSTER_POOLS, BOSSES, LOCATIONS, BOSS_PET_TRAITS
   const LOCATIONS = [
     {max:10, name:'이끼 낀 입구',        desc:'축축한 돌벽 사이로 곰팡이 냄새가 스며든다. 아직은 얕은 곳이다.'},
     {max:20, name:'무너진 회랑',         desc:'천장이 군데군데 무너져 내린 통로. 저 멀리서 무언가 움직이는 소리가 들린다.'},
-    {max:30, name:'망자의 묘실',         desc:'벽마다 새겨진 이름들이 횃불 빛에 일렁인다. 뼈 부딪는 소리가 가까워진다. 벽 한 귀퉁이, 빛바랜 문장(紋章) 조각이 아직도 붙어 있다.'},
+    {max:30, name:'봉쇄된 격리 병동',     desc:'문마다 빗장과 붉은 표식이 걸려 있고, 벽에는 환자들의 이름이 빼곡히 새겨져 있다. 어디선가 마른기침 같은 바람 소리가 새어 나온다. 벽 한 귀퉁이, 빛바랜 문장(紋章) 조각이 아직도 붙어 있다.'},
     {max:40, name:'저주받은 지하 신전',   desc:'보랏빛 안개가 바닥을 타고 흐른다. 이곳의 공기는 살아있는 것을 거부한다.'},
     {max:50, name:'타오르는 심연의 경계', desc:'벽 틈새로 붉은 열기가 스며 나온다. 발밑에서부터 무언가가 꿈틀거리는 것 같다.'},
     // 사용자 요청 — 최종보스 직전의 특수 2노드 구간("고요한 제단",

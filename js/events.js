@@ -1393,7 +1393,7 @@ export(전역): showMysteryEvent
   function showNurseryEvent(){
     const {overlay, panel} = eventOverlay('잠긴 육아실',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        회랑 깊은 곳, 오랫동안 열리지 않은 것 같은 작은 방을 발견했다. 문 틈으로 먼지 쌓인 목마 인형과, 한 번도 쓰인 흔적이 없는 작은 침대가 보인다. 서리 낀 창문 한쪽에, 작은 손바닥 자국이 희미하게 남아 있다.
+        회랑 깊은 곳, 오랫동안 열리지 않은 것 같은 작은 방을 발견했다. 문 틈으로 먼지 쌓인 목마 인형과 작은 침대가 보인다. 머리맡엔 식은 약사발과 마른 수건이 그대로 놓여 있고, 오래 누워 있던 작은 몸의 자국이 남은 이불자락엔 검은 얼룩이 번져 있다. 서리 낀 창문 한쪽에, 작은 손바닥 자국이 희미하게 남아 있다.
       </p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-take">목마 인형을 챙긴다</button>
@@ -1406,7 +1406,7 @@ export(전역): showMysteryEvent
       const already = player.equipOwned.includes('r_woodenhorse');
       if(!already) player.equipOwned.push('r_woodenhorse');
       showDialogueSequence([
-        '목마를 집어 드니, 손잡이가 유난히 매끈하게 닳아 있다. 오래도록, 자주 쥐었던 것처럼.',
+        '목마를 집어 드니, 손잡이가 유난히 매끈하게 닳아 있다. 자리에 누워서도 끝내 놓지 않았던 것처럼.',
         already ? '이미 하나 가지고 있었다는 걸 깨닫는다 — 어쩌면, 그때도 이곳에 와본 적이 있었던 걸까.' : '',
       ].filter(Boolean), {onDone: ()=>{
         renderStatus();
@@ -1442,7 +1442,7 @@ export(전역): showMysteryEvent
   function showGatekeeperLogEvent(){
     const {overlay, panel} = eventOverlay('닫히지 않는 문',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 14px;">
-        문지기의 근무일지, 마지막 장만 겨우 남아 있다.
+        성문 경비병의 근무일지, 마지막 장만 겨우 남아 있다.
       </p>`,
       `<div style="display:flex; flex-direction:column; gap:8px;">
         <button class="btn" id="me-read">근무일지를 읽는다 (안전, 소량 경험치)</button>

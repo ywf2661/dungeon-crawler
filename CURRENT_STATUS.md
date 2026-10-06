@@ -215,7 +215,7 @@
 - `data/monsters.js`에 `BOSS_PET_TRAITS` 맵 신설(보스 5종 각각 컨셉에 맞는
   태그 매핑) — `player-actions.js`의 necrosummon2 캐스트가 보스 계약 시
   `monsterData.skills` 대신 이 맵을 우선 참조하도록 수정.
-- 신규 태그 `pierce` 추가(해골 전사에 부여 — 기존엔 빈 skills:[]였음, 후반부
+- 신규 태그 `pierce` 추가(창이 되어가는 초병(구 해골 전사)에 부여 — 기존엔 빈 skills:[]였음, 후반부
   몬스터가 대부분 `smash` 하나로 몰려있어 태그 다양성도 부족했음). 일반 전투
   에선 데미지 배율 1.5x 강공격, necroPet에선 "적 HP 30% 이하일 때 추가
   50% 피해"(처형형) 효과로 다르게 동작(`combat/enemy-turn.js`).

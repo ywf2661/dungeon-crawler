@@ -88,7 +88,7 @@ Object.values(run('SPEC_ENDING_ANCHORS')).forEach(a=> assert.ok(endSrc.includes(
 ctx.base = (kind) => kind==='watcher'
   ? ['첫 줄', '이제 이 회랑의 가장 깊은 곳을 지키는 것은, 한때 용사였던 무언가다.']
   : kind==='progenitor'
-  ? ['첫 줄', '돌기둥이 하나씩 허물어지고, 회랑을 지탱하던 저주의 뿌리가 빛무리와 함께 흩어진다.', '끝']
+  ? ['첫 줄', '어딘가 더 깊은 곳에서, 시계 초침 소리가 아주 희미하게 울린다.', '끝']
   : ['첫 줄', '돌기둥이 하나씩 허물어지고, 시간의 파편들이 빛무리와 함께 흩어진다.', '끝'];
 // 앵커 바로 앞에 끼운다
 run("var w = insertSpecEndingLines(base('watcher'), 'paladin_knight', 'watcher', '테스터', false);");
@@ -96,10 +96,10 @@ assert.strictEqual(run('w.length'), 4);
 assert.ok(run("w[w.length-1].startsWith('이제 이 회랑의 가장 깊은 곳을')"), '앵커 줄이 맨 뒤에 유지');
 assert.ok(run("w.some(l=> typeof l==='string' && l.includes('테스터'))"), '기사 파수꾼 엔딩에 이름');
 run("var pr = insertSpecEndingLines(base('progenitor'), 'mage_time', 'progenitor', '테스터', false);");
-assert.ok(run("pr[pr.length-2].startsWith('돌기둥이 하나씩 허물어지고, 회랑을')"));
+assert.ok(run("pr[pr.length-2].startsWith('어딘가 더 깊은 곳에서, 시계 초침')"));
 // 마녀 재클리어는 마지막 줄 앞
-run("var wr = insertSpecEndingLines(['a','b','\"회랑, 두 번째로 놓아주다.\"'], 'warrior_chalna', 'witch', '테스터', true);");
-assert.strictEqual(run('wr[wr.length-1]'), '"회랑, 두 번째로 놓아주다."');
+run("var wr = insertSpecEndingLines(['a','b','\"회랑, 다시 놓아주다.\"'], 'warrior_chalna', 'witch', '테스터', true);");
+assert.strictEqual(run('wr[wr.length-1]'), '"회랑, 다시 놓아주다."');
 assert.strictEqual(run('wr.length'), 5);
 // 대상 밖 전직/전직 전/앵커 없음 → 그대로
 assert.strictEqual(run("insertSpecEndingLines(base('watcher'), 'warrior_purist', 'watcher', 'x', false).length"), 2);
