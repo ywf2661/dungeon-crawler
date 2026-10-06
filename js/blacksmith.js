@@ -387,7 +387,7 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
   }
   function renderBlacksmithHome(panel){
     const slots = ['weapon','armor','accessory'];
-    panel.innerHTML = `<h3>🔨 대장간</h3>
+    panel.innerHTML = `<button class="btn shop-x shop-close">떠나기</button><h3>🔨 대장간</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 12px;">지금 장착 중인 장비만 강화할 수 있다.</p>
       <p style="text-align:center;color:#ffd76a;font-size:14px;margin:0 0 14px;">🔶 보유 강화석: ${player.reinforceStones||0}개</p>
       ${slots.map(slot=>{
@@ -419,7 +419,7 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
             : `<button class="buy-btn" disabled>${enhList.length>=max?'최대 강화':'강화 불가'}</button>`)}
       </div>`;
       }).join('')}
-      <div style="text-align:center; margin-top:10px;"><button class="btn" id="blacksmith-close">떠나기</button></div>`;
+      <div style="text-align:center; margin-top:10px;"><button class="btn shop-close">떠나기</button></div>`;
     panel.querySelectorAll('.buy-btn[data-id]').forEach(b=>{
       b.addEventListener('click', ()=>{
         const slot = b.dataset.slot, id = b.dataset.id;
@@ -428,7 +428,7 @@ export(전역): ENHANCEMENTS, ENHANCE_MAX, ENHANCE_COST, getItemGrade, getEnhanc
         renderBlacksmithChoice(panel, slot, id, grade);
       });
     });
-    panel.querySelector('#blacksmith-close').addEventListener('click', ()=>panel.closest('.shop-overlay').remove());
+    panel.querySelectorAll('.shop-close').forEach(b=>b.addEventListener('click', ()=>panel.closest('.shop-overlay').remove()));
   }
   // 재추첨 비용 — 1회차 500, 2회차 800, 3회차부터는 1000 고정(사용자 요청).
   function getBlacksmithRerollCost(){

@@ -78,9 +78,6 @@ TIME_GUARDIAN 참고.
   // pickEnemy()가 정상적인 몬스터/보스 풀 대신 고정 중간보스를 내주도록 하는
   // 1회용 플래그. resolveNode()에서 세우고, pickEnemy() 안에서 소비 즉시 꺼진다.
   let nodeMidboss = false;
-  // 지도 접기/펼치기 상태(사용자 요청 — 지도가 항상 펼쳐져 있으면 장비/유물
-  // 같은 다른 메뉴 버튼을 누를 공간이 없어짐). 저장하지 않는 순수 화면 상태다.
-  let nodeMapCollapsed = false;
 
   // 절차적 생성: rowCount개의 "일반 행" + 마지막에 보스 행 1개를 덧붙인다.
   // 각 행은 2~3개 노드, 인접한 행끼리 1~2개씩 연결선을 잇되, 다음 행의 모든
@@ -150,6 +147,21 @@ TIME_GUARDIAN 참고.
         n.type = pool[Math.floor(Math.random()*pool.length)];
       });
     });
+
+    // 사용자 요청 — 휴식/상점이 같은 경로에서 연달아 나오지 않게, 휴식·상점
+    // 바로 다음 행에 이어진 휴식·상점 노드는 그 둘을 뺀 풀에서 다시 뽑는다.
+    // (위 행부터 순서대로 처리하므로 재배정된 노드의 다음 연결도 검사된다.)
+    const isRestShop = t=>t==='rest'||t==='shop';
+    const poolNoRestShop = weightedPool.filter(k=>!isRestShop(k));
+    const byId = {};
+    rows.forEach(row=>row.forEach(n=>{ byId[n.id]=n; }));
+    rows.forEach(row=>row.forEach(n=>{
+      if(!isRestShop(n.type)) return;
+      n.connections.forEach(cid=>{
+        const c = byId[cid];
+        if(c && isRestShop(c.type)) c.type = poolNoRestShop[Math.floor(Math.random()*poolNoRestShop.length)];
+      });
+    }));
 
     // 시간의 파수꾼(사용자 기획) — tierIndex===2 노드맵 중간에 강제 수렴
     // 'midboss' 행을 하나 끼워 넣는다. 보스 행과 완전히 같은 원리(이전 행
@@ -221,16 +233,6 @@ TIME_GUARDIAN 참고.
     } else {
       Sound.setBgmMode('dungeon', {force:true});
     }
-    // 사용자 요청: 새 구간에 들어서면 지도가 출발 지점(맨 위, row 0)부터
-    // 보이도록 스크롤을 초기화한다. #node-map-area는 구간이 바뀌어도 DOM
-    // 요소 자체는 그대로 재사용되고 안쪽 내용만 다시 그려지므로, 이전 구간
-    // 끝(보스 근처)에서 스크롤해둔 위치가 새 지도에도 그대로 남아있었다.
-    // renderExplore()가 이미 지도를 다 그린 뒤이므로, 레이아웃이 확정되는
-    // 다음 프레임에 스크롤을 되돌린다.
-    requestAnimationFrame(()=>{
-      const area = document.getElementById('node-map-area');
-      if(area) area.scrollTop = 0;
-    });
   }
 
   // 지금 구간에서 "가상 층수" — 실제 depth는 보스를 잡아야만 오르지만, 전투
@@ -367,29 +369,61 @@ TIME_GUARDIAN 참고.
     // 요청으로 노드맵 진행 중에도 계속 노출한다.
     if(btnNecropact) btnNecropact.style.display = hasNecropact ? 'block' : 'none';
 
+    // 사용자 요청 — 지도가 화면을 차지해 아이템/장비/유물 버튼이 밀려나던 문제.
+    // 탐험 화면에는 "지나온 길 + 다음 길" 요약 한 줄만 두고, 전체 지도는
+    // 🗺 버튼으로 여는 오버레이(openNodeMapOverlay)에서 본다. 다음 노드는
+    // 요약 줄에서 바로 고를 수 있다.
     const totalSteps = player.nodeMap.length;
-    const progressLabel = document.getElementById('node-map-progress');
-    if(progressLabel){
-      const stepNow = Math.min(player.nodeRow+1, totalSteps-1);
-      // 접기/펼치기 토글(사용자 요청 — 지도가 펼쳐져 있으면 장비/유물 등 다른
-      // 메뉴 버튼을 누를 공간이 없어졌었다). nodeMapCollapsed는 저장하지 않는
-      // 순전한 화면 상태다 — 새로고침하면 다시 펼쳐진 채로 시작해도 무방하다.
-      progressLabel.innerHTML =
-        `<span style="display:flex; justify-content:space-between; align-items:center;">`
-        + `<span>구간 진행 ${stepNow}/${totalSteps-1}</span>`
-        + `<button id="node-map-toggle" class="btn" style="padding:3px 10px; font-size:11px; width:auto; pointer-events:auto;">${nodeMapCollapsed?'지도 펼치기 ▼':'지도 접기 ▲'}</button>`
-        + `</span>`;
-      const toggleBtn = document.getElementById('node-map-toggle');
-      if(toggleBtn) toggleBtn.addEventListener('click', ()=>{
-        nodeMapCollapsed = !nodeMapCollapsed;
-        renderNodeMapArea();
-      });
-    }
+    const stepNow = Math.min(player.nodeRow+1, totalSteps-1);
+    const hideAll = (typeof hasRelicFlag==='function') && hasRelicFlag('hideDepth');
+    const curNode = player.nodeRow>=0 ? player.nodeMap[player.nodeRow].find(n=>n.id===player.nodeCurrentId) : null;
+    const byId = {};
+    player.nodeMap.forEach(row=>row.forEach(n=>{ byId[n.id]=n; }));
+    const trail = (player.nodeVisited||[]).map(id=>byId[id]).filter(Boolean)
+      .map(n=>(NODE_TYPES[n.type]||NODE_TYPES.combat).icon);
+    const nextRow = player.nodeMap[player.nodeRow+1] || [];
+    const nextHtml = nextRow.filter(n=>!curNode || curNode.connections.includes(n.id)).map(n=>{
+      const def = hideAll ? {icon:'❓', label:'???'} : (NODE_TYPES[n.type] || NODE_TYPES.combat);
+      return `<button class="node-btn node-available${n.type==='midboss'?' node-midboss':''}" data-node="${n.id}">`
+        + `<span class="node-icon">${def.icon}</span><span class="node-label">${def.label}</span></button>`;
+    }).join('');
+    area.innerHTML =
+      `<div class="nm-head"><span>구간 진행 ${stepNow}/${totalSteps-1}</span>`
+      + `<button class="btn btn-primary nm-open" id="node-map-open">🗺 전체 지도</button></div>`
+      + `<div class="nm-trail">${trail.length ? '지나온 길 '+trail.join(' → ') : '구간 입구'}</div>`
+      + (nextHtml ? `<div class="nm-next-label">갈림길</div><div class="nm-next">${nextHtml}</div>` : '');
+    area.querySelectorAll('[data-node]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ Sound.click(); pickNode(btn.dataset.node); });
+    });
+    area.querySelector('#node-map-open').addEventListener('click', ()=>{ Sound.click(); openNodeMapOverlay(); });
+  }
 
-    const rowsEl = document.getElementById('node-map-rows');
-    if(!rowsEl) return;
-    rowsEl.style.display = nodeMapCollapsed ? 'none' : 'flex';
-    if(nodeMapCollapsed) return; // 접혀 있으면 행 자체를 안 그린다(다른 버튼 누를 공간 확보)
+  // 전체 지도 오버레이 — 상점과 같은 .shop-overlay/.shop-panel 패턴. 여기서
+  // 노드를 골라도 진행되며, 고르는 즉시 오버레이를 닫는다.
+  function openNodeMapOverlay(){
+    const old = document.getElementById('node-map-overlay');
+    if(old) old.remove();
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    overlay.id = 'node-map-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    if(player.tierIndex===5 && !player.endingSeen) panel.classList.add('node-map-dread');
+    panel.innerHTML = `<button class="btn shop-x shop-close">✕ 닫기</button><h3>전체 지도</h3><div id="node-map-rows"></div>`;
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
+    const close = ()=>overlay.remove();
+    panel.querySelector('.shop-close').addEventListener('click', close);
+    overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
+    renderNodeMapRows(panel.querySelector('#node-map-rows'), close);
+    // 지도가 패널보다 길면 지금 위치 근처가 보이도록 스크롤해 둔다.
+    requestAnimationFrame(()=>{
+      const here = panel.querySelector('.node-available') || panel.querySelector('.node-visited-chosen');
+      if(here) here.scrollIntoView({block:'center'});
+    });
+  }
+
+  function renderNodeMapRows(rowsEl, onPick){
     // 유물 "hideDepth"(깊이를 알 수 없게 만드는 유물): 아직 안 가본 노드는
     // 종류를 미리 보여주면 안 되는 게 컨셉이라, 지나온/현재 노드를 제외한 전부를
     // 물음표로 가린다(보스 행 포함 — "여기가 보스"라는 정보 자체도 숨긴다).
@@ -426,7 +460,7 @@ TIME_GUARDIAN 참고.
       return `<div class="node-row">${nodesHtml}</div>`;
     }).join('');
     rowsEl.querySelectorAll('[data-node]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{ Sound.click(); pickNode(btn.dataset.node); });
+      btn.addEventListener('click', ()=>{ Sound.click(); onPick(); pickNode(btn.dataset.node); });
     });
     // 연결선(사용자 요청 — "어디로 갈 수 있는지 보이면 좋겠다"): 버튼이 실제로
     // 배치된 뒤에야 정확한 좌표를 잴 수 있으므로 다음 프레임에 그린다.
@@ -437,7 +471,7 @@ TIME_GUARDIAN 참고.
   // 때마다(다음 노드 선택, 탭 전환 등) 버튼 위치가 바뀔 수 있기 때문이다.
   function renderNodeMapConnections(){
     const container = document.getElementById('node-map-rows');
-    if(!container || nodeMapCollapsed) return;
+    if(!container) return;
     let svg = document.getElementById('node-map-svg');
     if(!svg){
       svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

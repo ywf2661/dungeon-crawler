@@ -94,7 +94,7 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
       </div>
     `;
     }).join('') : `<div style="color:var(--parchment-dim); font-size:13px; font-style:italic; text-align:center; padding:8px;">오늘은 팔 만한 소모품이 없다.</div>`;
-    panel.innerHTML = `<h3>떠돌이 상인</h3>`
+    panel.innerHTML = `<button class="btn shop-x shop-close">떠나기</button><h3>떠돌이 상인</h3>`
       + debtSectionHtml
       + `<div style="font-family:Cinzel; color:var(--gold); font-size:12.5px; letter-spacing:.05em; margin:14px 0 2px;">소모품</div>`
       + consumableSectionHtml
@@ -112,7 +112,7 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
         <button class="buy-btn" data-kind="equip" data-key="${id}" data-price="${price}" ${(owned||player.gold<price)?'disabled':''}>${owned?'보유중':price+'G 구매'}</button>
       </div>` ;
       }).join('') : `<div style="color:var(--parchment-dim); font-size:13px; font-style:italic; text-align:center; padding:8px;">아직 팔 만한 장비가 없다.</div>`)
-      + `<div style="text-align:center; margin-top:10px;"><button class="btn" id="shop-close">떠나기</button></div>`;
+      + `<div style="text-align:center; margin-top:10px;"><button class="btn shop-close">떠나기</button></div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
     panel.querySelectorAll('.buy-btn').forEach(b=>{
@@ -154,7 +154,7 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
         overlay.remove(); openShop(true);
       });
     });
-    panel.querySelector('#shop-close').addEventListener('click', ()=>overlay.remove());
+    panel.querySelectorAll('.shop-close').forEach(b=>b.addEventListener('click', ()=>overlay.remove()));
   }
 
   // ---------- 정예의 교환소 ----------
@@ -190,7 +190,7 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
     const seals = player.eliteSeals||0;
     const stock = player.exchangeStock;
     const canRefresh = seals >= EXCHANGE_REFRESH_COST;
-    panel.innerHTML = `<h3>정예의 교환소</h3>
+    panel.innerHTML = `<button class="btn shop-x shop-close">떠나기</button><h3>정예의 교환소</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 12px;">정예 몬스터를 처치하면 얻는 정예의 인장을 모아, 원하는 에픽 장비와 직접 교환할 수 있다.</p>
       <p style="text-align:center;color:#ffd76a;font-size:14px;margin:0 0 14px;">🔱 보유 인장: ${seals}개</p>
       ${stock.length ? stock.map(id=>{
@@ -207,7 +207,7 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
       }).join('') : `<div style="color:var(--parchment-dim); font-size:13px; font-style:italic; text-align:center; padding:8px;">지금 교환할 수 있는 에픽 장비가 없다(이미 다 모았거나, 아직 이 깊이에서 안 풀렸다).</div>`}
       <div style="text-align:center; margin:10px 0;"><button class="btn" id="exchange-refresh" ${canRefresh?'':'disabled'}>🔄 목록 새로고침 (인장 ${EXCHANGE_REFRESH_COST}개)</button></div>
       <p style="text-align:center;color:var(--parchment-dim);font-size:11px;font-style:italic;margin:-6px 0 10px;">다음 마을에 도착하면 목록이 자연히 새로 뽑힌다.</p>
-      <div style="text-align:center;"><button class="btn" id="exchange-close">떠나기</button></div>`;
+      <div style="text-align:center;"><button class="btn shop-close">떠나기</button></div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
     panel.querySelectorAll('.buy-btn').forEach(b=>{
@@ -232,5 +232,5 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
       saveGame();
       overlay.remove(); openExchange();
     });
-    panel.querySelector('#exchange-close').addEventListener('click', ()=>overlay.remove());
+    panel.querySelectorAll('.shop-close').forEach(b=>b.addEventListener('click', ()=>overlay.remove()));
   }
