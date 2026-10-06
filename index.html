@@ -385,6 +385,10 @@
   }
   .node-btn.node-visited-skip{opacity:0.35; cursor:default; filter:grayscale(0.6);}
   .node-btn.node-locked{opacity:0.4; cursor:not-allowed; filter:grayscale(0.4);}
+  /* 딜러의 장갑 바꿔치기 모드(js/nodemap.js) — 대상 칸은 잠김 표시를 덮어쓰고 금빛으로, 나머지는 흐리게. */
+  .node-btn.node-swap-target{opacity:1 !important; filter:none !important; border-color:var(--gold-bright) !important; box-shadow:0 0 10px #e6c34a77; cursor:pointer; position:relative;}
+  .node-btn.node-swap-picked{translate:0 -6px; box-shadow:0 0 18px #e6c34acc;}
+  .node-btn.node-swap-dim{opacity:.3;}
   .node-btn:disabled{pointer-events:none;}
   @keyframes midbosspulse{
     0%,100%{box-shadow:0 0 8px #9a6ad655, inset 0 0 3px #c9a8ff66;}

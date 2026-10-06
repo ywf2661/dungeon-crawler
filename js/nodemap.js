@@ -330,6 +330,53 @@ TIME_GUARDIAN 참고.
     }
   }
 
+  // 딜러의 장갑(relic_dealerglove, js/jester-shell.js) 바꿔치기 모드. 켜져 있으면 전체 지도
+  // 오버레이에서 대상 칸만 누를 수 있고(이동 없음), 두 칸을 고르면 야바위 컵처럼 엇갈리는
+  // 연출 뒤 종류를 맞바꾼다. 오버레이를 닫으면 모드도 꺼진다.
+  let nodeSwapMode = false;
+  let nodeSwapFirst = null;
+  let nodeSwapAnimating = false;
+  function findMapNode(id){
+    for(const row of (player.nodeMap||[])){ const n = row.find(x=>x.id===id); if(n) return n; }
+    return null;
+  }
+  function commitNodeSwap(a, b){
+    const hidden = typeof hasRelicFlag==='function' && hasRelicFlag('hideDepth');
+    const la = (NODE_TYPES[a.type]||{}).label, lb = (NODE_TYPES[b.type]||{}).label;
+    [a.type, b.type] = [b.type, a.type];
+    player.nodeSwapTier = player.tierIndex;
+    nodeSwapMode = false; nodeSwapFirst = null; nodeSwapAnimating = false;
+    addLog(hidden ? '🫳 딜러의 장갑으로 무언가를 바꿔쳤다.' : `🫳 딜러의 장갑으로 [${la}]과(와) [${lb}]을(를) 바꿔쳤다.`, 'gold');
+    saveGame();
+    refreshNodeMapOverlay();
+    renderNodeMapArea();
+  }
+  function onNodeSwapPick(id){
+    if(nodeSwapAnimating) return;
+    if(!nodeSwapFirst || nodeSwapFirst===id){
+      nodeSwapFirst = nodeSwapFirst===id ? null : id;
+      refreshNodeMapOverlay();
+      return;
+    }
+    const a = findMapNode(nodeSwapFirst), b = findMapNode(id);
+    if(!canSwapNodePair(a, b)){ addLog('같은 종류의 칸끼리는 바꿔칠 수 없다.'); return; }
+    const elA = document.querySelector(`#node-map-rows [data-nodeid="${a.id}"]`);
+    const elB = document.querySelector(`#node-map-rows [data-nodeid="${b.id}"]`);
+    if(!elA || !elB || typeof elA.animate!=='function'){ commitNodeSwap(a, b); return; }
+    nodeSwapAnimating = true;
+    const ra = elA.getBoundingClientRect(), rb = elB.getBoundingClientRect();
+    const dx = rb.left-ra.left, dy = rb.top-ra.top;
+    const opt = {duration:520, easing:'ease-in-out', fill:'forwards'};
+    elA.style.zIndex = 3; elB.style.zIndex = 1;
+    elA.animate([{transform:'translate(0,0)'}, {transform:`translate(${dx/2}px,${dy/2+14}px) scale(1.15)`}, {transform:`translate(${dx}px,${dy}px)`}], opt);
+    const animB = elB.animate([{transform:'translate(0,0)'}, {transform:`translate(${-dx/2}px,${-dy/2-10}px) scale(0.88)`}, {transform:`translate(${-dx}px,${-dy}px)`}], opt);
+    animB.onfinish = ()=> commitNodeSwap(a, b);
+  }
+  function swapButtonHtml(){
+    if(nodeSwapMode) return `<button class="btn" id="node-swap-btn">✕ 바꿔치기 취소</button>`;
+    return (typeof nodeSwapAvailable==='function' && nodeSwapAvailable(player)) ? `<button class="btn" id="node-swap-btn">🫳 바꿔치기</button>` : '';
+  }
+
   // 탐험 화면(#screen-explore) 안에 끼워넣는 노드맵 영역 렌더. 새 화면을 따로
   // 안 만들어서(전투/제단/상점 복귀 로직을 그대로 재사용하기 위함), 이 함수는
   // explore.js의 renderExplore() 안에서 매번 호출된다.
@@ -389,13 +436,18 @@ TIME_GUARDIAN 참고.
     }).join('');
     area.innerHTML =
       `<div class="nm-head"><span>구간 진행 ${stepNow}/${totalSteps-1}</span>`
-      + `<button class="btn btn-primary nm-open" id="node-map-open">🗺 전체 지도</button></div>`
+      + `<span style="display:flex; gap:6px;">`
+      + (!nodeSwapMode && typeof nodeSwapAvailable==='function' && nodeSwapAvailable(player) ? `<button class="btn nm-open" id="node-swap-btn">🫳 바꿔치기</button>` : '')
+      + `<button class="btn btn-primary nm-open" id="node-map-open">🗺 전체 지도</button></span></div>`
       + `<div class="nm-trail">${trail.length ? '지나온 길 '+trail.join(' → ') : '구간 입구'}</div>`
       + (nextHtml ? `<div class="nm-next-label">갈림길</div><div class="nm-next">${nextHtml}</div>` : '');
     area.querySelectorAll('[data-node]').forEach(btn=>{
       btn.addEventListener('click', ()=>{ Sound.click(); pickNode(btn.dataset.node); });
     });
     area.querySelector('#node-map-open').addEventListener('click', ()=>{ Sound.click(); openNodeMapOverlay(); });
+    // 칸은 전체 지도에서 고르므로, 요약 줄의 바꿔치기 버튼은 모드를 켜고 지도를 연다.
+    const swapBtn = area.querySelector('#node-swap-btn');
+    if(swapBtn) swapBtn.addEventListener('click', ()=>{ Sound.click(); nodeSwapMode = true; nodeSwapFirst = null; openNodeMapOverlay(); });
   }
 
   // 전체 지도 오버레이 — 상점과 같은 .shop-overlay/.shop-panel 패턴. 여기서
@@ -409,18 +461,43 @@ TIME_GUARDIAN 참고.
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
     if(player.tierIndex===5 && !player.endingSeen) panel.classList.add('node-map-dread');
-    panel.innerHTML = `<button class="btn shop-x shop-close">✕ 닫기</button><h3>전체 지도</h3><div id="node-map-rows"></div>`;
+    panel.innerHTML = `<button class="btn shop-x shop-close">✕ 닫기</button><h3>전체 지도</h3><div id="node-swap-bar"></div><div id="node-map-rows"></div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
-    const close = ()=>overlay.remove();
-    panel.querySelector('.shop-close').addEventListener('click', close);
-    overlay.addEventListener('click', e=>{ if(e.target===overlay) close(); });
-    renderNodeMapRows(panel.querySelector('#node-map-rows'), close);
+    panel.querySelector('.shop-close').addEventListener('click', closeNodeMapOverlay);
+    overlay.addEventListener('click', e=>{ if(e.target===overlay) closeNodeMapOverlay(); });
+    refreshNodeMapOverlay();
     // 지도가 패널보다 길면 지금 위치 근처가 보이도록 스크롤해 둔다.
     requestAnimationFrame(()=>{
       const here = panel.querySelector('.node-available') || panel.querySelector('.node-visited-chosen');
       if(here) here.scrollIntoView({block:'center'});
     });
+  }
+
+  // 바꿔치기 연출 도중엔 닫지 않는다(끝나면 바로 맞바뀌므로 반 초만 기다리면 된다).
+  function closeNodeMapOverlay(){
+    if(nodeSwapAnimating) return;
+    nodeSwapMode = false; nodeSwapFirst = null;
+    const o = document.getElementById('node-map-overlay');
+    if(o) o.remove();
+  }
+  // 열려 있는 전체 지도의 바꿔치기 줄과 칸을 다시 그린다(닫혀 있으면 아무것도 안 함).
+  function refreshNodeMapOverlay(){
+    const rows = document.getElementById('node-map-rows');
+    const bar = document.getElementById('node-swap-bar');
+    if(!rows) return;
+    if(bar){
+      const guide = nodeSwapMode ? `<div style="color:var(--gold-bright); font-size:12px; margin-top:4px;">바꿔칠 칸 두 개를 고르세요 (보스·제단 제외, 같은 종류끼리는 불가)</div>` : '';
+      bar.innerHTML = swapButtonHtml() ? `<div style="text-align:center; margin-bottom:8px;">${swapButtonHtml()}${guide}</div>` : '';
+      const btn = bar.querySelector('#node-swap-btn');
+      if(btn) btn.addEventListener('click', ()=>{
+        if(nodeSwapAnimating) return;
+        Sound.click();
+        nodeSwapMode = !nodeSwapMode; nodeSwapFirst = null;
+        refreshNodeMapOverlay();
+      });
+    }
+    renderNodeMapRows(rows, closeNodeMapOverlay);
   }
 
   function renderNodeMapRows(rowsEl, onPick){
@@ -429,6 +506,7 @@ TIME_GUARDIAN 참고.
     // 물음표로 가린다(보스 행 포함 — "여기가 보스"라는 정보 자체도 숨긴다).
     const hideAll = (typeof hasRelicFlag==='function') && hasRelicFlag('hideDepth');
     const curNode = player.nodeRow>=0 ? player.nodeMap[player.nodeRow].find(n=>n.id===player.nodeCurrentId) : null;
+    const swapIds = nodeSwapMode ? new Set(nodeSwapCandidates(player.nodeMap, player.nodeRow).map(n=>n.id)) : null;
     rowsEl.innerHTML = player.nodeMap.map((row, rIdx)=>{
       const isPast = rIdx <= player.nodeRow;
       const isNext = rIdx === player.nodeRow+1;
@@ -453,7 +531,18 @@ TIME_GUARDIAN 참고.
         // data-nodeid는 클릭 가능 여부와 무관하게 항상 붙인다 — 연결선을 그릴 때
         // 모든 노드(잠긴 것 포함)의 화면 위치를 찾아야 하기 때문. 클릭 핸들러는
         // data-node(클릭 가능한 것에만 붙는 별도 속성)로만 건다.
-        return `<button class="${cls}" data-nodeid="${n.id}" ${clickable?`data-node="${n.id}"`:'disabled'}>`
+        // 바꿔치기 모드에선 data-node(이동)를 아예 안 붙이고 대상 칸에만 data-swap을 붙인다.
+        let attrs = clickable ? `data-node="${n.id}"` : 'disabled';
+        if(swapIds){
+          if(swapIds.has(n.id)){
+            cls += ' node-swap-target' + (nodeSwapFirst===n.id ? ' node-swap-picked' : '');
+            attrs = `data-swap="${n.id}"`;
+          } else {
+            cls += ' node-swap-dim';
+            attrs = 'disabled';
+          }
+        }
+        return `<button class="${cls}" data-nodeid="${n.id}" ${attrs}>`
           + `<span class="node-icon">${def.icon}</span><span class="node-label">${def.label}</span>`
           + `</button>`;
       }).join('');
@@ -461,6 +550,9 @@ TIME_GUARDIAN 참고.
     }).join('');
     rowsEl.querySelectorAll('[data-node]').forEach(btn=>{
       btn.addEventListener('click', ()=>{ Sound.click(); onPick(); pickNode(btn.dataset.node); });
+    });
+    rowsEl.querySelectorAll('[data-swap]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ Sound.click(); onNodeSwapPick(btn.dataset.swap); });
     });
     // 연결선(사용자 요청 — "어디로 갈 수 있는지 보이면 좋겠다"): 버튼이 실제로
     // 배치된 뒤에야 정확한 좌표를 잴 수 있으므로 다음 프레임에 그린다.
