@@ -177,6 +177,12 @@ assert.strictEqual(run('bjOutcome([10,9],[10,6,8])'), 'win', '보스가 넘으�
 assert.strictEqual(run('bjOutcome([10,9],[10,7])'), 'win');
 assert.strictEqual(run('bjOutcome([10,7],[10,9])'), 'lose');
 assert.strictEqual(run('bjOutcome([10,8],[9,9])'), 'push');
+// 결과 문구: 왜 이겼는지/졌는지 보여 준다
+assert.strictEqual(run("bjResultText([7,9,6],[1,12],'시조')"), '22 — 21을 넘었다. 졌다.');
+assert.strictEqual(run("bjResultText([10,9],[10,6,8],'시조')"), '시조 24 — 21을 넘었다. 이겼다.');
+assert.strictEqual(run("bjResultText([10,9],[10,7],'시조')"), '19 대 17 — 내가 21에 더 가깝다. 이겼다.');
+assert.strictEqual(run("bjResultText([10,8],[1,12],'시조')"), '18 대 21 — 시조이(가) 21에 더 가깝다. 졌다.');
+assert.strictEqual(run("bjResultText([10,8],[9,9],'시조')"), '18 대 18 — 비겼다. 다시 나눈다.');
 
 // ── 유물 정의(relics.js): 이벤트 전용(제단 제외) + 도감 완성 조건 제외 ──
 const rctx = vm.createContext({console, Math});

@@ -78,7 +78,10 @@ export(전역): showBossGambleOffer, hideBossGambleOffer, startBossGamble, resol
   function showFinal21(onResult){
     const intro = FINAL21_INTRO[enemy.type] || `${enemy.name}이(가) 딜러의 손에서 카드를 받아 든다.`;
     const {overlay, panel} = eventOverlay('시간의 스물하나',
-      `<p style="${DEN_INTRO_STYLE}">${intro}<br>21에 더 가까운 쪽이 이긴다. 넘으면 진다. 넘었을 때 한 번, 시간을 되감을 수 있다.</p>
+      `<p style="${DEN_INTRO_STYLE}">${intro}</p>
+      <p class="jt-hint">카드 숫자를 더해 21에 더 가까운 쪽이 이긴다. 21을 넘으면 그 자리에서 진다.<br>
+        A는 11 또는 1(넘을 땐 1), J·Q·K는 10. ${enemy.name}은(는) 17이 될 때까지 받는다.<br>
+        21을 넘었을 때 한 번, 시간을 되감아 방금 받은 카드를 무를 수 있다.</p>
       <div class="th-row" id="f21-boss"></div><p class="jt-hint" id="f21-boss-sum"></p>
       <div class="th-row" id="f21-me"></div><p class="jt-hint" id="f21-me-sum"></p>
       <p id="f21-info" style="${DEN_INFO_STYLE}"></p>`,
@@ -96,31 +99,30 @@ export(전역): showBossGambleOffer, hideBossGambleOffer, startBossGamble, resol
     };
     const finish = res=>{
       hidden = false; draw();
-      const line = `${bjTotal(me)} 대 ${bjTotal(boss)}`;
+      info.textContent = bjResultText(me, boss, enemy.name);
       if(res==='push'){
-        info.textContent = `${line} — 비겼다. 다시 나눈다.`;
         denButtons(btns, [{label:'다시 받는다', on:deal}]);
         return;
       }
       const won = res==='win';
-      info.textContent = `${line} — ${won ? '이겼다.' : '졌다.'}`;
       denButtons(btns, [{label: won ? '판을 거둔다' : '일어선다', on:()=>{ overlay.remove(); onResult(won); }}]);
     };
     const myTurn = ()=>{
       const t = bjTotal(me);
       if(t > 21){
-        info.textContent = `${t} — 넘었다.`;
+        const last = jesterTableCardLabel(me[me.length-1]);
+        info.textContent = rewindLeft > 0 ? `${t} — 21을 넘었다! 되감으면 방금 받은 ${last}을(를) 무를 수 있다.` : `${t} — 21을 넘었다.`;
         const opts = [];
         if(rewindLeft > 0) opts.push({label:'⏳ 시간을 되감는다 (1회)', on:()=>{
           rewindLeft--; me.pop(); draw();
           info.textContent = '모래가 거꾸로 흐른다. 방금 받은 카드는, 받지 않은 것이 되었다.';
           later(myTurn, 700);
         }});
-        opts.push({label:'받아들인다', on:()=> finish('lose')});
+        opts.push({label: rewindLeft > 0 ? '되감지 않는다 (진다)' : '일어선다', on:()=> finish('lose')});
         denButtons(btns, opts);
         return;
       }
-      info.textContent = t===21 ? '21.' : `${t}. 한 장 더?`;
+      info.textContent = t===21 ? '21 — 더 받을 필요 없다.' : `${t} — 21까지 ${21-t}. 한 장 더 받을까?`;
       denButtons(btns, [
         {label:'한 장 더', on:()=>{ me.push(jesterTableDraw()); draw(); later(myTurn, 350); }},
         {label:'멈춘다', on:stand},

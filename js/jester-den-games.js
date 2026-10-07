@@ -6,7 +6,7 @@ export(전역): RAT_TRACK, RAT_HALF, RAT_KINDS, denShuffle, ratLineup, ratCrumbs
        THIEF_JOKER, thiefDeal, thiefTake, thiefWinner, thiefTell, thiefDealerPick, thiefPayout,
        DEN_PRIZE_KINDS, pickDenPrizeKind, denRelicRoll, EDGE_CANDLE_RELIC, getLowHpLuckBonus,
        JESTER_SET_RELICS, jesterSetComplete, bossGambleEligible, BOSS_GAMBLE_GAMES, bossGambleGame,
-       BOSS_TABLE_STREAK, BOSS_SHELL_HITS, bjTotal, bjDealerHits, bjOutcome
+       BOSS_TABLE_STREAK, BOSS_SHELL_HITS, bjTotal, bjDealerHits, bjOutcome, bjResultText
 주의: 화면은 jester-den.js(showRatRace/showThiefGame). 이 파일은 DOM을 만지지 않는다
      (tests/jester-den-games.test.js가 node vm으로 바로 불러 쓴다). 난수는 전부 rng 인자(없으면 Math.random).
 */
@@ -177,4 +177,13 @@ export(전역): RAT_TRACK, RAT_HALF, RAT_KINDS, denShuffle, ratLineup, ratCrumbs
     if(a > 21) return 'lose';
     if(b > 21) return 'win';
     return a > b ? 'win' : a < b ? 'lose' : 'push';
+  }
+  // 결과 문구 — 21을 넘어서인지, 상대가 넘어서인지, 누가 더 가까워서인지까지 보여 준다(블랙잭을 몰라도 읽히게).
+  function bjResultText(mine, theirs, bossName){
+    const a = bjTotal(mine), b = bjTotal(theirs);
+    if(a > 21) return `${a} — 21을 넘었다. 졌다.`;
+    if(b > 21) return `${bossName} ${b} — 21을 넘었다. 이겼다.`;
+    if(a > b) return `${a} 대 ${b} — 내가 21에 더 가깝다. 이겼다.`;
+    if(a < b) return `${a} 대 ${b} — ${bossName}이(가) 21에 더 가깝다. 졌다.`;
+    return `${a} 대 ${b} — 비겼다. 다시 나눈다.`;
   }
