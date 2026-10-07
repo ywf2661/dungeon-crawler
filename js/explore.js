@@ -237,6 +237,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       setupAdminMonsterTest({level:15, tierIndex:3, types:['tome','tailor','hornbeast'], label:'회랑의 금서/회랑의 재단사/회랑의 뿔짐승'});
       return;
     }
+    // [디버그 전용] "admin7"(도박사): 숨겨진 도박장 게임 테스트 — 보스 칸을 뺀 모든 칸이 🕯 숨겨진 도박장.
+    if(player.name && player.name.trim().toLowerCase()==='admin7' && player.job==='jester'){
+      setupAdminDenTest();
+      return;
+    }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
     // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
     // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
@@ -397,6 +402,24 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     showScreen('explore');
     renderStatus();
     renderExplore([`[관리자 테스트] 레벨${opts.level} · 포션 최대 · ${opts.tierIndex+1}구간(${opts.tierIndex*10}층대) 마을에서 시작. ${opts.msg || `"나아가기" 후 전투/정예 노드를 고르면 ${opts.label}이(가) 나온다.`}`]);
+    saveGame();
+  }
+
+  // [디버그 전용] 숨겨진 도박장 테스트(admin7). 골드 5000 + 딜러의 장갑, 1구간 노드맵에서 바로 시작하고
+  // 보스 칸을 뺀 모든 칸을 도박장({type:'secret', secretKind:'den'})으로 바꾼다 — 한 판에 여러 번 들어갈 수 있다.
+  function setupAdminDenTest(){
+    player.gold = 5000;
+    if(!player.relics.includes('relic_dealerglove')){ player.relics.push('relic_dealerglove'); addToRelicDex('relic_dealerglove'); }
+    player.tierIndex = 0;
+    town = false;
+    depth = 1;
+    player.townCheckpoint = makeTownCheckpoint();
+    document.getElementById('statusbar').style.display='flex';
+    showScreen('explore');
+    enterNodeMapTier();
+    player.nodeMap.forEach(row=> row.forEach(n=>{ if(n.type!=='boss'){ n.type = 'secret'; n.secretKind = 'den'; } }));
+    renderStatus();
+    renderExplore(['[관리자 테스트] 골드 5000 · 딜러의 장갑. 보스 칸을 뺀 모든 칸이 🕯 숨겨진 도박장이다(4개 게임 중 2개가 무작위로 뜬다).']);
     saveGame();
   }
 
