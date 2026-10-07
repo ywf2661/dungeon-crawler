@@ -45,6 +45,11 @@
 - 버튼 행 → `index.html`(명령 영역 위), 숨김 훅 → `combat/battle-fx.js`의 `setCommandsEnabled`, 제안 → `combat/battle-setup.js`
   `startBattle()` 끝, 초기화 → `nodemap.js`(`pickNode`/`enterNodeMapTier`), 세트 장면 → `relics.js`의 `finalizeRelicPick` 끝.
 
+## 테스트 모드
+
+- `admin8`(도박사): 유물 3개 보유, 1구간 지도가 휴식 → 층별보스 두 칸. `admin9`(도박사): 유물 3개 보유, 고요한 제단(준비 칸 → 최종보스).
+  둘 다 세트 완성 장면은 본 것으로 둔다(구현 중 추가 — 바로 확인용).
+
 ## 범위 밖
 
 - 보스전 도박 전용 보상(추가 보상 없음 — 보스 처치 보상 그대로).

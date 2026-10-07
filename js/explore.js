@@ -242,6 +242,13 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       setupAdminDenTest();
       return;
     }
+    // [디버그 전용] "admin8"/"admin9"(도박사): 딜러의 판 테스트 — 도박사 유물 3개 보유.
+    // admin8은 1구간(휴식 → 층별보스), admin9는 고요한 제단(준비 칸 → 최종보스).
+    const adminGambleName = player.name && player.name.trim().toLowerCase();
+    if((adminGambleName==='admin8' || adminGambleName==='admin9') && player.job==='jester'){
+      setupAdminBossGambleTest(adminGambleName==='admin9' ? 5 : 0);
+      return;
+    }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
     // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
     // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
@@ -420,6 +427,28 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     player.nodeMap.forEach(row=> row.forEach(n=>{ if(n.type!=='boss'){ n.type = 'secret'; n.secretKind = 'den'; } }));
     renderStatus();
     renderExplore(['[관리자 테스트] 골드 5000 · 딜러의 장갑. 보스 칸을 뺀 모든 칸이 🕯 숨겨진 도박장이다(4개 게임 중 2개가 무작위로 뜬다).']);
+    saveGame();
+  }
+
+  // [디버그 전용] 딜러의 판 테스트(admin8: tier 0, admin9: tier 5). 도박사 유물 3개(js/jester-den-games.js의
+  // JESTER_SET_RELICS)를 쥐여 주고, 보스 칸 바로 앞에서 시작한다. 세트 완성 장면은 본 것으로 둔다.
+  function setupAdminBossGambleTest(tier){
+    player.gold = 3000;
+    player.relicSlots = Math.max(player.relicSlots||2, 3);
+    JESTER_SET_RELICS.forEach(id=>{ if(!player.relics.includes(id)){ player.relics.push(id); addToRelicDex(id); } });
+    player.jesterSetSeen = true;
+    player.tierIndex = tier;
+    town = false;
+    depth = tier*10 + 1;
+    player.townCheckpoint = makeTownCheckpoint();
+    document.getElementById('statusbar').style.display='flex';
+    showScreen('explore');
+    enterNodeMapTier();
+    if(tier===0) player.nodeMap = [[{id:'t0r0n0', type:'rest', connections:['t0boss']}], [{id:'t0boss', type:'boss', connections:[]}]];
+    renderStatus();
+    renderExplore([tier===0
+      ? '[관리자 테스트] 도박사 유물 3개 보유. 휴식 칸 다음이 바로 층별보스 — 보스전을 시작하면 "🎲 딜러의 판" 버튼이 뜬다.'
+      : '[관리자 테스트] 도박사 유물 3개 보유. 고요한 제단 — 준비 칸 다음이 최종보스(시간의 스물하나).']);
     saveGame();
   }
 
