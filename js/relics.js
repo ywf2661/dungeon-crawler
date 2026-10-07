@@ -645,6 +645,8 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
         '#c9a86a'
       );
     }
+    // 도박사 유물 세트 "딜러의 판"(js/jester-boss-gamble.js) — 세 번째를 얻는 순간 1회 장면.
+    if(typeof maybeShowJesterSetScene==='function') maybeShowJesterSetScene();
   }
 
   // 유물 슬롯이 가득 찬 상태에서 새 유물을 고르면, 먼저 내려놓을 유물을 선택하게 한다.

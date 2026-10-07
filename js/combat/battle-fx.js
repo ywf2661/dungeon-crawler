@@ -159,6 +159,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     if(!en){
       document.querySelector('#screen-battle .battle-lower').scrollTop = 0;
       document.getElementById('bt-msgbox').scrollTop = 0;
+      // 도박사 유물 세트 "딜러의 판"(js/jester-boss-gamble.js) — 첫 행동을 하면 한 판 제안은 사라진다.
+      if(typeof hideBossGambleOffer==='function') hideBossGambleOffer();
     }
   }
 

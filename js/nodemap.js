@@ -211,6 +211,8 @@ TIME_GUARDIAN 참고.
     player.nodeVisited = [];
     // 숨은 칸(딜러의 장갑) — 노드 id 형식이 구간마다 같아서 새 지도마다 반드시 비운다.
     player.nodeSecret = null;
+    // 딜러의 판 기록도 칸 id 기준이라 새 지도마다 비운다(사망 롤백 후 같은 구간 보스에서 다시 걸 수 있게).
+    player.bossGambleUsed = null;
     // 사용자 요청 — "이전 노드맵과 다음 노드맵끼리는 곡이 달라야 한다."
     // 새 노드맵이 실제로 생성되는 이 시점에만 던전 BGM을 강제 재추첨한다
     // (전투 갔다 돌아오는 것만으로는 곡이 안 바뀌도록 sound.js에서 처리됨).
@@ -268,6 +270,7 @@ TIME_GUARDIAN 참고.
     player.nodeCurrentId = nodeId;
     player.nodeVisited.push(nodeId);
     player.nodeClearedId = null; // 새 칸은 아직 안 이김(battle-end.js가 승리 시 세움)
+    player.bossGambleUsed = null; // 딜러의 판(js/jester-boss-gamble.js) — 새 칸이면 다시 걸 수 있다
     saveGame();
     resolveNode(node);
   }

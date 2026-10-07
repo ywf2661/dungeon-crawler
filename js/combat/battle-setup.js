@@ -1124,4 +1124,6 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       showToast(`<h3>⚔ 정예 특성</h3><p>${traitLines}</p>`, '#ff8a3a');
     }
     maybeShowSpecialEncounterDialogue(isBoss, isFinal, isTrueFinal);
+    // 도박사 유물 세트 "딜러의 판"(js/jester-boss-gamble.js) — 보스전이면 한 판 승부 버튼.
+    if(typeof showBossGambleOffer==='function') showBossGambleOffer();
   }
