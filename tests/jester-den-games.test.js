@@ -144,4 +144,13 @@ assert.strictEqual(run("getLowHpLuckBonus({relics:['relic_edgecandle'], hp:31, m
 assert.strictEqual(run("getLowHpLuckBonus({relics:[], hp:1, maxhp:100})"), 0, '유물 없음');
 assert.strictEqual(run("getLowHpLuckBonus(null)"), 0);
 
+// ── 유물 정의(relics.js): 이벤트 전용(제단 제외) + 도감 완성 조건 제외 ──
+const rctx = vm.createContext({console, Math});
+vm.runInContext(fs.readFileSync('js/relics.js','utf8'), rctx, {filename:'js/relics.js'});
+const rrun = code => vm.runInContext(code, rctx);
+assert.strictEqual(rrun("!!(RELICS.relic_edgecandle && RELICS.relic_edgecandle.eventOnly)"), true);
+assert.strictEqual(rrun("RELICS.relic_edgecandle.dexOptional"), true);
+assert.strictEqual(rrun("RELIC_ALTAR_POOL.includes('relic_edgecandle')"), false, '제단 제외');
+assert.strictEqual(rrun("Object.keys(RELICS).filter(id=>RELICS[id].dexOptional).join()"), 'relic_edgecandle', '도감 선택 유물은 촛불 하나');
+
 console.log('jester-den-games: OK');

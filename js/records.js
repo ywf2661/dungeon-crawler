@@ -68,6 +68,8 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
   async function showRelicDex(){
     const discovered = await loadRelicDex();
     const ids = Object.keys(RELICS);
+    // dexOptional(숨겨진 유물 — 벼랑 끝의 촛불 등)은 목록엔 보이지만 발견 수/완성 조건에서 뺀다.
+    const required = ids.filter(id=>!RELICS[id].dexOptional);
     const typeLabel = {blessing:'축복', contract:'계약', curse:'저주', wild:'변칙'};
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
@@ -75,7 +77,7 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
     const panel = document.createElement('div');
     panel.className = 'shop-panel';
     panel.innerHTML = `<h3>📖 유물 도감</h3>
-      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;margin:-4px 0 10px;">발견: ${discovered.length} / ${ids.length}</p>
+      <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;margin:-4px 0 10px;">발견: ${discovered.filter(id=>required.includes(id)).length} / ${required.length}</p>
       <div id="relicdex-list"></div>
       <div style="text-align:center; margin-top:10px;"><button class="btn" id="relicdex-close">닫기</button></div>`;
     overlay.appendChild(panel);
@@ -88,11 +90,11 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
       row.className = 'relicdex-row' + (found?'':' locked');
       if(found){
         row.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="color:var(--gold-bright); font-family:'Cinzel';">${r.name}</span><span>${typeLabel[r.type]}</span>
+            <span style="color:var(--gold-bright); font-family:'Cinzel';">${r.name}</span><span>${typeLabel[r.type]}${r.dexOptional?' · 숨겨진 유물':''}</span>
           </div>
           <div class="relic-desc" style="margin-top:3px;">${r.desc}</div>`;
       } else {
-        row.innerHTML = `<span>？？？</span><span>🔒</span>`;
+        row.innerHTML = `<span>？？？${r.dexOptional?' (숨겨진 유물)':''}</span><span>🔒</span>`;
       }
       box.appendChild(row);
     });
@@ -313,7 +315,8 @@ export(전역): showRecords, getRelicDisplayDesc, showMyRelics, showMonsterDex, 
     if(record.trueEnding && record.bossType==='timewitch') candidates.push('ach_witch_time');
     if(record.difficulty==='hardcore') candidates.push('ach_hardcore_clear');
     if(record.trueEnding && (record.deathCount||0)===0) candidates.push('ach_flawless');
-    if(relicDex.length >= Object.keys(RELICS).length) candidates.push('ach_relicdex_complete');
+    const dexRequired = Object.keys(RELICS).filter(id=>!RELICS[id].dexOptional); // 숨겨진 유물은 완성 조건 제외
+    if(relicDex.filter(id=>!(RELICS[id] && RELICS[id].dexOptional)).length >= dexRequired.length) candidates.push('ach_relicdex_complete');
     if((player.equipOwned||[]).includes('r_achoskeepsake')) candidates.push('ach_achos_keepsake');
     if(curseIds.length >= 3) candidates.push('ach_triple_curse');
     if(blessingIds.length===0 && curseIds.length>=1) candidates.push('ach_pure_misfortune');

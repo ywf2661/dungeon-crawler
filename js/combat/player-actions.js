@@ -2841,7 +2841,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // fateBoostMult)를 더한다. 실패하면 판돈은 그대로 사라지고 피해는 0.
       // 레벨12 "촉"(fateshift 타입, 기존 운명 조작과 동일한 메커니즘)이 세워둔
       // player.fateBoostChance/fateBoostMult를 coinflip과 동일한 방식으로 소비한다.
-      const fateChance = player.fateBoostChance||0, fateMult = player.fateBoostMult||0;
+      const fateChance = (player.fateBoostChance||0) + getLowHpLuckBonus(player), fateMult = player.fateBoostMult||0; // + 벼랑 끝의 촛불
       if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
       const edefBet = getEffectiveEnemyDef(enemy.def);
       const onHitMultBet = consumeOnHitBonuses();
@@ -2983,7 +2983,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     if(s.type==='coinflip'){
-      const fateChance = player.fateBoostChance||0, fateMult = player.fateBoostMult||0;
+      const fateChance = (player.fateBoostChance||0) + getLowHpLuckBonus(player), fateMult = player.fateBoostMult||0; // + 벼랑 끝의 촛불
       if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
       const epicLuck = epicLuckPre(s);
       const chance = epicLuckApplyChance(Math.min(0.95, (s.chance||0.5) + fateChance), epicLuck);
@@ -3282,7 +3282,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(s.type==='gamble'){
       const staked = player.mp + mpCost; // 시전 직전까지 갖고 있던 MP 전액을 판돈으로 건다
       player.mp = 0;
-      const fateChance = player.fateBoostChance||0, fateMult = player.fateBoostMult||0;
+      const fateChance = (player.fateBoostChance||0) + getLowHpLuckBonus(player), fateMult = player.fateBoostMult||0; // + 벼랑 끝의 촛불
       if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
       const epicLuck = epicLuckPre(s);
       const chance = epicLuckApplyChance(Math.min(0.9, (s.chance||0.5) + fateChance), epicLuck);
@@ -3326,7 +3326,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
 
     if(s.type==='finalcard'){
       const missingRatio = 1 - (player.hp/player.maxhp);
-      const fateChance = player.fateBoostChance||0, fateMult = player.fateBoostMult||0;
+      const fateChance = (player.fateBoostChance||0) + getLowHpLuckBonus(player), fateMult = player.fateBoostMult||0; // + 벼랑 끝의 촛불
       if(fateChance || fateMult){ player.fateBoostChance=0; player.fateBoostMult=0; }
       const epicLuck = epicLuckPre(s);
       const chance = epicLuckApplyChance(Math.min(0.98, (s.baseChance||0.35) + missingRatio*((s.maxChance||0.95)-(s.baseChance||0.35)) + fateChance), epicLuck);

@@ -172,6 +172,10 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     // 딜러의 장갑(도박사 전용 이벤트 "야바위 컵" 3번 모두 맞힘 보상, js/jester-shell.js).
     // eventOnly — 제단에 안 나온다. 효과는 nodemap.js의 바꿔치기 버튼(nodeSwapAvailable)이 처리한다.
     relic_dealerglove: {type:'wild', name:'딜러의 장갑', desc:'구간마다 한 번, 노드맵에서 아직 가지 않은 칸 두 개의 정체를 서로 바꿔치기할 수 있다(보스·제단 제외).', effect:{nodeSwap:true}, eventOnly:true},
+    // 벼랑 끝의 촛불(숨겨진 도박장 전용 게임 대승 보상, js/jester-den.js grantDenPrize). eventOnly — 제단에 안 나온다.
+    // dexOptional — 도감엔 오르지만 "유물 감정가"(도감 완성) 조건에선 빠진다(records.js). 효과는
+    // getLowHpLuckBonus()(js/jester-den-games.js)를 운 스킬 4곳(combat/player-actions.js)이 더하는 방식.
+    relic_edgecandle:  {type:'wild', name:'벼랑 끝의 촛불', desc:'HP가 30% 이하이면 운 스킬(동전 던지기·승부수·마지막 카드·베팅)의 성공 확률이 20%p 오른다.', effect:{edgeCandle:true}, eventOnly:true, dexOptional:true},
   };
   // 일반 유물 제단에서는 저주형을 제외한 유물만 등장한다(저주형은 별도의 저주 제단 전용).
   // eventOnly(소매 속 에이스 등 이벤트 전용 보상)도 제단에서 뺀다.
