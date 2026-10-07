@@ -91,4 +91,57 @@ assert.strictEqual(ctx.ratPayout(60, 3.5, {cashedOut:true}), 30);
 assert.strictEqual(ctx.ratPayout(60, 3.5, {won:false}), 0);
 assert.strictEqual(ctx.ratPayout(61, 1.5, {won:true}), 91, '내림');
 
+// ── 도둑잡기 ──
+assert.strictEqual(run('THIEF_JOKER'), 'X');
+for(let i=0;i<500;i++){
+  const d = J(ctx.thiefDeal());
+  ['A','K','Q'].forEach(c=>{ assert.strictEqual(d.me.filter(x=>x===c).length, 1); assert.strictEqual(d.dealer.filter(x=>x===c).length, 1); });
+  assert.strictEqual(d.me.concat(d.dealer).filter(x=>x==='X').length, 1);
+  assert.strictEqual(d.me.includes('X'), d.jokerMine);
+}
+assert.strictEqual(J(ctx.thiefDeal(seq(0.1, 0.5))).jokerMine, true);
+assert.strictEqual(J(ctx.thiefDeal(seq(0.9, 0.5))).jokerMine, false);
+run("var f1 = ['A','X'], t1 = ['A','K']; var r1 = thiefTake(f1, 0, t1);");
+assert.deepStrictEqual(J(run('r1')), {card:'A', paired:true});
+assert.deepStrictEqual(J(run('[f1, t1]')), [['X'], ['K']]);
+run("var f2 = ['X'], t2 = ['A']; var r2 = thiefTake(f2, 0, t2);");
+assert.deepStrictEqual(J(run('r2')), {card:'X', paired:false});
+assert.deepStrictEqual(J(run('[f2, t2]')), [[], ['A','X']]);
+assert.strictEqual(run("thiefWinner([], ['X'])"), 'me');
+assert.strictEqual(run("thiefWinner(['X'], [])"), 'dealer');
+assert.strictEqual(run("thiefWinner(['A'], ['A','X'])"), null);
+assert.strictEqual(ctx.thiefTell(true, ()=>0.69), 'flinch');
+assert.strictEqual(ctx.thiefTell(true, ()=>0.7), 'calm');
+assert.strictEqual(ctx.thiefTell(false, ()=>0.29), 'flinch');
+assert.strictEqual(ctx.thiefTell(false, ()=>0.3), 'calm');
+assert.strictEqual(run("thiefDealerPick(['A','K','X'], ()=>0.99)"), 2);
+assert.strictEqual(run("thiefDealerPick(['A','K','X'], ()=>0)"), 0);
+assert.strictEqual(ctx.thiefPayout(60, true), 120);
+assert.strictEqual(ctx.thiefPayout(60, false), 0);
+// 무작위로 끝까지 두면 반드시 한쪽이 이긴다(조커를 쥔 쪽이 진다)
+for(let g=0; g<2000; g++){
+  run("var d = thiefDeal(), me = d.me, de = d.dealer, turn = 0, w = null;" +
+      "while(!(w = thiefWinner(me, de))){ if(turn++ % 2 === 0) thiefTake(de, thiefDealerPick(de), me); else thiefTake(me, thiefDealerPick(me), de); if(turn > 50) break; }");
+  const w = run('w'), loserHand = J(run("w==='me' ? de : me"));
+  assert.ok(w==='me' || w==='dealer');
+  assert.deepStrictEqual(loserHand, ['X']);
+}
+
+// ── 공통 보상 ──
+assert.strictEqual(ctx.pickDenPrizeKind(()=>0), 'potion');
+assert.strictEqual(ctx.pickDenPrizeKind(()=>0.5), 'stone');
+assert.strictEqual(ctx.pickDenPrizeKind(()=>0.999), 'seal');
+assert.strictEqual(ctx.denRelicRoll(false, false, ()=>0), null);
+assert.strictEqual(ctx.denRelicRoll(true, false, ()=>0.49), 'relic');
+assert.strictEqual(ctx.denRelicRoll(true, false, ()=>0.5), null);
+assert.strictEqual(ctx.denRelicRoll(true, true, ()=>0.1), 'gold');
+assert.strictEqual(ctx.denRelicRoll(true, true, ()=>0.9), null);
+
+// ── 벼랑 끝의 촛불 ──
+assert.strictEqual(run('EDGE_CANDLE_RELIC'), 'relic_edgecandle');
+assert.strictEqual(run("getLowHpLuckBonus({relics:['relic_edgecandle'], hp:30, maxhp:100})"), 0.2, '30%는 켜짐');
+assert.strictEqual(run("getLowHpLuckBonus({relics:['relic_edgecandle'], hp:31, maxhp:100})"), 0, '31%는 꺼짐');
+assert.strictEqual(run("getLowHpLuckBonus({relics:[], hp:1, maxhp:100})"), 0, '유물 없음');
+assert.strictEqual(run("getLowHpLuckBonus(null)"), 0);
+
 console.log('jester-den-games: OK');

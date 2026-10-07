@@ -97,3 +97,49 @@ export(전역): RAT_TRACK, RAT_HALF, RAT_KINDS, denShuffle, ratLineup, ratCrumbs
     if(!o.won) return 0;
     return Math.floor(stake*(o.raised ? 2 : 1)*odds);
   }
+
+  // ── 도둑잡기(세 장 1대1) ──
+  const THIEF_JOKER = 'X';
+  // 나와 딜러가 같은 세 장(A·K·Q)을 하나씩, 조커는 무작위로 한쪽(50%). 각 패는 섞는다.
+  function thiefDeal(rng){
+    const r = rng || Math.random;
+    const jokerMine = r() < 0.5;
+    const me = ['A','K','Q'].concat(jokerMine ? [THIEF_JOKER] : []);
+    const dealer = ['A','K','Q'].concat(jokerMine ? [] : [THIEF_JOKER]);
+    return {me: denShuffle(me, r), dealer: denShuffle(dealer, r), jokerMine};
+  }
+  // from[idx]를 뽑아 to로 옮긴다. 같은 글자가 to에 있으면(조커 제외) 둘 다 버린다(짝).
+  function thiefTake(from, idx, to){
+    const card = from.splice(idx, 1)[0];
+    const at = card===THIEF_JOKER ? -1 : to.indexOf(card);
+    if(at >= 0){ to.splice(at, 1); return {card, paired:true}; }
+    to.push(card);
+    return {card, paired:false};
+  }
+  // 패를 먼저 다 턴 쪽이 이긴다(조커를 쥔 쪽이 진다). 아직이면 null.
+  function thiefWinner(me, dealer){
+    if(me.length===0) return 'me';
+    if(dealer.length===0) return 'dealer';
+    return null;
+  }
+  // 가리킨 카드에 딜러 손이 반응: 조커면 70%, 아니면 30% 움찔(딜러의 속임수).
+  function thiefTell(isJoker, rng){ return (rng || Math.random)() < (isJoker ? 0.7 : 0.3) ? 'flinch' : 'calm'; }
+  function thiefDealerPick(hand, rng){ return Math.floor((rng || Math.random)()*hand.length); }
+  function thiefPayout(stake, won){ return won ? stake*2 : 0; }
+
+  // ── 공통 보상 ──
+  const DEN_PRIZE_KINDS = ['potion', 'stone', 'seal'];
+  function pickDenPrizeKind(rng){ return DEN_PRIZE_KINDS[Math.min(2, Math.floor((rng || Math.random)()*3))]; }
+  // 대승이면 50%로 도박장 유물 — 그때 이미 가졌으면 대신 골드(판돈 2배). 'relic' | 'gold' | null.
+  function denRelicRoll(bigWin, hasRelic, rng){
+    if(!bigWin) return null;
+    if((rng || Math.random)() >= 0.5) return null;
+    return hasRelic ? 'gold' : 'relic';
+  }
+
+  // ── 벼랑 끝의 촛불 ── HP 30% 이하면 운 스킬 성공 확률 +20%p(combat/player-actions.js 운 스킬 4곳이 더한다).
+  const EDGE_CANDLE_RELIC = 'relic_edgecandle';
+  function getLowHpLuckBonus(p){
+    if(!p || !(p.relics||[]).includes(EDGE_CANDLE_RELIC)) return 0;
+    return p.hp <= p.maxhp*0.3 ? 0.2 : 0;
+  }
