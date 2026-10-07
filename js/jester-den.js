@@ -55,6 +55,7 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
     {id:'table', name:'뒷골목 카드판', desc:'높다/낮다, 세 판을 내리 이기면 소매 속의 것을.', start:()=> showJesterTableEvent({den:true})},
     {id:'shell', name:'야바위 컵', desc:'섞이는 컵을 눈으로 따라간다. 세 판.', start:()=> showJesterShellEvent({den:true})},
     {id:'rats', name:'쥐 경주', desc:'쥐 네 마리, 배당은 저마다. 반환점에서 한 번 더 걸 수 있다.', start:()=> showRatRace()},
+    {id:'thief', name:'도둑잡기', desc:'세 장으로 겨룬다. 딜러의 손이 거짓말을 할 때가 있다.', start:()=> showThiefGame()},
   ];
 
   // 이야기 칸: 다음 조각을 화면 전에 기록하고(새로고침으로 잃지 않게), 최대HP 20% 회복.
@@ -227,4 +228,124 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
       runButtons();
       later(tick, 500);
     }})).concat([{label:'지나간다', on:()=> end('쥐 경주를 지나쳤다.')}]));
+  }
+
+  // 도둑잡기(js/jester-den-games.js). 내 차례: 딜러 카드를 가리키면 손이 반응(움찔/태연) → 이걸 뽑는다/다른 걸 뽑는다.
+  // 딜러 차례: 손이 내 카드 위를 머뭇거리다 무작위 한 장. phase로 연타를 막는다
+  // (point: 가리킬 카드 고르기, pick: 가리킨 것 말고 고르기, peek: 사기꾼 훔쳐보기, busy: 입력 무시).
+  function thiefCardHtml(card, faceUp){
+    const label = card===THIEF_JOKER ? '🃏' : card;
+    return `<div class="jt-card${faceUp ? ' face-up' : ''}"><div class="jt-back"></div><div class="jt-front">${label}</div></div>`;
+  }
+  function showThiefGame(){
+    const stake = jesterTableStake(player, depth);
+    const {overlay, panel} = eventOverlay('도둑잡기',
+      `<p style="${DEN_INTRO_STYLE}">촛불 아래, 손만 남은 딜러가 카드를 갈라 쥔다. 그중 한 장은 웃는 얼굴이다.</p>
+      <div class="th-row" id="th-dealer"></div>
+      <p class="jt-hint">딜러의 패</p>
+      <div class="th-row" id="th-me"></div>
+      <p class="jt-hint">나의 패 — 짝이 맞으면 버린다. 먼저 다 털면 이기고, 🃏를 끝까지 쥐면 진다.</p>
+      <p id="th-info" style="${DEN_INFO_STYLE}">판돈 ${stake}G — 이기면 두 배.</p>`,
+      `<div id="th-btns" style="display:flex; flex-direction:column; gap:8px;"></div>`);
+    const dealerEl = panel.querySelector('#th-dealer');
+    const meEl = panel.querySelector('#th-me');
+    const info = panel.querySelector('#th-info');
+    const btns = panel.querySelector('#th-btns');
+    let me = [], dealer = [], phase = 'busy', pointed = -1, drewJoker = false;
+    let peekLeft = player.specialization==='jester_debtcollector' ? 1 : 0;
+    const later = (fn, ms)=> setTimeout(()=>{ if(overlay.isConnected) fn(); }, ms);
+    const end = (text, cls)=>{ addLog(text, cls); renderStatus(); saveGame(); closeMysteryEvent(overlay); };
+    const draw = ()=>{
+      dealerEl.innerHTML = dealer.map(c=> thiefCardHtml(c, false)).join('');
+      meEl.innerHTML = me.map(c=> thiefCardHtml(c, true)).join('');
+      dealerEl.classList.toggle('pickable', phase==='point' || phase==='pick' || phase==='peek');
+      if(phase==='pick' && dealerEl.children[pointed]) dealerEl.children[pointed].classList.add('th-dim');
+    };
+    const checkEnd = ()=>{
+      const w = thiefWinner(me, dealer);
+      if(!w) return false;
+      phase = 'busy'; draw();
+      if(w==='me'){
+        const gold = thiefPayout(stake, true);
+        info.textContent = drewJoker ? '패를 다 털었다!' : '패를 다 털었다 — 🃏는 한 번도 뽑지 않았다.';
+        denButtons(btns, [{label:`정산한다 (${gold}G)`, on:()=> grantDenPrize(overlay, {gold, stake, bigWin:!drewJoker,
+          logText:`도둑잡기에서 이겼다${drewJoker ? '' : '(🃏를 한 번도 뽑지 않음)'}.`})}]);
+      } else {
+        info.textContent = '딜러가 패를 다 털었다. 내 손에 🃏만 남았다.';
+        denButtons(btns, [{label:'일어선다', on:()=> end(`도둑잡기에서 졌다. 판돈 ${stake}G를 잃었다.`, 'warn')}]);
+      }
+      return true;
+    };
+    const myTurn = ()=>{
+      if(checkEnd()) return;
+      phase = 'point'; pointed = -1; draw();
+      info.textContent = '딜러의 카드 한 장을 가리키세요.';
+      denButtons(btns, peekLeft>0 ? [{label:'👁 훔쳐보기 (1회)', on:()=>{
+        peekLeft--; phase = 'peek'; draw();
+        info.textContent = '몰래 볼 카드를 고르세요.';
+      }}] : []);
+    };
+    const take = i=>{
+      phase = 'busy'; denButtons(btns, []);
+      const res = thiefTake(dealer, i, me);
+      if(res.card===THIEF_JOKER) drewJoker = true;
+      draw();
+      info.textContent = res.card===THIEF_JOKER ? '🃏 — 웃는 얼굴이다…' : res.paired ? `${res.card} — 짝이 맞아 버렸다.` : `${res.card}을(를) 뽑았다.`;
+      later(()=>{ if(!checkEnd()) dealerTurn(); }, 900);
+    };
+    const dealerTurn = ()=>{
+      info.textContent = '딜러의 손이 내 패 위를 맴돈다…';
+      const hover = Math.floor(Math.random()*me.length);
+      if(meEl.children[hover]) meEl.children[hover].classList.add('th-pointed');
+      later(()=>{
+        const i = thiefDealerPick(me);
+        [...meEl.children].forEach(el=> el.classList.remove('th-pointed'));
+        if(meEl.children[i]) meEl.children[i].classList.add('th-pointed');
+        later(()=>{
+          const res = thiefTake(me, i, dealer);
+          draw();
+          info.textContent = res.card===THIEF_JOKER ? '딜러가 🃏를 가져갔다!' : res.paired ? `딜러가 ${res.card}을(를) 가져가 짝을 버렸다.` : `딜러가 ${res.card}을(를) 가져갔다.`;
+          later(myTurn, 900);
+        }, 500);
+      }, 550);
+    };
+    const onPoint = i=>{
+      phase = 'busy'; pointed = i;
+      dealerEl.children[i].classList.add('th-pointed');
+      const tell = thiefTell(dealer[i]===THIEF_JOKER);
+      if(tell==='flinch') dealerEl.classList.add('th-flinch');
+      later(()=>{
+        dealerEl.classList.remove('th-flinch');
+        info.textContent = tell==='flinch' ? '🫳 딜러의 손가락이 미세하게 떨린다…' : '🫳 딜러의 손은 태연하다.';
+        const opts = [{label:'이걸 뽑는다', on:()=> take(i)}];
+        if(dealer.length > 1) opts.push({label:'다른 걸 뽑는다', on:()=>{
+          phase = 'pick'; draw();
+          info.textContent = '가리킨 카드 말고, 뽑을 카드를 고르세요.';
+        }});
+        denButtons(btns, opts);
+      }, 450);
+    };
+    dealerEl.addEventListener('click', e=>{
+      const el = e.target.closest('.jt-card');
+      if(!el) return;
+      const i = [...dealerEl.children].indexOf(el);
+      if(phase==='peek'){
+        phase = 'busy';
+        el.classList.add('face-up');
+        later(()=>{ el.classList.remove('face-up'); phase = 'point'; info.textContent = '딜러의 카드 한 장을 가리키세요.'; draw(); }, 1000);
+      } else if(phase==='point') onPoint(i);
+      else if(phase==='pick' && i!==pointed) take(i);
+    });
+    draw();
+    denButtons(btns, [
+      {label:`판에 앉는다 (판돈 ${stake}G)`, disabled: player.gold<stake, on:()=>{
+        // 판돈을 낸 즉시 저장 — 새로고침으로 무르기 방지.
+        player.gold -= stake; renderStatus(); saveGame();
+        const d = thiefDeal(); me = d.me; dealer = d.dealer;
+        draw();
+        info.textContent = d.jokerMine ? '내 패에 🃏가 섞여 들어왔다.' : '🃏는 딜러 쪽에 있다.';
+        later(myTurn, 900);
+      }},
+      {label:'지나간다', on:()=> end('도둑잡기 판을 지나쳤다.')},
+    ]);
   }

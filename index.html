@@ -931,6 +931,14 @@
   .jr-track.tripping .jr-lane:hover{border-color:#c9a8ff;}
   .jr-lane.tripped .jr-rat{animation:jrTrip .5s ease;}
   @keyframes jrTrip{0%,100%{rotate:0deg;} 30%{rotate:-25deg;} 60%{rotate:15deg;}}
+  /* 도둑잡기(숨겨진 도박장, js/jester-den.js showThiefGame). 카드는 카드판 .jt-card 재사용 —
+     흐림은 앞뒷면(> div)에만(preserve-3d 카드 자체에 opacity를 걸면 평면화된다). */
+  .th-row{display:flex; justify-content:center; gap:10px; min-height:88px; margin:4px 0 2px; perspective:600px;}
+  .th-row.pickable .jt-card{cursor:pointer;}
+  .jt-card.th-pointed{translate:0 -10px; box-shadow:0 0 10px #c9a8ff99;}
+  .jt-card.th-dim > div{opacity:.4;}
+  .th-row.th-flinch{animation:thFlinch .4s ease;}
+  @keyframes thFlinch{0%,100%{translate:0 0;} 25%{translate:-3px 0;} 50%{translate:3px 0;} 75%{translate:-2px 0;}}
 
   /* 시간의 파수꾼 스킬 전용 VFX 이미지 3종(사용자 제공, images/vfx/tg_*.webp).
      기존 .frost-flash-fx(섬광)/.screen-crack-fx(균열)에 겹쳐서 함께 재생된다
