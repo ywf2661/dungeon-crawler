@@ -145,16 +145,16 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
       tickMultiBattleBuff();
       document.getElementById('bt-stage').classList.add('dying');
+      // 버그 수정(파수꾼 제보 + 일반/정예 새로고침 파밍): pickNode()가 노드 선택
+      // 시점에 이미 nodeCurrentId를 이 노드로 옮겨두고, 승리해도 "다음 노드로
+      // 이동"은 플레이어가 직접 클릭해야 일어난다 — 승리 직후~다음 노드 클릭 전
+      // 사이에는 저장된 상태만 보면 "아직 싸우는 중"과 구별이 안 돼서, 이어하기가
+      // 이긴 전투를 다시 걸어 보상을 반복 획득할 수 있었다. 이긴 노드를 기록해
+      // explore.js의 중단된 전투 재개 감지가 건너뛰게 한다(pickNode()가 지움).
+      // 보상 지급 전에 세워야 그 뒤 어떤 저장에도 함께 실린다.
+      player.nodeClearedId = player.nodeCurrentId;
       // 시간의 파수꾼 퇴장 토스트(사용자 요청) — 처치 순간 1회.
       if(enemy.type==='timeguardian'){
-        // 버그 수정(사용자 제보 — 파수꾼을 이기고 나서 새로고침 후 이어하기를
-        // 하면 다시 싸우게 됨): pickNode()가 노드 선택 시점에 이미
-        // nodeCurrentId를 이 노드로 옮겨두고, 승리해도 "다음 노드로 이동"은
-        // 플레이어가 직접 클릭해야 일어난다 — 즉 승리 직후~다음 노드 클릭
-        // 전 사이에는 저장된 상태만 보면 "아직 싸우는 중"이었을 때와
-        // 구별이 안 됐다. 처치 여부를 별도로 기록해, explore.js의 중단된
-        // 전투 재개 감지 로직이 이미 이긴 상대는 다시 걸지 않도록 한다.
-        player.midbossCleared = true;
         if(typeof showToast==='function'){
           showToast(`<h3>⏳ 흩어지는 파수꾼</h3><p>갑주가 시계 파편으로 부서져 내리고, 반 박자 늦게 따라오던 잔상마저 조용히 사라진다.</p>`, '#9a6ad6');
         }

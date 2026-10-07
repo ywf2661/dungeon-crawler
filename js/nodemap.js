@@ -267,6 +267,7 @@ TIME_GUARDIAN 참고.
     player.nodeRow = nextRowIdx;
     player.nodeCurrentId = nodeId;
     player.nodeVisited.push(nodeId);
+    player.nodeClearedId = null; // 새 칸은 아직 안 이김(battle-end.js가 승리 시 세움)
     saveGame();
     resolveNode(node);
   }

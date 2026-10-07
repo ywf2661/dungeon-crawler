@@ -146,9 +146,12 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
         // 하면 다시 싸우게 됨): 승리 직후~다음 노드로 이동하기 전 사이에는
         // nodeCurrentId가 여전히 이 미드보스 노드를 가리키고 있어서, "아직
         // 싸우는 중"이었을 때와 저장된 상태만으로는 구별이 안 됐다.
-        // player.midbossCleared(처치 시 battle-end.js가 세움)로 이미 이긴
+        // player.nodeClearedId(처치 시 battle-end.js가 세움)로 이미 이긴
         // 상대인지 확인해, 이긴 상대는 다시 걸지 않고 평소처럼 지도만 보여준다.
-        if(curNode && curNode.type==='midboss' && !player.midbossCleared){
+        // (예전 midbossCleared는 한 번 세우면 안 지워져서, 사망 롤백 후 다시 만난
+        // 파수꾼을 새로고침으로 건너뛸 수 있었다 — 노드 id 기록으로 대체.)
+        const curCleared = curNode && player.nodeClearedId===curNode.id;
+        if(curNode && curNode.type==='midboss' && !curCleared){
           document.getElementById('statusbar').style.display='flex';
           showScreen('explore');
           renderStatus();
@@ -168,7 +171,8 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
         // 보스처럼 진행이 막히는 게 아니라, 오히려 전투 없이 다음 노드를
         // 바로 고를 수 있게 되어버린다 — 즉 위험한 전투를 사실상 공짜로
         // 회피하는 구멍이었다. combat/elite도 동일하게 감지해 전투를 다시 건다.
-        if(curNode && (curNode.type==='combat' || curNode.type==='elite')){
+        // 단, 이미 이긴 칸(curCleared)은 다시 걸지 않는다 — 보상 반복 획득 방지.
+        if(curNode && (curNode.type==='combat' || curNode.type==='elite') && !curCleared){
           document.getElementById('statusbar').style.display='flex';
           showScreen('explore');
           renderStatus();
