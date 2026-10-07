@@ -112,7 +112,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     }
     if(hasRelicFlag('skillLocked')) document.getElementById('cmd-skill').disabled = true;
     // 감전 스킬 봉인 — 반드시 "비활성화 판정 뒤에" 카운트를 내린다. 먼저
-    // 내리면 지속 2턴 중 실제로 막히는 턴은 1턴뿐이게 되는 오프바이원이 생긴다.
+    // 내리면 실제로 막히는 턴이 지속 턴보다 1 적어지는 오프바이원이 생긴다.
     if(player.shockSealTurns>0){
       document.getElementById('cmd-skill').disabled = true;
       if(isRealTurnBoundary) player.shockSealTurns -= 1;

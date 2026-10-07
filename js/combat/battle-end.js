@@ -64,6 +64,19 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       player.spd += battleFlags.tgSpdDebuff.delta;
       battleFlags.tgSpdDebuff = null;
     }
+    // 플레이어에게 걸린 상태이상(사용자 제보 — 정예 감전이 다음/다다음 전투까지
+    // 이어짐). 전부 턴 경계에서만 깎이는 카운터라 전투가 먼저 끝나면 남은 턴이
+    // 그대로 다음 전투로 넘어갔다. 검은 기도는 공/방 델타까지 되돌린다.
+    player.shockSealTurns = 0;
+    player.freezeTurns = 0;
+    player.poisonTurns = 0;
+    if(player.knightVulnTurns>0){
+      player.atk -= (player.knightVulnAtkBonus||0);
+      player.def += (player.knightVulnDefPenalty||0);
+      player.knightVulnTurns = 0;
+      player.knightVulnAtkBonus = 0;
+      player.knightVulnDefPenalty = 0;
+    }
   }
 
   function checkBattleEnd(){

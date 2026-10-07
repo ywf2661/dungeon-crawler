@@ -1323,7 +1323,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
           extraMsg += ' 냉기가 뼛속까지 파고들어 몸이 굳는다!';
         }
         if(hasEliteTrait('shock') && Math.random()<0.2){
-          player.shockSealTurns = 2;
+          player.shockSealTurns = 1;
           extraMsg += ' 전류가 흘러 스킬을 쓸 수 없게 됐다!';
         }
       }
@@ -1482,10 +1482,12 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       enemy.shockSpdDelta = delta;
       enemy.spd -= delta;
     }
+    // 속도 카운터는 적 턴 "시작"에 먼저 깎이므로 2여야 적의 다음 행동 1번에
+    // 실제로 걸린다(1이면 행동 전에 풀려 무의미, 번개 추가타 시너지도 사라짐).
     enemy.shockSpdTurns = 2;
     // 스킬 봉인은 최종보스 8종(진최종보스 시조/마녀 + 직업별 최종보스 6종)은
     // 면역 — 스킬을 아예 못 쓰는 보스전은 너무 밋밋해진다는 사용자 판단.
-    if(!(enemy.isFinal || enemy.isTrueFinal)) enemy.shockSealTurns = 2;
+    if(!(enemy.isFinal || enemy.isTrueFinal)) enemy.shockSealTurns = 1;
     playStatusFx('pact-lightning');
     updateStatusBadges();
     return true;

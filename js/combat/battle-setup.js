@@ -249,7 +249,7 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
     // 약한 20% 확률로 잡았다. freeze는 언데드 계열(냉기 서린 무덤)에, shock는
     // 마법사 계열(마나포식/광기와 세트)에 배정.
     freeze:    {label:'빙결',     desc:'기본 공격 20% 확률로 플레이어를 빙결(다음 턴 행동 불가)'},
-    shock:     {label:'감전',     desc:'기본 공격 20% 확률로 플레이어를 감전(2턴간 스킬 봉인)'},
+    shock:     {label:'감전',     desc:'기본 공격 20% 확률로 플레이어를 감전(1턴간 스킬 봉인)'},
   };
   const ALL_ELITE_TRAIT_KEYS = Object.keys(ELITE_TRAITS);
   // 몬스터별 전용 풀(사용자 요청 예시 기반 — 표에 없는 "도주/훔치기/주문강화/
