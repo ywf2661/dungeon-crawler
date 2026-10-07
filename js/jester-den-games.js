@@ -132,10 +132,9 @@ export(전역): RAT_TRACK, RAT_HALF, RAT_KINDS, denShuffle, ratLineup, ratCrumbs
   // ── 공통 보상 ──
   const DEN_PRIZE_KINDS = ['potion', 'stone', 'seal'];
   function pickDenPrizeKind(rng){ return DEN_PRIZE_KINDS[Math.min(2, Math.floor((rng || Math.random)()*3))]; }
-  // 대승이면 50%로 도박장 유물 — 그때 이미 가졌으면 대신 골드(판돈 2배). 'relic' | 'gold' | null.
-  function denRelicRoll(bigWin, hasRelic, rng){
+  // 대승이면 반드시 도박장 유물 — 이미 가졌으면 대신 골드(판돈 2배). 'relic' | 'gold' | null.
+  function denRelicRoll(bigWin, hasRelic){
     if(!bigWin) return null;
-    if((rng || Math.random)() >= 0.5) return null;
     return hasRelic ? 'gold' : 'relic';
   }
 

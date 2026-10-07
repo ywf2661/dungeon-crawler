@@ -131,11 +131,10 @@ for(let g=0; g<2000; g++){
 assert.strictEqual(ctx.pickDenPrizeKind(()=>0), 'potion');
 assert.strictEqual(ctx.pickDenPrizeKind(()=>0.5), 'stone');
 assert.strictEqual(ctx.pickDenPrizeKind(()=>0.999), 'seal');
-assert.strictEqual(ctx.denRelicRoll(false, false, ()=>0), null);
-assert.strictEqual(ctx.denRelicRoll(true, false, ()=>0.49), 'relic');
-assert.strictEqual(ctx.denRelicRoll(true, false, ()=>0.5), null);
-assert.strictEqual(ctx.denRelicRoll(true, true, ()=>0.1), 'gold');
-assert.strictEqual(ctx.denRelicRoll(true, true, ()=>0.9), null);
+assert.strictEqual(ctx.denRelicRoll(false, false), null);
+assert.strictEqual(ctx.denRelicRoll(false, true), null);
+assert.strictEqual(ctx.denRelicRoll(true, false), 'relic');
+assert.strictEqual(ctx.denRelicRoll(true, true), 'gold');
 
 // ── 벼랑 끝의 촛불 ──
 assert.strictEqual(run('EDGE_CANDLE_RELIC'), 'relic_edgecandle');

@@ -95,7 +95,7 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
     }, {once:true});
   }
 
-  // 도박장 전용 게임 공통 정산: 골드 + 작은 현물 1개, 대승이면 50%로 벼랑 끝의 촛불(그때 이미 있으면 판돈 2배 골드).
+  // 도박장 전용 게임 공통 정산: 골드 + 작은 현물 1개, 대승이면 반드시 벼랑 끝의 촛불(그때 이미 있으면 판돈 2배 골드).
   // 유물이 나오면 오버레이를 닫고 대화창 → 획득(슬롯이 차면 교체 화면). 아니면 바로 노드맵으로.
   function grantDenItem(kind){
     if(kind==='potion') return grantRandomPotion();
