@@ -136,15 +136,17 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
   // 올리기/절반 빼기/그대로 → 결승. 사기꾼은 경주 중 1회 발 걸기(고르는 동안 경주가 멈춘다).
   // 타이머는 오버레이가 닫혔으면 아무것도 하지 않는다(later).
   const RAT_TICK_MS = 600;
-  function showRatRace(){
-    const stake = jesterTableStake(player, depth);
+  // 보스전 "딜러의 판"(js/jester-boss-gamble.js, opts.boss)이면 판돈·반환점·지나가기 없이 내 쥐가 1등이면 승리.
+  function showRatRace(opts){
+    const boss = opts && opts.boss ? opts : null;
+    const stake = boss ? 0 : jesterTableStake(player, depth);
     const lineup = ratLineup(), crumbs = ratCrumbs();
     const odds = ratOdds(lineup, crumbs);
     const st = ratNewRace(lineup, crumbs);
     const {overlay, panel} = eventOverlay('쥐 경주',
       `<p style="${DEN_INTRO_STYLE}">촛불 아래 좁은 홈통 네 줄. 손이 쥐 꼬리를 하나씩 집어 출발선에 세운다.</p>
       <div class="jr-track" id="jr-track"></div>
-      <p id="jr-info" style="${DEN_INFO_STYLE}">판돈 ${stake}G — 이길 쥐에 건다. 반환점에서 한 번 더 걸 수 있다.</p>`,
+      <p id="jr-info" style="${DEN_INFO_STYLE}">${boss ? '내 쥐가 1등으로 들어오면 이긴다.' : `판돈 ${stake}G — 이길 쥐에 건다. 반환점에서 한 번 더 걸 수 있다.`}</p>`,
       `<div id="jr-btns" style="display:flex; flex-direction:column; gap:8px;"></div>`);
     const track = panel.querySelector('#jr-track');
     const info = panel.querySelector('#jr-info');
@@ -182,7 +184,7 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
       const res = ratStep(st);
       draw();
       if(res.finished){ later(finish, 700); return; }
-      if(res.half && !cashedOut){ later(halfway, 450); return; }
+      if(res.half && !cashedOut && !boss){ later(halfway, 450); return; }
       later(tick, RAT_TICK_MS);
     };
     const halfway = ()=>{
@@ -204,6 +206,11 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
       denButtons(btns, []);
       lanes[st.winner].classList.add('winner');
       const won = st.winner===pick;
+      if(boss){
+        info.textContent = won ? `${name(pick)}이(가) 1등으로 들어왔다!` : `${name(st.winner)}이(가) 먼저 들어왔다.`;
+        denButtons(btns, [{label: won ? '판을 거둔다' : '일어선다', on:()=>{ overlay.remove(); boss.onResult(won); }}]);
+        return;
+      }
       if(cashedOut){
         info.textContent = `${name(st.winner)}이(가) 들어왔다.`;
         denButtons(btns, [{label:'일어선다', on:()=> end(`쥐 경주에서 판돈 절반을 빼고 물러났다(${name(st.winner)} 우승). 골드 +${ratPayout(stake, odds[pick], {cashedOut:true})}G`)}]);
@@ -220,14 +227,15 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
         logText:`쥐 경주에서 ${name(pick)}이(가) 이겼다(${odds[pick]}배${raised ? ', 판돈 올림' : ''}).`})}]);
     };
     draw();
-    denButtons(btns, lineup.map((k,i)=>({label:`${RAT_KINDS[k].name}에 건다 (${odds[i]}배)`, disabled: player.gold<stake, on:()=>{
+    const ratBtns = lineup.map((k,i)=>({label: boss ? `${RAT_KINDS[k].name}에 건다` : `${RAT_KINDS[k].name}에 건다 (${odds[i]}배)`, disabled: !boss && player.gold<stake, on:()=>{
       pick = i; lanes[i].classList.add('mine');
       // 판돈을 낸 즉시 저장 — 지고 새로고침해 판돈을 되찾는 걸 막는다(카드판/야바위와 같음).
-      player.gold -= stake; renderStatus(); saveGame();
-      info.textContent = `${name(i)}에 ${stake}G. 손가락이 탁자를 두드리자, 쥐들이 달린다.`;
+      if(!boss){ player.gold -= stake; renderStatus(); saveGame(); }
+      info.textContent = boss ? `${name(i)}에 건다. 손가락이 탁자를 두드리자, 쥐들이 달린다.` : `${name(i)}에 ${stake}G. 손가락이 탁자를 두드리자, 쥐들이 달린다.`;
       runButtons();
       later(tick, 500);
-    }})).concat([{label:'지나간다', on:()=> end('쥐 경주를 지나쳤다.')}]));
+    }}));
+    denButtons(btns, boss ? ratBtns : ratBtns.concat([{label:'지나간다', on:()=> end('쥐 경주를 지나쳤다.')}]));
   }
 
   // 도둑잡기(js/jester-den-games.js). 내 차례: 딜러 카드를 가리키면 손이 반응(움찔/태연) → 이걸 뽑는다/다른 걸 뽑는다.
@@ -237,15 +245,17 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
     const label = card===THIEF_JOKER ? '🃏' : card;
     return `<div class="jt-card${faceUp ? ' face-up' : ''}"><div class="jt-back"></div><div class="jt-front">${label}</div></div>`;
   }
-  function showThiefGame(){
-    const stake = jesterTableStake(player, depth);
+  // 보스전 "딜러의 판"(js/jester-boss-gamble.js, opts.boss)이면 판돈·지나가기 없이 이기면 승리.
+  function showThiefGame(opts){
+    const boss = opts && opts.boss ? opts : null;
+    const stake = boss ? 0 : jesterTableStake(player, depth);
     const {overlay, panel} = eventOverlay('도둑잡기',
       `<p style="${DEN_INTRO_STYLE}">촛불 아래, 손만 남은 딜러가 카드를 갈라 쥔다. 그중 한 장은 웃는 얼굴이다.</p>
       <div class="th-row" id="th-dealer"></div>
       <p class="jt-hint">딜러의 패</p>
       <div class="th-row" id="th-me"></div>
       <p class="jt-hint">나의 패 — 짝이 맞으면 버린다. 먼저 다 털면 이기고, 🃏를 끝까지 쥐면 진다.</p>
-      <p id="th-info" style="${DEN_INFO_STYLE}">판돈 ${stake}G — 이기면 두 배.</p>`,
+      <p id="th-info" style="${DEN_INFO_STYLE}">${boss ? '패를 먼저 다 털면 이긴다.' : `판돈 ${stake}G — 이기면 두 배.`}</p>`,
       `<div id="th-btns" style="display:flex; flex-direction:column; gap:8px;"></div>`);
     const dealerEl = panel.querySelector('#th-dealer');
     const meEl = panel.querySelector('#th-me');
@@ -265,6 +275,11 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
       const w = thiefWinner(me, dealer);
       if(!w) return false;
       phase = 'busy'; draw();
+      if(boss){
+        info.textContent = w==='me' ? '패를 다 털었다!' : '딜러가 패를 다 털었다. 내 손에 🃏만 남았다.';
+        denButtons(btns, [{label: w==='me' ? '판을 거둔다' : '일어선다', on:()=>{ overlay.remove(); boss.onResult(w==='me'); }}]);
+        return true;
+      }
       if(w==='me'){
         const gold = thiefPayout(stake, true);
         info.textContent = drewJoker ? '패를 다 털었다!' : '패를 다 털었다 — 🃏는 한 번도 뽑지 않았다.';
@@ -337,15 +352,13 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
       else if(phase==='pick' && i!==pointed) take(i);
     });
     draw();
-    denButtons(btns, [
-      {label:`판에 앉는다 (판돈 ${stake}G)`, disabled: player.gold<stake, on:()=>{
-        // 판돈을 낸 즉시 저장 — 새로고침으로 무르기 방지.
-        player.gold -= stake; renderStatus(); saveGame();
-        const d = thiefDeal(); me = d.me; dealer = d.dealer;
-        draw();
-        info.textContent = d.jokerMine ? '내 패에 🃏가 섞여 들어왔다.' : '🃏는 딜러 쪽에 있다.';
-        later(myTurn, 900);
-      }},
-      {label:'지나간다', on:()=> end('도둑잡기 판을 지나쳤다.')},
-    ]);
+    const sit = {label: boss ? '판에 앉는다' : `판에 앉는다 (판돈 ${stake}G)`, disabled: !boss && player.gold<stake, on:()=>{
+      // 판돈을 낸 즉시 저장 — 새로고침으로 무르기 방지.
+      if(!boss){ player.gold -= stake; renderStatus(); saveGame(); }
+      const d = thiefDeal(); me = d.me; dealer = d.dealer;
+      draw();
+      info.textContent = d.jokerMine ? '내 패에 🃏가 섞여 들어왔다.' : '🃏는 딜러 쪽에 있다.';
+      later(myTurn, 900);
+    }};
+    denButtons(btns, boss ? [sit] : [sit, {label:'지나간다', on:()=> end('도둑잡기 판을 지나쳤다.')}]);
   }

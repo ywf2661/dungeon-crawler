@@ -1081,16 +1081,18 @@ export(전역): showMysteryEvent
   const JS_SLOT_W = 94;
   function showJesterShellEvent(opts){
     // 숨겨진 도박장(js/jester-den.js)에서 열면 런당 1회 플래그를 세우지 않는다.
+    // 보스전 "딜러의 판"(js/jester-boss-gamble.js, opts.boss)이면 판돈 없이 3판 중 BOSS_SHELL_HITS번 맞히면 승리.
     const den = !!(opts && opts.den);
-    if(!den) player.jesterShellSeen = true;
-    const stake = jesterShellStake(player, depth);
+    const boss = opts && opts.boss ? opts : null;
+    if(!den && !boss) player.jesterShellSeen = true;
+    const stake = boss ? 0 : jesterShellStake(player, depth);
     const {overlay, panel} = eventOverlay('야바위 컵',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
-        ${den ? '촛불 아래 탁자 위, 엎어진 컵 세 개. 손이 소매를 걷어 올린다.' : '엎어진 컵 세 개와, 그 위를 맴도는 손. 손목 위로는 아무것도 없다.'}<br>손가락이 금화 한 닢을 튕겨 올렸다가, 가운데 컵 아래로 밀어 넣는다.
+        ${boss ? '보스 앞, 엎어진 컵 세 개. 손이 소매를 걷어 올린다.' : den ? '촛불 아래 탁자 위, 엎어진 컵 세 개. 손이 소매를 걷어 올린다.' : '엎어진 컵 세 개와, 그 위를 맴도는 손. 손목 위로는 아무것도 없다.'}<br>손가락이 금화 한 닢을 튕겨 올렸다가, 가운데 컵 아래로 밀어 넣는다.
       </p>
       <div class="jt-streak" id="js-hits"></div>
       <div class="js-table" id="js-table"><div class="js-hand" id="js-hand">🫳</div></div>
-      <p id="js-info" style="text-align:center;color:var(--gold-bright);font-size:13px;min-height:18px;margin:0 0 10px;">판돈 ${stake}G — 세 판. 맞힌 만큼 돌려준다. 세 번 다 맞히면, 딜러가 무언가를 벗어 준다.</p>`,
+      <p id="js-info" style="text-align:center;color:var(--gold-bright);font-size:13px;min-height:18px;margin:0 0 10px;">${boss ? `세 판 중 ${BOSS_SHELL_HITS}번 맞히면 이긴다.` : `판돈 ${stake}G — 세 판. 맞힌 만큼 돌려준다. 세 번 다 맞히면, 딜러가 무언가를 벗어 준다.`}</p>`,
       `<div id="js-btns" style="display:flex; flex-direction:column; gap:8px;"></div>`);
     const table = panel.querySelector('#js-table');
     const hand = panel.querySelector('#js-hand');
@@ -1185,11 +1187,12 @@ export(전역): showMysteryEvent
             later(playRound, 400);
           }}]);
         } else {
-          setButtons([{label:'정산한다', on:settle}]);
+          setButtons([{label: boss ? (hits>=BOSS_SHELL_HITS ? '판을 거둔다' : '일어선다') : '정산한다', on:settle}]);
         }
       }, 1100);
     };
     const settle = ()=>{
+      if(boss){ overlay.remove(); boss.onResult(hits >= BOSS_SHELL_HITS); return; }
       const hasGlove = (player.relics||[]).includes('relic_dealerglove');
       const pay = jesterShellPayout(stake, hits, hasGlove);
       player.gold += pay;
@@ -1209,7 +1212,7 @@ export(전역): showMysteryEvent
       }});
     };
     drawHits();
-    setButtons([
+    setButtons(boss ? [{label:'판에 앉는다', on:playRound}] : [
       {label:`판에 앉는다 (판돈 ${stake}G)`, disabled: player.gold<stake, on:()=>{
         // 판돈을 낸 즉시 저장(jesterShellSeen 포함) — 새로고침으로 무르기 방지(카드판과 같음).
         player.gold -= stake; renderStatus(); saveGame(); playRound();
@@ -1231,17 +1234,20 @@ export(전역): showMysteryEvent
   }
   function showJesterTableEvent(opts){
     // 숨겨진 도박장(js/jester-den.js)에서 열면 런당 1회 플래그를 세우지 않는다.
+    // 보스전 "딜러의 판"(js/jester-boss-gamble.js, opts.boss)이면 판돈·멈춤 없이 BOSS_TABLE_STREAK연승이면 승리.
     const den = !!(opts && opts.den);
-    if(!den) player.jesterTableSeen = true;
-    const stake = jesterTableStake(player, depth);
+    const boss = opts && opts.boss ? opts : null;
+    if(!den && !boss) player.jesterTableSeen = true;
+    const stake = boss ? 0 : jesterTableStake(player, depth);
+    const need = boss ? BOSS_TABLE_STREAK : JESTER_TABLE_WIN_STREAK;
     const {overlay, panel} = eventOverlay('뒷골목 카드판',
       `<p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;">
-        ${den ? '촛불 아래 탁자 위에서, 손이 카드를 섞고 있다.' : '회랑 한구석, 낡은 탁자 위에서 카드를 섞는 손이 있다. 손목 위로는 아무것도 없다.'}<br>손가락이 탁자를 두 번 두드리고, 빈 의자 쪽을 가리킨다.
+        ${boss ? '보스 앞, 손만 남은 딜러가 카드를 섞는다. 두 판을 내리 이기면 승부는 끝난다.' : den ? '촛불 아래 탁자 위에서, 손이 카드를 섞고 있다.' : '회랑 한구석, 낡은 탁자 위에서 카드를 섞는 손이 있다. 손목 위로는 아무것도 없다.'}<br>손가락이 탁자를 두 번 두드리고, 빈 의자 쪽을 가리킨다.
       </p>
       <div class="jt-streak" id="jt-streak"></div>
       <div class="jt-board"><div id="jt-left"></div><div id="jt-right"></div></div>
       <p class="jt-hint">A가 가장 낮고, K가 가장 높다. 같은 숫자는 딜러의 몫.</p>
-      <p id="jt-info" style="text-align:center;color:var(--gold-bright);font-size:13px;min-height:18px;margin:0 0 10px;">판돈 ${stake}G — 세 판을 내리 이기면, 딜러의 소매 속에 든 것을 건넨다.</p>`,
+      <p id="jt-info" style="text-align:center;color:var(--gold-bright);font-size:13px;min-height:18px;margin:0 0 10px;">${boss ? '두 판을 내리 이기면 이긴다. 한 번이라도 지면 — 끝이다.' : `판돈 ${stake}G — 세 판을 내리 이기면, 딜러의 소매 속에 든 것을 건넨다.`}</p>`,
       `<div id="jt-btns" style="display:flex; flex-direction:column; gap:8px;"></div>`);
     const info = panel.querySelector('#jt-info');
     const btns = panel.querySelector('#jt-btns');
@@ -1259,8 +1265,9 @@ export(전역): showMysteryEvent
       }, {once:true}));
     };
     const drawStreak = ()=>{
-      streak.innerHTML = Array.from({length:JESTER_TABLE_WIN_STREAK}, (_,i)=> `<span class="${i<wins?'on':''}">●</span>`).join('');
+      streak.innerHTML = Array.from({length:need}, (_,i)=> `<span class="${i<wins?'on':''}">●</span>`).join('');
     };
+    const bossEnd = won=>{ overlay.remove(); boss.onResult(won); };
     // n이 있으면 뒷면으로 놓은 뒤 다음 프레임에 뒤집는다(transition이 걸리도록 2프레임 뒤).
     const placeCard = (slot, n, cls)=>{
       slot.innerHTML = jtCardHtml(n, cls);
@@ -1299,18 +1306,32 @@ export(전역): showMysteryEvent
       }, 500);
       if(!won){
         later(()=>{
+          if(boss){
+            info.textContent = next===card ? '같은 숫자. 딜러의 손가락이 그대를 가리킨다.' : '딜러의 손가락이 그대를 가리킨다.';
+            setButtons([{label:'일어선다', on:()=> bossEnd(false)}]);
+            return;
+          }
           info.textContent = next===card ? '같은 숫자. 손가락이 판돈을 쓸어 간다.' : '손가락이 판돈을 쓸어 간다.';
           setButtons([{label:'일어선다', on:()=> end(`뒷골목 카드판에서 졌다. 판돈 ${stake}G를 잃었다.`, 'warn')}]);
         }, 1100);
         return;
       }
       wins++;
-      if(wins>=JESTER_TABLE_WIN_STREAK){
+      if(wins>=need){
         later(()=>{
           drawStreak();
+          if(boss){
+            info.textContent = '두 판을 내리 이겼다.';
+            setButtons([{label:'판을 거둔다', on:()=> bossEnd(true)}]);
+            return;
+          }
           info.textContent = '세 판을 내리 이겼다.';
           setButtons([{label:'손을 내민다', on:winAll}]);
         }, 1100);
+        return;
+      }
+      if(boss){
+        later(()=>{ drawStreak(); info.textContent = `${wins}승! 한 판 더.`; setButtons([{label:'계속한다', on:deal}]); }, 1100);
         return;
       }
       const pay = jesterTablePayout(stake, wins, false);
@@ -1348,7 +1369,7 @@ export(전역): showMysteryEvent
     drawStreak();
     placeCard(left, 0);
     placeCard(right, 0);
-    setButtons([
+    setButtons(boss ? [{label:'판에 앉는다', on:deal}] : [
       {label:`판에 앉는다 (판돈 ${stake}G)`, disabled: player.gold<stake, on:()=>{
         // 판돈을 낸 즉시 저장(jesterTableSeen 포함) — 지고 새로고침해 판돈을 되찾고 다시 굴리는 걸 막는다.
         player.gold -= stake; renderStatus(); saveGame(); deal();
