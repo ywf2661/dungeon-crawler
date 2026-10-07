@@ -4,7 +4,9 @@
 설계: docs/superpowers/specs/2026-10-07-jester-den-games-design.md
 export(전역): RAT_TRACK, RAT_HALF, RAT_KINDS, denShuffle, ratLineup, ratCrumbs, ratNewRace, ratStep, ratOdds, ratPayout,
        THIEF_JOKER, thiefDeal, thiefTake, thiefWinner, thiefTell, thiefDealerPick, thiefPayout,
-       DEN_PRIZE_KINDS, pickDenPrizeKind, denRelicRoll, EDGE_CANDLE_RELIC, getLowHpLuckBonus
+       DEN_PRIZE_KINDS, pickDenPrizeKind, denRelicRoll, EDGE_CANDLE_RELIC, getLowHpLuckBonus,
+       JESTER_SET_RELICS, jesterSetComplete, bossGambleEligible, BOSS_GAMBLE_GAMES, bossGambleGame,
+       BOSS_TABLE_STREAK, BOSS_SHELL_HITS, bjTotal, bjDealerHits, bjOutcome
 주의: 화면은 jester-den.js(showRatRace/showThiefGame). 이 파일은 DOM을 만지지 않는다
      (tests/jester-den-games.test.js가 node vm으로 바로 불러 쓴다). 난수는 전부 rng 인자(없으면 Math.random).
 */
@@ -142,4 +144,37 @@ export(전역): RAT_TRACK, RAT_HALF, RAT_KINDS, denShuffle, ratLineup, ratCrumbs
   function getLowHpLuckBonus(p){
     if(!p || !(p.relics||[]).includes(EDGE_CANDLE_RELIC)) return 0;
     return p.hp <= p.maxhp*0.3 ? 0.2 : 0;
+  }
+
+  // ── 도박사 유물 세트 "딜러의 판" ── 셋을 모두 지니면 보스전을 한 판 승부로 끝낼 수 있다(지면 쓰러진다).
+  // 흐름/화면은 jester-boss-gamble.js. 설계: docs/superpowers/specs/2026-10-07-jester-boss-gamble-design.md
+  const JESTER_SET_RELICS = ['relic_aceinsleeve', 'relic_dealerglove', 'relic_edgecandle'];
+  function jesterSetComplete(p){ return !!p && JESTER_SET_RELICS.every(id=> (p.relics||[]).includes(id)); }
+  // 제안 조건: 세트 완성 + 보스(층별·파수꾼·최종 모두 isBoss) + 이 칸에서 아직 안 걸었음(새로고침 재도전 방지).
+  function bossGambleEligible(p, e){
+    if(!jesterSetComplete(p) || !(e && e.isBoss)) return false;
+    return p.bossGambleUsed !== (p.nodeCurrentId || 'boss');
+  }
+  const BOSS_GAMBLE_GAMES = ['table', 'shell', 'rats', 'thief'];
+  function bossGambleGame(e, rng){
+    if(e && e.isFinal) return 'final21';
+    return BOSS_GAMBLE_GAMES[Math.min(3, Math.floor((rng || Math.random)()*4))];
+  }
+  // 보스전 승리 기준(판돈 없이 승패만): 카드판 2연승, 야바위 3판 중 2번(쥐 경주는 1등, 도둑잡기는 승리).
+  const BOSS_TABLE_STREAK = 2, BOSS_SHELL_HITS = 2;
+
+  // ── 최종보스 전용 "시간의 스물하나" ── 카드 1~13(A=11 또는 1, J·Q·K=10). 21을 넘으면 진다.
+  function bjTotal(cards){
+    let t = 0, aces = 0;
+    cards.forEach(n=>{ if(n===1){ aces++; t += 11; } else t += Math.min(10, n); });
+    while(t > 21 && aces > 0){ t -= 10; aces--; }
+    return t;
+  }
+  // 보스(딜러)는 17 이상이 될 때까지 받는다(소프트 17 포함 멈춤).
+  function bjDealerHits(cards){ return bjTotal(cards) < 17; }
+  function bjOutcome(mine, theirs){
+    const a = bjTotal(mine), b = bjTotal(theirs);
+    if(a > 21) return 'lose';
+    if(b > 21) return 'win';
+    return a > b ? 'win' : a < b ? 'lose' : 'push';
   }

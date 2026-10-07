@@ -144,6 +144,40 @@ assert.strictEqual(run("getLowHpLuckBonus({relics:['relic_edgecandle'], hp:31, m
 assert.strictEqual(run("getLowHpLuckBonus({relics:[], hp:1, maxhp:100})"), 0, '유물 없음');
 assert.strictEqual(run("getLowHpLuckBonus(null)"), 0);
 
+// ── 도박사 유물 세트: 보스전 딜러의 판 ──
+const SET = "['relic_aceinsleeve','relic_dealerglove','relic_edgecandle']";
+assert.strictEqual(run(`jesterSetComplete({relics:${SET}})`), true);
+assert.strictEqual(run("jesterSetComplete({relics:['relic_aceinsleeve','relic_dealerglove']})"), false);
+assert.strictEqual(run('jesterSetComplete(null)'), false);
+assert.strictEqual(run(`bossGambleEligible({relics:${SET}, nodeCurrentId:'t0boss'}, {isBoss:true})`), true);
+assert.strictEqual(run(`bossGambleEligible({relics:${SET}, nodeCurrentId:'t0r1n0'}, {isBoss:false})`), false, '보스 아님');
+assert.strictEqual(run(`bossGambleEligible({relics:['relic_aceinsleeve'], nodeCurrentId:'t0boss'}, {isBoss:true})`), false, '세트 미완성');
+assert.strictEqual(run(`bossGambleEligible({relics:${SET}, nodeCurrentId:'t0boss', bossGambleUsed:'t0boss'}, {isBoss:true})`), false, '이 칸에서 이미 걸었음');
+assert.strictEqual(run(`bossGambleEligible({relics:${SET}, nodeCurrentId:'t1boss', bossGambleUsed:'t0boss'}, {isBoss:true})`), true, '다른 칸');
+assert.strictEqual(run(`bossGambleEligible({relics:${SET}, nodeCurrentId:null, bossGambleUsed:'boss'}, {isBoss:true})`), false, '칸 id 없으면 boss 키');
+assert.strictEqual(run(`bossGambleEligible({relics:${SET}}, null)`), false);
+assert.deepStrictEqual(J(run('BOSS_GAMBLE_GAMES')), ['table','shell','rats','thief']);
+assert.strictEqual(run("bossGambleGame({isBoss:true, isFinal:true}, ()=>0)"), 'final21');
+assert.strictEqual(run("bossGambleGame({isBoss:true}, ()=>0)"), 'table');
+assert.strictEqual(run("bossGambleGame({isBoss:true}, ()=>0.999)"), 'thief');
+assert.strictEqual(run('BOSS_TABLE_STREAK'), 2);
+assert.strictEqual(run('BOSS_SHELL_HITS'), 2);
+// 스물하나: A는 11, 넘으면 1
+assert.strictEqual(run('bjTotal([1,13])'), 21);
+assert.strictEqual(run('bjTotal([1,1])'), 12);
+assert.strictEqual(run('bjTotal([10,9,5])'), 24);
+assert.strictEqual(run('bjTotal([1,5,10])'), 16);
+assert.strictEqual(run('bjTotal([1,1,9])'), 21);
+assert.strictEqual(run('bjTotal([12,11])'), 20, 'J·Q·K는 10');
+assert.strictEqual(run('bjDealerHits([10,6])'), true);
+assert.strictEqual(run('bjDealerHits([10,7])'), false);
+assert.strictEqual(run('bjDealerHits([1,6])'), false, '소프트 17도 멈춘다');
+assert.strictEqual(run('bjOutcome([10,9,5],[10,7])'), 'lose', '내가 넘으면 패배');
+assert.strictEqual(run('bjOutcome([10,9],[10,6,8])'), 'win', '보스가 넘으면 승리');
+assert.strictEqual(run('bjOutcome([10,9],[10,7])'), 'win');
+assert.strictEqual(run('bjOutcome([10,7],[10,9])'), 'lose');
+assert.strictEqual(run('bjOutcome([10,8],[9,9])'), 'push');
+
 // ── 유물 정의(relics.js): 이벤트 전용(제단 제외) + 도감 완성 조건 제외 ──
 const rctx = vm.createContext({console, Math});
 vm.runInContext(fs.readFileSync('js/relics.js','utf8'), rctx, {filename:'js/relics.js'});
