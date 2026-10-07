@@ -916,6 +916,21 @@
   @keyframes jsCoinWin{0%{box-shadow:0 0 0 #e6c34a00; scale:1;} 40%{box-shadow:0 0 26px #ffe27aee; scale:1.25;} 100%{box-shadow:0 0 8px #e6c34a88; scale:1;}}
   .js-cup.lose .js-shell{background:linear-gradient(180deg,#a8503a,#5a2418); animation:jsLose .5s ease;}
   @keyframes jsLose{0%,100%{rotate:0deg;} 25%{rotate:-7deg;} 50%{rotate:7deg;} 75%{rotate:-4deg;}}
+  /* 쥐 경주(숨겨진 도박장, js/jester-den.js showRatRace). 쥐 위치는 .jr-rat의 left(transition). */
+  .jr-track{display:flex; flex-direction:column; gap:6px; margin:4px 0 8px;}
+  .jr-lane{border:1px solid #4a3a24; border-radius:6px; padding:4px 6px; background:#1a120c;}
+  .jr-lane.mine{border-color:var(--gold-bright); box-shadow:0 0 6px #e6c34a55;}
+  .jr-lane.winner{background:#2e2410;}
+  .jr-label{font-size:11px; color:var(--parchment-dim); display:flex; gap:4px; align-items:baseline;}
+  .jr-label b{color:var(--parchment); font-weight:600;}
+  .jr-odds{margin-left:auto; color:var(--gold-bright); font-family:Cinzel,serif;}
+  .jr-run{position:relative; height:24px; border-right:2px dashed #8a6a3a; margin-top:2px;}
+  .jr-rat{position:absolute; top:0; left:0; font-size:20px; line-height:24px; transform:scaleX(-1); transition:left .45s ease;}
+  .jr-crumb{position:absolute; top:10px; width:5px; height:5px; border-radius:50%; background:#c9a86a; box-shadow:0 0 3px #c9a86a;}
+  .jr-track.tripping .jr-lane{cursor:pointer;}
+  .jr-track.tripping .jr-lane:hover{border-color:#c9a8ff;}
+  .jr-lane.tripped .jr-rat{animation:jrTrip .5s ease;}
+  @keyframes jrTrip{0%,100%{rotate:0deg;} 30%{rotate:-25deg;} 60%{rotate:15deg;}}
 
   /* 시간의 파수꾼 스킬 전용 VFX 이미지 3종(사용자 제공, images/vfx/tg_*.webp).
      기존 .frost-flash-fx(섬광)/.screen-crack-fx(균열)에 겹쳐서 함께 재생된다
@@ -1723,6 +1738,7 @@
 <script src="js/spec-story.js"></script>
 <script src="js/jester-table.js"></script>
 <script src="js/jester-shell.js"></script>
+<script src="js/jester-den-games.js"></script>
 <script src="js/jester-den.js"></script>
 <script src="js/main.js"></script>
 </body>

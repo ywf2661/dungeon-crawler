@@ -2,9 +2,14 @@
 /*
 딜러의 장갑 — 숨겨진 장소 화면: 진실의 조각(이야기 칸) + 숨겨진 도박장.
 설계: docs/superpowers/specs/2026-10-06-jester-hidden-places-design.md
-export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJesterTruthRoom, showJesterDen
+export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJesterTruthRoom, showJesterDen,
+       grantDenPrize, showRatRace, showThiefGame
 의존성: jester-shell.js(nextTruthIndex/JESTER_TRUTH_COUNT/pickDenTables), storage.js(loadJesterTruth/addJesterTruth),
-       events.js(eventOverlay/closeMysteryEvent/showJesterTableEvent/showJesterShellEvent), ui/dialogue.js
+       events.js(eventOverlay/closeMysteryEvent/showJesterTableEvent/showJesterShellEvent/grantRandomPotion/
+       grantEliteSealFragments), jester-table.js(jesterTableStake), jester-den-games.js(쥐 경주/도둑잡기 순수 로직),
+       blacksmith.js(grantReinforceStones), relics.js(유물 획득), ui/dialogue.js
+2차(2026-10-07): 도박장 전용 게임 쥐 경주/도둑잡기 + 대승 보상 벼랑 끝의 촛불
+       (docs/superpowers/specs/2026-10-07-jester-den-games-design.md).
 주의: 진실의 조각은 "도박사만 아는 진실" — 주민들이 모르는 거래의 실상(story.md 2장)을 간접 서술로만 드러낸다.
      이름(아이온/아코스)은 쓰지 않는다. 왕자의 병상은 "잠긴 육아실"이 다루므로 쓰지 않는다.
 */
@@ -49,6 +54,7 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
   const JESTER_DEN_GAMES = [
     {id:'table', name:'뒷골목 카드판', desc:'높다/낮다, 세 판을 내리 이기면 소매 속의 것을.', start:()=> showJesterTableEvent({den:true})},
     {id:'shell', name:'야바위 컵', desc:'섞이는 컵을 눈으로 따라간다. 세 판.', start:()=> showJesterShellEvent({den:true})},
+    {id:'rats', name:'쥐 경주', desc:'쥐 네 마리, 배당은 저마다. 반환점에서 한 번 더 걸 수 있다.', start:()=> showRatRace()},
   ];
 
   // 이야기 칸: 다음 조각을 화면 전에 기록하고(새로고침으로 잃지 않게), 최대HP 20% 회복.
@@ -86,4 +92,139 @@ export(전역): JESTER_TRUTH_FRAGMENTS, jesterTruthSeen, JESTER_DEN_GAMES, showJ
       addLog('숨겨진 도박장을 그냥 나왔다.');
       closeMysteryEvent(overlay);
     }, {once:true});
+  }
+
+  // 도박장 전용 게임 공통 정산: 골드 + 작은 현물 1개, 대승이면 50%로 벼랑 끝의 촛불(그때 이미 있으면 판돈 2배 골드).
+  // 유물이 나오면 오버레이를 닫고 대화창 → 획득(슬롯이 차면 교체 화면). 아니면 바로 노드맵으로.
+  function grantDenItem(kind){
+    if(kind==='potion') return grantRandomPotion();
+    if(kind==='stone'){ grantReinforceStones(1); return '강화석 +1'; }
+    return grantEliteSealFragments(1);
+  }
+  function grantDenPrize(overlay, o){
+    player.gold += o.gold;
+    const prize = grantDenItem(pickDenPrizeKind());
+    const roll = denRelicRoll(o.bigWin, (player.relics||[]).includes(EDGE_CANDLE_RELIC));
+    let bonus = '';
+    if(roll==='gold'){ player.gold += o.stake*2; bonus = ` 딜러가 골드를 더 밀어 준다(+${o.stake*2}G).`; }
+    addLog(`${o.logText} 골드 +${o.gold}G. ${prize}${bonus}`, 'gold');
+    if(roll!=='relic'){ renderStatus(); saveGame(); closeMysteryEvent(overlay); return; }
+    overlay.remove();
+    const done = ()=>{ renderStatus(); saveGame(); renderExplore([]); };
+    showDialogueSequence([
+      '딜러의 손이 탁자 위 촛불 하나를 집어, 이쪽으로 밀어 준다.',
+      '거의 다 타 버린 몽당초다. 그런데 불꽃이 낮게 내려앉을수록, 더 밝게 타오른다.',
+    ], {onDone: ()=>{
+      if(getRelicSlotUsage() >= player.relicSlots) showRelicSwapPrompt(EDGE_CANDLE_RELIC, null, false, done);
+      else { finalizeRelicPick(EDGE_CANDLE_RELIC, false); done(); }
+    }});
+  }
+
+  // 버튼 영역 갈아 끼우기(카드판/야바위와 같은 패턴 — 클릭 즉시 비워 연타 방지).
+  function denButtons(btns, list){
+    btns.innerHTML = list.map((b,i)=>`<button class="btn" data-i="${i}" ${b.disabled?'disabled':''}>${b.label}</button>`).join('');
+    btns.querySelectorAll('button').forEach(el=> el.addEventListener('click', ()=>{
+      denButtons(btns, []);
+      list[+el.dataset.i].on();
+    }, {once:true}));
+  }
+  const DEN_INTRO_STYLE = 'text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 10px;';
+  const DEN_INFO_STYLE = 'text-align:center;color:var(--gold-bright);font-size:13px;min-height:18px;margin:0 0 10px;';
+
+  // 쥐 경주(js/jester-den-games.js). 쥐 고르기(= 판돈) → 틱마다 0.6초 재생 → 반환점에서 멈춰
+  // 올리기/절반 빼기/그대로 → 결승. 사기꾼은 경주 중 1회 발 걸기(고르는 동안 경주가 멈춘다).
+  // 타이머는 오버레이가 닫혔으면 아무것도 하지 않는다(later).
+  const RAT_TICK_MS = 600;
+  function showRatRace(){
+    const stake = jesterTableStake(player, depth);
+    const lineup = ratLineup(), crumbs = ratCrumbs();
+    const odds = ratOdds(lineup, crumbs);
+    const st = ratNewRace(lineup, crumbs);
+    const {overlay, panel} = eventOverlay('쥐 경주',
+      `<p style="${DEN_INTRO_STYLE}">촛불 아래 좁은 홈통 네 줄. 손이 쥐 꼬리를 하나씩 집어 출발선에 세운다.</p>
+      <div class="jr-track" id="jr-track"></div>
+      <p id="jr-info" style="${DEN_INFO_STYLE}">판돈 ${stake}G — 이길 쥐에 건다. 반환점에서 한 번 더 걸 수 있다.</p>`,
+      `<div id="jr-btns" style="display:flex; flex-direction:column; gap:8px;"></div>`);
+    const track = panel.querySelector('#jr-track');
+    const info = panel.querySelector('#jr-info');
+    const btns = panel.querySelector('#jr-btns');
+    let pick = -1, raised = false, cashedOut = false, tripping = false;
+    let tripLeft = player.specialization==='jester_debtcollector' ? 1 : 0;
+    const later = (fn, ms)=> setTimeout(()=>{ if(overlay.isConnected) fn(); }, ms);
+    const at = f=> `calc((100% - 22px) * ${Math.min(1, f)})`;
+    track.innerHTML = lineup.map((k,i)=>`<div class="jr-lane" data-i="${i}">
+        <div class="jr-label"><b>${RAT_KINDS[k].name}</b> · ${RAT_KINDS[k].desc}<span class="jr-odds">${odds[i]}배</span></div>
+        <div class="jr-run">${k==='glutton' ? crumbs.map(c=>`<i class="jr-crumb" data-c="${c}" style="left:${at(c/RAT_TRACK)}"></i>`).join('') : ''}<span class="jr-rat">🐀</span></div>
+      </div>`).join('');
+    const lanes = [...track.querySelectorAll('.jr-lane')];
+    const name = i=> RAT_KINDS[lineup[i]].name;
+    const draw = ()=>{
+      lanes.forEach((ln,i)=>{
+        ln.querySelector('.jr-rat').style.left = at(st.rats[i].pos/RAT_TRACK);
+        ln.querySelectorAll('.jr-crumb').forEach(c=>{ if(!st.crumbs.includes(+c.dataset.c)) c.remove(); });
+      });
+    };
+    const end = (text, cls)=>{ addLog(text, cls); renderStatus(); saveGame(); closeMysteryEvent(overlay); };
+    const runButtons = ()=> denButtons(btns, tripLeft>0 ? [{label:'🦶 발 걸기 (1회)', on:()=>{
+      tripLeft--; tripping = true; track.classList.add('tripping');
+      info.textContent = '발을 걸 쥐의 레인을 고르세요.';
+    }}] : []);
+    lanes.forEach((ln,i)=> ln.addEventListener('click', ()=>{
+      if(!tripping) return;
+      tripping = false; track.classList.remove('tripping');
+      st.rats[i].tripped = true;
+      ln.classList.add('tripped'); later(()=> ln.classList.remove('tripped'), 700);
+      info.textContent = `${name(i)}의 발을 슬쩍 걸었다.`;
+    }));
+    const tick = ()=>{
+      if(tripping){ later(tick, 150); return; }
+      const res = ratStep(st);
+      draw();
+      if(res.finished){ later(finish, 700); return; }
+      if(res.half && !cashedOut){ later(halfway, 450); return; }
+      later(tick, RAT_TICK_MS);
+    };
+    const halfway = ()=>{
+      const rank = 1 + st.rats.filter((r,i)=> i!==pick && r.pos > st.rats[pick].pos).length;
+      info.textContent = `반환점. ${name(pick)}은(는) 지금 ${rank}위.`;
+      denButtons(btns, [
+        {label:`판돈 올리기 (+${stake}G, ${odds[pick]}배 그대로)`, disabled: player.gold<stake, on:()=>{
+          raised = true; player.gold -= stake; renderStatus(); saveGame();
+          info.textContent = `판돈을 ${stake*2}G로 올렸다.`; runButtons(); later(tick, 400);
+        }},
+        {label:`절반 빼기 (${ratPayout(stake, odds[pick], {cashedOut:true})}G 돌려받기)`, on:()=>{
+          cashedOut = true; player.gold += ratPayout(stake, odds[pick], {cashedOut:true}); renderStatus(); saveGame();
+          info.textContent = '판돈 절반을 챙겨 물러났다. 경주는 계속된다.'; later(tick, 400);
+        }},
+        {label:'그대로', on:()=>{ info.textContent = '쥐들이 다시 달린다.'; runButtons(); later(tick, 300); }},
+      ]);
+    };
+    const finish = ()=>{
+      denButtons(btns, []);
+      lanes[st.winner].classList.add('winner');
+      const won = st.winner===pick;
+      if(cashedOut){
+        info.textContent = `${name(st.winner)}이(가) 들어왔다.`;
+        denButtons(btns, [{label:'일어선다', on:()=> end(`쥐 경주에서 판돈 절반을 빼고 물러났다(${name(st.winner)} 우승). 골드 +${ratPayout(stake, odds[pick], {cashedOut:true})}G`)}]);
+        return;
+      }
+      if(!won){
+        info.textContent = `${name(st.winner)}이(가) 먼저 들어왔다. 손가락이 판돈을 쓸어 간다.`;
+        denButtons(btns, [{label:'일어선다', on:()=> end(`쥐 경주에서 졌다(${name(st.winner)} 우승). 판돈 ${raised ? stake*2 : stake}G를 잃었다.`, 'warn')}]);
+        return;
+      }
+      const gold = ratPayout(stake, odds[pick], {won:true, raised});
+      info.textContent = `${name(pick)}이(가) 들어왔다!${raised ? ' 올린 판돈까지 전부.' : ''}`;
+      denButtons(btns, [{label:`정산한다 (${gold}G)`, on:()=> grantDenPrize(overlay, {gold, stake, bigWin:raised,
+        logText:`쥐 경주에서 ${name(pick)}이(가) 이겼다(${odds[pick]}배${raised ? ', 판돈 올림' : ''}).`})}]);
+    };
+    draw();
+    denButtons(btns, lineup.map((k,i)=>({label:`${RAT_KINDS[k].name}에 건다 (${odds[i]}배)`, disabled: player.gold<stake, on:()=>{
+      pick = i; lanes[i].classList.add('mine');
+      // 판돈을 낸 즉시 저장 — 지고 새로고침해 판돈을 되찾는 걸 막는다(카드판/야바위와 같음).
+      player.gold -= stake; renderStatus(); saveGame();
+      info.textContent = `${name(i)}에 ${stake}G. 손가락이 탁자를 두드리자, 쥐들이 달린다.`;
+      runButtons();
+      later(tick, 500);
+    }})).concat([{label:'지나간다', on:()=> end('쥐 경주를 지나쳤다.')}]));
   }
