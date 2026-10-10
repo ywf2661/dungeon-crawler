@@ -9,8 +9,8 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
         combat/battle-setup.js(triggerEnragePhase), data/jobs.js(getSpecialization)
 주의(신규): 사용자 요청으로 타이어 보스를 잡으면 무조건 마을로 이동한다.
      showBossRewardChoice()에서 보상을 고른 뒤 실제로 town=true 전환과 마을
-     체크포인트(player.townCheckpoint) 저장이 이뤄진다. 사망 시(쉬움/보통
-     난이도만) 이 체크포인트로 완전히 롤백한다 — 하드코어는 기존 레벨1
+     체크포인트(player.townCheckpoint) 저장이 이뤄진다. 사망 시(보통
+     난이도만 — 쉬움은 골드 절반만 잃음) 이 체크포인트로 완전히 롤백한다 — 하드코어는 기존 레벨1
      초기화 로직을 그대로 유지한다.
 주의: applyLevelUpEffects()는 grantExp()의 레벨업 1회분 로직(스탯 증가+스킬 지급)을 뽑아낸
      것으로, combat/job-advancement.js의 admin 전용 "전직 즉시 15레벨" 디버그 로직도
@@ -444,8 +444,18 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
           oldRelics.forEach(id=> applyRelicEffect(id));
           player.relics = oldRelics.slice();
           player.cursedRelicBundles = oldCursedRelicBundles;
+        } else if(player.difficulty==='easy'){
+          // 쉬움(사용자 요청): 되감지 않는다 — 레벨/장비/유물/인장 등 지금 상태 그대로
+          // 마을로 돌아가고, 대가로 골드 절반만 잃는다. HP/MP는 완전 회복.
+          const lostGold = Math.floor(player.gold*0.5);
+          player.gold -= lostGold;
+          player.hp = player.maxhp; player.mp = player.maxmp;
+          // 되감은 게 없으니 직전 층별보스 보상 재선택(maybeOfferRewardRedo)도 띄우지 않는다.
+          player.lastBossRewardChoice = null;
+          document.getElementById('go-summary').textContent =
+            `쓰러지는 순간, 회랑에 새겨진 알 수 없는 힘이 몸만을 되감아 마지막으로 안식했던 마을로 돌려보낸다. 손에 넣은 것은 모두 그대로지만, 지갑은 가벼워졌다. (골드 -${lostGold}G)`;
         } else {
-          // 쉬움/보통 난이도(사용자 요청): 마지막 마을 체크포인트로 완전히
+          // 보통 난이도(사용자 요청): 마지막 마을 체크포인트로 완전히
           // 되돌린다 — 이번 구간(타이어)에서 얻은 골드/경험치/레벨업/장비/
           // 유물 등이 전부 소멸하고, 마지막으로 보스를 잡고 마을에 도착했던
           // 그 상태 그대로 돌아간다. 체크포인트가 없으면(이론상 없을 수
@@ -655,7 +665,7 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       player.multiBattleBuff = null;
     }
   }
-  // 사망(쉬움/보통) 후 마을 복귀 직후 호출 — 직전 층별보스 보상 선택을 다시
+  // 사망(보통) 후 마을 복귀 직후 호출 — 직전 층별보스 보상 선택을 다시
   // 고를 기회를 준다(사용자 요청 — "체력 대신 인장을 골랐다가 그 체력으로
   // 죽었을 때, 그 선택만 무를 수 있게"). 정예의 인장 보너스(1~2개 무작위)는
   // 여기서 다시 지급되지 않는다 — 오직 6가지 선택지 중 하나를 다른 것으로

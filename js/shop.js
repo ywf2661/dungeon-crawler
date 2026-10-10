@@ -193,17 +193,23 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
     panel.innerHTML = `<button class="btn shop-x shop-close">떠나기</button><h3>정예의 교환소</h3>
       <p style="text-align:center;color:var(--parchment-dim);font-size:12.5px;font-style:italic;margin:-4px 0 12px;">정예 몬스터를 처치하면 얻는 정예의 인장을 모아, 원하는 에픽 장비와 직접 교환할 수 있다.</p>
       <p style="text-align:center;color:#ffd76a;font-size:14px;margin:0 0 14px;">🔱 보유 인장: ${seals}개</p>
-      ${stock.length ? stock.map(id=>{
+      ${stock.length ? Object.keys(SLOT_LABELS).map(slot=>{
+        // 부위별로 묶어 소제목을 단다(사용자 요청 — 어떤 부위 장비인지 구분이 어려움).
+        const ids = stock.filter(id=>EPIC_EQUIPMENT[id].slot===slot);
+        if(!ids.length) return '';
+        return `<div style="font-family:Cinzel; color:var(--gold); font-size:12.5px; letter-spacing:.05em; margin:14px 0 2px;">${SLOT_LABELS[slot]}</div>`
+          + ids.map(id=>{
         const it = EPIC_EQUIPMENT[id];
         const afford = seals >= EXCHANGE_EPIC_COST;
         return `
       <div class="shop-item">
         <div class="si-info">
-          <span class="si-name" style="font-family:Cinzel;color:var(--epic-bright);">✦✦ ${it.name}</span>
+          <span class="si-name" data-set="${it.setId}" style="font-family:Cinzel;color:var(--epic-bright);cursor:pointer;text-decoration:underline dotted;">✦✦ [${SLOT_LABELS[slot]}] ${it.name}</span>
           <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">${it.desc} (${statsText(it.stats)})</span>
         </div>
         <button class="buy-btn" data-key="${id}" ${afford?'':'disabled'}>${EXCHANGE_EPIC_COST}개 교환</button>
       </div>`;
+      }).join('');
       }).join('') : `<div style="color:var(--parchment-dim); font-size:13px; font-style:italic; text-align:center; padding:8px;">지금 교환할 수 있는 에픽 장비가 없다(이미 다 모았거나, 아직 이 깊이에서 안 풀렸다).</div>`}
       <div style="text-align:center; margin:10px 0;"><button class="btn" id="exchange-refresh" ${canRefresh?'':'disabled'}>🔄 목록 새로고침 (인장 ${EXCHANGE_REFRESH_COST}개)</button></div>
       <p style="text-align:center;color:var(--parchment-dim);font-size:11px;font-style:italic;margin:-6px 0 10px;">다음 마을에 도착하면 목록이 자연히 새로 뽑힌다.</p>
@@ -223,6 +229,8 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
         overlay.remove(); openExchange();
       });
     });
+    // 아이템 이름 클릭 → 세트 효과 팝업(사용자 요청, 장비 화면의 팝업 재사용).
+    panel.querySelectorAll('.si-name[data-set]').forEach(n=>n.addEventListener('click', ()=>showSetEffectPopup(n.dataset.set)));
     panel.querySelector('#exchange-refresh').addEventListener('click', ()=>{
       if((player.eliteSeals||0) < EXCHANGE_REFRESH_COST) return;
       player.eliteSeals -= EXCHANGE_REFRESH_COST;

@@ -249,6 +249,13 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       setupAdminBossGambleTest(adminGambleName==='admin9' ? 5 : 0);
       return;
     }
+    // [디버그 전용] "admin10": 쉬움 사망 복귀(골드 절반만 잃고 그대로 마을로) 테스트.
+    // 레벨 1로 3구간 마을에서 시작 — 상점에서 뭔가 사고 나가서 죽으면 바로 확인된다.
+    if(player.name && player.name.trim().toLowerCase()==='admin10'){
+      setupAdminMonsterTest({level:1, tierIndex:2, types:null,
+        msg:'상점에서 장비를 사고 나아가서 쓰러져 보라. 쉬움이면 장비는 남고 골드만 절반 잃은 채 마을로 돌아온다.'});
+      return;
+    }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
     // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
     // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
@@ -622,7 +629,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
   }
 
   // 마을 체크포인트(신규) — 타이어 보스를 잡고 마을에 도착하는 시점의 상태를
-  // 통째로 스냅샷 저장해둔다. 이후 사망 시(쉬움/보통 난이도) 이 스냅샷으로
+  // 통째로 스냅샷 저장해둔다. 이후 사망 시(보통 난이도) 이 스냅샷으로
   // 되돌려, 이번 구간에서 얻은 골드/경험치/장비/유물 등을 전부 무효화한다.
   // combat/battle-end.js가 보스 클리어 시 makeTownCheckpoint()로 저장하고,
   // 사망 시 applyTownCheckpoint()로 복원한다.
