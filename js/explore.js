@@ -256,6 +256,11 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
         msg:'상점에서 장비를 사고 나아가서 쓰러져 보라. 쉬움이면 장비는 남고 골드만 절반 잃은 채 마을로 돌아온다.'});
       return;
     }
+    // [디버그 전용] "admin11"(도적): 역병숙주 엔딩 미리보기 — 파수꾼/시조/마녀 엔딩 중 하나를 골라 바로 본다.
+    if(player.name && player.name.trim().toLowerCase()==='admin11' && player.job==='rogue'){
+      setupAdminPlagueEndingTest();
+      return;
+    }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
     // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
     // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
@@ -435,6 +440,30 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     renderStatus();
     renderExplore(['[관리자 테스트] 골드 5000 · 딜러의 장갑. 보스 칸을 뺀 모든 칸이 🕯 숨겨진 도박장이다(4개 게임 중 2개가 무작위로 뜬다).']);
     saveGame();
+  }
+
+  // [디버그 전용] 역병숙주 엔딩 미리보기(admin11). 저장하지 않도록 saveGame은 부르지 않는다
+  // (showEnding 자체는 저장하므로 admin11 캐릭터 세이브가 남는 건 감수).
+  function setupAdminPlagueEndingTest(){
+    player.level = 15;
+    player.specialization = 'rogue_alchemist';
+    player.jobChosenAt10 = true;
+    const overlay = document.createElement('div');
+    overlay.className = 'shop-overlay';
+    const panel = document.createElement('div');
+    panel.className = 'shop-panel';
+    panel.innerHTML = `<h3>🐍 역병숙주 엔딩 미리보기</h3>
+      <button class="btn btn-wide" data-end="watcher">회랑의 새로운 파수꾼</button>
+      <button class="btn btn-wide" data-end="progenitor">시조, 마침내 안식에 들다</button>
+      <button class="btn btn-wide" data-end="witch">회랑, 마침내 시간을 되찾다</button>`;
+    panel.querySelectorAll('button').forEach(b=> b.addEventListener('click', ()=>{
+      overlay.remove();
+      const kind = b.dataset.end;
+      enemy = kind==='watcher' ? {finalJobId:'rogue'} : {type: kind==='witch' ? 'timewitch' : 'progenitor', isTrueFinal:true};
+      showEnding(kind!=='watcher');
+    }));
+    overlay.appendChild(panel);
+    document.getElementById('app').appendChild(overlay);
   }
 
   // [디버그 전용] 딜러의 판 테스트(admin8: tier 0, admin9: tier 5). 도박사 유물 3개(js/jester-den-games.js의

@@ -18,7 +18,13 @@
   재연결되어 있었다 — 예전 문서(jobs.js 코멘트)에 "미해결"이라고 적혀 있던 건
   낡은 정보였음(실제 코드가 최신).
 
-## 최근 작업 (이번 세션 — 도박사 유물 세트 "딜러의 판": 보스전을 한 판 승부로)
+## 최근 작업 — 역병숙주 엔딩 개편
+
+- `js/spec-story.js` `SPEC_ENDING_LINES.rogue_alchemist`: 파수꾼/시조/마녀 세 엔딩 모두 "빌려 쓴 역병이 끝내
+  온몸을 뒤덮는" 결말로 교체(사용자 요청). 앵커는 그대로라 `tests/spec-story.test.js` 통과.
+- 테스트 모드: `admin11`(도적) — 시작하자마자 역병숙주로 세 엔딩 중 하나를 골라 바로 재생.
+
+## 이전 작업 (도박사 유물 세트 "딜러의 판": 보스전을 한 판 승부로)
 
 - 설계: `docs/superpowers/specs/2026-10-07-jester-boss-gamble-design.md`(**"결정 사항" 표 = 사용자 부재 중 내가 정한 것, 확인 필요**),
   계획: `docs/superpowers/plans/2026-10-07-jester-boss-gamble.md`
