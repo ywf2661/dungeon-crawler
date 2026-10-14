@@ -1,0 +1,10 @@
+{
+  "name": "toy-dungeon demo",
+  "engine": "./engine.ts",
+  "levels": [1, 2, 3],
+  "seedCount": 60,
+  "seedStart": 0,
+  "bots": ["greedy", "planner", "reference", "forced"],
+  "forcedLoadout": "iron_edge,reckless_charm",
+  "tuning": {}
+}
