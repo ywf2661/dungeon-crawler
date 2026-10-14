@@ -972,6 +972,15 @@ export(전역): FINAL_BOSS_BY_JOB, TRUE_FINAL_BOSS, ENRAGE_STEPS_FINAL/TRUE, pic
       enemy.atk = Math.max(1, Math.round(enemy.atk*player.nextBattleEnemyAtkMult));
       player.nextBattleEnemyAtkMult = null;
     }
+    // 노드맵 칸에서 처음 만난 적을 기록해 두고, 싸우던 중 새로고침 후 이어하기면 그대로 다시 쓴다
+    // (nodemap.js의 nodeResumeEnemy 참고). pickEnemy()는 위에서 그대로 불러 1회용 플래그들을 소비시킨다.
+    if(nodeResumeEnemy && player.nodeEnemy){
+      enemy = JSON.parse(JSON.stringify(player.nodeEnemy));
+    } else if(!inBossDen && player.nodeCurrentId!=null && !player.nodeEnemy){
+      player.nodeEnemy = JSON.parse(JSON.stringify(enemy));
+      saveGame(); // 전투 시작 직후 새로고침해도 기록이 남게
+    }
+    nodeResumeEnemy = false;
     battleOver = false; subMode = null;
     // 정예 "저주" 특성(플레이어 회복량 감소)이 explore.js의 renderStatus()에서
     // HP 증가분을 감지하는 기준값. 전투 시작 시점 HP로 초기화해 이전 화면의

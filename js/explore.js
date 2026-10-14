@@ -178,6 +178,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
           renderStatus();
           depth = getVirtualDepth();
           if(curNode.type==='elite') nodeForcedElite = true;
+          nodeResumeEnemy = true;
           renderExplore(['모험을 이어간다.']);
           addLog('중단됐던 전투를 다시 시작한다!', 'warn');
           setTimeout(()=>startBattle(false), 300);

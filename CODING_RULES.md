@@ -247,6 +247,15 @@ Claude는 매 작업마다 전체 프로젝트를 다시 분석하지 않는다.
 저장/복원 필드 누락
 ```
 
+기능을 고친 뒤에는 브라우저 회귀 테스트를 돌린다(전부 약 2분, 실패 화면은 `tests/e2e_shots/`).
+
+```text
+python -X utf8 tests/e2e_smoke.py            # 전부 (준비: pip install playwright, 설치된 Chrome 사용)
+python -X utf8 tests/e2e_smoke.py 전투 admin7  # 이름에 해당 글자가 든 시나리오만
+```
+
+새 기능이 중요한 흐름을 만들면 같은 파일에 시나리오를 하나 추가하고, 새 adminN 모드는 `ADMIN_MODES`에 한 줄 추가한다.
+
 검증하지 못한 부분은 명확하게 표시한다.
 
 검증하지 않은 것을 정상 동작한다고 단정하지 않는다.

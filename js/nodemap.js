@@ -80,6 +80,10 @@ TIME_GUARDIAN 참고.
   // pickEnemy()가 정상적인 몬스터/보스 풀 대신 고정 중간보스를 내주도록 하는
   // 1회용 플래그. resolveNode()에서 세우고, pickEnemy() 안에서 소비 즉시 꺼진다.
   let nodeMidboss = false;
+  // 싸우던 중 새로고침 → 이어하기(explore.js)가 세운다. startBattle()이 이 칸에서 처음
+  // 만났던 적(player.nodeEnemy)을 그대로 다시 내놓고 소비 즉시 끈다 — 새로고침으로
+  // 적/정예 여부를 다시 뽑는 것 방지(사용자 확인: 의도한 동작 아님).
+  let nodeResumeEnemy = false;
 
   // 절차적 생성: rowCount개의 "일반 행" + 마지막에 보스 행 1개를 덧붙인다.
   // 각 행은 2~3개 노드, 인접한 행끼리 1~2개씩 연결선을 잇되, 다음 행의 모든
@@ -270,6 +274,7 @@ TIME_GUARDIAN 참고.
     player.nodeCurrentId = nodeId;
     player.nodeVisited.push(nodeId);
     player.nodeClearedId = null; // 새 칸은 아직 안 이김(battle-end.js가 승리 시 세움)
+    player.nodeEnemy = null; // 새 칸의 첫 적은 startBattle()이 기록
     player.bossGambleUsed = null; // 딜러의 판(js/jester-boss-gamble.js) — 새 칸이면 다시 걸 수 있다
     saveGame();
     resolveNode(node);
