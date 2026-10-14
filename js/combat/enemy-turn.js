@@ -745,6 +745,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       if(typeof setBossPoseImage==='function') setBossPoseImage('idle');
       let skillKey = null;
       let chargeSmash = false; // 끊지 못한 곡괭이 강타(×2.0)
+      let bossUltLanding = false; // 예고했던 보스 스킬이 이번 턴 발동 — 적중 시 타격 3단계
       // 시간의 파수꾼(사용자 기획) — 메아리 큐 기반 전용 행동 결정. 일반
       // enemy.skills 순환/보스 예고 로직을 완전히 건너뛰고 여기서 skillKey를
       // 직접 확정한다. tgEchoMult(전역 아님, 이 클로저 지역 변수)는 메아리
@@ -840,6 +841,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       if(enemy.isBoss && enemy.aboutToUltimate){
         skillKey = enemy.pendingSkillKey;
         enemy.aboutToUltimate = false;
+        bossUltLanding = true;
         enemy.telegraphed = false;
         enemy.pendingSkillKey = null;
         if(typeof updateBossIntentCard==='function') updateBossIntentCard();
@@ -1283,6 +1285,7 @@ export(전역): getWitchClockExtraChance, enemyTurn, triggerAfterimageStrike, ti
       // (0이어도) 항상 연출한다.
       lungeEnemy();
       if(mitigated>0) shakePlayerArea();
+      if(mitigated>0 && bossUltLanding) impactFx(3);
       // 타격음 타이밍 재수정(사용자 재제보 — "여전히 늦게 들린다") — 이전에
       // lungeEnemy() 애니메이션의 임팩트 프레임(133ms)에 맞춰 130ms 지연시켰는데,
       // 정작 HP바 갱신(renderStatus())과 화면 흔들림(shakePlayerArea())은 전부

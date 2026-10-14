@@ -1224,15 +1224,24 @@
   .link-btn:hover{color:var(--gold-bright);}
   .title-links-row{display:flex; flex-wrap:wrap; gap:10px 16px; justify-content:center; align-items:center;}
 
-  #sound-toggle{
+  #sound-toggle, #shake-toggle{
     position:absolute; top:8px; right:8px; z-index:40;
     width:30px; height:30px; border-radius:50%;
     background:#1a130ccc; border:1px solid #4a3a24; color:var(--parchment-dim);
     font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;
     backdrop-filter:blur(2px); transition:border-color .15s, color .15s;
   }
-  #sound-toggle:hover{border-color:var(--gold); color:var(--gold-bright);}
+  #sound-toggle:hover, #shake-toggle:hover{border-color:var(--gold); color:var(--gold-bright);}
   #sound-toggle.muted{color:#6b5b45;}
+  #shake-toggle{top:44px;}
+  body.reduce-shake #shake-toggle{color:#6b5b45; text-decoration:line-through;}
+  /* 타격 세기 등급표(combat/battle-fx.js impactFx) — 히트스톱은 전투 화면 애니메이션만 잠깐 멈춘다. */
+  #screen-battle.hitstop *{animation-play-state:paused !important;}
+  .impact-flash{position:absolute; inset:0; background:#fff; pointer-events:none; z-index:35; animation:impactFlash .25s ease-out forwards;}
+  @keyframes impactFlash{from{opacity:.35;} to{opacity:0;}}
+  /* 흔들림 줄이기(#shake-toggle) — 화면 흔들림·흰 섬광·상태바 흔들림을 끈다. 적 스프라이트 흔들림(맞았다는 정보)은 남긴다. */
+  body.reduce-shake #statusbar.player-hit, body.reduce-shake .node-btn.node-secret-new{animation:none;}
+  body.reduce-shake .impact-flash{display:none;}
 
   /* ---------- shop ---------- */
   .shop-overlay{
@@ -1529,6 +1538,7 @@
 <body>
 <div id="app">
   <button id="sound-toggle" title="음소거 켜기/끄기">🔊</button>
+  <button id="shake-toggle" title="흔들림 줄이기 켜기/끄기">📳</button>
 
   <!-- STATUS BAR (hidden on title) -->
   <div id="statusbar" style="display:none;">

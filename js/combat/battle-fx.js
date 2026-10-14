@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnCoinTossFx, spawnVenomDrainFx, spawnHolyRendFx, spawnDarkPrayerFx, spawnMartyrJudgmentFx, spawnTimeHasteFx, spawnTimeRewindFx, spawnRigShotFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen,
+              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnCoinTossFx, spawnVenomDrainFx, spawnHolyRendFx, spawnDarkPrayerFx, spawnMartyrJudgmentFx, spawnTimeHasteFx, spawnTimeRewindFx, spawnRigShotFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen, impactFx,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -192,6 +192,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     dmgPopActiveSlots.push({offset, expireAt});
     pop.style.left = `calc(50% + ${offset}px)`;
     stage.appendChild(pop);
+    if(cls==='crit') impactFx(2); // 치명타(및 'crit' 표시를 쓰는 강스킬)는 2단계
     setTimeout(()=>{
       pop.remove();
       dmgPopActiveSlots = dmgPopActiveSlots.filter(s=>s.expireAt>Date.now());
@@ -739,7 +740,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         show(success ? 'coin_heads' : 'coin_tails', false);
         el.style.transition = 'transform .2s cubic-bezier(.2,1.6,.4,1)';
         el.style.transform = 'translate(-50%,-50%) scale(1.15)';
-        if(success && big && typeof shakeScreen==='function') shakeScreen(0.5);
+        if(success && big && typeof impactFx==='function') impactFx(2);
       }
     };
     requestAnimationFrame(frame);
@@ -872,7 +873,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.style.opacity = '1';
     el.style.transform = 'translate(-50%,-50%) scale(.75) rotate(60deg)';
     setTimeout(()=>{
-      if(typeof shakeScreen==='function') shakeScreen(0.35);
+      if(typeof impactFx==='function') impactFx(2);
       el.style.transition = 'opacity .3s ease-in, transform .3s ease-out';
       el.style.opacity = '0';
       el.style.transform = 'translate(-50%,-50%) scale(1.05) rotate(70deg)';
@@ -975,7 +976,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // 줄어들다 원래 자리로 돌아온다, 총 길이 약 240ms.
   function shakeScreen(scale){
     const el = document.getElementById('screen-battle');
-    if(!el) return;
+    if(!el || document.body.classList.contains('reduce-shake')) return;
     const k = scale==null ? 1 : scale;
     const offsets = [[-7,0],[7,-5],[-6,4],[5,-3],[-3,2],[2,-1],[0,0]].map(([x,y])=>[x*k,y*k]);
     let i = 0;
@@ -986,6 +987,32 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       i++;
       setTimeout(step, 35);
     })();
+  }
+
+  // 타격 세기 등급표(타격감 다듬기) — 모든 타격 연출은 이 세 단계 중 하나를 쓴다.
+  //   1단계 일반 공격: shakeEnemy()(적 스프라이트만 흔들림) — 여기 표에는 없다.
+  //   2단계 치명타/스킬: 히트스톱 50ms → 화면 흔들림 0.45
+  //   3단계 보스 필살기·처치·궁극기: 히트스톱 80ms → 화면 흔들림 1 + 흰 섬광
+  // 히트스톱은 #screen-battle 안의 CSS 애니메이션만 잠깐 멈출 뿐 게임 로직(setTimeout)은
+  // 그대로 흐른다. 같은 순간에 여러 등급이 겹치면(치명타로 처치 등) 가장 센 것 하나만 낸다.
+  const IMPACT_TIERS = {2:{stop:50, shake:0.45}, 3:{stop:80, shake:1, flash:true}};
+  let impactPending = 0;
+  function impactFx(tier){
+    if(!impactPending) setTimeout(()=>{
+      const t = IMPACT_TIERS[impactPending];
+      impactPending = 0;
+      const el = document.getElementById('screen-battle');
+      if(!el || !t) return;
+      el.classList.add('hitstop');
+      if(t.flash){
+        const f = document.createElement('div');
+        f.className = 'impact-flash';
+        document.getElementById('app').appendChild(f);
+        setTimeout(()=>f.remove(), 250);
+      }
+      setTimeout(()=>{ el.classList.remove('hitstop'); shakeScreen(t.shake); }, t.stop);
+    }, 0);
+    impactPending = Math.max(impactPending, tier);
   }
 
   function spawnCaliberXFx(){

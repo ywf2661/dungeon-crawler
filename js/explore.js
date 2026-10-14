@@ -262,6 +262,24 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       return;
     }
     // 오프닝 심리테스트(origin.js) — 새 게임에서만 1회 등장한다(이어하기는
+    // [디버그 전용] "admin12": 타격 세기 등급표 체험 — 3구간 마을 시작, 전투 화면 위에
+    // 1/2/3단계를 바로 눌러 비교하는 버튼 줄이 붙는다(치명타·처치·보스 예고 필살기는 실전으로도 확인).
+    if(player.name && player.name.trim().toLowerCase()==='admin12'){
+      setupAdminMonsterTest({level:14, tierIndex:2, types:null,
+        msg:'전투 화면 위 [1단계/2단계/3단계] 버튼으로 타격 세기를 비교해 보라. 치명타는 2단계, 처치와 보스의 예고 필살기는 3단계다. 오른쪽 위 📳 버튼이 흔들림 줄이기.'});
+      const bar = document.createElement('div');
+      bar.style.cssText = 'display:flex; gap:6px; justify-content:center; padding:4px;';
+      [['1단계 일반', ()=>{ shakeEnemy(); popDamage('-12'); }],
+       ['2단계 치명타', ()=>{ shakeEnemy(); popDamage('-34','crit'); }],
+       ['3단계 처치·필살기', ()=>{ shakeEnemy(); shakePlayerArea(); impactFx(3); }]].forEach(([label, fn])=>{
+        const b = document.createElement('button');
+        b.className = 'btn'; b.textContent = label;
+        b.addEventListener('click', fn);
+        bar.appendChild(b);
+      });
+      document.getElementById('screen-battle').prepend(bar);
+      return;
+    }
     // 위쪽 분기에서 이미 처리되어 여길 안 지나감). 퀴즈가 끝나면
     // finishNewGameStart()가 호출되어 실제로 마을 화면이 열린다.
     showOriginQuiz();

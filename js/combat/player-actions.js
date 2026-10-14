@@ -566,7 +566,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       renderStatus();
       updatePlayerStatusBadges();
       Sound.bloodImprint();
-      if(typeof shakeScreen==='function') shakeScreen(0.45); // 살짝 '쿵'
+      if(typeof impactFx==='function') impactFx(2); // 살짝 '쿵'
       setBattleMsg(`${player.name}의 ${s.name}!`, '칼날에 피를 새겼다. 다음 스킬이 더 강하게, 출혈과 함께 꽂힌다 — 대신 피를 더 바친다.');
       setCommandsEnabled(true);
       return;
@@ -1039,7 +1039,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 위상을 확실히 구분한다.
       playStatusFx('curse');
       if(typeof spawnCurseBloomFx==='function') spawnCurseBloomFx();
-      if(typeof shakeScreen==='function') shakeScreen();
+      if(typeof impactFx==='function') impactFx(3);
       playBanner('저주 만개!', 'fx-curse');
       renderStatus();
       setBattleMsg(`${player.name}의 ${s.name}!`, `짊어진 저주(${curses}개)가 한꺼번에 만개하며 ${enemy.name}에게 ${bloomDmg}의 압도적인 피해를 입혔다!${detonateMsg}`);
@@ -1548,7 +1548,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 궁극기 전용 연출: 해방 이미지 + 화면 흔들림 + 배너(다른 레벨15 궁극기와 동일 급).
       Sound.necroRelease();
       if(typeof spawnPactFx==='function') spawnPactFx('necro_release', 3);
-      if(typeof shakeScreen==='function') shakeScreen();
+      if(typeof impactFx==='function') impactFx(3);
       playBanner('혼백 해방!', 'fx-necro');
       renderStatus();
       updateRigVisuals();
@@ -1889,7 +1889,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 로봇은 페이드인만, 묵직한 충격감은 기존 shakeScreen()(임계 폭주 궁극기
       // 전용 화면 흔들림)을 그대로 재사용해서 낸다.
       if(typeof flashRigDeploy==='function') flashRigDeploy(isLegion ? 'omega' : 'rig');
-      if(typeof shakeScreen==='function') shakeScreen();
+      if(typeof impactFx==='function') impactFx(2);
       const markBonus = (enemy.markedTurns>0) ? (enemy.markBonus||0.25) : 0;
       let dmg;
       if(isLegion){
@@ -2039,7 +2039,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 궁극기 전용 강조 연출(사용자 요청) — 압력 전량 방출이니 화면 전체가
       // 흔들리는 shakeScreen()과 전용 폭발 이미지(spawnCriticalOverloadFx)로 폭발감을 낸다.
       if(typeof spawnCriticalOverloadFx==='function') spawnCriticalOverloadFx();
-      shakeScreen();
+      impactFx(3);
       playBanner('폭주 임계점!', 'fx-overload');
       // 돌이킬 수 없는 각인(me_permanentcost, 폭주 화부 장신구 각인 —
       // 사용자 요청): 일시적 반동(HP)이 사라지는 대신, 최대HP가 영구히
@@ -2621,7 +2621,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         Sound.pact('pact_fire_storm'); playStatusFx('burn');
         if(typeof spawnPactFx==='function') spawnPactFx('pact_fire_storm', 3);
-        if(typeof shakeScreen==='function') shakeScreen();
+        if(typeof impactFx==='function') impactFx(3);
         applyDot({type:'burn', basis:'mag', ratio:0.7, turns:4, label:'원소 폭풍: 화염'});
         msg2 = `대화염이 ${enemy.name}을(를) 집어삼켜 ${dmg}의 피해를 입히고 격렬한 화상을 남겼다!`;
       } else if(pact==='ice'){
@@ -2633,7 +2633,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, 'crit');
         Sound.pact('pact_ice_storm'); playStatusFx('pact-ice');
         if(typeof spawnPactFx==='function') spawnPactFx('pact_ice_storm', 3);
-        if(typeof shakeScreen==='function') shakeScreen();
+        if(typeof impactFx==='function') impactFx(3);
         msg2 = `절대영도의 빙결이 방어를 완전히 무시하고 ${enemy.name}에게 ${dmg}의 압도적인 피해를 입혔다!` + (brittleT ? FROST_BRITTLE_MSG : '');
         if(typeof tryFreezeEnemy==='function' && tryFreezeEnemy(0.25)) msg2 += ` ${enemy.name}이(가) 절대영도 속에 얼어붙었다!`;
       } else if(pact==='lightning'){
@@ -2652,7 +2652,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
         if(typeof spawnPactFx==='function') spawnPactFx('pact_lightning_storm', 3);
         parts.forEach((d,i)=>{ setTimeout(()=>{
           spawnSlashMark(i); popDamage('-'+d, 'crit');
-          if(i===parts.length-1 && typeof shakeScreen==='function') shakeScreen();
+          if(i===parts.length-1 && typeof impactFx==='function') impactFx(3);
         }, i*180); });
         msg2 = `벼락이 ${hitsT===4?'네':'세'} 번 연속으로 방어를 꿰뚫으며 ${parts.join(' + ')}의 피해를 입혔다!` + (shockedT ? SHOCK_EXTRA_MSG : '');
         if(typeof tryShockEnemy==='function' && tryShockEnemy(0.25)) msg2 += ` ${enemy.name}의 온몸에 벼락이 감돌았다!`;
@@ -2727,7 +2727,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       setTimeout(()=>{
         if(battleOver) return;
         updateEnemyHpBar(); shakeEnemy(); popDamage('-'+dmg, stacks>0?'crit':undefined);
-        if(typeof shakeScreen==='function') shakeScreen();
+        if(typeof impactFx==='function') impactFx(3);
       }, 560);
       renderStatus();
       const msg2 = (stacks>0
@@ -3124,7 +3124,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(typeof spawnMartyrFx==='function') spawnMartyrFx();
       // [보강] 사용자 피드백 — 배너/이미지는 있는데 화면이 안 흔들려서
       // 타격감이 약함. shakeScreen()만 추가(새 이미지 불필요).
-      if(typeof shakeScreen==='function') shakeScreen();
+      if(typeof impactFx==='function') impactFx(3);
       playBanner('불멸의 순교!','fx-chorus');
       setBattleMsg(`${player.name}의 ${s.name}!`, `그동안 바쳐온 희생(${count}회)을 전부 힘으로 되돌려 ${enemy.name}에게 ${dmg}의 피해를 입혔다!${reviveMsg}${eternalReturnMsg}`);
       if(checkBattleEnd()) return;
@@ -3683,7 +3683,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(key==='paladinJudgmentLight' && typeof spawnMartyrJudgmentFx==='function') spawnMartyrJudgmentFx();
     if(key==='paladinCaliberXFinale'){
       if(typeof spawnCaliberXFx==='function') spawnCaliberXFx();
-      if(typeof shakeScreen==='function') shakeScreen();
+      if(typeof impactFx==='function') impactFx(3);
       playBanner('칼리버 X — 종언!', 'fx-caliberx');
     }
     // 저주 폭발(mageCurseNova, 저주술사 평범한 액티브): 화면 흔들림/배너 없이
@@ -3775,7 +3775,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 궁극기 전용 강조 연출(사용자 요청 — 삼박난무처럼 다른 직업도 특색 있게).
       // 전용 이미지(bloodpact_ultimate)/화면 흔들림/화면 플래시/배너.
       if(typeof spawnBloodUltimateFx==='function') spawnBloodUltimateFx();
-      if(typeof shakeScreen==='function') shakeScreen();
+      if(typeof impactFx==='function') impactFx(3);
       playStatusFx('blood');
       playBanner('혈맹의 대가!', 'fx-blood');
       const cIdBR = player.equipment && player.equipment.accessory;

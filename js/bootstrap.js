@@ -77,6 +77,19 @@ export(전역): init, showMaintenanceModal, isAdminName
       refreshSoundBtn();
       if(!Sound.isMuted()){ Sound.click(); Sound.ensureBgmRunning(); }
     });
+    // 흔들림 줄이기 토글(타격감 다듬기) — body.reduce-shake 하나로 화면 흔들림/섬광/상태바 흔들림을
+    // 끈다(battle-fx.js shakeScreen, index.html CSS). 저장값이 없으면 기기의 "동작 줄이기" 설정을 따른다.
+    // ponytail: 회의 6순위 "설정" 화면이 생기면 이 버튼을 그 화면으로 옮긴다.
+    let reduceShake = null;
+    try{ const v = localStorage.getItem('lc_reduce_shake'); if(v!==null) reduceShake = v==='1'; }catch(e){}
+    if(reduceShake===null) reduceShake = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    document.body.classList.toggle('reduce-shake', reduceShake);
+    document.getElementById('shake-toggle').addEventListener('click', ()=>{
+      const on = document.body.classList.toggle('reduce-shake');
+      try{ localStorage.setItem('lc_reduce_shake', on ? '1' : '0'); }catch(e){}
+      Sound.click();
+      showToast(`<p>흔들림 줄이기 <b>${on ? '켜짐' : '꺼짐'}</b></p>`);
+    });
     // 화면 어디를 처음 눌러도 오디오가 자연스럽게 깨어나도록 한 번만 걸어둔다
     const wakeAudioOnce = ()=>{ Sound.ensureCtx(); Sound.ensureBgmRunning(); document.removeEventListener('pointerdown', wakeAudioOnce); };
     document.addEventListener('pointerdown', wakeAudioOnce, {once:true});
