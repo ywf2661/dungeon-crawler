@@ -31,7 +31,7 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, TRAININGS, getTrainingPrice, openSh
   const CONSUMABLE_CAPS = { potion:3, hipotion:2, ether:3, hiether:2 };
 
   // 마을 수련(사용자 요청 — 밸런스 리뷰 2026-10-15: 후반에 쌓이기만 하는 골드를 생존력으로
-  // 바꿀 통로). 마을에서 연 상점에만 나온다. 네 항목이 수련 횟수(player.trainCount)
+  // 바꿀 통로). 마을에서 연 상점(마을 광장)의 '수련' 탭에만 나온다. 네 항목이 수련 횟수(player.trainCount)
   // 하나를 공유하고, 한 번 할 때마다 다음 가격이 ×1.35 오른다(상한 없음 — 가격이 한계).
   // 1회 상승량은 대략 레벨업 1번 분량. trainCount는 마을 체크포인트에 포함된다.
   const TRAININGS = [
@@ -47,6 +47,8 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, TRAININGS, getTrainingPrice, openSh
   // 상점 재고(사용자 요청 — 매 방문마다 소모품 3종 중 무작위 일부만, 한정
   // 수량으로 등장). 상급 HP 포션은 개인 보유 한도(2개)에 맞춰 재고도 더
   // 적게 나오도록 별도 범위를 둔다.
+  // 마을 상점 탭('goods' 물건 / 'train' 수련). 새로 열 때마다 물건 탭부터, 구매 후 새로고침에선 유지.
+  let shopTab = 'goods';
   let shopStock = null; // {potion:n, hipotion:n, ether:n, hiether:n} 중 등장하는 키만 포함
   function randInt(min, max){ return min + Math.floor(Math.random()*(max-min+1)); }
   function generateShopStock(){
@@ -64,6 +66,8 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, TRAININGS, getTrainingPrice, openSh
   function openShop(refreshOnly){
     // 상점을 새로 열 때만 재고를 다시 뽑는다(구매 후 패널 새로고침 시엔 유지).
     if(!refreshOnly || !shopStock) shopStock = generateShopStock();
+    if(!refreshOnly) shopTab = 'goods';
+    const tab = town ? shopTab : 'goods';
     const overlay = document.createElement('div');
     overlay.className = 'shop-overlay';
     overlay.id = 'shop-overlay';
@@ -108,8 +112,8 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, TRAININGS, getTrainingPrice, openSh
       </div>
     `;
     }).join('') : `<div style="color:var(--parchment-dim); font-size:13px; font-style:italic; text-align:center; padding:8px;">오늘은 팔 만한 소모품이 없다.</div>`;
-    panel.innerHTML = `<button class="btn shop-x shop-close">떠나기</button><h3>떠돌이 상인</h3>`
-      + debtSectionHtml
+    const tabBtn = (key, label)=> `<button class="btn shop-tab" data-tab="${key}" style="flex:1;${tab===key?'border-color:var(--gold);color:var(--gold);':'opacity:.6;'}">${label}</button>`;
+    const goodsHtml = debtSectionHtml
       + `<div style="font-family:Cinzel; color:var(--gold); font-size:12.5px; letter-spacing:.05em; margin:14px 0 2px;">소모품</div>`
       + consumableSectionHtml
       + `<div style="font-family:Cinzel; color:var(--gold); font-size:12.5px; letter-spacing:.05em; margin:14px 0 2px;">장비</div>`
@@ -125,8 +129,8 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, TRAININGS, getTrainingPrice, openSh
         </div>
         <button class="buy-btn" data-kind="equip" data-key="${id}" data-price="${price}" ${(owned||player.gold<price)?'disabled':''}>${owned?'보유중':price+'G 구매'}</button>
       </div>` ;
-      }).join('') : `<div style="color:var(--parchment-dim); font-size:13px; font-style:italic; text-align:center; padding:8px;">아직 팔 만한 장비가 없다.</div>`)
-      + (town ? `<div style="font-family:Cinzel; color:var(--gold); font-size:12.5px; letter-spacing:.05em; margin:14px 0 2px;">수련 <span style="color:var(--parchment-dim); font-size:12px;">(지금까지 ${player.trainCount||0}회 · 할 때마다 비싸진다)</span></div>`
+      }).join('') : `<div style="color:var(--parchment-dim); font-size:13px; font-style:italic; text-align:center; padding:8px;">아직 팔 만한 장비가 없다.</div>`);
+    const trainHtml = `<div style="font-family:Cinzel; color:var(--gold); font-size:12.5px; letter-spacing:.05em; margin:14px 0 2px;">수련 <span style="color:var(--parchment-dim); font-size:12px;">(지금까지 ${player.trainCount||0}회 · 할 때마다 비싸진다)</span></div>`
         + TRAININGS.map(t=>{
           const price = dprice(getTrainingPrice());
           return `
@@ -137,7 +141,10 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, TRAININGS, getTrainingPrice, openSh
         </div>
         <button class="buy-btn" data-kind="train" data-key="${t.key}" data-price="${price}" ${player.gold<price?'disabled':''}>${price}G 수련</button>
       </div>`;
-        }).join('') : '')
+        }).join('');
+    panel.innerHTML = `<button class="btn shop-x shop-close">떠나기</button><h3>${town ? '마을 광장' : '떠돌이 상인'}</h3>`
+      + (town ? `<div style="display:flex; gap:6px; margin:4px 0 2px;">${tabBtn('goods','🛒 물건')}${tabBtn('train','💪 수련')}</div>` : '')
+      + (tab==='train' ? trainHtml : goodsHtml)
       + `<div style="text-align:center; margin-top:10px;"><button class="btn shop-close">떠나기</button></div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
@@ -189,6 +196,9 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, TRAININGS, getTrainingPrice, openSh
         overlay.remove(); openShop(true);
       });
     });
+    panel.querySelectorAll('.shop-tab').forEach(b=>b.addEventListener('click', ()=>{
+      shopTab = b.dataset.tab; overlay.remove(); openShop(true);
+    }));
     panel.querySelectorAll('.shop-close').forEach(b=>b.addEventListener('click', ()=>overlay.remove()));
   }
 

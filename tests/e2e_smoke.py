@@ -177,11 +177,13 @@ def t_사망_마을복귀(page):
 
 
 def t_마을수련(page):
-    """마을 상점의 수련: 능력치↑·골드↓·다음 가격 ×1.35, 새로고침해도 유지. 던전 상인에는 없다."""
+    """마을 광장 수련 탭: 능력치↑·골드↓·다음 가격 ×1.35, 새로고침해도 유지. 던전 상인에는 없다."""
     new_game(page)
     page.evaluate('player.gold = 1000')
     atk0 = g(page, 'player.atk')
     page.click('#btn-shop')
+    assert page.locator('.buy-btn[data-kind="train"]').count() == 0  # 처음엔 물건 탭
+    page.click('.shop-tab[data-tab="train"]')
     btn = page.locator('.buy-btn[data-kind="train"][data-key="atk"]')
     assert btn.inner_text() == '150G 수련', btn.inner_text()
     btn.click()
@@ -191,7 +193,7 @@ def t_마을수련(page):
     reload_and_continue(page)
     assert g(page, 'player.trainCount') == 1 and g(page, 'player.atk') == atk0 + 2
     page.evaluate('town = false; openShop()')
-    assert page.locator('.buy-btn[data-kind="train"]').count() == 0
+    assert page.locator('.shop-overlay .shop-tab').count() == 0  # 떠돌이 상인엔 탭·수련 없음
 
 
 # 연출을 300ms 동안 프레임마다 지켜보고 무엇이 일어났는지 돌려준다.

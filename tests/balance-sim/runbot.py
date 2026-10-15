@@ -217,8 +217,10 @@ def handle_overlay(page, st, ev):
           const want = ['maxhp', main, 'def'][(player.trainCount||0) % 3];
           const tb = o.querySelector('.buy-btn[data-kind=train][data-key='+want+']:not([disabled])');
           if(tb){ tb.click(); return 'train:'+want+':'+tb.dataset.price; }
+          const tt = o.querySelector('.shop-tab[data-tab=train]');
+          if(tt && !o.querySelector('.buy-btn[data-kind=train]')){ tt.click(); return 'tab'; }
           o.remove(); return null; })()""")
-        if bought: ev('spend', what=bought, st=st)
+        if bought and bought != 'tab': ev('spend', what=bought, st=st)
         return True
     if oid == 'exchange-overlay':
         got = page.evaluate("""(()=>{ const o = __bot.topOverlay(); const b = o.querySelector('.buy-btn:not([disabled])');
