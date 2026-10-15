@@ -78,11 +78,12 @@ export(전역): init, showMaintenanceModal, isAdminName
       if(!Sound.isMuted()){ Sound.click(); Sound.ensureBgmRunning(); }
     });
     // 흔들림 줄이기 토글(타격감 다듬기) — body.reduce-shake 하나로 화면 흔들림/섬광/상태바 흔들림을
-    // 끈다(battle-fx.js shakeScreen, index.html CSS). 저장값이 없으면 기기의 "동작 줄이기" 설정을 따른다.
+    // 끈다(battle-fx.js shakeScreen, index.html CSS). 기본은 꺼짐(흔들림 있음) — 직접 눌러야 켜진다.
+    // 기기의 "동작 줄이기"(prefers-reduced-motion)를 따르던 시절, Windows "애니메이션 표시"가 꺼진
+    // PC에서 흔들림·섬광이 몰래 전부 꺼져 타격감이 사라졌다(사용자 제보).
     // ponytail: 회의 6순위 "설정" 화면이 생기면 이 버튼을 그 화면으로 옮긴다.
-    let reduceShake = null;
-    try{ const v = localStorage.getItem('lc_reduce_shake'); if(v!==null) reduceShake = v==='1'; }catch(e){}
-    if(reduceShake===null) reduceShake = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let reduceShake = false;
+    try{ reduceShake = localStorage.getItem('lc_reduce_shake')==='1'; }catch(e){}
     document.body.classList.toggle('reduce-shake', reduceShake);
     document.getElementById('shake-toggle').addEventListener('click', ()=>{
       const on = document.body.classList.toggle('reduce-shake');
