@@ -126,6 +126,22 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
       if(player.nodeMap && player.nodeRow>=0){
         const curRow = player.nodeMap[player.nodeRow];
         const curNode = curRow && curRow.find(n=>n.id===player.nodeCurrentId);
+        // 이미 이긴 칸인지(battle-end.js가 처치 시 nodeClearedId를 세움, pickNode()가 지움).
+        const curCleared = curNode && player.nodeClearedId===curNode.id;
+        // 버그 수정(사용자 질문으로 발견): 구간 보스를 잡고 보상 선택창이 뜨기 전(승리 후 약 2초)에
+        // 새로고침하면, 골드·경험치를 받은 채로 같은 보스와 다시 싸워 보상을 또 받을 수 있었다.
+        // 이긴 보스면 다시 싸우지 않고 보상 선택창부터 띄운다(고르면 평소처럼 마을 도착).
+        if(curNode && curNode.type==='boss' && curCleared && player.tierIndex<5){
+          document.getElementById('statusbar').style.display='flex';
+          showScreen('explore');
+          renderStatus();
+          depth = player.tierIndex*10 + 10;
+          renderExplore(['모험을 이어간다.']);
+          const tier = player.tierIndex;
+          const purifyIds = Object.keys(player.tempCurses||{}).filter(id=>player.tempCurses[id]===tier);
+          setTimeout(()=>showBossRewardChoice(tier, purifyIds), 300);
+          return;
+        }
         if(curNode && curNode.type==='boss'){
           document.getElementById('statusbar').style.display='flex';
           showScreen('explore');
@@ -150,7 +166,6 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
         // 상대인지 확인해, 이긴 상대는 다시 걸지 않고 평소처럼 지도만 보여준다.
         // (예전 midbossCleared는 한 번 세우면 안 지워져서, 사망 롤백 후 다시 만난
         // 파수꾼을 새로고침으로 건너뛸 수 있었다 — 노드 id 기록으로 대체.)
-        const curCleared = curNode && player.nodeClearedId===curNode.id;
         if(curNode && curNode.type==='midboss' && !curCleared){
           document.getElementById('statusbar').style.display='flex';
           showScreen('explore');

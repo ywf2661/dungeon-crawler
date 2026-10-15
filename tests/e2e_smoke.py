@@ -160,6 +160,31 @@ def t_이어하기_전투중(page):
     assert g(page, 'player.nodeCurrentId') == node
 
 
+def t_이어하기_보스승리후(page):
+    """구간 보스를 잡고 보상 선택창 전에 새로고침 → 보스전 대신 보상창, 고르면 다음 구간 마을."""
+    new_game(page)
+    page.click('#btn-advance')
+    page.evaluate("player.nodeMap=[[{id:'t0boss',type:'boss',connections:[]}]]; player.nodeRow=-1;"
+                  "player.nodeCurrentId=null; player.nodeVisited=[]; renderExplore([])")
+    page.locator('.node-btn.node-available').first.click()
+    page.wait_for_function('document.querySelector("#screen-battle.active")')
+    page.evaluate('enemy.hp = 1; player.atk = 999')
+    page.click('#cmd-attack')
+    page.wait_for_function('player.nodeClearedId === "t0boss" && document.querySelector("#screen-explore.active")')
+    won = g(page, SNAP)
+    reload_and_continue(page)
+    assert screen(page) == 'explore', f'보스전이 다시 걸림: {screen(page)}'
+    snap = g(page, SNAP)
+    assert (snap['gold'], snap['exp'], snap['lv']) == (won['gold'], won['exp'], won['lv']), (won, snap)
+    for _ in range(20):
+        if g(page, 'town'): break
+        dismiss_dialogues(page)
+        btn = page.locator('.shop-overlay button')
+        if btn.count(): btn.first.click()
+        page.wait_for_timeout(300)
+    assert g(page, 'town') is True and g(page, 'player.tierIndex') == 1
+
+
 def t_사망_마을복귀(page):
     """쉬움에서 쓰러지면 게임오버 → 마을에서 다시 일어서기(골드 절반)."""
     new_game(page)
@@ -248,7 +273,7 @@ def _admin(name, job, diff):
 
 
 SCENARIOS = ([_job_battle(j) for j in ['warrior', 'mage', 'rogue', 'paladin', 'mechanic', 'jester']]
-             + [t_이어하기_승리후, t_이어하기_전투중, t_사망_마을복귀, t_마을수련, t_타격감]
+             + [t_이어하기_승리후, t_이어하기_전투중, t_이어하기_보스승리후, t_사망_마을복귀, t_마을수련, t_타격감]
              + [_admin(*m) for m in ADMIN_MODES])
 
 
