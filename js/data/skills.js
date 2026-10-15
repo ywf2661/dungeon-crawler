@@ -36,7 +36,7 @@ export(전역): SKILLDB, CHALNA_COMBOS
     retributionoath:{name:'응징의 일격', mp:8, desc:'확정 히트. 잃은 HP 비율이 클수록 위력이 늘어난다(최대 +80%) — 고통받을수록 더 세게 되갚아준다.',
       type:'phys', mult:1.5, maxBonusMult:0.8},
     holylight:      {name:'신성한 빛',     mp:11, desc:'성스러운 빛으로 크게 회복한다',            type:'heal',    mult:0.8},
-    divinejudgment: {name:'심판의 빛',     mp:15, desc:'신성한 빛의 심판을 내려 적을 무찌른다. 상태이상에 걸린 적일수록 더 강력하며 피해의 일부를 흡수한다',
+    divinejudgment: {name:'천벌',         mp:15, desc:'신성한 빛의 심판을 내려 적을 무찌른다. 상태이상에 걸린 적일수록 더 강력하며 피해의 일부를 흡수한다',
       type:'phys',    mult:3.0, statusSynergyBonus:0.18, lifesteal:0.2, cooldown:3},
     // 메카닉(리뉴얼 — 사용자 요청) — 보일러 압력(0~100, battleFlags.pressure)을
     // 매 턴 자동으로 쌓고, 언제 어떻게 터뜨릴지 직접 판단하는 자원 관리형
