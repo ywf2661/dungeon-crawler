@@ -59,7 +59,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
   // 유물은 장비 슬롯을 쓰지 않으며 증강과 달리 "빌드 자체를 바꾸는" 규칙형 아이템이다.
   // atkPct/defPct/magPct/maxhpPct/maxmpPct/spdFlat/mpZero 는 획득 즉시 스탯에 반영되고,
   // 나머지 키(dmgPctMult/basicAtkPctMult/bossDmgPctMult/dmgTakenPctMult/hpLockPct/killHealPct/
-  // potionEffMult/potionLocked/skillLocked/lowHpScalingDmg/noPostBattleHeal/turnLimit*/killAtkStack/
+  // potionEffMult/potionLocked/skillLocked/lowHpScalingDmg/noPostBattleHeal/halfLevelUpHeal/turnLimit*/killAtkStack/
   // hideDepth/goldPctMult/rareDropPctBonus/extraActionBySpd)는 전투 파이프라인에 전부 연결되어 실제로 작동한다.
   // (extraActionBySpd는 enemyTurn()을 래퍼+enemyTurnReal()로 분리해 연결했다.)
   const RELICS = {
@@ -114,7 +114,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     // CURSE_ALTAR_POOL 필터에서 제외하기 위한 표시일 뿐, deprecated와 달리
     // PERMANENT_CURSE_POOL에는 정상적으로 포함된다.
     relic_faintheart:    {type:'curse', permanentOnly:true, name:'여윈 심장',   desc:'최대 HP가 25% 줄어든다.', effect:{maxhpPct:-0.25}},
-    relic_mildhunger:    {type:'curse', permanentOnly:true, name:'옅은 굶주림', desc:'레벨업으로는 체력·마나가 가득 차지 않는다(포션은 정상 사용 가능).', effect:{noPostBattleHeal:true}},
+    relic_mildhunger:    {type:'curse', permanentOnly:true, name:'옅은 굶주림', desc:'레벨업하면 잃은 체력·마나의 절반만 회복된다(포션은 정상 사용 가능).', effect:{halfLevelUpHeal:true}},
     relic_fadingshadow:  {type:'curse', permanentOnly:true, name:'옅어진 그림자', desc:'마주치는 모든 적의 공격력이 15% 오른다.', effect:{enemyAtkPct:0.15}},
     relic_thinhide:      {type:'curse', permanentOnly:true, name:'얇아진 가죽', desc:'받는 피해가 10% 늘어난다.', effect:{dmgTakenPctMult:0.10}},
     relic_shallowwell:   {type:'curse', permanentOnly:true, name:'얕아진 샘',   desc:'최대 마나가 25% 줄어든다.', effect:{maxmpPct:-0.25}},
@@ -457,7 +457,7 @@ export(전역): DICE_EFFECT_LABELS, getLowHpScalingMult, hasBladeHiltSet, consum
     if(!(player.skills && player.skills.includes('mastery_curseweaver'))) return 0;
     return Math.min(0.6, getCurseCount()*0.15);
   }
-  // 봉인형 저주 플래그(skillLocked/potionLocked/noPostBattleHeal)가 "이번에" 실제로
+  // 봉인형 저주 플래그(skillLocked/potionLocked/noPostBattleHeal/halfLevelUpHeal)가 "이번에" 실제로
   // 발동할지를 판정한다. 저주술사가 아니거나 저주가 아예 없으면 항상 hasRelicFlag()
   // 그대로 따른다(true=봉인 작동, false=봉인 없음 또는 이번엔 뚫음). bypassLabel을
   // 주면, 뚫었을 때 배너로 알려준다(매 시도마다 다시 굴리므로 매번 결과가 다를 수 있음).

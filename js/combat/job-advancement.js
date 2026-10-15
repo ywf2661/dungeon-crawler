@@ -126,6 +126,9 @@ export(전역): showJobAdvancement, resolveJobAdvancement
     if(isCurseSealActive('noPostBattleHeal', '저주를 찢고 완전히 회복했다!')){
       player.hp = Math.min(player.hp, player.maxhp);
       player.mp = Math.min(player.mp, player.maxmp);
+    } else if(isCurseSealActive('halfLevelUpHeal', '저주를 찢고 완전히 회복했다!')){
+      player.hp = Math.min(player.maxhp, player.hp + Math.ceil((player.maxhp-player.hp)/2));
+      player.mp = Math.min(player.maxmp, player.mp + Math.ceil((player.maxmp-player.mp)/2));
     } else {
       player.hp = player.maxhp; player.mp = player.maxmp;
     }

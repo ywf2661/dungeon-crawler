@@ -962,6 +962,11 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
     if(isCurseSealActive('noPostBattleHeal') || isDebtHealSealActive()){
       player.hp = Math.min(player.hp, player.maxhp);
       player.mp = Math.min(player.mp, player.maxmp);
+    } else if(isCurseSealActive('halfLevelUpHeal')){
+      // 옅은 굶주림: 잃은 체력·마나의 절반만 채운다(굶주린 회랑의 완전 봉인보다 약한 완화판).
+      player.hp = Math.min(player.maxhp, player.hp + Math.ceil((player.maxhp-player.hp)/2));
+      player.mp = Math.min(player.maxmp, player.mp + Math.ceil((player.maxmp-player.mp)/2));
+      player._prevHpForCurse = player.hp;
     } else {
       player.hp = player.maxhp; player.mp = player.maxmp;
       // 버그 수정(사용자 제보) — renderStatus()의 정예 "저주" 특성 회복감소가
