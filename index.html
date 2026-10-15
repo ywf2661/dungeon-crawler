@@ -93,6 +93,9 @@
     border-bottom:1px solid #4a3a24;
     font-size:13px;
     flex-shrink:0;
+    /* 팝업(.shop-overlay, z-index:20)의 어두운 막 위로 올려, 상점·포션 창을 연 채로도
+       현재 HP/MP/골드가 보이게 한다(사용자 요청). */
+    position:relative; z-index:21;
   }
   #statusbar .name{font-family:var(--font-ui); font-weight:700; color:var(--gold-bright); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
   #statusbar .lvl{color:var(--parchment-dim); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;}
