@@ -1,7 +1,7 @@
 "use strict";
 /*
 상점 데이터 및 UI + 정예의 교환소.
-export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHANGE_REFRESH_COST, openExchange, generateExchangeStock
+export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, TRAININGS, getTrainingPrice, openShop, EXCHANGE_EPIC_COST, EXCHANGE_REFRESH_COST, openExchange, generateExchangeStock
 의존성: player(state.js), Sound(sound.js), applyMerchantSealPurchase(relics.js), repayDebt(relics.js)
 주의: 외상 도박사(jester_debtor)의 빚이 있을 때만 "빚 갚기" 섹션이 나타난다(절반/전액
      두 버튼 — 자동 상환은 넣지 않았다, 사용자 확정: 다른 골드 소비와 충돌하지 않도록
@@ -29,6 +29,20 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
   // 소모품 최대 보유 개수(사용자 요청 — 난이도 무관 동일). 이 값을 넘어서는
   // 개수는 상점 구매/향후 다른 획득 경로 모두에서 막혀야 한다.
   const CONSUMABLE_CAPS = { potion:3, hipotion:2, ether:3, hiether:2 };
+
+  // 마을 수련(사용자 요청 — 밸런스 리뷰 2026-10-15: 후반에 쌓이기만 하는 골드를 생존력으로
+  // 바꿀 통로). 마을에서 연 상점에만 나온다. 네 항목이 수련 횟수(player.trainCount)
+  // 하나를 공유하고, 한 번 할 때마다 다음 가격이 ×1.35 오른다(상한 없음 — 가격이 한계).
+  // 1회 상승량은 대략 레벨업 1번 분량. trainCount는 마을 체크포인트에 포함된다.
+  const TRAININGS = [
+    {key:'maxhp', name:'체력 단련', desc:'최대 HP +10', amount:10},
+    {key:'atk',   name:'근력 단련', desc:'공격력 +2',   amount:2},
+    {key:'mag',   name:'마력 단련', desc:'마력 +2',     amount:2},
+    {key:'def',   name:'방어 단련', desc:'방어력 +2',   amount:2},
+  ];
+  function getTrainingPrice(){
+    return Math.round(150 * Math.pow(1.35, player.trainCount||0));
+  }
 
   // 상점 재고(사용자 요청 — 매 방문마다 소모품 3종 중 무작위 일부만, 한정
   // 수량으로 등장). 상급 HP 포션은 개인 보유 한도(2개)에 맞춰 재고도 더
@@ -112,6 +126,18 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
         <button class="buy-btn" data-kind="equip" data-key="${id}" data-price="${price}" ${(owned||player.gold<price)?'disabled':''}>${owned?'보유중':price+'G 구매'}</button>
       </div>` ;
       }).join('') : `<div style="color:var(--parchment-dim); font-size:13px; font-style:italic; text-align:center; padding:8px;">아직 팔 만한 장비가 없다.</div>`)
+      + (town ? `<div style="font-family:Cinzel; color:var(--gold); font-size:12.5px; letter-spacing:.05em; margin:14px 0 2px;">수련 <span style="color:var(--parchment-dim); font-size:12px;">(지금까지 ${player.trainCount||0}회 · 할 때마다 비싸진다)</span></div>`
+        + TRAININGS.map(t=>{
+          const price = dprice(getTrainingPrice());
+          return `
+      <div class="shop-item">
+        <div class="si-info">
+          <span class="si-name" style="font-family:Cinzel;color:var(--parchment);">${t.name}</span>
+          <span class="si-desc" style="color:var(--parchment-dim); font-size:12.5px; font-style:italic;">${t.desc}</span>
+        </div>
+        <button class="buy-btn" data-kind="train" data-key="${t.key}" data-price="${price}" ${player.gold<price?'disabled':''}>${price}G 수련</button>
+      </div>`;
+        }).join('') : '')
       + `<div style="text-align:center; margin-top:10px;"><button class="btn shop-close">떠나기</button></div>`;
     overlay.appendChild(panel);
     document.getElementById('app').appendChild(overlay);
@@ -143,6 +169,15 @@ export(전역): SHOP_ITEMS, CONSUMABLE_CAPS, openShop, EXCHANGE_EPIC_COST, EXCHA
           shopStock[key] -= 1;
           renderStatus();
           addLog(`${SHOP_ITEMS.find(s=>s.key===key).name}을(를) 구매했다.`,'gold');
+        } else if(kind==='train'){
+          const t = TRAININGS.find(x=>x.key===key);
+          applyMerchantSealPurchase();
+          player.gold -= price;
+          player.trainCount = (player.trainCount||0) + 1;
+          player[key] += t.amount;
+          if(key==='maxhp') player.hp = Math.min(player.maxhp, player.hp + t.amount);
+          renderStatus();
+          addLog(`${t.name}을(를) 마쳤다. ${t.desc}.`,'gold');
         } else {
           if(player.equipOwned.includes(key)) return;
           applyMerchantSealPurchase();

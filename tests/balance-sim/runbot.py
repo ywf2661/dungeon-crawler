@@ -1,6 +1,7 @@
 """밸런스 리뷰용 런 봇: 실제 게임을 헤드리스 Chrome에서 한 판 끝까지 돌리고 칸마다 기록을 JSONL로 남긴다.
-python -X utf8 runbot.py <job> <diff> <runs> <out.jsonl> [--headed] [--smith] [--curse=<relic_id|none>]
+python -X utf8 runbot.py <job> <diff> <runs> <out.jsonl> [--headed] [--smith] [--train] [--curse=<relic_id|none>]
   --smith: 마을에서 대장간 강화를 쓴다
+  --train: 마을 상점을 열고, 물약·장비를 산 뒤 남는 골드로 수련한다(체력→주 공격 능력치→방어 순환)
   --curse: 시작 저주를 고정하고 첫 보스전(10층)까지만 돌린다
 집계: python -X utf8 analyze.py 'out/*.jsonl'
 """
@@ -212,6 +213,10 @@ def handle_overlay(page, st, ev):
           const eq = [...o.querySelectorAll('.buy-btn[data-kind=equip]:not([disabled])')];
           for(const b of eq){ const id=b.dataset.key, slot=getItemDef(id).slot, cur=player.equipment[slot];
             if(__bot.score(id) > (cur? __bot.score(cur): -1)){ b.click(); return 'equip:'+id+':'+b.dataset.price; } }
+          const main = ['mage','mechanic'].includes(player.job) ? 'mag' : 'atk';
+          const want = ['maxhp', main, 'def'][(player.trainCount||0) % 3];
+          const tb = o.querySelector('.buy-btn[data-kind=train][data-key='+want+']:not([disabled])');
+          if(tb){ tb.click(); return 'train:'+want+':'+tb.dataset.price; }
           o.remove(); return null; })()""")
         if bought: ev('spend', what=bought, st=st)
         return True
@@ -251,6 +256,7 @@ def handle_overlay(page, st, ev):
 _tried = set()
 FIRSTBOSS = next((a.split('=')[1] for a in sys.argv if a.startswith('--curse=')), None)
 BLACKSMITH = '--smith' in sys.argv
+TRAIN = '--train' in sys.argv
 def town(page, st, ev):
     key = (st['tier'], st['seals'], st['deaths'])
     if page.locator('#btn-exchange').is_visible() and st['seals'] >= 5 and key not in _tried:
@@ -260,6 +266,10 @@ def town(page, st, ev):
     if BLACKSMITH and st['stones'] >= 3 and bkey not in _tried:
         _tried.add(bkey)
         page.evaluate('openBlacksmith()'); return
+    tkey = ('shop', st['tier'], st['deaths'])
+    if TRAIN and tkey not in _tried:
+        _tried.add(tkey)
+        page.click('#btn-shop'); return
     page.click('#btn-advance', force=True)
 
 

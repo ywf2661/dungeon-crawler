@@ -176,6 +176,24 @@ def t_사망_마을복귀(page):
     assert g(page, 'player.hp') == g(page, 'player.maxhp')
 
 
+def t_마을수련(page):
+    """마을 상점의 수련: 능력치↑·골드↓·다음 가격 ×1.35, 새로고침해도 유지. 던전 상인에는 없다."""
+    new_game(page)
+    page.evaluate('player.gold = 1000')
+    atk0 = g(page, 'player.atk')
+    page.click('#btn-shop')
+    btn = page.locator('.buy-btn[data-kind="train"][data-key="atk"]')
+    assert btn.inner_text() == '150G 수련', btn.inner_text()
+    btn.click()
+    assert g(page, 'player.atk') == atk0 + 2
+    assert g(page, 'player.gold') == 850
+    assert page.locator('.buy-btn[data-kind="train"][data-key="atk"]').inner_text() == '203G 수련'
+    reload_and_continue(page)
+    assert g(page, 'player.trainCount') == 1 and g(page, 'player.atk') == atk0 + 2
+    page.evaluate('town = false; openShop()')
+    assert page.locator('.buy-btn[data-kind="train"]').count() == 0
+
+
 # 연출을 300ms 동안 프레임마다 지켜보고 무엇이 일어났는지 돌려준다.
 IMPACT_WATCH = '''trigger => new Promise(done => {
   const el = document.querySelector('#screen-battle'), seen = {stop:false, moved:false, flash:0};
@@ -228,7 +246,7 @@ def _admin(name, job, diff):
 
 
 SCENARIOS = ([_job_battle(j) for j in ['warrior', 'mage', 'rogue', 'paladin', 'mechanic', 'jester']]
-             + [t_이어하기_승리후, t_이어하기_전투중, t_사망_마을복귀, t_타격감]
+             + [t_이어하기_승리후, t_이어하기_전투중, t_사망_마을복귀, t_마을수련, t_타격감]
              + [_admin(*m) for m in ADMIN_MODES])
 
 
