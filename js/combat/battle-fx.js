@@ -1022,12 +1022,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.style.cssText = "position:absolute; left:50%; top:42%; width:280px; height:280px; "
       + "background-image:url('images/vfx/caliberx_finale.webp'); background-size:contain; "
       + "background-repeat:no-repeat; background-position:center; pointer-events:none; z-index:7; "
-      + "opacity:0; transform:translate(-50%,-50%) scale(0.7) rotate(-4deg);";
+      + "opacity:1; transform:translate(-50%,-50%) scale(1.25) rotate(-4deg);";
     stage.appendChild(el);
     void el.offsetWidth; // 강제 리플로우 — 초기 상태가 확실히 반영된 뒤에 전환 시작
-    el.style.transition = 'opacity .22s ease-out, transform .22s ease-out';
-    el.style.opacity = '1';
-    el.style.transform = 'translate(-50%,-50%) scale(1.08) rotate(2deg)';
+    // 처음부터 다 보이게 크게 띄웠다가 0.09초 만에 내리꽂는다 — 서서히 나타나면
+    // 화면 정지·섬광(impactFx(3))이 빈 화면에서 지나가 버렸다(타격감 진단).
+    el.style.transition = 'transform .09s cubic-bezier(.5,0,1,1)';
+    el.style.transform = 'translate(-50%,-50%) scale(1.0) rotate(2deg)';
     setTimeout(()=>{
       el.style.transition = 'opacity .4s ease-in, transform .4s ease-in';
       el.style.opacity = '0';

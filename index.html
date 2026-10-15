@@ -1239,7 +1239,8 @@
   #shake-toggle{top:44px;}
   body.reduce-shake #shake-toggle{color:#6b5b45; text-decoration:line-through;}
   /* 타격 세기 등급표(combat/battle-fx.js impactFx) — 히트스톱은 전투 화면 애니메이션만 잠깐 멈춘다. */
-  #screen-battle.hitstop *{animation-play-state:paused !important;}
+  /* 피해 숫자·배너는 멈추지 않는다 — 투명한 첫 장면에 붙잡혀 정지 순간에 아무것도 안 보였다(종언 타격감 진단). */
+  #screen-battle.hitstop *:not(.dmg-pop):not(.fx-banner){animation-play-state:paused !important;}
   .impact-flash{position:absolute; inset:0; background:#fff; pointer-events:none; z-index:35; animation:impactFlash .25s ease-out forwards;}
   @keyframes impactFlash{from{opacity:.35;} to{opacity:0;}}
   /* 흔들림 줄이기(#shake-toggle) — 화면 흔들림·흰 섬광·상태바 흔들림을 끈다. 적 스프라이트 흔들림(맞았다는 정보)은 남긴다. */
