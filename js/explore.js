@@ -282,7 +282,7 @@ export(전역): startGame, showScreen, isBattleActive, scheduleJobAdvancementChe
     // 1/2/3단계를 바로 눌러 비교하는 버튼 줄이 붙는다(치명타·처치·보스 예고 필살기는 실전으로도 확인).
     if(player.name && player.name.trim().toLowerCase()==='admin12'){
       setupAdminMonsterTest({level:14, tierIndex:2, types:null,
-        msg:'전투 화면 위 [1단계/2단계/3단계] 버튼으로 타격 세기를 비교해 보라. 치명타는 2단계, 처치와 보스의 예고 필살기는 3단계다. 오른쪽 위 📳 버튼이 흔들림 줄이기.'});
+        msg:'전투 화면 위 [1단계/2단계/3단계] 버튼으로 타격 세기를 비교해 보라. 치명타는 2단계, 보스·정예 처치와 보스의 예고 필살기는 3단계다(일반 몬스터 처치는 흔들림 없음). 오른쪽 위 📳 버튼이 흔들림 줄이기.'});
       const bar = document.createElement('div');
       bar.style.cssText = 'display:flex; gap:6px; justify-content:center; padding:4px;';
       [['1단계 일반', ()=>{ shakeEnemy(); popDamage('-12'); }],

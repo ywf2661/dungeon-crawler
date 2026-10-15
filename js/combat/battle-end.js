@@ -146,7 +146,8 @@ export(전역): checkBattleEnd, showEnding, grantExp, applyLevelUpEffects, showL
       if(typeof clearOneBattleBuffs==='function') clearOneBattleBuffs();
       tickMultiBattleBuff();
       document.getElementById('bt-stage').classList.add('dying');
-      impactFx(3); // 처치는 타격 3단계
+      // 처치는 타격 3단계 — 보스/정예만. 일반 몬스터는 매번 터져 과하다(사용자 요청).
+      if(enemy.isBoss || enemy.isElite) impactFx(3);
       // 버그 수정(파수꾼 제보 + 일반/정예 새로고침 파밍): pickNode()가 노드 선택
       // 시점에 이미 nodeCurrentId를 이 노드로 옮겨두고, 승리해도 "다음 노드로
       // 이동"은 플레이어가 직접 클릭해야 일어난다 — 승리 직후~다음 노드 클릭 전
