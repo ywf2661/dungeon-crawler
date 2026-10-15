@@ -468,12 +468,16 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     }
 
     const freeCast = mpCost>0 && hasRelicFlag('freeCastChance') && Math.random() < getRelicSum('freeCastChance');
+    // mpPaid: 실제로 낸 MP. 아래에서 시전이 거절되면 mpCost가 아니라 이 값을 돌려준다
+    // (재시도·무한한 탄창은 0 — mpCost를 돌려주면 거절될 때마다 MP가 공짜로 늘었다).
+    let mpPaid = 0;
     if(isRetry){
       // 손버릇(사기꾼) 재시도 — 완전 무료, MP를 아예 건드리지 않는다.
     } else if(freeCast){
       playBanner('무한한 탄창!','def');
     } else {
       player.mp -= mpCost;
+      mpPaid = mpCost;
     }
     // 스킬 쿨타임(사용자 요청) — 이 스킬에 쿨타임이 있으면 지금 세팅한다.
     // cooldownTickPending은 "플레이어가 실제로 행동했다"는 표시로, 다음
@@ -506,7 +510,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 스킬마다 켜짐/꺼짐 안내 문구가 다를 수 있어(armMsgOn/armMsgOff), 없으면
       // 기존 범용 문구로 대체한다.
       player[s.armFlag] = !player[s.armFlag];
-      player.mp += mpCost; // 토글은 MP를 쓰지 않는다(위에서 미리 깎인 것을 되돌림)
+      player.mp += mpPaid; // 토글은 MP를 쓰지 않는다(위에서 미리 깎인 것을 되돌림)
       renderStatus();
       updatePlayerStatusBadges();
       Sound.buff();
@@ -533,7 +537,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 저장되므로, "전투가 끝날 때까지 유지"가 자연히 보장된다.
       const already = battleFlags.elementPact === s.pactElement;
       battleFlags.elementPact = already ? null : s.pactElement;
-      player.mp += mpCost; // 토글은 MP를 쓰지 않는다
+      player.mp += mpPaid; // 토글은 MP를 쓰지 않는다
       renderStatus();
       updatePlayerStatusBadges();
       Sound.buff();
@@ -559,7 +563,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 이미 예약된 상태면 낭비 방지를 위해 MP/쿨다운을 되돌리고 안내만 한다.
       if(!battleFlags) return;
       if(battleFlags.bloodImprintArmed){
-        player.mp += mpCost;
+        player.mp += mpPaid;
         if(battleFlags.skillCooldowns) battleFlags.skillCooldowns[key] = 0;
         renderStatus();
         setBattleMsg(`${player.name}의 ${s.name}!`, '이미 칼날에 피가 새겨져 있다. 다음 스킬을 먼저 쓰자.');
@@ -793,7 +797,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       if(extraCost>0){
         if(player.mp < extraCost){
           // 추가 비용을 감당할 MP가 없다 — 위에서 이미 깎인 기본 비용(mpCost)을 돌려주고 취소한다.
-          player.mp += mpCost;
+          player.mp += mpPaid;
           renderStatus();
           setCommandsEnabled(true);
           setBattleMsg('시간이 버틴다…', `연달아 시간을 뒤트는 데 필요한 마나가 부족하다! (추가로 ${extraCost} 필요)`);
@@ -846,7 +850,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 수 없다. 은신이 아닌 다른 행동(공격/다른 스킬/아이템)을 한 번이라도 하면
       // 자동으로 풀린다(각 행동 함수 상단에서 이 플래그를 false로 되돌림).
       if(battleFlags.stealthOnCooldown){
-        player.mp += mpCost;
+        player.mp += mpPaid;
         renderStatus();
         setCommandsEnabled(true);
         setBattleMsg('그림자가 아직 낯설다…', '은신은 연속으로 사용할 수 없다. 다른 행동을 한 번 거친 뒤 다시 시도하라.');
@@ -1824,6 +1828,8 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     if(s.type==='pressurevent'){
       const pressure = (battleFlags.pressure||0);
       if(pressure < (s.minPressure||1)){
+        player.mp += mpPaid;
+        renderStatus();
         setCommandsEnabled(true);
         setBattleMsg('압력이 부족하다…', `최소 ${s.minPressure} 이상 쌓여야 방출할 수 있다. (현재 압력 ${pressure})`);
         return;
@@ -2030,7 +2036,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const pressureCO = battleFlags.pressure||0;
       if(pressureCO < (s.minPressure||100)){
         setCommandsEnabled(true);
-        player.mp += mpCost;
+        player.mp += mpPaid;
         setBattleMsg('압력이 부족하다…', `최소 ${s.minPressure} 이상 쌓여야 발동할 수 있다. (현재 압력 ${pressureCO})`);
         return;
       }
@@ -2079,7 +2085,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const pressurePA = battleFlags.pressure||0;
       if(pressurePA < (s.minPressure||1)){
         setCommandsEnabled(true);
-        player.mp += mpCost;
+        player.mp += mpPaid;
         setBattleMsg('압력이 부족하다…', `최소 ${s.minPressure} 이상 쌓여야 배분할 수 있다. (현재 압력 ${pressurePA})`);
         return;
       }
@@ -2683,7 +2689,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       // 그대로 환불하고 턴을 소모하지 않은 채 취소한다.
       const stacks = battleFlags.timeStacks || 0;
       if(stacks < (s.stackRequirement||3)){
-        player.mp += mpCost;
+        player.mp += mpPaid;
         renderStatus();
         setCommandsEnabled(true);
         setBattleMsg('아직 때가 아니다…', `시간 조각이 부족하다! (현재 ${stacks}개, 최소 ${s.stackRequirement||3}개 필요 — 소비되지 않고 조건으로만 쓰인다)`);
@@ -2970,7 +2976,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const cost = Math.max(s.goldCostMin||0, Math.round((player.gold||0)*(s.goldCostPct||0.4)*costMultUsed));
       if((player.gold||0) < cost){
         setCommandsEnabled(true);
-        player.mp += mpCost;
+        player.mp += mpPaid;
         setBattleMsg('돈이 부족하다…', `정보료로 최소 ${cost}G가 필요하다. (현재 소지금 ${player.gold||0}G)`);
         return;
       }
@@ -3045,7 +3051,7 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       const fateSwapMax = hasDoubleSwap ? 2 : 1;
       if((battleFlags.fateSwapUsedCount||0) >= fateSwapMax){
         setCommandsEnabled(true);
-        player.mp += mpCost;
+        player.mp += mpPaid;
         setBattleMsg('운명은 두 번 흔들리지 않는다…', '이번 전투에서 더 이상 운명을 뒤바꿀 수 없다.');
         return;
       }

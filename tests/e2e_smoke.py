@@ -221,6 +221,19 @@ def t_마을수련(page):
     assert page.locator('.shop-overlay .shop-tab').count() == 0  # 떠돌이 상인엔 탭·수련 없음
 
 
+def t_스킬거절_MP(page):
+    """시전이 거절되면 낸 MP만큼만 돌려받는다: 압력 부족 밸브 개방은 MP 그대로, 무한한 탄창으로 공짜 시전 후 거절(은신 연속)돼도 MP가 늘지 않는다."""
+    new_game(page, job='mechanic')
+    enter_battle(page)
+    dismiss_dialogues(page)
+    page.evaluate('battleFlags.pressure = 0; player.mp = 50; playerSkill("mechanicValve")')
+    assert g(page, 'player.mp') == 50, f'압력 부족 거절인데 MP가 빠짐: {g(page, "player.mp")}'
+    page.evaluate('player.relics = (player.relics||[]).concat("relic_infiniteclip"); player.mp = 50;'
+                  'battleFlags.stealthOnCooldown = true;'  # 은신 연속 사용 거절(원래 MP를 돌려주던 경로)
+                  'const r = Math.random; Math.random = () => 0; try{ playerSkill("draintouch"); } finally { Math.random = r; }')
+    assert g(page, 'player.mp') == 50, f'공짜 시전 후 거절인데 MP가 늘어남: {g(page, "player.mp")}'
+
+
 # 연출을 300ms 동안 프레임마다 지켜보고 무엇이 일어났는지 돌려준다.
 IMPACT_WATCH = '''trigger => new Promise(done => {
   const el = document.querySelector('#screen-battle'), seen = {stop:false, moved:false, flash:0};
@@ -273,7 +286,7 @@ def _admin(name, job, diff):
 
 
 SCENARIOS = ([_job_battle(j) for j in ['warrior', 'mage', 'rogue', 'paladin', 'mechanic', 'jester']]
-             + [t_이어하기_승리후, t_이어하기_전투중, t_이어하기_보스승리후, t_사망_마을복귀, t_마을수련, t_타격감]
+             + [t_이어하기_승리후, t_이어하기_전투중, t_이어하기_보스승리후, t_사망_마을복귀, t_마을수련, t_타격감, t_스킬거절_MP]
              + [_admin(*m) for m in ADMIN_MODES])
 
 
