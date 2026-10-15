@@ -489,6 +489,10 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
       }
       battleFlags.cooldownTickPending = true;
     }
+    // 1~10레벨 기본 스킬 연출(battle-fx.js spawnSkillFx). 아래에서 시전이 거절되는 두 경우(은신 연속 사용, 압력 부족)는 뺀다.
+    const fxRefused = (s.type==='stealth' && battleFlags && battleFlags.stealthOnCooldown)
+      || (s.type==='pressurevent' && battleFlags && (battleFlags.pressure||0) < (s.minPressure||1));
+    if(!fxRefused && typeof spawnSkillFx==='function') spawnSkillFx(key);
     // 정예 특성 "마나포식"(사용자 요청): 스킬을 쓸 때마다 MP를 추가로 깎는다.
     // 무료 시전(freeCast)이었어도 이건 별개로 적용된다 — 스킬을 "쓰는 행위"
     // 자체에 반응하는 특성이라, MP를 실제로 소모했는지와는 무관하다.
@@ -3680,7 +3684,6 @@ export(전역): playerAttack, playerSkill, popDamageOnPlayerArea, playerItem, pl
     // [보강] 사용자 피드백 — 이미지는 제일 큰데 배너/화면 흔들림이 없어
     // 심심하게 느껴짐. 새 이미지 없이 배너+shakeScreen만 추가.
     if(key==='paladinHolyRend' && typeof spawnHolyRendFx==='function') spawnHolyRendFx();
-    if(key==='paladinJudgmentLight' && typeof spawnMartyrJudgmentFx==='function') spawnMartyrJudgmentFx();
     if(key==='paladinCaliberXFinale'){
       if(typeof spawnCaliberXFx==='function') spawnCaliberXFx();
       if(typeof impactFx==='function') impactFx(3);

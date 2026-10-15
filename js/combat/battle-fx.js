@@ -4,7 +4,7 @@
 데미지 팝업, 흔들림, 슬래시 이펙트, 콤보 연출, 상태이상 배지, 스킬/아이템 서브메뉴 열기/닫기.
 export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabled, popDamage,
               shakeEnemy, spawnSlashMark, spawnSlashImageFx, spawnFigureSlashFx, playComboFinish,
-              playStatusFx, playCastBurst, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnCoinTossFx, spawnVenomDrainFx, spawnHolyRendFx, spawnDarkPrayerFx, spawnMartyrJudgmentFx, spawnTimeHasteFx, spawnTimeRewindFx, spawnRigShotFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen, impactFx,
+              playStatusFx, playCastBurst, spawnSkillFx, playBanner, spawnFrostFlashFx, spawnFateSwapFx, spawnCoinTossFx, spawnVenomDrainFx, spawnHolyRendFx, spawnDarkPrayerFx, spawnTimeHasteFx, spawnTimeRewindFx, spawnRigShotFx, spawnGuardianVfxImage, spawnCaliberXFx, spawnMartyrFx, spawnTimeParadoxFx, shakeScreen, impactFx,
               updateStatusBadges, updatePlayerStatusBadges, openSub, closeSub, updateBossIntentCard,
               checkMechanicOverheat, updatePressureGauge, lungeEnemy, shakePlayerArea, setBossPoseImage
 주의(신규 — 메카닉 리뉴얼/전 직업 궁극기 쿨타임, 사용자 요청): checkMechanicOverheat()는
@@ -350,6 +350,39 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.className = 'cast-burst'+(cls?(' '+cls):'');
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 600);
+  }
+
+  // 1~10레벨 기본 스킬 29종의 CSS 전용 연출(그림 파일 없음 — index.html의 .sfx-스킬키).
+  // 순교자 심판의 빛(paladinJudgmentLight)도 여기서 띄운다 — 사용자 제공 빛기둥 그림(martyr_judgment)을
+  // 크게 내리꽂고 CSS 착지 효과를 겹친다. 궁극기(불멸의 순교)보다 한 단계 아래라 배너/화면 흔들림은 없다.
+  // playerSkill()이 시전 확정 순간에 부른다. 값 = 안에 넣을 <i> 조각 수(::before/::after 외 추가 조각).
+  // 운명의 주사위(wildcard)는 전용 주사위 연출이 이미 있어 뺐다. 목록에 없는 스킬은 아무 일도 없다.
+  const SKILL_FX = {
+    powerstrike:0, guard:0, warcry:3, crushingblow:0, earthrend:5,
+    fireball:0, icelance:0, thunderbolt:0, blizzard:0, meteor:0,
+    doubleslash:0, backstab:0, draintouch:0, shadowslash:3, assassinate:0,
+    judgment:0, paladinblessing:3, retributionoath:0, holylight:4, divinejudgment:0,
+    mechanicIgnite:3, mechanicValve:0, mechanicMark:0, mechanicSafety:0, mechanicOverpressure:0,
+    coinflip:0, fateshift:3, gamble:0, finalcard:0,
+    paladinJudgmentLight:7,
+  };
+  // 화면 전체 섬광/암전을 하나 더 까는 스킬(.sfx-flash.fl-스킬키). 흔들림 줄이기를 켜면 숨는다.
+  const SKILL_FX_FLASH = new Set(['warcry','earthrend','thunderbolt','meteor','assassinate','divinejudgment','finalcard','paladinJudgmentLight']);
+  function spawnSkillFx(key){
+    if(!(key in SKILL_FX)) return;
+    const stage = document.getElementById('bt-stage');
+    if(!stage) return;
+    const el = document.createElement('div');
+    el.className = 'sfx sfx-'+key;
+    el.innerHTML = '<i></i>'.repeat(SKILL_FX[key]);
+    stage.appendChild(el);
+    setTimeout(()=>el.remove(), 1000);
+    if(SKILL_FX_FLASH.has(key)){
+      const fl = document.createElement('div');
+      fl.className = 'sfx-flash fl-'+key;
+      stage.appendChild(fl);
+      setTimeout(()=>fl.remove(), 1000);
+    }
   }
 
   // 보스 다음 행동 미리보기 카드(사용자 요청 — 보스전 리뉴얼). 예고 상태가
@@ -1084,30 +1117,6 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
       el.style.transform = 'translate(-50%,-50%) scale(1.2)';
     }, 550);
     setTimeout(()=>el.remove(), 1200);
-  }
-
-  // 순교자 심판의 빛(Lv10): 사용자 제공 martyr_judgment — 화면 위에서 적 몸까지 곧게
-  // 내리꽂히는 성스러운 빛기둥. 위에서 아래로 드러난 뒤(clip-path) 잠깐 머물다
-  // 사라진다. 이미지 하단의 착지 섬광이 적 중심(약 화면 절반 높이)에 오도록 맞춘다.
-  function spawnMartyrJudgmentFx(){
-    const stage = document.getElementById('bt-stage');
-    if(!stage) return;
-    const H = stage.clientHeight || 300;
-    const h = Math.round(H*0.62), w = Math.round(h*359/800);
-    const el = document.createElement('div');
-    el.style.cssText = `position:absolute; left:50%; top:0; width:${w}px; height:${h}px; `
-      + "background-image:url('images/vfx/martyr_judgment.webp'); background-size:100% 100%; "
-      + "background-repeat:no-repeat; pointer-events:none; z-index:7; "
-      + "opacity:1; transform:translateX(-50%); clip-path:inset(0 0 100% 0);";
-    stage.appendChild(el);
-    void el.offsetWidth;
-    el.style.transition = 'clip-path .2s ease-in';
-    el.style.clipPath = 'inset(0 0 0% 0)';
-    setTimeout(()=>{
-      el.style.transition = 'opacity .35s ease-out';
-      el.style.opacity = '0';
-    }, 420);
-    setTimeout(()=>el.remove(), 850);
   }
 
   // 불멸의 순교(순교자 레벨15 궁극기) 전용 VFX 이미지(사용자 제공). 위와

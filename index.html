@@ -1033,6 +1033,192 @@
   .cast-burst.def{border-color:#8fb4e8;}
   @keyframes castburst{ 0%{opacity:.9; transform:scale(0.3);} 100%{opacity:0; transform:scale(6);} }
 
+  /* ---------- 1~10레벨 기본 스킬 연출(combat/battle-fx.js spawnSkillFx) — 그림 없이 CSS만 ----------
+     .sfx는 크기 0인 기준점(기본: 적 중앙). 보이는 조각은 ::before/::after/<i>이고 각자 애니메이션을 가진다
+     (기준점에 opacity를 걸면 조각이 함께 사라져 단계별 연출이 안 되기 때문). .full은 무대 전체를 덮는 기준점. */
+  .sfx{position:absolute; left:50%; top:50%; width:0; height:0; pointer-events:none; z-index:6;}
+  .sfx::before, .sfx::after, .sfx > i{content:''; position:absolute; left:0; top:0; translate:-50% -50%; opacity:0; animation-fill-mode:both;}
+  .sfx-flash{position:absolute; inset:0; pointer-events:none; z-index:4; opacity:0; animation:sfxFlash .5s ease-out forwards;}
+  body.reduce-shake .sfx-flash{display:none;}
+  @keyframes sfxFlash{0%{opacity:0;} 20%{opacity:1;} 100%{opacity:0;}}
+  @keyframes sfxRing{0%{opacity:1; transform:scale(.2);} 100%{opacity:0; transform:scale(var(--s,3));}}
+  @keyframes sfxPop{0%{opacity:0; transform:scale(.3);} 25%{opacity:1; transform:scale(1.1);} 100%{opacity:0; transform:scale(1.3);}}
+  @keyframes sfxCut{0%{opacity:0; transform:rotate(var(--a,0deg)) scaleX(.1);} 35%{opacity:1; transform:rotate(var(--a,0deg)) scaleX(1);} 100%{opacity:0; transform:rotate(var(--a,0deg)) scaleX(1.15);}}
+  @keyframes sfxFloat{0%{opacity:0; transform:translateY(0);} 30%{opacity:1;} 100%{opacity:0; transform:translateY(-110px);}}
+
+  /* 전사 */
+  .sfx-powerstrike::before{width:150px; height:150px; border-radius:50%; border:11px solid transparent; border-top-color:#fff; border-right-color:#ffe6b0cc; filter:drop-shadow(0 0 8px #ffd27a); animation:sfxSwing .35s ease-out;}
+  @keyframes sfxSwing{0%{opacity:0; transform:rotate(-140deg) scale(.8);} 30%{opacity:1;} 100%{opacity:0; transform:rotate(30deg) scale(1.05);}}
+  .sfx-powerstrike::after{width:50px; height:50px; border-radius:50%; border:3px solid #fff; --s:2.5; animation:sfxRing .4s .15s ease-out;}
+
+  .sfx-guard{top:72%;}
+  .sfx-guard::before{width:90px; height:105px; background:linear-gradient(180deg,#d6e6ffdd,#5b86c8aa); clip-path:polygon(50% 0,100% 15%,92% 62%,50% 100%,8% 62%,0 15%); animation:sfxShield .75s ease-out;}
+  @keyframes sfxShield{0%{opacity:0; transform:translateY(30px) scale(.7);} 30%{opacity:1; transform:translateY(0) scale(1.05);} 70%{opacity:.9; transform:scale(1);} 100%{opacity:0; transform:scale(1.15);}}
+  .sfx-guard::after{width:70px; height:70px; border-radius:50%; border:3px solid #8fb4e8; animation:sfxRing .5s .2s ease-out;}
+
+  .sfx-warcry{top:82%;}
+  .sfx-warcry > i{width:60px; height:60px; border-radius:50%; border:4px solid #ff5a3a; --s:5; animation:sfxRing .6s ease-out;}
+  .sfx-warcry > i:nth-child(2){animation-delay:.12s;}
+  .sfx-warcry > i:nth-child(3){animation-delay:.24s;}
+  .fl-warcry{background:radial-gradient(ellipse at center, transparent 45%, #d0302a88 100%); animation-duration:.7s;}
+
+  .sfx-crushingblow::before{width:12px; height:150px; translate:-50% -100%; transform-origin:50% 0; background:linear-gradient(180deg,transparent,#fff 60%,#ffd27a); box-shadow:0 0 14px #ffd27a; animation:sfxDrop .3s ease-in;}
+  @keyframes sfxDrop{0%{opacity:1; transform:scaleY(0);} 60%{opacity:1; transform:scaleY(1);} 100%{opacity:0; transform:scaleY(1);}}
+  .sfx-crushingblow::after{width:230px; height:24px; top:40px; background:#ffd27a; filter:drop-shadow(0 0 6px #ff7a2a); clip-path:polygon(0 50%,12% 30%,22% 70%,35% 20%,48% 60%,60% 25%,72% 75%,85% 35%,100% 55%,85% 60%,72% 95%,60% 45%,48% 85%,35% 45%,22% 95%,12% 55%); animation:sfxCrack .5s .18s ease-out;}
+  @keyframes sfxCrack{0%{opacity:0; transform:scaleX(.2);} 30%{opacity:1; transform:scaleX(1);} 100%{opacity:0; transform:scaleX(1.05);}}
+
+  .sfx-earthrend{top:80%;}
+  .sfx-earthrend > i{width:28px; height:var(--h,70px); translate:-50% -100%; transform-origin:50% 100%; background:linear-gradient(180deg,#e8b47a,#6b4422); clip-path:polygon(50% 0,100% 100%,0 100%); animation:sfxSpike .6s ease-out;}
+  .sfx-earthrend > i:nth-child(1){left:-110px; --h:55px; animation-delay:.12s;}
+  .sfx-earthrend > i:nth-child(2){left:-55px; --h:80px; animation-delay:.06s;}
+  .sfx-earthrend > i:nth-child(3){--h:110px;}
+  .sfx-earthrend > i:nth-child(4){left:55px; --h:80px; animation-delay:.06s;}
+  .sfx-earthrend > i:nth-child(5){left:110px; --h:55px; animation-delay:.12s;}
+  @keyframes sfxSpike{0%{opacity:1; transform:scaleY(0);} 35%{opacity:1; transform:scaleY(1.1);} 70%{opacity:1; transform:scaleY(1);} 100%{opacity:0; transform:scaleY(1);}}
+  .sfx-earthrend::after{width:280px; height:70px; background:radial-gradient(ellipse, #a0703f99 0%, transparent 70%); animation:sfxPop .7s ease-out;}
+  .fl-earthrend{background:radial-gradient(ellipse at 50% 90%, #8a5a2a66 0%, transparent 75%);}
+
+  /* 마법사 */
+  .sfx-fireball::before{width:34px; height:34px; border-radius:50%; background:radial-gradient(circle,#fff6c0 0%,#ff9a2a 50%,#d0401a 80%); box-shadow:0 0 16px #ff7a1a; animation:sfxShoot .5s ease-in;}
+  @keyframes sfxShoot{0%{opacity:1; transform:translate(0,140px) scale(.6);} 45%{opacity:1; transform:translate(0,0) scale(1);} 50%,100%{opacity:0;}}
+  .sfx-fireball::after{width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,#fff3b0 0%,#ff8a2a 45%,#c0301a00 70%); animation:sfxPop .45s .22s ease-out;}
+
+  .sfx-icelance::before{width:150px; height:14px; background:linear-gradient(90deg,#fff,#9fdcff 40%,#4aa0e0); clip-path:polygon(0 50%,100% 15%,100% 85%); animation:sfxLance .55s ease-out;}
+  @keyframes sfxLance{0%{opacity:1; transform:rotate(-18deg) translateX(170px);} 40%{opacity:1; transform:rotate(-18deg) translateX(30px);} 75%{opacity:1; transform:rotate(-18deg) translateX(30px);} 100%{opacity:0; transform:rotate(-18deg) translateX(30px);}}
+  .sfx-icelance::after{width:70px; height:70px; border-radius:50%; border:3px dashed #bfe8ff; --s:2.4; animation:sfxRing .5s .2s ease-out;}
+
+  .sfx-thunderbolt::before{width:64px; height:110px; translate:-50% -100%; background:#fffbe0; clip-path:polygon(55% 0,20% 45%,48% 45%,25% 100%,80% 40%,52% 40%,75% 0); animation:sfxBolt .45s linear;}
+  @keyframes sfxBolt{0%{opacity:0;} 10%{opacity:1;} 30%{opacity:.2;} 45%{opacity:1;} 100%{opacity:0;}}
+  .sfx-thunderbolt::after{width:50px; height:50px; border-radius:50%; border:3px solid #ffe98a; animation:sfxRing .35s .05s ease-out;}
+  .fl-thunderbolt{background:#fff6c066; animation-duration:.35s;}
+
+  .sfx-blizzard, .sfx-draintouch, .sfx-holylight, .sfx-divinejudgment, .sfx-mechanicOverpressure{left:0; top:0; width:100%; height:100%;}
+  .sfx-blizzard::before{inset:0; width:auto; height:auto; translate:none; background:radial-gradient(circle at 10px 15px,#fff 1.5px,transparent 2.5px), radial-gradient(circle at 37px 42px,#fff 2px,transparent 3px), radial-gradient(circle at 51px 9px,#dff3ff 1px,transparent 2px), radial-gradient(circle at 23px 50px,#fff 1px,transparent 2px), radial-gradient(circle at 30px 20px,#dff3ff 1.5px,transparent 2.5px); background-size:60px 60px,60px 60px,60px 60px,60px 60px,43px 43px; animation:sfxSnow .85s linear;}
+  @keyframes sfxSnow{0%{opacity:0; background-position:0 0,0 0,0 0,0 0,0 0;} 20%{opacity:1;} 75%{opacity:1;} 100%{opacity:0; background-position:-70px 100px,-70px 100px,-70px 100px,-70px 100px,-40px 120px;}}
+  .sfx-blizzard::after{inset:0; width:auto; height:auto; translate:none; background:linear-gradient(120deg,#cfeaff55,transparent 70%); animation:sfxFlash .85s ease-out;}
+
+  .sfx-meteor::before{width:60px; height:60px; border-radius:50%; background:radial-gradient(circle,#fff2a0 0%,#ff7a1a 45%,#a0200a 75%,transparent 78%); box-shadow:30px -30px 30px -10px #ff6a1a88; animation:sfxFall .6s ease-in;}
+  @keyframes sfxFall{0%{opacity:1; transform:translate(170px,-180px) scale(.5);} 55%{opacity:1; transform:translate(0,0) scale(1.1);} 60%,100%{opacity:0;}}
+  .sfx-meteor::after{width:210px; height:210px; border-radius:50%; background:radial-gradient(circle,#fff6c0 0%,#ff8a2a 35%,#c0301a99 55%,transparent 70%); animation:sfxPop .55s .32s ease-out;}
+  .fl-meteor{background:radial-gradient(ellipse at center, #ff5a2a66 0%, #8a100a44 100%); animation-delay:.33s;}
+
+  /* 도적 */
+  .sfx-doubleslash::before, .sfx-doubleslash::after{width:160px; height:5px; background:linear-gradient(90deg,transparent,#ffe0e0,#fff,#ffe0e0,transparent); box-shadow:0 0 10px #ff6a5a; animation:sfxCut .35s ease-out;}
+  .sfx-doubleslash::before{--a:35deg;}
+  .sfx-doubleslash::after{--a:-35deg; animation-delay:.22s;}
+
+  .sfx-backstab::before{width:90px; height:90px; border-radius:50%; border:2px dashed #ff4a4a; animation:sfxAim .5s ease-in;}
+  @keyframes sfxAim{0%{opacity:0; transform:scale(1.6) rotate(0);} 30%{opacity:1;} 70%{opacity:1; transform:scale(.25) rotate(120deg);} 100%{opacity:0; transform:scale(.2) rotate(140deg);}}
+  .sfx-backstab::after{width:44px; height:44px; background:#fff; filter:drop-shadow(0 0 6px #ff4a4a); clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%); animation:sfxPop .3s .35s ease-out;}
+
+  .sfx-draintouch::before{inset:0; width:auto; height:auto; translate:none; background:radial-gradient(ellipse, #2a144033 25%, #1a0a2ae6 100%); animation:sfxFlash .8s ease-out;}
+  .sfx-draintouch::after{left:50%; top:85%; width:140px; height:40px; border-radius:50%; background:radial-gradient(ellipse,#a060ff88,transparent 70%); animation:sfxPop .7s ease-out;}
+
+  .sfx-shadowslash > i{width:170px; height:6px; background:linear-gradient(90deg,transparent,#d8b0ff,#fff,#d8b0ff,transparent); box-shadow:0 0 12px #a050ff; animation:sfxCut .35s ease-out;}
+  .sfx-shadowslash > i:nth-child(1){--a:-30deg; left:-12px; top:-14px;}
+  .sfx-shadowslash > i:nth-child(2){--a:10deg; animation-delay:.22s;}
+  .sfx-shadowslash > i:nth-child(3){--a:40deg; left:12px; top:14px; animation-delay:.44s;}
+
+  .sfx-assassinate::before{width:250px; height:4px; --a:-8deg; background:linear-gradient(90deg,transparent,#ff2a2a 15%,#ff2a2a 85%,transparent); box-shadow:0 0 14px #ff2a2a; animation:sfxCut .4s .25s ease-out;}
+  .sfx-assassinate::after{width:230px; height:1px; --a:-8deg; background:#fff; animation:sfxCut .4s .25s ease-out;}
+  .fl-assassinate{background:#000; animation:sfxBlackout .65s ease-out forwards;}
+  @keyframes sfxBlackout{0%{opacity:0;} 15%{opacity:.85;} 55%{opacity:.85;} 100%{opacity:0;}}
+
+  /* 성기사 */
+  .sfx-judgment::before{width:70px; height:100px; background:linear-gradient(180deg,#fff6c0,#e8b84a); filter:drop-shadow(0 0 8px #ffe08a); clip-path:polygon(40% 0,60% 0,60% 28%,90% 28%,90% 44%,60% 44%,60% 100%,40% 100%,40% 44%,10% 44%,10% 28%,40% 28%); animation:sfxDescend .6s ease-out;}
+  @keyframes sfxDescend{0%{opacity:0; transform:translateY(-80px);} 40%{opacity:1; transform:translateY(0);} 75%{opacity:1; transform:scale(1);} 100%{opacity:0; transform:scale(1.15);}}
+  .sfx-judgment::after{width:60px; height:60px; border-radius:50%; border:3px solid #ffe08a; animation:sfxRing .4s .25s ease-out;}
+
+  .sfx-paladinblessing{top:96%;}
+  .sfx-paladinblessing::before{width:80px; height:210px; translate:-50% -100%; transform-origin:50% 100%; background:linear-gradient(0deg,#ffe08acc,#fff6c000); animation:sfxRise .8s ease-out;}
+  @keyframes sfxRise{0%{opacity:0; transform:scaleY(0);} 35%{opacity:1; transform:scaleY(1);} 100%{opacity:0; transform:scaleY(1.1);}}
+  .sfx-paladinblessing > i{width:7px; height:7px; border-radius:50%; background:#fff3b0; box-shadow:0 0 6px #ffe08a; animation:sfxFloat .8s ease-out;}
+  .sfx-paladinblessing > i:nth-child(1){left:-30px; animation-delay:.1s;}
+  .sfx-paladinblessing > i:nth-child(2){animation-delay:.2s;}
+  .sfx-paladinblessing > i:nth-child(3){left:30px; animation-delay:.05s;}
+
+  .sfx-retributionoath::before{width:60px; height:60px; border-radius:50%; border:4px solid #ff7a3a; box-shadow:0 0 10px #ffd27a; animation:sfxConverge .45s ease-in;}
+  @keyframes sfxConverge{0%{opacity:0; transform:scale(4);} 30%{opacity:1;} 80%{opacity:1; transform:scale(.4);} 100%{opacity:0; transform:scale(.3);}}
+  .sfx-retributionoath::after{width:110px; height:110px; border-radius:50%; background:radial-gradient(circle,#fff3b0 0%,#ff7a3a 45%,transparent 70%); animation:sfxPop .35s .38s ease-out;}
+
+  .sfx-holylight::before{left:50%; translate:-50% 0; width:90px; height:100%; background:linear-gradient(180deg,#fffbd0cc,#a8f0a055 60%,transparent); animation:sfxBeam .8s ease-out;}
+  @keyframes sfxBeam{0%{opacity:0; transform:scaleX(.2);} 30%{opacity:1; transform:scaleX(1);} 100%{opacity:0; transform:scaleX(1.3);}}
+  .sfx-holylight > i{top:80%; width:14px; height:14px; background:#9ff09a; filter:drop-shadow(0 0 4px #5fd05a); clip-path:polygon(38% 0,62% 0,62% 38%,100% 38%,100% 62%,62% 62%,62% 100%,38% 100%,38% 62%,0 62%,0 38%,38% 38%); animation:sfxFloat .9s ease-out;}
+  .sfx-holylight > i:nth-child(1){left:38%; animation-delay:.1s;}
+  .sfx-holylight > i:nth-child(2){left:47%; animation-delay:.25s;}
+  .sfx-holylight > i:nth-child(3){left:55%;}
+  .sfx-holylight > i:nth-child(4){left:62%; animation-delay:.18s;}
+
+  .sfx-divinejudgment::before{left:50%; translate:-50% 0; width:110px; height:100%; transform-origin:50% 0; background:linear-gradient(180deg,#fff,#ffe08a 70%,#ffe08a00); box-shadow:0 0 24px #ffe08a; animation:sfxSlam .7s ease-out;}
+  @keyframes sfxSlam{0%{opacity:0; transform:scaleY(0);} 25%{opacity:1; transform:scaleY(1);} 60%{opacity:1; transform:scaleX(1);} 100%{opacity:0; transform:scaleX(.2);}}
+  .sfx-divinejudgment::after{left:50%; top:72%; width:240px; height:60px; border-radius:50%; background:radial-gradient(ellipse,#fff3b0cc,transparent 70%); animation:sfxPop .6s .18s ease-out;}
+  .fl-divinejudgment{background:#fff3c466; animation-delay:.15s; animation-duration:.4s;}
+
+  /* 순교자 심판의 빛(Lv10) — 사용자 제공 빛기둥 그림을 무대 위로 넘치게 크게 내리꽂는다(그림 하단 착지 섬광 = 적 몸, 무대 62% 높이).
+     예고선(i1) → 빛기둥(::before) → 착지 광채(::after) + 충격파 두 겹(i2,i3) + 튀는 불꽃·붉은 파편(i4~i7). */
+  .sfx-paladinJudgmentLight{left:0; top:0; width:100%; height:100%;}
+  .sfx-paladinJudgmentLight::before{left:50%; top:auto; bottom:38%; translate:-50% 0; height:120%; aspect-ratio:359/800; transform-origin:50% 100%; background:url('images/vfx/martyr_judgment.webp') center/100% 100% no-repeat; filter:drop-shadow(0 0 12px #ffe08a); animation:sfxMartyrBeam .9s .1s ease-out;}
+  @keyframes sfxMartyrBeam{0%{opacity:1; clip-path:inset(0 0 100% 0); transform:scaleX(.8);} 22%{clip-path:inset(0 0 0 0); transform:scaleX(1.2);} 35%{transform:scaleX(1);} 60%{opacity:1;} 100%{opacity:0; clip-path:inset(0 0 0 0); transform:scaleX(.6);}}
+  .sfx-paladinJudgmentLight > i{left:50%; top:62%;}
+  .sfx-paladinJudgmentLight > i:nth-child(1){top:0; translate:-50% 0; width:3px; height:62%; background:linear-gradient(180deg,#fff6c000,#fff6c0); box-shadow:0 0 8px #ffe08a; animation:sfxBolt .18s linear;}
+  .sfx-paladinJudgmentLight::after{left:50%; top:62%; width:300px; height:80px; border-radius:50%; background:radial-gradient(ellipse,#fffbe0 0%,#ffe08acc 30%,#ff9a3a44 55%,transparent 72%); animation:sfxPop .7s .26s ease-out;}
+  .sfx-paladinJudgmentLight > i:nth-child(2), .sfx-paladinJudgmentLight > i:nth-child(3){width:90px; height:26px; border-radius:50%; border:3px solid #ffe08a; box-shadow:0 0 10px #ffe08a; --s:4; animation:sfxRing .55s .26s ease-out;}
+  .sfx-paladinJudgmentLight > i:nth-child(3){border-color:#ff5a3a; box-shadow:0 0 10px #ff5a3a; --s:3; animation-delay:.38s;}
+  .sfx-paladinJudgmentLight > i:nth-child(n+4){width:8px; height:8px; border-radius:50%; background:#fff3b0; box-shadow:0 0 8px #ffe08a; animation:sfxShard .7s .28s ease-out;}
+  .sfx-paladinJudgmentLight > i:nth-child(4){--dx:-70px; --dy:-60px;}
+  .sfx-paladinJudgmentLight > i:nth-child(5){--dx:65px; --dy:-75px; animation-delay:.32s;}
+  .sfx-paladinJudgmentLight > i:nth-child(6), .sfx-paladinJudgmentLight > i:nth-child(7){width:7px; height:14px; border-radius:0; background:#e8303a; box-shadow:0 0 6px #ff5a3a; clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);}
+  .sfx-paladinJudgmentLight > i:nth-child(6){--dx:-100px; --dy:-30px;}
+  .sfx-paladinJudgmentLight > i:nth-child(7){--dx:95px; --dy:-40px; animation-delay:.34s;}
+  @keyframes sfxShard{0%{opacity:0; transform:translate(0,0) rotate(0);} 15%{opacity:1;} 100%{opacity:0; transform:translate(var(--dx),var(--dy)) rotate(200deg);}}
+  .fl-paladinJudgmentLight{background:radial-gradient(ellipse at 50% 62%, #ffe08a55 0%, #ff9a3a22 45%, transparent 75%); animation-delay:.26s; animation-duration:.6s;}
+
+  /* 기관사 */
+  .sfx-mechanicIgnite::before{width:60px; height:60px; border-radius:50%; border:5px solid #ff8a2a; box-shadow:0 0 12px #ff8a2a, inset 0 0 12px #ff8a2a; --s:2.6; animation:sfxRing .45s ease-out;}
+  .sfx-mechanicIgnite > i{width:44px; height:44px; border-radius:50%; background:radial-gradient(circle,#ffffffbb,transparent 70%); animation:sfxSteam .8s .1s ease-out;}
+  .sfx-mechanicIgnite > i:nth-child(1){--dx:-34px;}
+  .sfx-mechanicIgnite > i:nth-child(3){--dx:34px; animation-delay:.18s;}
+  @keyframes sfxSteam{0%{opacity:0; transform:translate(0,0) scale(.4);} 30%{opacity:.8;} 100%{opacity:0; transform:translate(var(--dx,0px),-60px) scale(1.6);}}
+
+  .sfx-mechanicValve::before, .sfx-mechanicValve::after{width:170px; height:34px; border-radius:50%; animation:sfxJet .6s ease-out;}
+  .sfx-mechanicValve::before{left:-180px; translate:0 -50%; transform-origin:0 50%; background:linear-gradient(90deg,#ffffffdd,#ffffff00);}
+  .sfx-mechanicValve::after{left:180px; translate:-100% -50%; transform-origin:100% 50%; background:linear-gradient(270deg,#ffffffdd,#ffffff00);}
+  @keyframes sfxJet{0%{opacity:0; transform:scaleX(0);} 30%{opacity:.9; transform:scaleX(1);} 100%{opacity:0; transform:scaleX(1.2) scaleY(1.4);}}
+
+  .sfx-mechanicMark::before{width:84px; height:84px; border-radius:50%; border:2px solid #ff3a3a; background:linear-gradient(#ff3a3a,#ff3a3a) center/2px 100% no-repeat, linear-gradient(#ff3a3a,#ff3a3a) center/100% 2px no-repeat; animation:sfxLock .8s ease-out;}
+  @keyframes sfxLock{0%{opacity:0; transform:scale(2) rotate(45deg);} 45%{opacity:1; transform:scale(1) rotate(0);} 55%{transform:scale(1.1);} 65%{transform:scale(1);} 85%{opacity:1;} 100%{opacity:0;}}
+  .sfx-mechanicMark::after{width:10px; height:10px; border-radius:50%; background:#ff3a3a; box-shadow:0 0 8px #ff3a3a; animation:sfxPop .4s .4s ease-out;}
+
+  .sfx-mechanicSafety{top:92%;}
+  .sfx-mechanicSafety::before{width:210px; height:105px; translate:-50% -100%; transform-origin:50% 100%; border-radius:105px 105px 0 0; border:3px solid #8fd0ff; border-bottom:none; background:radial-gradient(ellipse at 50% 100%,#8fd0ff55,transparent 70%); animation:sfxDome .8s ease-out;}
+  @keyframes sfxDome{0%{opacity:0; transform:scale(.3);} 30%{opacity:1; transform:scale(1.05);} 70%{opacity:1; transform:scale(1);} 100%{opacity:0; transform:scale(1);}}
+
+  .sfx-mechanicOverpressure::before{inset:0; width:auto; height:auto; translate:none; background:repeating-linear-gradient(45deg,#ffb020 0 12px,#1a1208 12px 24px); clip-path:polygon(evenodd,0 0,100% 0,100% 100%,0 100%,0 0,18px 18px,18px calc(100% - 18px),calc(100% - 18px) calc(100% - 18px),calc(100% - 18px) 18px,18px 18px); animation:sfxBlink .8s step-end;}
+  @keyframes sfxBlink{0%,40%,80%{opacity:.9;} 20%,60%,100%{opacity:0;}}
+  .sfx-mechanicOverpressure::after{left:50%; top:50%; width:160px; height:160px; border-radius:50%; background:radial-gradient(circle,#fff3b0 0%,#ff4a2a 40%,transparent 70%); animation:sfxPop .5s .2s ease-out;}
+
+  /* 도박사 — 시전 순간의 손짓만. 성공/실패는 기존 배너가 알려준다. */
+  .sfx-coinflip::before{width:40px; height:40px; border-radius:50%; background:radial-gradient(circle at 35% 35%,#fff6c0,#ffd04a 45%,#c08a20); border:3px solid #fff0b0; animation:sfxCoin .8s ease-out;}
+  @keyframes sfxCoin{0%{opacity:0; transform:perspective(300px) translateY(60px) rotateY(0);} 15%{opacity:1;} 50%{transform:perspective(300px) translateY(-70px) rotateY(900deg);} 85%{opacity:1; transform:perspective(300px) translateY(0) rotateY(1800deg);} 100%{opacity:0; transform:perspective(300px) translateY(0) rotateY(1800deg);}}
+  .sfx-coinflip::after{width:50px; height:50px; border-radius:50%; border:3px solid #ffe08a; animation:sfxRing .35s .65s ease-out;}
+
+  .sfx-fateshift{top:62%;}
+  .sfx-fateshift > i{width:42px; height:48px; background:linear-gradient(180deg,#d89a5a,#7a4a22); clip-path:polygon(20% 0,80% 0,100% 100%,0 100%); animation:sfxCupMid .8s ease-in-out;}
+  .sfx-fateshift > i:nth-child(1){left:-62px; animation-name:sfxCupL;}
+  .sfx-fateshift > i:nth-child(3){left:62px; animation-name:sfxCupR;}
+  @keyframes sfxCupL{0%{opacity:0;} 15%{opacity:1; transform:translate(0,0);} 50%{transform:translate(62px,12px);} 80%{opacity:1; transform:translate(124px,0);} 100%{opacity:0; transform:translate(124px,0);}}
+  @keyframes sfxCupR{0%{opacity:0;} 15%{opacity:1; transform:translate(0,0);} 50%{transform:translate(-62px,-12px);} 80%{opacity:1; transform:translate(-124px,0);} 100%{opacity:0; transform:translate(-124px,0);}}
+  @keyframes sfxCupMid{0%{opacity:0;} 15%{opacity:1; transform:translateY(0);} 50%{transform:translateY(-24px);} 80%{opacity:1; transform:translateY(0);} 100%{opacity:0;}}
+
+  .sfx-gamble::before{width:50px; height:72px; border-radius:5px; border:3px solid #ffe08a; background:repeating-linear-gradient(45deg,#8a1a1a 0 6px,#b02a2a 6px 12px); animation:sfxThrow .7s ease-out;}
+  @keyframes sfxThrow{0%{opacity:0; transform:translate(-140px,120px) rotate(-200deg) scale(.6);} 20%{opacity:1;} 60%{transform:translate(0,0) rotate(15deg) scale(1);} 85%{opacity:1; transform:rotate(15deg) scale(1);} 100%{opacity:0; transform:rotate(15deg) scale(1.1);}}
+  .sfx-gamble::after{width:70px; height:70px; border-radius:50%; border:3px solid #ffe08a; animation:sfxRing .4s .4s ease-out;}
+
+  .sfx-finalcard::before{width:80px; height:116px; border-radius:7px; border:3px solid #c02a2a; background:linear-gradient(160deg,#2a2020,#0a0606); box-shadow:0 0 18px #c02a2a88; animation:sfxFlip .8s ease-out;}
+  .sfx-finalcard::after{content:'♠'; font-size:46px; line-height:1; color:#e03a3a; animation:sfxFlip .8s ease-out;}
+  @keyframes sfxFlip{0%{opacity:0; transform:perspective(400px) rotateY(180deg) scale(.7);} 25%{opacity:1;} 60%{transform:perspective(400px) rotateY(0) scale(1.1);} 85%{opacity:1; transform:perspective(400px) rotateY(0) scale(1);} 100%{opacity:0; transform:perspective(400px) rotateY(0) scale(1);}}
+  .fl-finalcard{background:radial-gradient(ellipse at center, transparent 40%, #a0101088 100%); animation-duration:.8s;}
+
   .fx-banner{
     position:absolute; left:50%; top:20%; transform:translate(-50%,0);
     font-family:var(--font-ui); font-weight:700; font-size:16px; color:var(--gold-bright);
