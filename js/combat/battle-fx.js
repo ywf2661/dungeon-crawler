@@ -358,7 +358,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   // playerSkill()이 시전 확정 순간에 부른다. 값 = 안에 넣을 <i> 조각 수(::before/::after 외 추가 조각).
   // 운명의 주사위(wildcard)는 전용 주사위 연출이 이미 있어 뺐다. 목록에 없는 스킬은 아무 일도 없다.
   const SKILL_FX = {
-    powerstrike:0, guard:0, warcry:3, crushingblow:0, earthrend:5,
+    powerstrike:2, guard:0, warcry:3, crushingblow:0, earthrend:5,
     fireball:0, icelance:0, thunderbolt:0, blizzard:0, meteor:0,
     doubleslash:0, backstab:0, draintouch:0, shadowslash:3, assassinate:0,
     judgment:0, paladinblessing:3, retributionoath:0, holylight:4, divinejudgment:0,
@@ -377,6 +377,8 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
     el.innerHTML = '<i></i>'.repeat(SKILL_FX[key]);
     stage.appendChild(el);
     setTimeout(()=>el.remove(), 1000);
+    // 강타: 참격이 다 그려지고 충격 섬광이 뜬 순간(50ms)에 짧게 멈춰 무게를 준다.
+    if(key==='powerstrike') setTimeout(()=>impactFx(1), 50);
     if(SKILL_FX_FLASH.has(key)){
       const fl = document.createElement('div');
       fl.className = 'sfx-flash fl-'+key;
@@ -1023,12 +1025,13 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
   }
 
   // 타격 세기 등급표(타격감 다듬기) — 모든 타격 연출은 이 세 단계 중 하나를 쓴다.
-  //   1단계 일반 공격: shakeEnemy()(적 스프라이트만 흔들림) — 여기 표에는 없다.
+  //   1단계 일반 공격: shakeEnemy()(적 스프라이트만 흔들림). 강타처럼 묵직해야 하는 기본 스킬은
+  //        impactFx(1) — 히트스톱 40ms만, 화면 흔들림 없음(매 전투 쓰는 스킬이라 흔들면 과하다).
   //   2단계 치명타/스킬: 히트스톱 50ms → 화면 흔들림 0.45
   //   3단계 보스 필살기·처치·궁극기: 히트스톱 80ms → 화면 흔들림 1 + 흰 섬광
   // 히트스톱은 #screen-battle 안의 CSS 애니메이션만 잠깐 멈출 뿐 게임 로직(setTimeout)은
   // 그대로 흐른다. 같은 순간에 여러 등급이 겹치면(치명타로 처치 등) 가장 센 것 하나만 낸다.
-  const IMPACT_TIERS = {2:{stop:50, shake:0.45}, 3:{stop:80, shake:1, flash:true}};
+  const IMPACT_TIERS = {1:{stop:40, shake:0}, 2:{stop:50, shake:0.45}, 3:{stop:80, shake:1, flash:true}};
   let impactPending = 0;
   function impactFx(tier){
     if(!impactPending) setTimeout(()=>{
@@ -1043,7 +1046,7 @@ export(전역): updateEnemyHpBar, setBattleMsg, resetCommandUI, setCommandsEnabl
         document.getElementById('app').appendChild(f);
         setTimeout(()=>f.remove(), 250);
       }
-      setTimeout(()=>{ el.classList.remove('hitstop'); shakeScreen(t.shake); }, t.stop);
+      setTimeout(()=>{ el.classList.remove('hitstop'); if(t.shake) shakeScreen(t.shake); }, t.stop);
     }, 0);
     impactPending = Math.max(impactPending, tier);
   }

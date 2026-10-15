@@ -1047,9 +1047,15 @@
   @keyframes sfxFloat{0%{opacity:0; transform:translateY(0);} 30%{opacity:1;} 100%{opacity:0; transform:translateY(-110px);}}
 
   /* 전사 */
-  .sfx-powerstrike::before{width:150px; height:150px; border-radius:50%; border:11px solid transparent; border-top-color:#fff; border-right-color:#ffe6b0cc; filter:drop-shadow(0 0 8px #ffd27a); animation:sfxSwing .35s ease-out;}
-  @keyframes sfxSwing{0%{opacity:0; transform:rotate(-140deg) scale(.8);} 30%{opacity:1;} 100%{opacity:0; transform:rotate(30deg) scale(1.05);}}
-  .sfx-powerstrike::after{width:50px; height:50px; border-radius:50%; border:3px solid #fff; --s:2.5; animation:sfxRing .4s .15s ease-out;}
+  /* 강타: 오른쪽 위→왼쪽 아래로 한 번에 내리꽂는 굵은 참격(::before) → 충격 섬광(::after) + 방사형 집중선(i1) + 발밑 흙먼지(i2).
+     battle-fx.js가 50ms 뒤 impactFx(1)(히트스톱 40ms, 흔들림 없음)을 건다. */
+  .sfx-powerstrike::before{width:240px; height:30px; background:linear-gradient(90deg,#ff8a2a,#fff 35%,#fff 65%,#ffcf7a); clip-path:polygon(0 50%,25% 0,100% 40%,100% 60%,25% 100%); animation:sfxHeavy .4s ease-out;}
+  @keyframes sfxHeavy{0%{opacity:1; transform:rotate(-35deg) translateX(60px) scaleX(.2);} 12%{opacity:1; transform:rotate(-35deg) translateX(0) scaleX(1);} 45%{opacity:1; transform:rotate(-35deg) scaleX(1) scaleY(1);} 100%{opacity:0; transform:rotate(-35deg) scaleX(1.05) scaleY(.2);}}
+  .sfx-powerstrike::after{width:130px; height:130px; border-radius:50%; background:radial-gradient(circle,#fff 0%,#fff 18%,#ffd27acc 38%,#ff8a2a44 55%,transparent 70%); animation:sfxImpact .38s .04s ease-out;}
+  @keyframes sfxImpact{0%{opacity:0; transform:scale(.3);} 12%{opacity:1; transform:scale(1);} 100%{opacity:0; transform:scale(1.6);}}
+  .sfx-powerstrike > i:nth-child(1){width:280px; height:280px; border-radius:50%; background:repeating-conic-gradient(#fff6d6 0deg 2deg, transparent 2deg 14deg); -webkit-mask:radial-gradient(circle, transparent 28%, #000 42%, transparent 70%); mask:radial-gradient(circle, transparent 28%, #000 42%, transparent 70%); animation:sfxLines .38s .04s ease-out;}
+  @keyframes sfxLines{0%{opacity:0; transform:scale(.6);} 15%{opacity:.9;} 100%{opacity:0; transform:scale(1.3);}}
+  .sfx-powerstrike > i:nth-child(2){top:66px; width:170px; height:32px; border-radius:50%; background:radial-gradient(ellipse,#c8a070aa,transparent 70%); animation:sfxPop .5s .06s ease-out;}
 
   .sfx-guard{top:72%;}
   .sfx-guard::before{width:90px; height:105px; background:linear-gradient(180deg,#d6e6ffdd,#5b86c8aa); clip-path:polygon(50% 0,100% 15%,92% 62%,50% 100%,8% 62%,0 15%); animation:sfxShield .75s ease-out;}
